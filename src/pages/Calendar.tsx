@@ -298,7 +298,7 @@ export default function Calendar() {
                       >
                         <div className="flex justify-between items-start mb-2">
                           {today ? (
-                            <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            <div className="w-8 h-8 bg-theme-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                               {item.day}
                             </div>
                           ) : (

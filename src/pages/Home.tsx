@@ -530,43 +530,41 @@ export default function Home() {
     switch (selectedMessage.type) {
       case 'process':
         return (
-          <div className="flex-1 bg-gray-50 flex flex-col h-full">
-            {!isMobile && (
-              <div className="p-4 border-b border-gray-200 bg-white">
-                <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-              </div>
-            )}
+          <div className="flex flex-col h-full bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-white shrink-0">
+              <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
+            </div>
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4 mb-6">
-                <div className="flex-shrink-0">
-                  <div className="w-12 h-12 flex items-center justify-center">
-                    {selectedMessage.icon}
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-sm w-3/4 border border-gray-100">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg text-gray-900 mb-1">每日待办提醒：2条未处理</h3>
-                      <p className="text-sm text-gray-600 mb-3">4月21日</p>
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 flex items-center justify-center">
+                      {selectedMessage.icon}
                     </div>
                   </div>
-                  <div className="mb-4">
-                    <p className="text-sm font-medium text-gray-700 mb-2">数据统计：</p>
-                    <p className="text-sm text-gray-600 mb-4">截止到目前，2条待办未处理，其中2条已等待超过24小时</p>
-                    <p className="text-sm font-medium text-gray-700 mb-2">请尽快处理以下待办</p>
-                    <ul className="list-decimal list-inside space-y-2 text-sm text-blue-600 mb-4">
-                      <li>梁吉力发起的"收款单"</li>
-                      <li>honeyLeung发起的"请假"</li>
-                    </ul>
-                  </div>
-                  <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm">
-                    查看全部待办
-                  </button>
-                  <div className="flex items-center gap-2 mt-4 text-sm text-gray-400">
-                    <span>昨天</span>
-                  </div>
+                  <MessageBubble>
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-1">每日待办提醒：2条未处理</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">4月21日</p>
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">数据统计：</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">截止到目前，2条待办未处理，其中2条已等待超过24小时</p>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">请尽快处理以下待办</p>
+                      <ul className="list-decimal list-inside space-y-2 text-sm text-blue-600 mb-4">
+                        <li>梁吉力发起的"收款单"</li>
+                        <li>honeyLeung发起的"请假"</li>
+                      </ul>
+                    </div>
+                    <button className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm">
+                      查看全部待办
+                    </button>
+                    <div className="flex items-center gap-2 mt-4 text-sm text-gray-400">
+                      <span>昨天</span>
+                    </div>
+                  </MessageBubble>
                 </div>
-              </div>
               <CardMessage message={{
                 ...selectedMessage,
                 cardContent: {
@@ -615,10 +613,10 @@ export default function Home() {
       case 'card':
         if (selectedMessage.name === "日程") {
           return (
-            <div className="flex-1 bg-gray-50 flex flex-col h-full">
-              <div className="p-4 border-b border-gray-200 bg-white flex justify-between items-center">
-                <h2 className="text-xl font-bold text-gray-900">{selectedMessage.name}</h2>
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col h-full bg-gray-50">
+              <div className="p-4 border-b border-gray-200 bg-white flex items-center shrink-0 overflow-hidden">
+                <h2 className="text-xl font-bold text-gray-900 truncate flex-shrink-0 mr-4">{selectedMessage.name}</h2>
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="text-sm text-gray-600">在消息列表提醒日程</span>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" defaultChecked className="sr-only peer" />
@@ -675,9 +673,11 @@ export default function Home() {
           );
         } else if (selectedMessage.name === "知识助手") {
           return (
-            <div className="flex-1 bg-gray-50 flex flex-col h-full">
-              <div className="p-4 border-b border-gray-200 bg-white">
-                <h2 className="text-xl font-bold text-gray-900">{selectedMessage.name}</h2>
+            <div className="flex flex-col h-full bg-gray-50">
+              <div className="p-4 border-b border-gray-200 bg-white shrink-0">
+                <div className="min-w-0">
+                  <h2 className="text-xl font-bold text-gray-900 truncate">{selectedMessage.name}</h2>
+                </div>
               </div>
               <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* 知识推荐消息 */}
@@ -687,37 +687,37 @@ export default function Home() {
                       {selectedMessage.icon}
                     </div>
                   </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm w-3/4 border border-gray-100">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-3">知识推荐</h3>
-                    <p className="text-gray-700 mb-6">根据您的搜索历史，为您推荐以下相关知识库文章：</p>
+                  <MessageBubble>
+                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-3">知识推荐</h3>
+                    <p className="text-gray-700 dark:text-gray-300 mb-6">根据您的搜索历史，为您推荐以下相关知识库文章：</p>
                     <div className="space-y-4">
-                      <div className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
+                      <div className="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors cursor-pointer">
                         <FileText size={20} className="text-gray-400 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                           <a href="#" className="text-theme-600 hover:text-theme-700 font-medium text-base mb-1 block truncate">
                             智能办公系统使用指南
                           </a>
-                          <span className="text-sm text-gray-500">由 梁吉力 发布，浏览量 1,234</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">由 梁吉力 发布，浏览量 1,234</span>
                         </div>
                         <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                       </div>
-                      <div className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
+                      <div className="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors cursor-pointer">
                         <FileText size={20} className="text-gray-400 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <a href="#" className="text-pink-600 hover:text-pink-700 font-medium text-base mb-1 block truncate">
+                          <a href="#" className="text-theme-600 hover:text-theme-700 font-medium text-base mb-1 block truncate">
                             2025年IT部门工作计划
                           </a>
-                          <span className="text-sm text-gray-500">由 张三 发布，浏览量 987</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">由 张三 发布，浏览量 987</span>
                         </div>
                         <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                       </div>
-                      <div className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer">
+                      <div className="flex items-start gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-lg transition-colors cursor-pointer">
                         <FileText size={20} className="text-gray-400 flex-shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
-                          <a href="#" className="text-pink-600 hover:text-pink-700 font-medium text-base mb-1 block truncate">
+                          <a href="#" className="text-theme-600 hover:text-theme-700 font-medium text-base mb-1 block truncate">
                             企业数据安全最佳实践
                           </a>
-                          <span className="text-sm text-gray-500">由 李四 发布，浏览量 756</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">由 李四 发布，浏览量 756</span>
                         </div>
                         <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                       </div>
@@ -726,7 +726,7 @@ export default function Home() {
                       {selectedMessage.cardContent?.actions.map((action, index) => (
                         <button
                           key={index}
-                          className={`px-4 py-2 rounded-md transition-colors ${action.type === 'primary' ? 'bg-theme-500 text-white hover:bg-theme-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'}`}
+                          className={`px-4 py-2 rounded-md transition-colors ${action.type === 'primary' ? 'bg-theme-500 text-white hover:bg-theme-600' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
                         >
                           {action.label}
                         </button>
@@ -735,7 +735,7 @@ export default function Home() {
                     <div className="flex items-center gap-2 mt-4 text-sm text-gray-400">
                       <span>{selectedMessage.time}</span>
                     </div>
-                  </div>
+                  </MessageBubble>
                 </div>
                 
                 {/* 知识审批消息 */}
@@ -745,20 +745,20 @@ export default function Home() {
                       {selectedMessage.icon}
                     </div>
                   </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm w-3/4 border border-gray-100">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-4">知识审批</h3>
+                  <MessageBubble>
+                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-4">知识审批</h3>
                     <div className="space-y-4">
-                      <div className="p-4 border border-gray-200 rounded-lg">
+                      <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
                         <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-gray-900">关于更新公司知识库结构的提案</h4>
+                          <h4 className="font-medium text-gray-900 dark:text-white">关于更新公司知识库结构的提案</h4>
                           <span className="text-xs font-medium text-yellow-500 bg-yellow-50 px-2 py-1 rounded">待审批</span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">由 梁吉力 提交，需要您的审批</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">由 梁吉力 提交，需要您的审批</p>
                         <div className="flex gap-2">
                           <button className="px-4 py-2 bg-theme-500 text-white rounded-md hover:bg-theme-600 transition-colors text-sm">
                             批准
                           </button>
-                          <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm">
+                          <button className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm">
                             拒绝
                           </button>
                         </div>
@@ -767,7 +767,7 @@ export default function Home() {
                     <div className="flex items-center gap-2 mt-4 text-sm text-gray-400">
                       <span>{selectedMessage.time}</span>
                     </div>
-                  </div>
+                  </MessageBubble>
                 </div>
                 
                 {/* 知识发布消息 */}
@@ -777,16 +777,16 @@ export default function Home() {
                       {selectedMessage.icon}
                     </div>
                   </div>
-                  <div className="bg-white p-6 rounded-lg shadow-sm w-3/4 border border-gray-100">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-4">知识发布</h3>
+                  <MessageBubble>
+                    <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-4">知识发布</h3>
                     <div className="space-y-4">
-                      <div className="p-4 border border-gray-200 rounded-lg">
+                      <div className="p-4 border border-gray-200 dark:border-gray-600 rounded-lg">
                         <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-gray-900">2025年Q2技术培训计划</h4>
+                          <h4 className="font-medium text-gray-900 dark:text-white">2025年Q2技术培训计划</h4>
                           <span className="text-xs font-medium text-green-500 bg-green-50 px-2 py-1 rounded">已发布</span>
                         </div>
-                        <p className="text-sm text-gray-600 mb-3">由 张三 发布，已在知识库中上线</p>
-                        <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">由 张三 发布，已在知识库中上线</p>
+                        <button className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm">
                           查看详情
                         </button>
                       </div>
@@ -794,21 +794,21 @@ export default function Home() {
                     <div className="flex items-center gap-2 mt-4 text-sm text-gray-400">
                       <span>{selectedMessage.time}</span>
                     </div>
-                  </div>
+                  </MessageBubble>
                 </div>
               </div>
-              <div className="p-4 border-t border-gray-200 bg-white">
+              <div className="p-4 border-t border-gray-200 bg-white shrink-0">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="输入消息..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500"
                   />
                   <div className="flex gap-2">
                     <button className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
                     </button>
-                    <button className="bg-pink-500 text-white p-2 rounded-full hover:bg-pink-600 transition-colors">
+                    <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
                       <MessageSquare size={20} />
                     </button>
                   </div>
@@ -818,16 +818,14 @@ export default function Home() {
           );
         }
         return (
-          <div className="flex-1 bg-gray-50 flex flex-col h-full">
-            {!isMobile && (
-              <div className="p-4 border-b border-gray-200 bg-white">
-                <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-              </div>
-            )}
+          <div className="flex flex-col h-full bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-white shrink-0">
+              <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
+            </div>
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <CardMessage message={selectedMessage} />
             </div>
-            <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="p-4 border-t border-gray-200 bg-white shrink-0">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -838,7 +836,7 @@ export default function Home() {
                   <button className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
                   </button>
-                  <button className="bg-pink-500 text-white p-2 rounded-full hover:bg-pink-600 transition-colors">
+                  <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
                     <MessageSquare size={20} />
                   </button>
                 </div>
@@ -848,30 +846,28 @@ export default function Home() {
         );
       case 'assistant':
         return (
-          <div className="flex-1 bg-gray-50 flex flex-col h-full">
-            {!isMobile && (
-              <div className="p-4 border-b border-gray-200 bg-white">
-                <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-              </div>
-            )}
+          <div className="flex flex-col h-full bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-white shrink-0">
+              <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
+            </div>
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4">
-                <div className="flex-shrink-0">
-                  <img
-                    src={selectedMessage.avatar}
-                    alt={selectedMessage.name}
-                    className="w-12 h-12 rounded-full"
-                  />
-                </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm max-w-2xl">
-                  <p className="text-gray-700">{selectedMessage.message}</p>
-                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
-                    <span>{selectedMessage.time}</span>
-                  </div>
-                </div>
+              <div className="flex-shrink-0">
+                <img
+                  src={selectedMessage.avatar}
+                  alt={selectedMessage.name}
+                  className="w-12 h-12 rounded-full"
+                />
               </div>
+              <MessageBubble>
+                <p className="text-gray-700 dark:text-gray-300">{selectedMessage.message}</p>
+                <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
+                  <span>{selectedMessage.time}</span>
+                </div>
+              </MessageBubble>
             </div>
-            <div className="p-4 border-t border-gray-200 bg-white">
+            </div>
+            <div className="p-4 border-t border-gray-200 bg-white shrink-0">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -893,9 +889,9 @@ export default function Home() {
       default:
         if (selectedMessage.name === "张飞") {
           return (
-            <div className="flex-1 bg-gray-50 flex flex-col h-full">
-              <div className="p-4 border-b border-gray-200 bg-white">
-                <h2 className="text-xl font-bold text-gray-900">{selectedMessage.name}</h2>
+            <div className="flex flex-col h-full bg-gray-50">
+              <div className="p-4 border-b border-gray-200 bg-white shrink-0">
+                <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
               </div>
               <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* 普通文字消息 */}
@@ -907,13 +903,13 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl shadow-sm w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group border border-gray-200">
-                    <p className="text-gray-700">已经和相关部门沟通过我们的诉求，他们表示会尽快处理。</p>
+                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
+                    <p className="text-gray-700 dark:text-gray-300">已经和相关部门沟通过我们的诉求，他们表示会尽快处理。</p>
                     <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
                       <span>昨天 16:21</span>
                     </div>
                     {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white p-1.5 rounded-lg shadow-sm">
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
                       <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                       </button>
@@ -930,7 +926,7 @@ export default function Home() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                       </button>
                     </div>
-                  </div>
+                  </MessageBubble>
                 </div>
 
                 {/* 包含链接的消息 */}
@@ -942,23 +938,23 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl shadow-sm w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group border border-gray-200">
+                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <a href="https://www.pgyer.com/DigNVGVh" className="text-blue-600 hover:underline break-all">https://www.pgyer.com/DigNVGVh</a>
-                      <span className="text-gray-700">ios生产</span>
+                      <span className="text-gray-700 dark:text-gray-300">ios生产</span>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-md mb-3">
+                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-3">
                       <div className="flex items-center gap-2 mb-1">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                        <span className="text-gray-600">www.pgyer.com</span>
+                        <span className="text-gray-600 dark:text-gray-400">www.pgyer.com</span>
                       </div>
-                      <p className="text-sm text-gray-700">i吉祥 3.3.0(Build 22) 最新版本 iOS(iPhone/iPad) 版本 IPA 下载。</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">i吉祥 3.3.0(Build 22) 最新版本 iOS(iPhone/iPad) 版本 IPA 下载。</p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-400">
                       <span>2025年6月24日 21:17</span>
                     </div>
                     {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white p-1.5 rounded-lg shadow-sm">
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
                       <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                       </button>
@@ -975,7 +971,7 @@ export default function Home() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                       </button>
                     </div>
-                  </div>
+                  </MessageBubble>
                 </div>
 
                 {/* 会议消息 */}
@@ -987,14 +983,14 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl shadow-sm w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group border border-gray-200">
+                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
                           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 1-9 9c-4.97 0-9-4.03-9-9s4.03-9 9-9c4.97 0 9 4.03 9 9z"></path><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path><path d="M12 8v4l3 3"></path></svg>
                         </div>
                         <div>
-                          <h3 className="font-semibold text-gray-900">梁吉利的视频会议</h3>
+                          <h3 className="font-semibold text-gray-900 dark:text-white">梁吉利的视频会议</h3>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
                               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -1005,22 +1001,22 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    <div className="bg-white rounded-lg p-3 mb-3 border border-gray-100">
-                      <div className="flex items-center gap-2 text-sm text-gray-700 mb-2">
+                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3 border border-gray-100 dark:border-gray-600">
+                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
                         会议 ID: 204 365 818
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                         <img src="https://i.pravatar.cc/40?img=10" alt="梁吉利" className="w-5 h-5 rounded-full" />
                         <span>梁吉利</span>
                       </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-3 overflow-hidden">
+                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-3 overflow-hidden">
                       <div className="bg-blue-500 h-2 rounded-full w-full animate-pulse"></div>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700">会议已结束</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">会议已结束</span>
                       <div className="flex items-center gap-2">
                         <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
                           查看详情
@@ -1028,7 +1024,7 @@ export default function Home() {
                       </div>
                     </div>
                     {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white p-1.5 rounded-lg shadow-sm">
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
                       <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                       </button>
@@ -1042,7 +1038,7 @@ export default function Home() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
                       </button>
                     </div>
-                  </div>
+                  </MessageBubble>
                 </div>
 
                 {/* 文件消息 */}
@@ -1054,13 +1050,13 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl shadow-sm w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group border border-gray-200">
+                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-red-100 rounded-md flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-md flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 truncate">cyftlt-cello 20241211.pdf</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-white truncate">cyftlt-cello 20241211.pdf</h4>
                         <p className="text-sm text-gray-500">4.0 MB</p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -1076,7 +1072,7 @@ export default function Home() {
                       <span>4月21日</span>
                     </div>
                     {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white p-1.5 rounded-lg shadow-sm">
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
                       <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                       </button>
@@ -1093,7 +1089,7 @@ export default function Home() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                       </button>
                     </div>
-                  </div>
+                  </MessageBubble>
                 </div>
 
                 {/* 链接消息 */}
@@ -1105,13 +1101,13 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-xl shadow-sm w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group border border-gray-200">
+                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
                     <a href="https://work.weixin.qq.com/nl/innerkfid/ikfSxq8CgAAJHQDj7nU31ad1RoYZ2Z62A" className="text-blue-600 hover:underline break-all">https://work.weixin.qq.com/nl/innerkfid/ikfSxq8CgAAJHQDj7nU31ad1RoYZ2Z62A</a>
                     <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
                       <span>4月21日</span>
                     </div>
                     {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white p-1.5 rounded-lg shadow-sm">
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
                       <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                       </button>
@@ -1128,21 +1124,21 @@ export default function Home() {
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
                       </button>
                     </div>
-                  </div>
+                  </MessageBubble>
                 </div>
               </div>
-              <div className="p-4 border-t border-gray-200 bg-white">
+              <div className="p-4 border-t border-gray-200 bg-white shrink-0">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="输入消息..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500"
                   />
                   <div className="flex gap-2">
                     <button className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
                     </button>
-                    <button className="bg-pink-500 text-white p-2 rounded-full hover:bg-pink-600 transition-colors">
+                    <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
                       <MessageSquare size={20} />
                     </button>
                   </div>
@@ -1152,12 +1148,10 @@ export default function Home() {
           );
         }
         return (
-          <div className="flex-1 bg-gray-50 flex flex-col h-full">
-            {!isMobile && (
-              <div className="p-4 border-b border-gray-200 bg-white">
-                <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-              </div>
-            )}
+          <div className="flex flex-col h-full bg-gray-50">
+            <div className="p-4 border-b border-gray-200 bg-white shrink-0">
+              <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
+            </div>
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
@@ -1173,12 +1167,12 @@ export default function Home() {
                     />
                   )}
                 </div>
-                <div className="bg-white p-4 rounded-lg shadow-sm max-w-2xl">
-                  <p className="text-gray-700">{selectedMessage.message}</p>
+                <MessageBubble>
+                  <p className="text-gray-700 dark:text-gray-300">{selectedMessage.message}</p>
                   <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
                     <span>{selectedMessage.time}</span>
                   </div>
-                </div>
+                </MessageBubble>
               </div>
             </div>
             <div className="p-4 border-t border-gray-200 bg-white">
@@ -1205,10 +1199,10 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="flex h-full">
+      <div className="flex h-[calc(100vh-0px)]">
         {/* 对话列表 */}
         <div className={`
-          w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
+          w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
           ${showSidebar ? 'flex' : 'hidden'}
           ${isMobile ? 'fixed inset-y-0 left-64 z-40' : ''}
         `}>
@@ -1229,21 +1223,22 @@ export default function Home() {
           </div>
         </div>
         
-        {/* 对话内容 */}
-        <div className="flex-1 overflow-y-auto relative">
+        {/* 对话内容 - 充满整个右侧容器 */}
+        <div className="flex-1 flex flex-col min-h-0">
           {/* 移动端返回按钮 */}
           {isMobile && selectedMessage && (
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2 shrink-0">
               <button 
                 className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 onClick={() => setShowSidebar(true)}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
               </button>
-              <h3 className="font-semibold text-gray-900 dark:text-white">{selectedMessage.name}</h3>
             </div>
           )}
-          {renderContent()}
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {renderContent()}
+          </div>
           
           {/* 移动端漂浮按钮 */}
           {isMobile && selectedMessage && (
@@ -1377,6 +1372,14 @@ function ProcessCard({ process }: { process: ProcessItem }) {
   );
 }
 
+function MessageBubble({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-600 ${className}`}>
+      {children}
+    </div>
+  );
+}
+
 function CardMessage({ message }: { message: Message }) {
   return (
     <div className="flex gap-4">
@@ -1393,7 +1396,7 @@ function CardMessage({ message }: { message: Message }) {
           />
         )}
       </div>
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm w-3/4 border border-gray-100 dark:border-gray-700">
+      <MessageBubble>
         {message.cardContent && (
           <>
             <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-3">{message.cardContent.title}</h3>
@@ -1410,10 +1413,14 @@ function CardMessage({ message }: { message: Message }) {
             </div>
           </>
         )}
-        <div className="flex items-center gap-2 mt-4 text-sm text-gray-400">
+        {!message.cardContent && (
+          <p className="text-gray-700 dark:text-gray-300">{message.message}</p>
+        )}
+        <div className="flex items-center gap-2 mt-3 text-sm text-gray-400">
           <span>{message.time}</span>
         </div>
-      </div>
+      </MessageBubble>
     </div>
   );
 }
+

@@ -111,7 +111,7 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900">
-      <div className="w-64 bg-gradient-to-theme text-white flex flex-col fixed h-full z-10">
+      <div className="w-64 bg-gradient-to-theme text-white flex flex-col fixed h-full z-50">
         <div className="p-4 space-y-4">
           <UserMenu />
           
@@ -191,11 +191,11 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </div>
 
-      <div className="ml-64 flex-1 overflow-y-auto">
+      <div className="ml-64 flex-1 overflow-hidden">
         {children}
         
         {isSearchOpen && (
-          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden">
               <div className="sticky top-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-700 px-5 py-4 z-10">
                 <div className="flex items-center gap-3">

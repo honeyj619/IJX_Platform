@@ -110,7 +110,7 @@ export function UserMenu() {
 
       {/* 下拉菜单 */}
       {isOpen && (
-        <div className="fixed left-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-[9999]" style={{ top: (menuRef.current?.getBoundingClientRect().bottom || 0) + 8, left: menuRef.current?.getBoundingClientRect().left || 0 }}>
+        <div className="fixed left-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-[65]" style={{ top: (menuRef.current?.getBoundingClientRect().bottom || 0) + 8, left: menuRef.current?.getBoundingClientRect().left || 0 }}>
           {/* 用户信息头部 */}
           <div className="p-4 bg-gradient-to-r from-pink-500 to-purple-600">
             <div className="flex items-center gap-3">
