@@ -11,6 +11,7 @@ import EKB from "@/pages/EKB";
 import Calendar from "@/pages/Calendar";
 import Business from "@/pages/Business";
 import SettingsPage from "@/pages/SettingsPage";
+import Admin from "@/pages/Admin";
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/calendar" element={<Calendar />} />
         <Route path="/business" element={<Business />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </Router>
   );

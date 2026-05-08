@@ -191,8 +191,10 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </div>
 
-      <div className="ml-64 flex-1 overflow-hidden">
-        {children}
+      <div className="ml-64 flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto">
+          {children}
+        </div>
         
         {isSearchOpen && (
           <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
@@ -235,12 +237,12 @@ export default function Layout({ children }: LayoutProps) {
                       <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3 text-sm">用户</h3>
                       <div className="flex gap-4">
                         <div className="flex flex-col items-center">
-                          <img src="https://i.pravatar.cc/64?img=1" alt="张三" className="w-14 h-14 rounded-full mb-2" />
+                          <img src="https://api.dicebear.com/7.x/initials/svg?seed=张三&backgroundColor=3b82f6" alt="张三" className="w-14 h-14 rounded-full mb-2" />
                           <span className="text-xs text-gray-700 dark:text-gray-300">张三</span>
                           <span className="text-xs text-gray-400 dark:text-gray-500">项目管理工程师</span>
                         </div>
                         <div className="flex flex-col items-center">
-                          <img src="https://i.pravatar.cc/64?img=2" alt="王肯豆" className="w-14 h-14 rounded-full mb-2" />
+                          <img src="https://api.dicebear.com/7.x/initials/svg?seed=王肯豆&backgroundColor=ec4899" alt="王肯豆" className="w-14 h-14 rounded-full mb-2" />
                           <span className="text-xs text-gray-700 dark:text-gray-300">王肯豆</span>
                           <span className="text-xs text-gray-400 dark:text-gray-500">项目管理工程师</span>
                         </div>

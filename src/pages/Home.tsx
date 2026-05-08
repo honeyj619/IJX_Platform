@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import Layout from "@/components/Layout";
+import { MessageHeader } from "@/components/MessageHeader";
 
 interface CardContent {
   title: string;
@@ -61,7 +62,7 @@ const messages: Message[] = [
   {
     id: 2,
     name: "流程",
-    avatar: "https://i.pravatar.cc/40?img=10",
+    avatar: "https://api.dicebear.com/7.x/initials/svg?seed=流程&backgroundColor=8b5cf6",
     message: "信息管理部梁吉力提交的“项目立项申请”流...",
     time: "12:21",
     unread: 8,
@@ -71,7 +72,7 @@ const messages: Message[] = [
   {
     id: 3,
     name: "日程",
-    avatar: "https://i.pravatar.cc/40?img=11",
+    avatar: "https://api.dicebear.com/7.x/initials/svg?seed=日程&backgroundColor=f97316",
     message: "今日有2个日程安排，明日有1个日程安排",
     time: "12:00",
     unread: 1,
@@ -89,7 +90,7 @@ const messages: Message[] = [
   {
     id: 4,
     name: "考勤",
-    avatar: "https://i.pravatar.cc/40?img=12",
+    avatar: "https://api.dicebear.com/7.x/initials/svg?seed=考勤&backgroundColor=3b82f6",
     message: "您本月考勤正常，无迟到早退记录",
     time: "昨天 18:00",
     unread: 1,
@@ -107,7 +108,7 @@ const messages: Message[] = [
   {
     id: 5,
     name: "项目管理",
-    avatar: "https://i.pravatar.cc/40?img=13",
+    avatar: "https://api.dicebear.com/7.x/initials/svg?seed=考勤&backgroundColor=22c55e",
     message: "您负责的3个项目均按计划进行",
     time: "昨天 17:30",
     unread: 2,
@@ -125,7 +126,7 @@ const messages: Message[] = [
   {
     id: 6,
     name: "知识助手",
-    avatar: "https://i.pravatar.cc/40?img=14",
+    avatar: "https://api.dicebear.com/7.x/initials/svg?seed=项目管理&backgroundColor=ec4899",
     message: "为您推荐3篇相关知识库文章",
     time: "昨天 16:45",
     unread: 3,
@@ -288,17 +289,6 @@ export default function Home() {
                             <div className="bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/50 dark:to-orange-900/50 p-6 rounded-3xl shadow-lg">
                               <span className="text-6xl">☀️</span>
                             </div>
-                            <div className="flex gap-4 mt-4">
-                              <div className="bg-white dark:bg-gray-700 p-3 rounded-xl shadow-md border border-gray-200 dark:border-gray-600">
-                                <span className="text-2xl">💬</span>
-                              </div>
-                              <div className="bg-white dark:bg-gray-700 p-3 rounded-xl shadow-md border border-gray-200 dark:border-gray-600">
-                                <span className="text-2xl">📋</span>
-                              </div>
-                              <div className="bg-white dark:bg-gray-700 p-3 rounded-xl shadow-md border border-gray-200 dark:border-gray-600">
-                                <span className="text-2xl">📅</span>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -418,17 +408,6 @@ export default function Home() {
                             <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/80 dark:to-purple-950/80 p-6 rounded-3xl shadow-lg border border-indigo-200/50 dark:border-indigo-500/30">
                               <span className="text-6xl">🌙</span>
                             </div>
-                            <div className="flex gap-4 mt-4">
-                              <div className="bg-white dark:bg-gray-700 p-3 rounded-xl shadow-md border border-gray-200 dark:border-gray-600">
-                                <span className="text-2xl">✨</span>
-                              </div>
-                              <div className="bg-white dark:bg-gray-700 p-3 rounded-xl shadow-md border border-gray-200 dark:border-gray-600">
-                                <span className="text-2xl">⭐</span>
-                              </div>
-                              <div className="bg-white dark:bg-gray-700 p-3 rounded-xl shadow-md border border-gray-200 dark:border-gray-600">
-                                <span className="text-2xl">🌟</span>
-                              </div>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -531,9 +510,9 @@ export default function Home() {
       case 'process':
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            <div className="p-4 border-b border-gray-200 bg-white shrink-0">
-              <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-            </div>
+            {showSidebar && (
+              <MessageHeader title={selectedMessage.name} />
+            )}
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4 mb-6">
                   <div className="flex-shrink-0">
@@ -614,15 +593,19 @@ export default function Home() {
         if (selectedMessage.name === "日程") {
           return (
             <div className="flex flex-col h-full bg-gray-50">
-              <div className="p-4 border-b border-gray-200 bg-white flex items-center shrink-0 overflow-hidden">
-                <h2 className="text-xl font-bold text-gray-900 truncate flex-shrink-0 mr-4">{selectedMessage.name}</h2>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-sm text-gray-600">在消息列表提醒日程</span>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-theme-500"></div>
-                  </label>
-                </div>
+              <div className="p-4 border-b border-gray-200 bg-white shrink-0 overflow-hidden">
+                <MessageHeader 
+                  title={selectedMessage.name} 
+                  extraContent={
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
+                      <span className="text-sm text-gray-600">在消息列表提醒日程</span>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" defaultChecked className="sr-only peer" />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-theme-500"></div>
+                      </label>
+                    </div>
+                  }
+                />
               </div>
               <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="space-y-6">
@@ -674,11 +657,9 @@ export default function Home() {
         } else if (selectedMessage.name === "知识助手") {
           return (
             <div className="flex flex-col h-full bg-gray-50">
-              <div className="p-4 border-b border-gray-200 bg-white shrink-0">
-                <div className="min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 truncate">{selectedMessage.name}</h2>
-                </div>
-              </div>
+              {showSidebar && (
+                <MessageHeader title={selectedMessage.name} />
+              )}
               <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* 知识推荐消息 */}
                 <div className="flex gap-4">
@@ -819,9 +800,11 @@ export default function Home() {
         }
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            <div className="p-4 border-b border-gray-200 bg-white shrink-0">
-              <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-            </div>
+            {showSidebar && (
+              <div className="p-4 border-b border-gray-200 bg-white shrink-0">
+                <h2 className="text-xl font-bold text-gray-900 truncate">{selectedMessage.name}</h2>
+              </div>
+            )}
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <CardMessage message={selectedMessage} />
             </div>
@@ -847,9 +830,9 @@ export default function Home() {
       case 'assistant':
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            <div className="p-4 border-b border-gray-200 bg-white shrink-0">
-              <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-            </div>
+            {showSidebar && (
+              <MessageHeader title={selectedMessage.name} />
+            )}
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4">
               <div className="flex-shrink-0">
@@ -890,9 +873,9 @@ export default function Home() {
         if (selectedMessage.name === "张飞") {
           return (
             <div className="flex flex-col h-full bg-gray-50">
-              <div className="p-4 border-b border-gray-200 bg-white shrink-0">
-                <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-              </div>
+              {showSidebar && (
+                <MessageHeader title={selectedMessage.name} />
+              )}
               <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* 普通文字消息 */}
                 <div className="flex gap-4">
@@ -1008,7 +991,7 @@ export default function Home() {
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        <img src="https://i.pravatar.cc/40?img=10" alt="梁吉利" className="w-5 h-5 rounded-full" />
+                        <img src="https://api.dicebear.com/7.x/initials/svg?seed=张三&backgroundColor=ec4899" alt="" className="w-5 h-5 rounded-full" />
                         <span>梁吉利</span>
                       </div>
                     </div>
@@ -1149,9 +1132,9 @@ export default function Home() {
         }
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            <div className="p-4 border-b border-gray-200 bg-white shrink-0">
-              <h2 className="text-xl font-bold text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis">{selectedMessage.name}</h2>
-            </div>
+            {showSidebar && (
+              <MessageHeader title={selectedMessage.name} />
+            )}
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
@@ -1225,16 +1208,13 @@ export default function Home() {
         
         {/* 对话内容 - 充满整个右侧容器 */}
         <div className="flex-1 flex flex-col min-h-0">
-          {/* 移动端返回按钮 */}
-          {isMobile && selectedMessage && (
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex items-center gap-2 shrink-0">
-              <button 
-                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                onClick={() => setShowSidebar(true)}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-              </button>
-            </div>
+          {/* 返回按钮和标题 - 当消息列表隐藏且有选中消息时显示 */}
+          {!showSidebar && selectedMessage && (
+            <MessageHeader 
+              title={selectedMessage.name} 
+              showBackButton={true}
+              onBack={() => setShowSidebar(true)}
+            />
           )}
           <div className="flex-1 min-h-0 overflow-hidden">
             {renderContent()}
@@ -1272,17 +1252,17 @@ function MessageItem({ message, onClick, isSelected }: MessageItemProps) {
             {message.name.includes('群') ? (
               <div className="relative w-12 h-12">
                 <img
-                  src="https://i.pravatar.cc/40?img=2"
+                  src="https://api.dicebear.com/7.x/initials/svg?seed=王五&backgroundColor=8b5cf6"
                   alt=""
                   className="w-8 h-8 rounded-full absolute top-0 left-0 border-2 border-white dark:border-gray-800"
                 />
                 <img
-                  src="https://i.pravatar.cc/40?img=3"
+                  src="https://api.dicebear.com/7.x/initials/svg?seed=赵六&backgroundColor=f97316"
                   alt=""
                   className="w-8 h-8 rounded-full absolute top-0 right-0 border-2 border-white dark:border-gray-800"
                 />
                 <img
-                  src="https://i.pravatar.cc/40?img=4"
+                  src="https://api.dicebear.com/7.x/initials/svg?seed=孙七&backgroundColor=22c55e"
                   alt=""
                   className="w-8 h-8 rounded-full absolute bottom-0 left-0 border-2 border-white dark:border-gray-800"
                 />

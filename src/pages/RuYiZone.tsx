@@ -100,7 +100,7 @@ export default function RuYiZone() {
   return (
     <Layout>
       <div className="flex h-full bg-gradient-to-br from-gray-50 via-white to-theme-50">
-        {/* 移动端菜单按钮 */}
+        {/* 移动端菜单按钮 - 放在内容区右侧 */}
         {isMobile && (
           <button 
             className="fixed top-6 right-6 z-50 bg-white p-2 rounded-full shadow-lg"
@@ -110,13 +110,21 @@ export default function RuYiZone() {
           </button>
         )}
 
-        {/* 第二列：如意空间导航栏 */}
+        {/* 移动端遮罩层 */}
+        {isMobile && mobileMenuOpen && (
+          <div 
+            className="fixed inset-0 z-30 bg-black/30"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
+
+        {/* 移动端导航栏 - 从右侧滑入 */}
         <div className={`
-          ${isMobile ? 'fixed inset-y-0 left-0 z-40 w-64' : 'w-[280px] min-w-[240px]'}
+          ${isMobile ? 'fixed inset-y-0 right-0 z-40 w-64' : 'w-[280px] min-w-[240px]'}
           ${showSidebar || mobileMenuOpen ? 'flex' : 'hidden'}
-          bg-white border-r border-gray-100 flex flex-col shadow-lg
+          bg-white border-l border-gray-100 flex flex-col shadow-lg
           transition-transform duration-300 ease-in-out
-          ${isMobile && mobileMenuOpen ? 'translate-x-0' : isMobile ? '-translate-x-full' : ''}
+          ${isMobile && mobileMenuOpen ? 'translate-x-0' : isMobile ? 'translate-x-full' : ''}
         `}>
           <div className="p-6 border-b border-gray-100">
             <h3 className="font-bold text-xl text-gray-900 mb-6 flex items-center gap-2">

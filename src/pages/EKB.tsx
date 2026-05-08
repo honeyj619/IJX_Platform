@@ -52,7 +52,7 @@ const documentCategories = [
 export default function EKB() {
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50">
+      <div className="bg-gray-50">
         {/* 顶部导航栏 */}
         <div className="bg-blue-800 text-white py-3 px-4 md:px-6">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">

@@ -8,7 +8,7 @@ export default function Enterprise() {
       {/* 广告横幅 */}
       <div className="relative w-full h-64 bg-gradient-to-r from-yellow-400 to-blue-500 flex items-center justify-center">
         <img 
-          src="https://i.pravatar.cc/1200/400?img=10" 
+          src="https://api.dicebear.com/7.x/shapes/svg?seed=banner&backgroundColor=3b82f6"
           alt="广告横幅" 
           className="w-full h-full object-cover"
         />
@@ -175,17 +175,17 @@ export default function Enterprise() {
                 <CourseItem 
                   title="上海吉祥航空股份有限公司IT质量指标评估标准V6.0" 
                   time="5节课 · 10积分"
-                  image="https://i.pravatar.cc/80/80?img=1"
+                  image="https://api.dicebear.com/7.x/shapes/svg?seed=课程1&backgroundColor=3b82f6"
                 />
                 <CourseItem 
                   title="民航华东地区2025年行业管理工作报告的通知" 
                   time="1节课 · 10积分"
-                  image="https://i.pravatar.cc/80/80?img=2"
+                  image="https://api.dicebear.com/7.x/shapes/svg?seed=课程2&backgroundColor=8b5cf6"
                 />
                 <CourseItem 
                   title="王金董事长在公司2025年工作会议上的重要讲话" 
                   time="1节课 · 10积分"
-                  image="https://i.pravatar.cc/80/80?img=3"
+                  image="https://api.dicebear.com/7.x/shapes/svg?seed=课程3&backgroundColor=ec4899"
                 />
               </div>
             </div>

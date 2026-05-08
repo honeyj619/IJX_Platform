@@ -1,5 +1,5 @@
 import Layout from '@/components/Layout';
-import Settings from './Settings';
+import Settings from './SettingsContent';
 
 export default function SettingsPage() {
   return (

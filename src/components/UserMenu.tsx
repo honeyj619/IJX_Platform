@@ -42,31 +42,20 @@ export function UserMenu() {
       icon: <User size={16} />, 
       path: "/profile" 
     },
-    { 
-      id: "signature", 
-      label: "签名", 
-      icon: <FileText size={16} />, 
-      path: "/profile?tab=signature" 
-    },
-    { 
-      id: "accounts", 
-      label: "账号切换", 
-      icon: <Users size={16} />, 
-      path: "/profile?tab=accounts" 
-    },
+    { id: "divider1", label: "", icon: null, divider: true },
     { 
       id: "settings", 
-      label: "应用设置", 
-      icon: <Settings size={16} />,
-      path: "/settings"
+      label: "系统设置", 
+      icon: <Settings size={16} />, 
+      path: "/settings" 
     },
-    { id: "divider1", label: "", icon: null, divider: true },
     { 
       id: "admin", 
       label: "管理后台", 
       icon: <Shield size={16} />, 
       path: "/admin" 
     },
+    { id: "divider2", label: "", icon: null, divider: true },
     { 
       id: "logout", 
       label: "退出", 

@@ -13,7 +13,7 @@ export default function Assistant() {
           <div className="flex gap-4">
             <div className="flex-shrink-0">
               <img
-                src="https://i.pravatar.cc/48?img=5"
+                src="https://api.dicebear.com/7.x/initials/svg?seed=如意助手&backgroundColor=ec4899"
                 alt="如意助手"
                 className="w-12 h-12 rounded-full"
               />
@@ -41,7 +41,7 @@ export default function Assistant() {
             </div>
             <div className="flex-shrink-0">
               <img
-                src="https://i.pravatar.cc/48?img=1"
+                src="https://api.dicebear.com/7.x/initials/svg?seed=梁吉力&backgroundColor=8b5cf6"
                 alt="用户头像"
                 className="w-12 h-12 rounded-full"
               />
@@ -51,7 +51,7 @@ export default function Assistant() {
           <div className="flex gap-4">
             <div className="flex-shrink-0">
               <img
-                src="https://i.pravatar.cc/48?img=5"
+                src="https://api.dicebear.com/7.x/initials/svg?seed=如意助手2&backgroundColor=f97316"
                 alt="如意助手"
                 className="w-12 h-12 rounded-full"
               />
