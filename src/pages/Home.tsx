@@ -321,24 +321,6 @@ export default function Home() {
                           <span className="text-amber-400">☀️</span>
                           <div className="h-px w-20 bg-gradient-to-l from-transparent to-amber-300 dark:to-amber-600" />
                         </div>
-
-                        {/* 快捷入口 */}
-                        <div className="flex flex-wrap justify-center gap-3 pt-2">
-                          {[
-                            { icon: '💬', label: '消息', bg: 'from-blue-400 to-blue-500' },
-                            { icon: '📋', label: '流程', bg: 'from-purple-400 to-purple-500' },
-                            { icon: '📅', label: '日历', bg: 'from-theme-400 to-theme-500' },
-                          ].map((item, index) => (
-                            <button
-                              key={index}
-                              className="group relative flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
-                            >
-                              <span className={`absolute inset-0 bg-gradient-to-r ${item.bg} rounded-xl opacity-0 group-hover:opacity-10 transition-opacity`} />
-                              <span className="relative text-lg">{item.icon}</span>
-                              <span className="relative text-sm font-medium text-gray-700 dark:text-gray-300">{item.label}</span>
-                            </button>
-                          ))}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -886,7 +868,7 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
+                  <MessageBubble className="relative group">
                     <p className="text-gray-700 dark:text-gray-300">已经和相关部门沟通过我们的诉求，他们表示会尽快处理。</p>
                     <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
                       <span>昨天 16:21</span>
@@ -921,7 +903,7 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
+                  <MessageBubble className="relative group">
                     <div className="mb-3 flex flex-wrap items-center gap-2">
                       <a href="https://www.pgyer.com/DigNVGVh" className="text-blue-600 hover:underline break-all">https://www.pgyer.com/DigNVGVh</a>
                       <span className="text-gray-700 dark:text-gray-300">ios生产</span>
@@ -966,7 +948,7 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
+                  <MessageBubble className="relative group">
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
@@ -1033,7 +1015,7 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
+                  <MessageBubble className="relative group">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-md flex items-center justify-center flex-shrink-0">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -1084,7 +1066,7 @@ export default function Home() {
                       className="w-12 h-12 rounded-full"
                     />
                   </div>
-                  <MessageBubble className="relative w-full max-w-[80%] sm:max-w-[70%] md:max-w-[60%] lg:max-w-[50%] group">
+                  <MessageBubble className="relative group">
                     <a href="https://work.weixin.qq.com/nl/innerkfid/ikfSxq8CgAAJHQDj7nU31ad1RoYZ2Z62A" className="text-blue-600 hover:underline break-all">https://work.weixin.qq.com/nl/innerkfid/ikfSxq8CgAAJHQDj7nU31ad1RoYZ2Z62A</a>
                     <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
                       <span>4月21日</span>
@@ -1354,7 +1336,7 @@ function ProcessCard({ process }: { process: ProcessItem }) {
 
 function MessageBubble({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-600 ${className}`}>
+    <div className={`w-full max-w-2xl bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-600 ${className}`}>
       {children}
     </div>
   );
