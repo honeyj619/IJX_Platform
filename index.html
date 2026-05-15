@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>honey's IJX</title>
+    <script>
+      (function () {
+        const pathname = location.pathname;
+        if (pathname !== '/IJX_Platform/' && pathname !== '/IJX_Platform/index.html' && !pathname.startsWith('/IJX_Platform/assets/')) {
+          sessionStorage.setItem('redirectPath', location.href);
+        }
+      })();
+    </script>
     <script type="module">
       if (import.meta.hot?.on) {
         import.meta.hot.on('vite:error', (error) => {
