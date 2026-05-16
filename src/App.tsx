@@ -15,7 +15,7 @@ import Admin from "@/pages/Admin";
 
 export default function App() {
   return (
-    <Router>
+    <Router basename="/IJX_Platform/">
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/enterprise" element={<Enterprise />} />
