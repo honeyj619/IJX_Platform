@@ -16,22 +16,34 @@ import Business from "@/pages/Business";
 import SettingsPage from "@/pages/SettingsPage";
 import Admin from "@/pages/Admin";
 
-const MOBILE_BREAKPOINT = 768;
-
 function shouldShowMobileView(width: number, height: number): boolean {
-  // 如果宽度足够，直接显示桌面视图
-  if (width >= MOBILE_BREAKPOINT) {
+  // 判断逻辑：
+  // 1. 折叠屏展开（宽度 >= 600px）→ 桌面模式
+  // 2. 手机横屏（宽度 >= 800px 且 宽高比 > 1.3）→ 移动模式
+  // 3. 普通手机 → 移动模式
+  
+  const aspectRatio = width / height;
+  const isLandscape = aspectRatio > 1.3;
+  
+  // 如果是横屏模式，需要更严格的判断
+  if (isLandscape) {
+    // 手机横屏：宽度通常 < 850px
+    // 折叠屏展开横屏：宽度通常 >= 850px
+    if (width < 850) {
+      return true; // 手机横屏 → 移动模式
+    }
+    // 宽度 >= 850px，可能是折叠屏展开横屏 → 桌面模式
     return false;
   }
   
-  // 如果宽度小于 768 但高度较大（> 1000），可能是折叠屏展开状态
-  // 这种情况下也允许显示桌面视图
-  if (height > 1000 && width >= 600) {
-    return false;
+  // 竖屏模式
+  // 折叠屏展开：宽度 >= 600px
+  // 普通手机：宽度 < 600px
+  if (width >= 600) {
+    return false; // 折叠屏展开 → 桌面模式
   }
   
-  // 宽度小于 768 且高度也不大，这才是真正的手机
-  return true;
+  return true; // 普通手机 → 移动模式
 }
 
 export default function App() {
@@ -44,14 +56,23 @@ export default function App() {
     const checkIsMobile = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
-      const dpr = window.devicePixelRatio || 1;
+      const aspectRatio = width / height;
+      const isLandscape = aspectRatio > 1.3;
       
       const shouldMobile = shouldShowMobileView(width, height);
       setIsMobile(shouldMobile);
       
-      // 打印详细的检测信息
-      console.log(`🔍 设备检测: ${width}x${height} (DPR: ${dpr})`);
-      console.log(`📱 ${shouldMobile ? '移动端模式' : '桌面端模式'}`);
+      // 打印详细的检测信息，方便调试
+      let reason = '';
+      if (isLandscape) {
+        reason = width < 850 ? '手机横屏' : '折叠屏/平板横屏';
+      } else {
+        reason = width >= 600 ? '折叠屏展开' : '手机竖屏';
+      }
+      
+      const mode = shouldMobile ? '移动端模式 ❌' : '桌面端模式 ✅';
+      console.log(`🔍 设备检测: ${width}x${height} (比例: ${aspectRatio.toFixed(2)}, ${isLandscape ? '横屏' : '竖屏'})`);
+      console.log(`📱 判定: ${reason} → ${mode}`);
     };
 
     checkIsMobile();
