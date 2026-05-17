@@ -1163,58 +1163,56 @@ export default function Home() {
   };
 
   return (
-    <Layout>
-      <div className="flex h-[calc(100vh-0px)]">
-        {/* 对话列表 */}
-        <div className={`
-          w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
-          ${showSidebar ? 'flex' : 'hidden'}
-          ${isMobile ? 'fixed inset-y-0 left-64 z-40' : ''}
-        `}>
-          <div className="flex-1 overflow-y-auto">
-            {messages.map((msg) => (
-              <MessageItem 
-                key={msg.id} 
-                message={msg} 
-                onClick={() => {
-                  handleMessageClick(msg);
-                  if (isMobile) {
-                    setShowSidebar(false);
-                  }
-                }} 
-                isSelected={selectedMessage?.id === msg.id}
-              />
-            ))}
-          </div>
-        </div>
-        
-        {/* 对话内容 - 充满整个右侧容器 */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {/* 返回按钮和标题 - 当消息列表隐藏且有选中消息时显示 */}
-          {!showSidebar && selectedMessage && (
-            <MessageHeader 
-              title={selectedMessage.name} 
-              showBackButton={true}
-              onBack={() => setShowSidebar(true)}
+    <div className="flex h-[calc(100vh-0px)]">
+      {/* 对话列表 */}
+      <div className={`
+        w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
+        ${showSidebar ? 'flex' : 'hidden'}
+        ${isMobile ? 'fixed inset-y-0 left-64 z-40' : ''}
+      `}>
+        <div className="flex-1 overflow-y-auto">
+          {messages.map((msg) => (
+            <MessageItem 
+              key={msg.id} 
+              message={msg} 
+              onClick={() => {
+                handleMessageClick(msg);
+                if (isMobile) {
+                  setShowSidebar(false);
+                }
+              }} 
+              isSelected={selectedMessage?.id === msg.id}
             />
-          )}
-          <div className="flex-1 min-h-0 overflow-hidden">
-            {renderContent()}
-          </div>
-          
-          {/* 移动端漂浮按钮 */}
-          {isMobile && selectedMessage && (
-            <button 
-              className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-30 hover:bg-theme-600 transition-colors"
-              onClick={() => setShowSidebar(true)}
-              title="选择对话"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-            </button>
-          )}
+          ))}
         </div>
       </div>
-    </Layout>
+      
+      {/* 对话内容 - 充满整个右侧容器 */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* 返回按钮和标题 - 当消息列表隐藏且有选中消息时显示 */}
+        {!showSidebar && selectedMessage && (
+          <MessageHeader 
+            title={selectedMessage.name} 
+            showBackButton={true}
+            onBack={() => setShowSidebar(true)}
+          />
+        )}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {renderContent()}
+        </div>
+        
+        {/* 移动端漂浮按钮 */}
+        {isMobile && selectedMessage && (
+          <button 
+            className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-30 hover:bg-theme-600 transition-colors"
+            onClick={() => setShowSidebar(true)}
+            title="选择对话"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
