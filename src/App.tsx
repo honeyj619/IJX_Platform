@@ -17,26 +17,20 @@ import SettingsPage from "@/pages/SettingsPage";
 import Admin from "@/pages/Admin";
 
 function shouldShowMobileView(width: number, height: number): boolean {
-  // 判断逻辑：
-  // 1. 折叠屏展开（宽度 >= 600px）→ 桌面模式
-  // 2. 手机横屏（宽度 >= 800px 且 宽高比 > 1.3）→ 移动模式
-  // 3. 普通手机 → 移动模式
-  
   const aspectRatio = width / height;
   const isLandscape = aspectRatio > 1.3;
   
-  // 如果是横屏模式，需要更严格的判断
+  // 横屏模式判断
   if (isLandscape) {
-    // 手机横屏：宽度通常 < 850px
-    // 折叠屏展开横屏：宽度通常 >= 850px
-    if (width < 850) {
+    // 手机横屏宽度通常 < 800px
+    // 折叠屏/平板横屏宽度通常 >= 800px
+    if (width < 800) {
       return true; // 手机横屏 → 移动模式
     }
-    // 宽度 >= 850px，可能是折叠屏展开横屏 → 桌面模式
-    return false;
+    return false; // 折叠屏/平板横屏 → 桌面模式
   }
   
-  // 竖屏模式
+  // 竖屏模式判断
   // 折叠屏展开：宽度 >= 600px
   // 普通手机：宽度 < 600px
   if (width >= 600) {
@@ -62,17 +56,20 @@ export default function App() {
       const shouldMobile = shouldShowMobileView(width, height);
       setIsMobile(shouldMobile);
       
-      // 打印详细的检测信息，方便调试
-      let reason = '';
+      // 详细的调试信息
+      let deviceType = '';
       if (isLandscape) {
-        reason = width < 850 ? '手机横屏' : '折叠屏/平板横屏';
+        deviceType = width < 800 ? '手机横屏' : '折叠屏/平板横屏';
       } else {
-        reason = width >= 600 ? '折叠屏展开' : '手机竖屏';
+        deviceType = width >= 600 ? '折叠屏展开' : '手机竖屏';
       }
       
-      const mode = shouldMobile ? '移动端模式 ❌' : '桌面端模式 ✅';
-      console.log(`🔍 设备检测: ${width}x${height} (比例: ${aspectRatio.toFixed(2)}, ${isLandscape ? '横屏' : '竖屏'})`);
-      console.log(`📱 判定: ${reason} → ${mode}`);
+      console.log('🔍 屏幕尺寸检测:');
+      console.log(`   尺寸: ${width} x ${height} px`);
+      console.log(`   宽高比: ${aspectRatio.toFixed(2)}`);
+      console.log(`   屏幕方向: ${isLandscape ? '横屏' : '竖屏'}`);
+      console.log(`   设备类型: ${deviceType}`);
+      console.log(`   显示模式: ${shouldMobile ? '❌ 移动端提示' : '✅ 桌面端应用'}`);
     };
 
     checkIsMobile();

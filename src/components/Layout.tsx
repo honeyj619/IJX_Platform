@@ -1,8 +1,9 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MessageSquare, Bell, Calendar, Folder, Hexagon, User, X, XCircle, Search } from 'lucide-react';
+import { MessageSquare, Bell, Calendar, Folder, Hexagon, User, X, XCircle, Search, Menu, ChevronRight, ChevronLeft } from 'lucide-react';
 import { create } from 'zustand';
 import { useThemeStore } from '../store/themeStore';
+import { useLayoutStore } from '../store/layoutStore';
 import { UserMenu } from './UserMenu';
 
 interface LayoutProps {
@@ -64,9 +65,23 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { pages, addPage, removePage, removeAllPages, isPageOpen } = usePagesStore();
   const { mode, skin } = useThemeStore();
+  const { showNavigation, toggleNavigation, isResponsive, setIsResponsive } = useLayoutStore();
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  
+  // 响应式检测
+  useEffect(() => {
+    const checkResponsive = () => {
+      const isNarrow = window.innerWidth < 1400;
+      setIsResponsive(isNarrow);
+    };
+    
+    checkResponsive();
+    window.addEventListener('resize', checkResponsive);
+    
+    return () => window.removeEventListener('resize', checkResponsive);
+  }, [setIsResponsive]);
   
   useEffect(() => {
     const applyTheme = () => {
@@ -111,7 +126,11 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900">
-      <div className="w-64 bg-gradient-to-theme text-white flex flex-col fixed h-full z-50">
+      {/* 左侧导航栏 */}
+      <div className={`
+        bg-gradient-to-theme text-white flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out
+        ${showNavigation ? 'w-64' : 'w-0 overflow-hidden'}
+      `}>
         <div className="p-4 space-y-4">
           <UserMenu />
           
@@ -191,7 +210,24 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </div>
 
-      <div className="ml-64 flex-1 overflow-hidden flex flex-col">
+      {/* 切换按钮 */}
+      <button
+        onClick={toggleNavigation}
+        className={`
+          absolute top-4 z-[60] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
+          rounded-full p-2 shadow-lg border border-gray-200 dark:border-gray-700
+          hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
+          ${showNavigation ? 'left-60' : 'left-4'}
+        `}
+      >
+        {showNavigation ? <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" /> : <ChevronRight size={20} className="text-gray-600 dark:text-gray-300" />}
+      </button>
+
+      {/* 主内容区域 */}
+      <div className={`
+        flex-1 overflow-hidden flex flex-col transition-all duration-300
+        ${showNavigation ? 'ml-64' : 'ml-0'}
+      `}>
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>

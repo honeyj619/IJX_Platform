@@ -9,10 +9,12 @@ import {
   Inbox,
   FileText,
   ChevronRight,
+  Menu,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { MessageHeader } from "@/components/MessageHeader";
+import { useLayoutStore } from "@/store/layoutStore";
 
 interface CardContent {
   title: string;
@@ -63,7 +65,7 @@ const messages: Message[] = [
     id: 2,
     name: "流程",
     avatar: "https://api.dicebear.com/7.x/initials/svg?seed=流程&backgroundColor=8b5cf6",
-    message: "信息管理部梁吉力提交的“项目立项申请”流...",
+    message: "信息管理部梁吉力提交的'项目立项申请'流...",
     time: "12:21",
     unread: 8,
     icon: <Hexagon className="w-10 h-10" />,
@@ -210,32 +212,39 @@ const processes: ProcessItem[] = [
 
 export default function Home() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [contentRefReady, setContentRefReady] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { showSidebar, toggleSidebar, isResponsive, setIsResponsive } = useLayoutStore();
 
   const handleMessageClick = (message: Message) => {
     setSelectedMessage(message);
+    if (isResponsive) {
+      setIsResponsive(false); // 选择消息后，在窄屏上隐藏侧边栏
+    }
   };
 
   useEffect(() => {
-    // 当选中消息变化时，滚动到底部
-    if (contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight;
-    }
-  }, [selectedMessage]);
+    setContentRefReady(true);
+  }, []);
 
   useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setShowSidebar(width >= 1024 || selectedMessage === null);
-    };
+    if (contentRefReady && contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+    }
+  }, [selectedMessage, contentRefReady]);
 
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [selectedMessage]);
+  useEffect(() => {
+    const checkResponsive = () => {
+      const width = window.innerWidth;
+      const isNarrow = width < 1400;
+      setIsResponsive(isNarrow);
+    };
+    
+    checkResponsive();
+    window.addEventListener('resize', checkResponsive);
+    
+    return () => window.removeEventListener('resize', checkResponsive);
+  }, [setIsResponsive]);
 
   const renderContent = () => {
     if (!selectedMessage) {
@@ -243,13 +252,11 @@ export default function Home() {
       const isDay = hour >= 6 && hour < 18;
       
       return (
-        <div className="flex-1 relative overflow-hidden min-h-[calc(100vh-4rem)]">
+        <div className="flex-1 relative overflow-hidden min-h-[calc(100vh-0px)]">
           {isDay ? (
             <>
-              {/* 白天版本 - 跟随系统主题色 */}
               <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-theme-50/30 to-gray-100 dark:from-gray-900 dark:via-theme-900/10 dark:to-gray-900" />
               
-              {/* 太阳装饰 */}
               <div className="absolute top-0 right-0 w-96 h-96 pointer-events-none">
                 <div className="absolute top-8 right-8 w-32 h-32">
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-300 to-orange-400 rounded-full animate-pulse-slow shadow-lg shadow-amber-400/30" />
@@ -257,7 +264,6 @@ export default function Home() {
                 </div>
               </div>
               
-              {/* 云朵装饰 */}
               <div className="absolute top-20 left-[20%] animate-float pointer-events-none">
                 <div className="flex gap-2">
                   <div className="w-16 h-10 bg-white/80 rounded-full" />
@@ -272,16 +278,12 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 主内容 */}
               <div className="relative h-full flex items-center justify-center p-8">
                 <div className="relative w-full max-w-2xl">
-                  {/* 主卡片 */}
                   <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden min-h-[500px] flex flex-col">
-                    {/* 顶部装饰条 */}
                     <div className="h-1.5 bg-gradient-to-r from-amber-300 via-orange-400 to-amber-300" />
                     
                     <div className="p-10">
-                      {/* 图标区域 - 白天工作场景 */}
                       <div className="flex justify-center mb-8">
                         <div className="relative">
                           <div className="absolute -inset-4 bg-gradient-to-r from-amber-200 to-orange-200 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full blur-xl opacity-60 animate-pulse" />
@@ -293,9 +295,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* 文字内容 */}
                       <div className="text-center space-y-6 flex-1 flex flex-col justify-center">
-                        {/* 时间标签 */}
                         <div className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full border border-amber-200/50 dark:border-amber-800/50 shadow-sm">
                           <span className="text-xl">🌤️</span>
                           <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
@@ -303,7 +303,6 @@ export default function Home() {
                           </span>
                         </div>
 
-                        {/* 主标题 */}
                         <div>
                           <h1 className="text-4xl font-bold mb-3">
                             <span className="bg-gradient-to-r from-gray-900 via-theme-600 to-gray-900 dark:from-white dark:via-theme-400 dark:to-white bg-clip-text text-transparent">
@@ -315,7 +314,6 @@ export default function Home() {
                           </p>
                         </div>
 
-                        {/* 分隔装饰 */}
                         <div className="flex items-center justify-center gap-4 py-2">
                           <div className="h-px w-20 bg-gradient-to-r from-transparent to-amber-300 dark:to-amber-600" />
                           <span className="text-amber-400">☀️</span>
@@ -325,7 +323,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* 底部提示 */}
                   <div className="text-center mt-6 pb-2">
                     <p className="text-sm text-gray-400 dark:text-gray-500 font-light tracking-wide">
                       点击左侧对话列表开始聊天
@@ -336,10 +333,8 @@ export default function Home() {
             </>
           ) : (
             <>
-              {/* 夜晚版本 - 跟随系统主题色 */}
               <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-theme-50/30 to-gray-100 dark:from-gray-900 dark:via-theme-900/10 dark:to-gray-900" />
               
-              {/* 星星装饰 */}
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 {[...Array(20)].map((_, i) => (
                   <div
@@ -355,7 +350,6 @@ export default function Home() {
                 ))}
               </div>
               
-              {/* 月亮 */}
               <div className="absolute top-8 right-[15%] pointer-events-none">
                 <div className="relative">
                   <div className="absolute inset-0 bg-indigo-200/20 dark:bg-indigo-200/30 rounded-full blur-xl animate-pulse-slow" />
@@ -368,21 +362,16 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 流星 */}
               <div className="absolute top-[20%] left-[25%] animate-shooting-star pointer-events-none">
                 <div className="w-20 h-0.5 bg-gradient-to-r from-gray-400 via-gray-300 to-transparent dark:from-white dark:via-indigo-200 dark:to-transparent rounded-full" />
               </div>
 
-              {/* 主内容 */}
               <div className="relative h-full flex items-center justify-center p-8">
                 <div className="relative w-full max-w-2xl">
-                  {/* 主卡片 */}
                   <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden min-h-[500px] flex flex-col">
-                    {/* 顶部装饰条 */}
                     <div className="h-1.5 bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400" />
                     
                     <div className="p-10">
-                      {/* 图标区域 - 夜晚场景 */}
                       <div className="flex justify-center mb-8">
                         <div className="relative">
                           <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30 rounded-full blur-xl animate-pulse" />
@@ -394,17 +383,14 @@ export default function Home() {
                         </div>
                       </div>
 
-                      {/* 文字内容 */}
                       <div className="text-center space-y-6 flex-1 flex flex-col justify-center">
-                        {/* 时间标签 */}
-                        <div className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-full border border-indigo-200/50 dark:border-indigo-700/50 shadow-sm">
+                        <div className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-full border border-indigo-200/50 dark:border-indigo-800/50 shadow-sm">
                           <span className="text-xl">🌃</span>
                           <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
                             晚上好，辛苦了
                           </span>
                         </div>
 
-                        {/* 主标题 */}
                         <div>
                           <h1 className="text-4xl font-bold mb-3">
                             <span className="bg-gradient-to-r from-gray-900 via-theme-600 to-gray-900 dark:from-white dark:via-theme-400 dark:to-white bg-clip-text text-transparent">
@@ -416,14 +402,12 @@ export default function Home() {
                           </p>
                         </div>
 
-                        {/* 分隔装饰 */}
                         <div className="flex items-center justify-center gap-4 py-2">
                           <div className="h-px w-20 bg-gradient-to-r from-transparent to-indigo-300 dark:to-indigo-600" />
                           <span className="text-indigo-400 dark:text-indigo-300">🌙</span>
                           <div className="h-px w-20 bg-gradient-to-l from-transparent to-indigo-300 dark:to-indigo-600" />
                         </div>
 
-                        {/* 快捷入口 */}
                         <div className="flex flex-wrap justify-center gap-3 pt-2">
                           {[
                             { icon: '💬', label: '消息', bg: 'from-blue-400 to-blue-500' },
@@ -444,7 +428,6 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* 底部提示 */}
                   <div className="text-center mt-6 pb-2">
                     <p className="text-sm text-gray-400 dark:text-gray-500 font-light tracking-wide">
                       点击左侧对话列表开始聊天
@@ -492,9 +475,6 @@ export default function Home() {
       case 'process':
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            {showSidebar && (
-              <MessageHeader title={selectedMessage.name} />
-            )}
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4 mb-6">
                   <div className="flex-shrink-0">
@@ -514,15 +494,15 @@ export default function Home() {
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">截止到目前，2条待办未处理，其中2条已等待超过24小时</p>
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">请尽快处理以下待办</p>
                       <ul className="list-decimal list-inside space-y-2 text-sm text-blue-600 mb-4">
-                        <li>梁吉力发起的"收款单"</li>
-                        <li>honeyLeung发起的"请假"</li>
+                        <li>梁吉力发起的'收款单'</li>
+                        <li>honeyLeung发起的'请假'</li>
                       </ul>
                     </div>
                     <button className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm">
                       查看全部待办
                     </button>
                     <div className="flex items-center gap-2 mt-4 text-sm text-gray-400">
-                      <span>昨天</span>
+                      <span>{selectedMessage.time}</span>
                     </div>
                   </MessageBubble>
                 </div>
@@ -575,20 +555,6 @@ export default function Home() {
         if (selectedMessage.name === "日程") {
           return (
             <div className="flex flex-col h-full bg-gray-50">
-              <div className="p-4 border-b border-gray-200 bg-white shrink-0 overflow-hidden">
-                <MessageHeader 
-                  title={selectedMessage.name} 
-                  extraContent={
-                    <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
-                      <span className="text-sm text-gray-600">在消息列表提醒日程</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" defaultChecked className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-theme-500"></div>
-                      </label>
-                    </div>
-                  }
-                />
-              </div>
               <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="space-y-6">
                   <div>
@@ -639,11 +605,7 @@ export default function Home() {
         } else if (selectedMessage.name === "知识助手") {
           return (
             <div className="flex flex-col h-full bg-gray-50">
-              {showSidebar && (
-                <MessageHeader title={selectedMessage.name} />
-              )}
               <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* 知识推荐消息 */}
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full">
@@ -701,7 +663,6 @@ export default function Home() {
                   </MessageBubble>
                 </div>
                 
-                {/* 知识审批消息 */}
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full">
@@ -733,7 +694,6 @@ export default function Home() {
                   </MessageBubble>
                 </div>
                 
-                {/* 知识发布消息 */}
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full">
@@ -782,11 +742,6 @@ export default function Home() {
         }
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            {showSidebar && (
-              <div className="p-4 border-b border-gray-200 bg-white shrink-0">
-                <h2 className="text-xl font-bold text-gray-900 truncate">{selectedMessage.name}</h2>
-              </div>
-            )}
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <CardMessage message={selectedMessage} />
             </div>
@@ -812,9 +767,6 @@ export default function Home() {
       case 'assistant':
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            {showSidebar && (
-              <MessageHeader title={selectedMessage.name} />
-            )}
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4">
               <div className="flex-shrink-0">
@@ -852,287 +804,18 @@ export default function Home() {
           </div>
         );
       default:
-        if (selectedMessage.name === "张飞") {
-          return (
-            <div className="flex flex-col h-full bg-gray-50">
-              {showSidebar && (
-                <MessageHeader title={selectedMessage.name} />
-              )}
-              <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* 普通文字消息 */}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <img
-                      src={selectedMessage.avatar}
-                      alt={selectedMessage.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  </div>
-                  <MessageBubble className="relative group">
-                    <p className="text-gray-700 dark:text-gray-300">已经和相关部门沟通过我们的诉求，他们表示会尽快处理。</p>
-                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
-                      <span>昨天 16:21</span>
-                    </div>
-                    {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
-                      <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-green-500 transition-colors" title="评论">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-purple-500 transition-colors" title="转发">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-yellow-500 transition-colors" title="收藏">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors" title="更多">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                      </button>
-                    </div>
-                  </MessageBubble>
-                </div>
-
-                {/* 包含链接的消息 */}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <img
-                      src={selectedMessage.avatar}
-                      alt={selectedMessage.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  </div>
-                  <MessageBubble className="relative group">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <a href="https://www.pgyer.com/DigNVGVh" className="text-blue-600 hover:underline break-all">https://www.pgyer.com/DigNVGVh</a>
-                      <span className="text-gray-700 dark:text-gray-300">ios生产</span>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md mb-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                        <span className="text-gray-600 dark:text-gray-400">www.pgyer.com</span>
-                      </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">i吉祥 3.3.0(Build 22) 最新版本 iOS(iPhone/iPad) 版本 IPA 下载。</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <span>2025年6月24日 21:17</span>
-                    </div>
-                    {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
-                      <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-green-500 transition-colors" title="评论">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-purple-500 transition-colors" title="转发">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-yellow-500 transition-colors" title="收藏">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors" title="更多">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                      </button>
-                    </div>
-                  </MessageBubble>
-                </div>
-
-                {/* 会议消息 */}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <img
-                      src={selectedMessage.avatar}
-                      alt={selectedMessage.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  </div>
-                  <MessageBubble className="relative group">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-sm">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 1-9 9c-4.97 0-9-4.03-9-9s4.03-9 9-9c4.97 0 9 4.03 9 9z"></path><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path><path d="M12 8v4l3 3"></path></svg>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">梁吉利的视频会议</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                              25:25
-                            </span>
-                            <span className="text-xs text-gray-500">4月9日</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-white dark:bg-gray-800 rounded-lg p-3 mb-3 border border-gray-100 dark:border-gray-600">
-                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                        会议 ID: 204 365 818
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-500"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        <img src="https://api.dicebear.com/7.x/initials/svg?seed=张三&backgroundColor=ec4899" alt="" className="w-5 h-5 rounded-full" />
-                        <span>梁吉利</span>
-                      </div>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2 mb-3 overflow-hidden">
-                      <div className="bg-blue-500 h-2 rounded-full w-full animate-pulse"></div>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">会议已结束</span>
-                      <div className="flex items-center gap-2">
-                        <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors">
-                          查看详情
-                        </button>
-                      </div>
-                    </div>
-                    {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
-                      <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-green-500 transition-colors" title="评论">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-purple-500 transition-colors" title="转发">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-yellow-500 transition-colors" title="收藏">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                      </button>
-                    </div>
-                  </MessageBubble>
-                </div>
-
-                {/* 文件消息 */}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <img
-                      src={selectedMessage.avatar}
-                      alt={selectedMessage.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  </div>
-                  <MessageBubble className="relative group">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-md flex items-center justify-center flex-shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 dark:text-white truncate">cyftlt-cello 20241211.pdf</h4>
-                        <p className="text-sm text-gray-500">4.0 MB</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button className="p-2 text-gray-400 hover:text-blue-500 transition-colors" title="下载">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                        </button>
-                        <button className="p-2 text-gray-400 hover:text-green-500 transition-colors" title="查看">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3 text-sm text-gray-400">
-                      <span>4月21日</span>
-                    </div>
-                    {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
-                      <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-green-500 transition-colors" title="评论">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-purple-500 transition-colors" title="转发">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-yellow-500 transition-colors" title="收藏">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors" title="更多">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                      </button>
-                    </div>
-                  </MessageBubble>
-                </div>
-
-                {/* 链接消息 */}
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <img
-                      src={selectedMessage.avatar}
-                      alt={selectedMessage.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  </div>
-                  <MessageBubble className="relative group">
-                    <a href="https://work.weixin.qq.com/nl/innerkfid/ikfSxq8CgAAJHQDj7nU31ad1RoYZ2Z62A" className="text-blue-600 hover:underline break-all">https://work.weixin.qq.com/nl/innerkfid/ikfSxq8CgAAJHQDj7nU31ad1RoYZ2Z62A</a>
-                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
-                      <span>4月21日</span>
-                    </div>
-                    {/* 消息工具菜单 */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 p-1.5 rounded-lg shadow-sm">
-                      <button className="p-1.5 text-gray-400 hover:text-blue-500 transition-colors" title="点赞">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-green-500 transition-colors" title="评论">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-purple-500 transition-colors" title="转发">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-yellow-500 transition-colors" title="收藏">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                      </button>
-                      <button className="p-1.5 text-gray-400 hover:text-gray-600 transition-colors" title="更多">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
-                      </button>
-                    </div>
-                  </MessageBubble>
-                </div>
-              </div>
-              <div className="p-4 border-t border-gray-200 bg-white shrink-0">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="输入消息..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500"
-                  />
-                  <div className="flex gap-2">
-                    <button className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
-                    </button>
-                    <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
-                      <MessageSquare size={20} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        }
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            {showSidebar && (
-              <MessageHeader title={selectedMessage.name} />
-            )}
             <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="flex gap-4">
                 <div className="flex-shrink-0">
-                  {selectedMessage.icon ? (
-                    <div className="w-12 h-12 flex items-center justify-center">
-                      {selectedMessage.icon}
-                    </div>
-                  ) : (
-                    <img
-                      src={selectedMessage.avatar}
-                      alt={selectedMessage.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  )}
+                  <img
+                    src={selectedMessage.avatar}
+                    alt={selectedMessage.name}
+                    className="w-12 h-12 rounded-full"
+                  />
                 </div>
-                <MessageBubble>
+                <MessageBubble className="relative group">
                   <p className="text-gray-700 dark:text-gray-300">{selectedMessage.message}</p>
                   <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
                     <span>{selectedMessage.time}</span>
@@ -1140,18 +823,18 @@ export default function Home() {
                 </MessageBubble>
               </div>
             </div>
-            <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="p-4 border-t border-gray-200 bg-white shrink-0">
               <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder="输入消息..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500"
                 />
                 <div className="flex gap-2">
                   <button className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
                   </button>
-                  <button className="bg-pink-500 text-white p-2 rounded-full hover:bg-pink-600 transition-colors">
+                  <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
                     <MessageSquare size={20} />
                   </button>
                 </div>
@@ -1168,19 +851,13 @@ export default function Home() {
       <div className={`
         w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
         ${showSidebar ? 'flex' : 'hidden'}
-        ${isMobile ? 'fixed inset-y-0 left-64 z-40' : ''}
       `}>
         <div className="flex-1 overflow-y-auto">
           {messages.map((msg) => (
             <MessageItem 
               key={msg.id} 
               message={msg} 
-              onClick={() => {
-                handleMessageClick(msg);
-                if (isMobile) {
-                  setShowSidebar(false);
-                }
-              }} 
+              onClick={() => handleMessageClick(msg)} 
               isSelected={selectedMessage?.id === msg.id}
             />
           ))}
@@ -1188,27 +865,40 @@ export default function Home() {
       </div>
       
       {/* 对话内容 - 充满整个右侧容器 */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* 返回按钮和标题 - 当消息列表隐藏且有选中消息时显示 */}
-        {!showSidebar && selectedMessage && (
-          <MessageHeader 
-            title={selectedMessage.name} 
-            showBackButton={true}
-            onBack={() => setShowSidebar(true)}
-          />
-        )}
+      <div className="flex-1 flex flex-col min-h-0 relative">
+        {/* 顶部栏：包含切换侧边栏按钮 */}
+        <div className="flex items-center gap-2 p-4 border-b border-gray-200 bg-white dark:bg-gray-800 shrink-0">
+          {/* 切换消息列表按钮 */}
+          <button 
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            onClick={toggleSidebar}
+            title={showSidebar ? "隐藏消息列表" : "显示消息列表"}
+          >
+            <Menu size={20} className="text-gray-600 dark:text-gray-300" />
+          </button>
+          
+          {/* 消息标题（仅在侧边栏隐藏时显示） */}
+          {!showSidebar && selectedMessage && (
+            <MessageHeader 
+              title={selectedMessage.name} 
+              showBackButton={true}
+              onBack={toggleSidebar}
+            />
+          )}
+        </div>
+        
         <div className="flex-1 min-h-0 overflow-hidden">
           {renderContent()}
         </div>
         
-        {/* 移动端漂浮按钮 */}
-        {isMobile && selectedMessage && (
+        {/* 浮动消息列表切换按钮（仅在侧边栏隐藏时显示） */}
+        {!showSidebar && (
           <button 
-            className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-30 hover:bg-theme-600 transition-colors"
-            onClick={() => setShowSidebar(true)}
-            title="选择对话"
+            className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-30 hover:bg-theme-600 transition-all hover:scale-110"
+            onClick={toggleSidebar}
+            title="显示消息列表"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <Menu size={24} />
           </button>
         )}
       </div>
@@ -1257,22 +947,23 @@ function MessageItem({ message, onClick, isSelected }: MessageItemProps) {
           </div>
         )}
         {message.unread && (
-          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full">
-            {message.unread}
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1">
+            {message.unread > 99 ? '99+' : message.unread}
           </span>
         )}
       </div>
-
       <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-baseline mb-1">
-          <h3 className="font-semibold text-gray-900 dark:text-white text-lg truncate">
+        <div className="flex justify-between items-start mb-1">
+          <h3 className={`font-semibold text-sm truncate ${isSelected ? 'text-theme-600 dark:text-theme-400' : 'text-gray-900 dark:text-white'}`}>
             {message.name}
           </h3>
-          <span className="text-sm text-gray-400 ml-2 flex-shrink-0">
+          <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 shrink-0">
             {message.time}
           </span>
         </div>
-        <p className="text-gray-500 dark:text-gray-400 text-base truncate">{message.message}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
+          {message.message}
+        </p>
       </div>
     </div>
   );
@@ -1383,4 +1074,3 @@ function CardMessage({ message }: { message: Message }) {
     </div>
   );
 }
-
