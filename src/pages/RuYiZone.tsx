@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Palette, Code, FileText as FileTextIcon, PresentationIcon, MessageCircle, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import Layout from "@/components/Layout";
 
 interface Assistant {
   id: number;
@@ -98,7 +97,7 @@ export default function RuYiZone() {
   }, []);
 
   return (
-    <Layout>
+    
       <div className="flex h-full bg-gradient-to-br from-gray-50 via-white to-theme-50">
         {/* 移动端菜单按钮 - 放在内容区右侧 */}
         {isMobile && (
@@ -283,6 +282,6 @@ export default function RuYiZone() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }

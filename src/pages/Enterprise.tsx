@@ -1,10 +1,8 @@
 import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Folder } from 'lucide-react';
-import Layout from '@/components/Layout';
 
 export default function Enterprise() {
   return (
-    <Layout>
-      <div className="bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       {/* 广告横幅 */}
       <div className="relative w-full h-64 bg-gradient-to-r from-yellow-400 to-blue-500 flex items-center justify-center">
         <img 
@@ -192,8 +190,7 @@ export default function Enterprise() {
           </div>
         </div>
       </div>
-      </div>
-    </Layout>
+    </div>
   );
 }
 

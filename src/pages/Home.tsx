@@ -12,7 +12,6 @@ import {
   Menu,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import Layout from "@/components/Layout";
 import { MessageHeader } from "@/components/MessageHeader";
 import { useLayoutStore } from "@/store/layoutStore";
 

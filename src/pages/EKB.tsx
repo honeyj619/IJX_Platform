@@ -1,6 +1,5 @@
 import { Search, Bell, Calendar, User, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Layout from '@/components/Layout';
 
 interface KnowledgeDomain {
   id: number;
@@ -51,7 +50,7 @@ const documentCategories = [
 
 export default function EKB() {
   return (
-    <Layout>
+    
       <div className="bg-gray-50">
         {/* 顶部导航栏 */}
         <div className="bg-blue-800 text-white py-3 px-4 md:px-6">
@@ -282,6 +281,6 @@ export default function EKB() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }

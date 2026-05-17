@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import Layout from '@/components/Layout';
 
 interface CalendarItem {
   id: string;
@@ -103,7 +102,7 @@ export default function Calendar() {
   const subscribedCalendars = calendarList.filter(c => c.type === 'subscribed');
 
   return (
-    <Layout>
+    
       <div className="h-full flex flex-col bg-slate-50 w-full">
         <div className="bg-white border-b border-slate-200/60 py-3 px-6 w-full">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 w-full">
@@ -355,6 +354,6 @@ export default function Calendar() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }

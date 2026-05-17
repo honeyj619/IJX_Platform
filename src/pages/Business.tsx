@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, Hexagon, ArrowRight, Plus, X, User, Upload } from "lucide-react";
-import Layout from "@/components/Layout";
 
 interface System {
   id: number;
@@ -235,7 +234,7 @@ export default function Business() {
   };
 
   return (
-    <Layout>
+    
       <div className="h-full flex flex-col bg-slate-50">
         <div className="bg-white border-b border-slate-200/60">
           <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4">
@@ -562,6 +561,6 @@ export default function Business() {
           </div>
         )}
       </div>
-    </Layout>
+    
   );
 }

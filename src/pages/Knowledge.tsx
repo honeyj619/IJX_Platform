@@ -1,5 +1,4 @@
 import { Folder, FileText, Upload } from "lucide-react";
-import Layout from "@/components/Layout";
 
 interface DocumentItem {
   id: number;
@@ -42,7 +41,7 @@ const documents: DocumentItem[] = [
 
 export default function Knowledge() {
   return (
-    <Layout>
+    
       <div className="flex-1 flex flex-col bg-gray-50 min-h-screen">
         <div className="p-4 border-b border-gray-200 bg-white">
           <h1 className="text-xl font-bold text-gray-900">知识库</h1>
@@ -95,7 +94,7 @@ export default function Knowledge() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }
 

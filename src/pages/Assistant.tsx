@@ -1,9 +1,8 @@
 import { MessageSquare, Send, RefreshCw, Copy } from "lucide-react";
-import Layout from "@/components/Layout";
 
 export default function Assistant() {
   return (
-    <Layout>
+    
       <div className="flex-1 flex flex-col bg-gray-50 h-full">
         <div className="p-4 border-b border-gray-200 bg-white">
           <h1 className="text-xl font-bold text-gray-900">如意助手</h1>
@@ -91,6 +90,6 @@ export default function Assistant() {
           </div>
         </div>
       </div>
-    </Layout>
+    
   );
 }
