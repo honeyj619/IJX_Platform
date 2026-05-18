@@ -195,12 +195,12 @@ export default function AgentSquare() {
       </div>
 
       {/* Header */}
-      <div className="relative z-50 border-b border-pink-500/20 bg-black/20 backdrop-blur-xl">
+      <div className="relative border-b border-pink-500/20 bg-black/20 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-pink-500 to-purple-500 rounded-lg blur opacity-75" />
+                <div className="absolute -inset-1 bg-gradient-to-r from-pink-500 to-purple-500 rounded-lg blur opacity-40" />
                 <div className="relative flex items-center gap-3 px-4 py-2 bg-gray-900 rounded-lg border border-pink-500/50">
                   <Cpu className="text-pink-400 animate-pulse" size={24} />
                   <div>
