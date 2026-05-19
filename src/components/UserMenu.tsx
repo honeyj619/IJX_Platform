@@ -14,7 +14,11 @@ interface MenuItem {
   children?: MenuItem[];
 }
 
-export function UserMenu() {
+interface UserMenuProps {
+  collapsed?: boolean;
+}
+
+export function UserMenu({ collapsed = false }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -87,19 +91,22 @@ export function UserMenu() {
       {/* 头像按钮 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 p-2 rounded-lg hover:bg-white/10 transition-colors w-full"
+        className={`flex items-center rounded-lg hover:bg-white/10 transition-colors ${collapsed ? 'justify-center p-1' : 'gap-2 p-2 w-full'}`}
       >
         <img
           src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd"
           alt="用户头像"
-          className="w-10 h-10 rounded-full border-2 border-white flex-shrink-0 cursor-pointer hover:border-pink-400 transition-all"
+          className={`rounded-full border-2 border-white flex-shrink-0 cursor-pointer hover:border-pink-400 transition-all ${collapsed ? 'w-9 h-9' : 'w-10 h-10'}`}
         />
-        <span className="font-bold text-lg truncate hidden md:block text-white">梁吉力</span>
+        {!collapsed && <span className="font-bold text-lg truncate hidden md:block text-white">梁吉力</span>}
       </button>
 
       {/* 下拉菜单 */}
       {isOpen && (
-        <div className="fixed left-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-[65]" style={{ top: (menuRef.current?.getBoundingClientRect().bottom || 0) + 8, left: menuRef.current?.getBoundingClientRect().left || 0 }}>
+        <div className="fixed mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden z-[65]" style={{
+          top: collapsed ? (menuRef.current?.getBoundingClientRect().top || 0) : (menuRef.current?.getBoundingClientRect().bottom || 0) + 8,
+          left: collapsed ? (menuRef.current?.getBoundingClientRect().right || 0) + 8 : (menuRef.current?.getBoundingClientRect().left || 0)
+        }}>
           {/* 用户信息头部 */}
           <div className="p-4 bg-gradient-to-r from-pink-500 to-purple-600">
             <div className="flex items-center gap-3">

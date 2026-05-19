@@ -129,24 +129,33 @@ export default function Layout({ children }: LayoutProps) {
       {/* 左侧导航栏 */}
       <div className={`
         bg-gradient-to-theme text-white flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out
-        ${showNavigation ? 'w-64' : 'w-0 overflow-hidden'}
+        ${showNavigation ? 'w-64' : 'w-16'}
       `}>
-        <div className="p-4 space-y-4">
-          <UserMenu />
-          
-          <div className="relative group">
-            <input
-              type="text"
-              placeholder="搜索..."
-              className="w-full pl-9 pr-3 py-2 rounded-full bg-white/15 text-white text-sm placeholder-white/50 focus:outline-none focus:bg-white/25 focus:ring-1 focus:ring-white/40 transition-all duration-300"
+        <div className={`${showNavigation ? 'p-4 space-y-4' : 'p-2 pt-3 space-y-3 flex flex-col items-center'}`}>
+          <UserMenu collapsed={!showNavigation} />
+
+          {showNavigation ? (
+            <div className="relative group">
+              <input
+                type="text"
+                placeholder="搜索..."
+                className="w-full pl-9 pr-3 py-2 rounded-full bg-white/15 text-white text-sm placeholder-white/50 focus:outline-none focus:bg-white/25 focus:ring-1 focus:ring-white/40 transition-all duration-300"
+                onClick={() => setIsSearchOpen(true)}
+              />
+              <Search size={14} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 group-focus-within:text-white/80 transition-colors" />
+            </div>
+          ) : (
+            <button
               onClick={() => setIsSearchOpen(true)}
-            />
-            <Search size={14} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 group-focus-within:text-white/80 transition-colors" />
-          </div>
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+            >
+              <Search size={16} className="text-white/80" />
+            </button>
+          )}
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4">
-          <nav className="space-y-1 px-3">
+        <div className="flex-1 overflow-y-auto py-2">
+          <nav className={`${showNavigation ? 'space-y-1 px-3' : 'space-y-1 px-1 flex flex-col items-center'}`}>
             {navItems.map((item) => (
               <NavItem
                 key={item.to}
@@ -154,59 +163,80 @@ export default function Layout({ children }: LayoutProps) {
                 label={item.label}
                 to={item.to}
                 active={location.pathname === item.to}
+                collapsed={!showNavigation}
               />
             ))}
           </nav>
 
-          <div className="mt-6 px-3">
-            <div className="h-px bg-white/40 my-4"></div>
-            <div className="flex items-center justify-between text-sm font-semibold mb-2">
-              <span>打开的页面</span>
-              {pages.filter(page => !navPaths.includes(page.path)).length > 0 && (
-                <button 
-                  onClick={() => {
-                    removeAllPages();
-                    if (!navPaths.includes(location.pathname)) {
-                      navigate('/');
-                    }
-                  }}
-                  className="text-xs hover:text-white/80 transition-colors flex items-center gap-1"
-                >
-                  <X size={14} />
-                  全部关闭
-                </button>
-              )}
-            </div>
-            <div className="space-y-1">
-              {pages.filter(page => !navPaths.includes(page.path)).length === 0 ? (
-                <div className="px-3 py-3 rounded-md text-white/60 text-sm italic">
-                  暂无打开的页面
-                </div>
-              ) : (
-                pages
-                  .filter(page => !navPaths.includes(page.path))
-                  .map((page) => (
-                    <div 
-                      key={page.id}
-                      className={`relative flex items-center gap-3 px-3 py-3 rounded-md transition-colors group ${location.pathname === page.path ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}`}
-                    >
-                      <Link to={page.path} className="flex-1 min-w-0 truncate">
-                        {page.title}
-                      </Link>
-                      <button 
-                        onClick={(e) => handleClosePage(page.path, e)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-white/70 hover:text-white"
+          {/* 打开的页面 - 展开态 */}
+          {showNavigation && (
+            <div className="mt-6 px-3">
+              <div className="h-px bg-white/40 my-4"></div>
+              <div className="flex items-center justify-between text-sm font-semibold mb-2">
+                <span>打开的页面</span>
+                {pages.filter(page => !navPaths.includes(page.path)).length > 0 && (
+                  <button
+                    onClick={() => {
+                      removeAllPages();
+                      if (!navPaths.includes(location.pathname)) {
+                        navigate('/');
+                      }
+                    }}
+                    className="text-xs hover:text-white/80 transition-colors flex items-center gap-1"
+                  >
+                    <X size={14} />
+                    全部关闭
+                  </button>
+                )}
+              </div>
+              <div className="space-y-1">
+                {pages.filter(page => !navPaths.includes(page.path)).length === 0 ? (
+                  <div className="px-3 py-3 rounded-md text-white/60 text-sm italic">
+                    暂无打开的页面
+                  </div>
+                ) : (
+                  pages
+                    .filter(page => !navPaths.includes(page.path))
+                    .map((page) => (
+                      <div
+                        key={page.id}
+                        className={`relative flex items-center gap-3 px-3 py-3 rounded-md transition-colors group ${location.pathname === page.path ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}`}
                       >
-                        <XCircle size={16} />
-                      </button>
-                    </div>
-                  ))
-              )}
+                        <Link to={page.path} className="flex-1 min-w-0 truncate">
+                          {page.title}
+                        </Link>
+                        <button
+                          onClick={(e) => handleClosePage(page.path, e)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-white/70 hover:text-white"
+                        >
+                          <XCircle size={16} />
+                        </button>
+                      </div>
+                    ))
+                )}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* 打开的页面 - 折叠态 */}
+          {!showNavigation && (
+            <div className="flex flex-col items-center mt-4">
+              <div className="h-px bg-white/40 w-8 mb-4"></div>
+              {pages.filter(page => !navPaths.includes(page.path)).length > 0 ? (
+                <div
+                  className="relative flex flex-col items-center py-1"
+                  title={`${pages.filter(page => !navPaths.includes(page.path)).length} 个打开的页面`}
+                >
+                  <div className="w-10 h-10 rounded-md bg-white/20 flex items-center justify-center text-sm font-bold text-white">
+                    {pages.filter(page => !navPaths.includes(page.path)).length}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
-        <div className="p-4 border-t border-white/20 space-y-2">
+        <div className={`border-t border-white/20 ${showNavigation ? 'p-4 space-y-2' : 'p-2 flex flex-col items-center'}`}>
         </div>
       </div>
 
@@ -214,10 +244,10 @@ export default function Layout({ children }: LayoutProps) {
       <button
         onClick={toggleNavigation}
         className={`
-          absolute top-4 z-[60] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
+          fixed top-4 z-[60] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
           rounded-full p-2 shadow-lg border border-gray-200 dark:border-gray-700
           hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
-          ${showNavigation ? 'left-60' : 'left-4'}
+          ${showNavigation ? 'left-60' : 'left-14'}
         `}
       >
         {showNavigation ? <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" /> : <ChevronRight size={20} className="text-gray-600 dark:text-gray-300" />}
@@ -226,7 +256,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* 主内容区域 */}
       <div className={`
         flex-1 overflow-hidden flex flex-col transition-all duration-300
-        ${showNavigation ? 'ml-64' : 'ml-0'}
+        ${showNavigation ? 'ml-64' : 'ml-16'}
       `}>
         <div className="flex-1 overflow-y-auto">
           {children}
@@ -349,11 +379,21 @@ export default function Layout({ children }: LayoutProps) {
   );
 }
 
-function NavItem({ icon, label, to, active = false }: { icon: React.ReactNode | null; label: string; to: string; active?: boolean }) {
+function NavItem({ icon, label, to, active = false, collapsed = false }: { icon: React.ReactNode | null; label: string; to: string; active?: boolean; collapsed?: boolean }) {
   return (
-    <Link to={to} className={`w-full flex items-center gap-3 px-3 py-3 rounded-md transition-colors text-left ${active ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}`}>
+    <Link
+      to={to}
+      className={`
+        rounded-md transition-colors text-left
+        ${active ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}
+        ${collapsed ? 'w-12 flex flex-col items-center justify-center py-2 gap-0.5' : 'w-full flex items-center gap-3 px-3 py-3'}
+      `}
+      title={label}
+    >
       {icon && <span className="text-white flex-shrink-0">{icon}</span>}
-      <span className="text-white flex-1 min-w-0 truncate">{label}</span>
+      <span className={`text-white ${collapsed ? 'text-[10px] leading-tight text-center w-full truncate' : 'flex-1 min-w-0 truncate'}`}>
+        {label}
+      </span>
     </Link>
   );
 }
