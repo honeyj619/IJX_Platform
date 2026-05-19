@@ -103,7 +103,7 @@ export default function App() {
   }
 
   return (
-    <Router basename="/IJX_Platform/">
+    <Router basename={import.meta.env.BASE_URL}>
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />

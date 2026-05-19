@@ -4,7 +4,9 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/IJX_Platform/',
+  // GitHub Pages 使用 '/IJX_Platform/'，Vercel 使用 '/'
+  // 通过环境变量区分部署目标，默认 Vercel
+  base: process.env.VITE_BASE || '/',
   build: {
     sourcemap: 'hidden',
   },
