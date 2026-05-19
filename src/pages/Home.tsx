@@ -1633,6 +1633,54 @@ function CardMessage({ message }: { message: Message }) {
 
 function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; avatar: string; name: string }) {
   const isMe = chatMsg.sender === 'me';
+  const [menuPosition, setMenuPosition] = useState<'left' | 'right' | 'top'>('right');
+  const bubbleRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateMenuPosition = () => {
+      if (!bubbleRef.current) return;
+      
+      const rect = bubbleRef.current.getBoundingClientRect();
+      const menuWidth = 140;
+      const padding = 20;
+      
+      if (isMe) {
+        // 我的消息，默认在左侧
+        if (rect.left < menuWidth + padding) {
+          // 左侧空间不够，显示在上方
+          setMenuPosition('top');
+        } else {
+          setMenuPosition('left');
+        }
+      } else {
+        // 对方的消息，默认在右侧
+        if (rect.right + menuWidth + padding > window.innerWidth) {
+          // 右侧空间不够，显示在上方
+          setMenuPosition('top');
+        } else {
+          setMenuPosition('right');
+        }
+      }
+    };
+
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    
+    return () => window.removeEventListener('resize', updateMenuPosition);
+  }, [chatMsg, isMe]);
+
+  const getMenuClass = () => {
+    switch (menuPosition) {
+      case 'left':
+        return 'left-0 -translate-x-full -ml-2 top-0';
+      case 'right':
+        return 'right-0 translate-x-full ml-2 top-0';
+      case 'top':
+        return '-top-10 left-1/2 -translate-x-1/2';
+      default:
+        return 'right-0 translate-x-full ml-2 top-0';
+    }
+  };
 
   return (
     <div className={`flex gap-4 ${isMe ? 'flex-row-reverse' : ''}`}>
@@ -1643,7 +1691,7 @@ function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; av
           className="w-12 h-12 rounded-full"
         />
       </div>
-      <div className={`relative group max-w-xl ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
+      <div ref={bubbleRef} className={`relative group max-w-xl ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
         {/* 消息气泡 */}
         <div className={`relative rounded-2xl shadow-sm border overflow-hidden ${isMe ? 'bg-mint-50 text-gray-700 border-mint-200 dark:bg-mint-900/30 dark:text-mint-100 dark:border-mint-700/50' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-700'}`}>
           {renderChatContent(chatMsg, isMe)}
@@ -1652,7 +1700,7 @@ function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; av
         <span className="text-xs text-gray-400 mt-1 px-1">{chatMsg.time}</span>
 
         {/* 悬浮菜单 */}
-        <div className={`absolute top-0 ${isMe ? 'left-0 -translate-x-full -ml-2' : 'right-0 translate-x-full ml-2'} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-1 z-10`}>
+        <div className={`absolute ${getMenuClass()} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-1 z-10`}>
           <button className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="点赞">
             <ThumbsUp size={14} />
           </button>
