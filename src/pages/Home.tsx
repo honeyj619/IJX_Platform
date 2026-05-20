@@ -1643,11 +1643,12 @@ function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; av
       const rect = bubbleRef.current.getBoundingClientRect();
       const menuWidth = 140;
       const padding = 20;
+      const sidebarWidth = 384;
       
       if (isMe) {
         // 我的消息，默认在左侧
-        if (rect.left < menuWidth + padding) {
-          // 左侧空间不够，显示在上方
+        if (rect.left < menuWidth + padding || rect.left < sidebarWidth + padding) {
+          // 左侧空间不够（包括被侧边栏遮挡），显示在上方
           setMenuPosition('top');
         } else {
           setMenuPosition('left');
