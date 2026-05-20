@@ -49,7 +49,7 @@ const usePagesStore = create<PagesStore>((set, get) => ({
 
 const pageTitles: Record<string, string> = {
   '/': '消息',
-  '/enterprise': '企业门户',
+  '/enterprise': '工作门户',
   '/calendar': '日历',
   '/knowledge': '知识库',
   '/ekb': '知识库',
@@ -97,7 +97,7 @@ export default function Layout({ children }: LayoutProps) {
   
   const navItems = [
     { icon: <MessageSquare size={20} />, label: '消息', to: '/' },
-    { icon: <Bell size={20} />, label: '企业门户', to: '/enterprise' },
+    { icon: <Bell size={20} />, label: '工作门户', to: '/enterprise' },
     { icon: <Calendar size={20} />, label: '日历', to: '/calendar' },
     { icon: <Folder size={20} />, label: '知识库', to: '/ekb' },
     { icon: <Hexagon size={20} />, label: '业务系统', to: '/business' },
