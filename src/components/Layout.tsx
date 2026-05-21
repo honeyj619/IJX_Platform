@@ -123,18 +123,25 @@ export default function Layout({ children }: LayoutProps) {
     };
   }, [isDragging, showNavigation, toggleNavigation]);
   
-  // 响应式检测
+  // 响应式检测 - 多断点优化
   useEffect(() => {
     const checkResponsive = () => {
-      const isNarrow = window.innerWidth < 1400;
+      const width = window.innerWidth;
+      const isNarrow = width < 1400;
       setIsResponsive(isNarrow);
+      
+      // 在小屏幕上默认折叠导航栏
+      if (width < 1024 && showNavigation && !isManuallyCollapsed) {
+        setIsManuallyCollapsed(true);
+        toggleNavigation();
+      }
     };
     
     checkResponsive();
     window.addEventListener('resize', checkResponsive);
     
     return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive]);
+  }, [setIsResponsive, showNavigation, toggleNavigation, isManuallyCollapsed]);
   
   useEffect(() => {
     const applyTheme = () => {
@@ -179,14 +186,31 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900">
+      {/* 响应式侧边栏遮罩 - 移动端 */}
+      {isResponsive && showNavigation && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          onClick={() => {
+            setIsManuallyCollapsed(true);
+            toggleNavigation();
+          }}
+        />
+      )}
+      
       {/* 左侧导航栏 */}
       <div 
         className={`
           bg-gradient-to-theme text-white flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out
           ${showNavigation ? '' : 'w-16'}
           ${isDragging ? 'select-none' : ''}
+          ${isResponsive && !showNavigation ? 'translate-x-0' : ''}
+          ${isResponsive && showNavigation ? 'translate-x-0' : ''}
+          lg:translate-x-0
         `}
-        style={{ width: showNavigation ? `${sidebarWidth}px` : undefined }}
+        style={{ 
+          width: showNavigation ? `${sidebarWidth}px` : undefined,
+          transform: isResponsive && !showNavigation ? 'translateX(-100%)' : 'translateX(0)'
+        }}
       >
         <div className={`${showNavigation ? 'p-4 space-y-4' : 'p-2 pt-3 space-y-3 flex flex-col items-center'}`}>
           <UserMenu collapsed={!showNavigation} />
@@ -330,8 +354,28 @@ export default function Layout({ children }: LayoutProps) {
       {/* 主内容区域 */}
       <div 
         className="flex-1 overflow-hidden flex flex-col transition-all duration-300"
-        style={{ marginLeft: showNavigation ? `${sidebarWidth}px` : '64px' }}
+        style={{ 
+          marginLeft: showNavigation ? (isResponsive ? '0px' : `${sidebarWidth}px`) : '64px'
+        }}
       >
+        {/* 移动端菜单按钮 - 仅在响应式模式下显示 */}
+        {isResponsive && (
+          <div className="lg:hidden p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <button 
+              onClick={() => {
+                if (!showNavigation) {
+                  setIsManuallyCollapsed(false);
+                  toggleNavigation();
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+                <Menu size={20} className="text-gray-700 dark:text-gray-300" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">菜单</span>
+            </button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>

@@ -1436,13 +1436,25 @@ export default function Home() {
 
   return (
     <div className={`flex h-[calc(100vh-0px)] ${isDragging ? 'select-none' : ''}`}>
+      {/* 响应式侧边栏遮罩 - 移动设备 */}
+      {isResponsive && showSidebar && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+      
       {/* 对话列表 */}
       <div className={`
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
         ${showSidebar ? 'flex' : 'hidden'}
         ${isDragging ? 'cursor-ew-resize' : ''}
+        ${isResponsive ? 'fixed inset-y-0 left-0 z-50' : ''}
       `}
-      style={{ width: showSidebar ? `${sidebarWidth}px` : undefined }}
+      style={{ 
+        width: showSidebar ? `${sidebarWidth}px` : undefined,
+        transform: isResponsive && !showSidebar ? 'translateX(-100%)' : 'translateX(0)'
+      }}
       >
         <div className="flex-1 overflow-y-auto">
           {messages.map((msg) => (
@@ -1471,10 +1483,10 @@ export default function Home() {
       )}
       
       {/* 对话内容 - 充满整个右侧容器 */}
-      <div className="flex-1 flex flex-col min-h-0 relative">
+      <div className="flex-1 flex flex-col min-h-0 relative" style={{ marginLeft: isResponsive ? '0px' : (showSidebar ? `${sidebarWidth}px` : '0px') }}>
         {/* 顶部栏：包含切换侧边栏按钮 */}
         <div className="flex items-center gap-2 p-4 border-b border-gray-200 bg-white dark:bg-gray-800 shrink-0">
-          {/* 切换消息列表按钮 */}
+          {/* 切换消息列表按钮 - 在响应式模式下始终显示，桌面模式下可选显示 */}
           <button 
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             onClick={toggleSidebar}
@@ -1483,12 +1495,12 @@ export default function Home() {
             <Menu size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
           
-          {/* 消息标题（仅在侧边栏隐藏时显示） */}
-          {!showSidebar && selectedMessage && (
+          {/* 消息标题（在侧边栏隐藏或响应式模式下显示） */}
+          {(!showSidebar || isResponsive) && selectedMessage && (
             <MessageHeader 
               title={selectedMessage.name} 
-              showBackButton={true}
-              onBack={toggleSidebar}
+              showBackButton={isResponsive}
+              onBack={isResponsive ? toggleSidebar : undefined}
             />
           )}
         </div>
@@ -1498,7 +1510,7 @@ export default function Home() {
         </div>
         
         {/* 浮动消息列表切换按钮（仅在侧边栏隐藏时显示） */}
-        {!showSidebar && (
+        {!showSidebar && !isResponsive && (
           <button 
             className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-30 hover:bg-theme-600 transition-all hover:scale-110"
             onClick={toggleSidebar}
