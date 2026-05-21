@@ -73,22 +73,15 @@ export default function Layout({ children }: LayoutProps) {
   // 响应式检测
   useEffect(() => {
     const checkResponsive = () => {
-      const width = window.innerWidth;
-      // 调整断点：1024px 以下为窄屏模式
-      const isNarrow = width < 1024;
+      const isNarrow = window.innerWidth < 1400;
       setIsResponsive(isNarrow);
-      
-      // 在窄屏时自动折叠左侧导航栏
-      if (isNarrow && showNavigation) {
-        toggleNavigation();
-      }
     };
     
     checkResponsive();
     window.addEventListener('resize', checkResponsive);
     
     return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive, showNavigation, toggleNavigation]);
+  }, [setIsResponsive]);
   
   useEffect(() => {
     const applyTheme = () => {
@@ -244,19 +237,21 @@ export default function Layout({ children }: LayoutProps) {
         </div>
 
         <div className={`border-t border-white/20 ${showNavigation ? 'p-4 space-y-2' : 'p-2 flex flex-col items-center'}`}>
-          {/* 导航栏切换按钮 - 移到底部 */}
-          <button
-            onClick={toggleNavigation}
-            className={`
-              bg-white/10 hover:bg-white/20 rounded-lg p-2 transition-all duration-300
-              ${showNavigation ? 'w-full' : 'w-10'}
-            `}
-            title={showNavigation ? '收起导航栏' : '展开导航栏'}
-          >
-            {showNavigation ? <ChevronLeft size={20} className="text-white" /> : <ChevronRight size={20} className="text-white" />}
-          </button>
         </div>
       </div>
+
+      {/* 切换按钮 */}
+      <button
+        onClick={toggleNavigation}
+        className={`
+          fixed top-4 z-[60] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
+          rounded-full p-2 shadow-lg border border-gray-200 dark:border-gray-700
+          hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
+          ${showNavigation ? 'left-60' : 'left-14'}
+        `}
+      >
+        {showNavigation ? <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" /> : <ChevronRight size={20} className="text-gray-600 dark:text-gray-300" />}
+      </button>
 
       {/* 主内容区域 */}
       <div className={`
