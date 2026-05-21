@@ -766,8 +766,14 @@ export default function Home() {
   useEffect(() => {
     const checkResponsive = () => {
       const width = window.innerWidth;
-      const isNarrow = width < 1400;
+      // 调整断点：1024px 以下为窄屏模式，消息列表自动隐藏
+      const isNarrow = width < 1024;
       setIsResponsive(isNarrow);
+      
+      // 在窄屏时自动隐藏消息列表
+      if (isNarrow) {
+        setShowSidebar(false);
+      }
     };
     
     checkResponsive();
@@ -1402,11 +1408,13 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-0px)]">
-      {/* 对话列表 */}
+    <div className="flex h-full min-h-screen">
+      {/* 对话列表 - 使用弹性宽度 */}
       <div className={`
-        w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
-        ${showSidebar ? 'flex' : 'hidden'}
+        bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
+        transition-all duration-300 ease-in-out
+        ${showSidebar ? 'w-80 flex-shrink-0' : 'w-0 overflow-hidden flex-shrink-0'}
+        ${!isResponsive ? 'flex' : 'hidden'}
       `}>
         <div className="flex-1 overflow-y-auto">
           {messages.map((msg) => (
@@ -1423,7 +1431,7 @@ export default function Home() {
       {/* 对话内容 - 充满整个右侧容器 */}
       <div className="flex-1 flex flex-col min-h-0 relative">
         {/* 顶部栏：包含切换侧边栏按钮 */}
-        <div className="flex items-center gap-2 p-4 border-b border-gray-200 bg-white dark:bg-gray-800 shrink-0">
+        <div className="flex items-center gap-2 p-3 border-b border-gray-200 bg-white dark:bg-gray-800 shrink-0">
           {/* 切换消息列表按钮 */}
           <button 
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -1447,7 +1455,7 @@ export default function Home() {
           {renderContent()}
         </div>
         
-        {/* 浮动消息列表切换按钮（仅在侧边栏隐藏时显示） */}
+        {/* 浮动消息列表切换按钮（仅在侧边栏隐藏且宽度足够时显示） */}
         {!showSidebar && (
           <button 
             className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-30 hover:bg-theme-600 transition-all hover:scale-110"
