@@ -771,8 +771,8 @@ export default function Home() {
       setIsResponsive(isNarrow);
       
       // 在窄屏时自动隐藏消息列表
-      if (isNarrow) {
-        setShowSidebar(false);
+      if (isNarrow && showSidebar) {
+        toggleSidebar();
       }
     };
     
@@ -780,7 +780,7 @@ export default function Home() {
     window.addEventListener('resize', checkResponsive);
     
     return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive]);
+  }, [setIsResponsive, showSidebar, toggleSidebar]);
 
   const renderContent = () => {
     if (!selectedMessage) {
