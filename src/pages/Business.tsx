@@ -95,22 +95,9 @@ export default function Business() {
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [iconPreview, setIconPreview] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState('all');
-  const [isWideEnough, setIsWideEnough] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contactPickerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-
-  // 响应式宽度检测
-  useEffect(() => {
-    const checkWidth = () => {
-      setIsWideEnough(window.innerWidth >= 1024);
-    };
-    
-    checkWidth();
-    window.addEventListener('resize', checkWidth);
-    
-    return () => window.removeEventListener('resize', checkWidth);
-  }, []);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -308,7 +295,7 @@ export default function Business() {
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${activeCategory === cat.id ? 'bg-white/70' : cat.color.replace('from-', 'bg-').split(' ')[0]}`}></span>
-                  {isWideEnough && <span>{cat.name}</span>}
+                  <span className="hidden xs:inline">{cat.name}</span>
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeCategory === cat.id ? 'bg-white/20' : 'bg-slate-200'}`}>
                     {cat.count}
                   </span>

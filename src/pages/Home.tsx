@@ -745,6 +745,39 @@ export default function Home() {
   const [contentRefReady, setContentRefReady] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const { showSidebar, toggleSidebar, isResponsive, setIsResponsive } = useLayoutStore();
+  const [sidebarWidth, setSidebarWidth] = useState(384);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // 拖动调整消息列表宽度
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const containerRect = document.querySelector('.flex.h-\\[calc\\(100vh-0px\\)\\]')?.getBoundingClientRect();
+      if (!containerRect) return;
+      
+      const relativeX = e.clientX - containerRect.left;
+      const newWidth = Math.max(256, Math.min(512, relativeX));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   const handleMessageClick = (message: Message) => {
     setSelectedMessage(message);
@@ -1402,12 +1435,15 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-0px)]">
+    <div className={`flex h-[calc(100vh-0px)] ${isDragging ? 'select-none' : ''}`}>
       {/* 对话列表 */}
       <div className={`
-        w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
+        bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
         ${showSidebar ? 'flex' : 'hidden'}
-      `}>
+        ${isDragging ? 'cursor-ew-resize' : ''}
+      `}
+      style={{ width: showSidebar ? `${sidebarWidth}px` : undefined }}
+      >
         <div className="flex-1 overflow-y-auto">
           {messages.map((msg) => (
             <MessageItem 
@@ -1419,6 +1455,20 @@ export default function Home() {
           ))}
         </div>
       </div>
+
+      {/* 拖动条 - 消息列表 */}
+      {showSidebar && (
+        <div
+          className={`w-1 cursor-col-resize group shrink-0 transition-colors ${
+            isDragging ? 'bg-theme-400' : 'hover:bg-theme-300'
+          }`}
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <div className="w-1 h-16 bg-gray-300/80 rounded-full"></div>
+          </div>
+        </div>
+      )}
       
       {/* 对话内容 - 充满整个右侧容器 */}
       <div className="flex-1 flex flex-col min-h-0 relative">
@@ -1633,55 +1683,6 @@ function CardMessage({ message }: { message: Message }) {
 
 function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; avatar: string; name: string }) {
   const isMe = chatMsg.sender === 'me';
-  const [menuPosition, setMenuPosition] = useState<'left' | 'right' | 'top'>('right');
-  const bubbleRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const updateMenuPosition = () => {
-      if (!bubbleRef.current) return;
-      
-      const rect = bubbleRef.current.getBoundingClientRect();
-      const menuWidth = 140;
-      const padding = 20;
-      const sidebarWidth = 384;
-      
-      if (isMe) {
-        // 我的消息，默认在左侧
-        if (rect.left < menuWidth + padding || rect.left < sidebarWidth + padding) {
-          // 左侧空间不够（包括被侧边栏遮挡），显示在上方
-          setMenuPosition('top');
-        } else {
-          setMenuPosition('left');
-        }
-      } else {
-        // 对方的消息，默认在右侧
-        if (rect.right + menuWidth + padding > window.innerWidth) {
-          // 右侧空间不够，显示在上方
-          setMenuPosition('top');
-        } else {
-          setMenuPosition('right');
-        }
-      }
-    };
-
-    updateMenuPosition();
-    window.addEventListener('resize', updateMenuPosition);
-    
-    return () => window.removeEventListener('resize', updateMenuPosition);
-  }, [chatMsg, isMe]);
-
-  const getMenuClass = () => {
-    switch (menuPosition) {
-      case 'left':
-        return 'left-0 -translate-x-full -ml-2 top-0';
-      case 'right':
-        return 'right-0 translate-x-full ml-2 top-0';
-      case 'top':
-        return '-top-10 left-1/2 -translate-x-1/2';
-      default:
-        return 'right-0 translate-x-full ml-2 top-0';
-    }
-  };
 
   return (
     <div className={`flex gap-4 ${isMe ? 'flex-row-reverse' : ''}`}>
@@ -1692,7 +1693,7 @@ function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; av
           className="w-12 h-12 rounded-full"
         />
       </div>
-      <div ref={bubbleRef} className={`relative group max-w-xl ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
+      <div className={`relative group max-w-xl ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
         {/* 消息气泡 */}
         <div className={`relative rounded-2xl shadow-sm border overflow-hidden ${isMe ? 'bg-mint-50 text-gray-700 border-mint-200 dark:bg-mint-900/30 dark:text-mint-100 dark:border-mint-700/50' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-700'}`}>
           {renderChatContent(chatMsg, isMe)}
@@ -1701,7 +1702,7 @@ function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; av
         <span className="text-xs text-gray-400 mt-1 px-1">{chatMsg.time}</span>
 
         {/* 悬浮菜单 */}
-        <div className={`absolute ${getMenuClass()} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-1 z-10`}>
+        <div className={`absolute top-0 ${isMe ? 'left-0 -translate-x-full -ml-2' : 'right-0 translate-x-full ml-2'} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-1 z-10`}>
           <button className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="点赞">
             <ThumbsUp size={14} />
           </button>

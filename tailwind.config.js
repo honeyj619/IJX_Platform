@@ -7,7 +7,42 @@ export default {
     container: {
       center: true,
     },
+    fontSize: {
+      'xs': ['0.75rem', { lineHeight: '1rem' }],
+      'sm': ['0.8125rem', { lineHeight: '1.25rem' }],
+      'base': ['0.875rem', { lineHeight: '1.5rem' }],
+      'lg': ['0.9375rem', { lineHeight: '1.75rem' }],
+      'xl': ['1rem', { lineHeight: '1.75rem' }],
+      '2xl': ['1.125rem', { lineHeight: '2rem' }],
+      '3xl': ['1.25rem', { lineHeight: '2rem' }],
+      '4xl': ['1.5rem', { lineHeight: '2rem' }],
+      '5xl': ['1.75rem', { lineHeight: '2.25rem' }],
+      '6xl': ['2rem', { lineHeight: '2.5rem' }],
+    },
     extend: {
+      spacing: {
+        '1': '0.25rem',
+        '2': '0.5rem',
+        '3': '0.75rem',
+        '4': '1rem',
+        '5': '1.25rem',
+        '6': '1.5rem',
+        '7': '1.75rem',
+        '8': '2rem',
+        '9': '2.25rem',
+        '10': '2.5rem',
+        '12': '3rem',
+        '14': '3.5rem',
+        '16': '4rem',
+      },
+      borderRadius: {
+        'sm': '0.25rem',
+        'DEFAULT': '0.375rem',
+        'md': '0.5rem',
+        'lg': '0.75rem',
+        'xl': '1rem',
+        '2xl': '1.5rem',
+      },
       colors: {
         // 温和的莫兰迪色系主题
         theme: {

@@ -69,6 +69,59 @@ export default function Layout({ children }: LayoutProps) {
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
+  const COLLAPSED_WIDTH = 64;
+  const AUTO_COLLAPSE_THRESHOLD = 80;
+  const DEFAULT_WIDTH = 256;
+
+  // 拖动调整左侧导航栏宽度
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!showNavigation) {
+        const expandedWidth = Math.min(384, e.clientX);
+        if (expandedWidth > COLLAPSED_WIDTH) {
+          setSidebarWidth(expandedWidth);
+          setIsManuallyCollapsed(false);
+          toggleNavigation();
+          setSidebarWidth(Math.max(COLLAPSED_WIDTH + 10, expandedWidth));
+        }
+        return;
+      }
+      
+      const newWidth = Math.max(COLLAPSED_WIDTH, Math.min(384, e.clientX));
+      setSidebarWidth(newWidth);
+      
+      if (newWidth <= COLLAPSED_WIDTH && showNavigation) {
+        setIsManuallyCollapsed(true);
+        toggleNavigation();
+        setIsDragging(false);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      if (!showNavigation && sidebarWidth <= COLLAPSED_WIDTH) {
+        setIsManuallyCollapsed(true);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, showNavigation, toggleNavigation]);
   
   // 响应式检测
   useEffect(() => {
@@ -127,10 +180,14 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900">
       {/* 左侧导航栏 */}
-      <div className={`
-        bg-gradient-to-theme text-white flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out
-        ${showNavigation ? 'w-64' : 'w-16'}
-      `}>
+      <div 
+        className={`
+          bg-gradient-to-theme text-white flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out
+          ${showNavigation ? '' : 'w-16'}
+          ${isDragging ? 'select-none' : ''}
+        `}
+        style={{ width: showNavigation ? `${sidebarWidth}px` : undefined }}
+      >
         <div className={`${showNavigation ? 'p-4 space-y-4' : 'p-2 pt-3 space-y-3 flex flex-col items-center'}`}>
           <UserMenu collapsed={!showNavigation} />
 
@@ -236,28 +293,45 @@ export default function Layout({ children }: LayoutProps) {
           )}
         </div>
 
-        <div className={`border-t border-white/20 ${showNavigation ? 'p-4 space-y-2' : 'p-2 flex flex-col items-center'}`}>
+        <div className={`border-t border-white/20 ${showNavigation ? 'p-3' : 'p-2 flex flex-col items-center'} flex-shrink-0`}>
+          <button
+            onClick={() => {
+              if (!showNavigation && isManuallyCollapsed) {
+                setSidebarWidth(DEFAULT_WIDTH);
+                setIsManuallyCollapsed(false);
+              }
+              toggleNavigation();
+            }}
+            className={`
+              ${showNavigation ? 'inline-flex justify-end' : 'flex justify-center'}
+              p-2 rounded-lg hover:bg-white/20 transition-all duration-300
+              text-white/80 hover:text-white
+            `}
+            title={showNavigation ? "收起导航栏" : "展开导航栏"}
+          >
+            {showNavigation ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+          </button>
         </div>
       </div>
 
-      {/* 切换按钮 */}
-      <button
-        onClick={toggleNavigation}
-        className={`
-          fixed top-4 z-[60] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
-          rounded-full p-2 shadow-lg border border-gray-200 dark:border-gray-700
-          hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
-          ${showNavigation ? 'left-60' : 'left-14'}
-        `}
+      {/* 拖动条 - 左侧导航栏 */}
+      <div
+        className={`fixed top-0 w-1 h-full cursor-col-resize z-[55] group transition-opacity ${
+          isDragging ? 'bg-theme-300' : 'hover:bg-theme-300'
+        } ${!showNavigation && !isDragging ? 'opacity-0' : 'opacity-100'}`}
+        style={{ left: `${showNavigation ? sidebarWidth : COLLAPSED_WIDTH}px` }}
+        onMouseDown={handleMouseDown}
       >
-        {showNavigation ? <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" /> : <ChevronRight size={20} className="text-gray-600 dark:text-gray-300" />}
-      </button>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="w-1 h-16 bg-white/50 rounded-full"></div>
+        </div>
+      </div>
 
       {/* 主内容区域 */}
-      <div className={`
-        flex-1 overflow-hidden flex flex-col transition-all duration-300
-        ${showNavigation ? 'ml-64' : 'ml-16'}
-      `}>
+      <div 
+        className="flex-1 overflow-hidden flex flex-col transition-all duration-300"
+        style={{ marginLeft: showNavigation ? `${sidebarWidth}px` : '64px' }}
+      >
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>

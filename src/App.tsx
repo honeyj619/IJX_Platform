@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import MobileDevicePrompt from "@/components/MobileDevicePrompt";
 import Home from "@/pages/Home";
-import Personal_Enterprise from "@/pages/Personal_Enterprise";
+import Enterprise from "@/pages/Enterprise";
 import Assistant from "@/pages/Assistant";
 import Process from "@/pages/Process";
 import Knowledge from "@/pages/Knowledge";
@@ -103,11 +103,11 @@ export default function App() {
   }
 
   return (
-    <Router basename="/IJX_Platform/">
+    <Router basename={import.meta.env.BASE_URL}>
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/enterprise" element={<Personal_Enterprise />} />
+          <Route path="/enterprise" element={<Enterprise />} />
           <Route path="/assistant" element={<Assistant />} />
           <Route path="/process" element={<Process />} />
           <Route path="/knowledge" element={<Knowledge />} />
