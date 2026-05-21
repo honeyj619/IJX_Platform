@@ -135,10 +135,10 @@ export default function Personal_Enterprise() {
             {visibleCards.find(c => c.id === 'stats') && (
               <div className="group relative">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatsCard title="流程审批" count="21" icon={<FileText size={24} />} color="pink" />
-                  <StatsCard title="业务收入" amount="¥12,580,000" change="+12.5%" icon={<TrendingUp size={24} />} color="green" />
-                  <StatsCard title="待办事项" count="8" icon={<Bell size={24} />} color="amber" />
-                  <StatsCard title="项目进度" count="12" icon={<CalendarIcon size={24} />} color="blue" />
+                  <StatsCard title="流程审批" count="21" icon={<FileText size={24} />} color="pink" menuId={menuId} onToggleMenu={toggleMenu} />
+                  <StatsCard title="业务收入" amount="¥12,580,000" change="+12.5%" icon={<TrendingUp size={24} />} color="green" menuId={menuId} onToggleMenu={toggleMenu} />
+                  <StatsCard title="待办事项" count="8" icon={<Bell size={24} />} color="amber" menuId={menuId} onToggleMenu={toggleMenu} />
+                  <StatsCard title="项目进度" count="12" icon={<CalendarIcon size={24} />} color="blue" menuId={menuId} onToggleMenu={toggleMenu} />
                 </div>
               </div>
             )}
@@ -666,13 +666,15 @@ export default function Personal_Enterprise() {
 }
 
 // 统一的数据统计卡片组件
-function StatsCard({ title, count, amount, change, icon, color }: { 
+function StatsCard({ title, count, amount, change, icon, color, menuId, onToggleMenu }: { 
   title: string; 
   count?: string; 
   amount?: string;
   change?: string;
   icon: React.ReactNode; 
-  color: string 
+  color: string;
+  menuId: string | null;
+  onToggleMenu: (id: string) => void;
 }) {
   const colorMap = {
     pink: { bg: 'bg-pink-100', icon: 'text-pink-700', border: 'border-pink-200', gradient: 'from-pink-700 to-pink-900' },
@@ -690,14 +692,14 @@ function StatsCard({ title, count, amount, change, icon, color }: {
           <p className="text-gray-500 text-xs sm:text-sm font-medium">{title}</p>
           <div className="relative">
             <button 
-              onClick={() => toggleMenu(`stats-${color}`)}
+              onClick={() => onToggleMenu(`stats-${color}`)}
               className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
             >
               <MoreHorizontal size={16} className="text-gray-400" />
             </button>
             {menuId === `stats-${color}` && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
+                <div className="fixed inset-0 z-10" onClick={() => onToggleMenu('')} />
                 <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
                   <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                     <ExternalLink size={16} className="text-gray-400" />
