@@ -77,13 +77,18 @@ export default function Layout({ children }: LayoutProps) {
       // 调整断点：1024px 以下为窄屏模式
       const isNarrow = width < 1024;
       setIsResponsive(isNarrow);
+      
+      // 在窄屏时自动折叠左侧导航栏
+      if (isNarrow && showNavigation) {
+        toggleNavigation();
+      }
     };
     
     checkResponsive();
     window.addEventListener('resize', checkResponsive);
     
     return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive]);
+  }, [setIsResponsive, showNavigation, toggleNavigation]);
   
   useEffect(() => {
     const applyTheme = () => {

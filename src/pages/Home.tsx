@@ -1409,12 +1409,11 @@ export default function Home() {
 
   return (
     <div className="flex h-full min-h-screen">
-      {/* 对话列表 - 使用弹性宽度 */}
+      {/* 对话列表 - 使用弹性宽度，在窄屏时默认显示 */}
       <div className={`
         bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col
         transition-all duration-300 ease-in-out
         ${showSidebar ? 'w-80 flex-shrink-0' : 'w-0 overflow-hidden flex-shrink-0'}
-        ${!isResponsive ? 'flex' : 'hidden'}
       `}>
         <div className="flex-1 overflow-y-auto">
           {messages.map((msg) => (
