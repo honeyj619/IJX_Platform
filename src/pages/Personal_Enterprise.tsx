@@ -1,4 +1,4 @@
-import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight } from 'lucide-react';
+import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight, MoreHorizontal, RefreshCw, ExternalLink, Trash2 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 
 // 定义卡片类型
@@ -54,10 +54,16 @@ export default function Personal_Enterprise() {
   });
   
   const [showSettings, setShowSettings] = useState(false);
+  const [menuId, setMenuId] = useState<string | null>(null);
   const [selectedSystems, setSelectedSystems] = useState<string[]>(() => {
     const saved = localStorage.getItem('selectedSystems');
     return saved ? JSON.parse(saved) : ['hr', 'finance', 'oa', 'travel'];
   });
+
+  // 切换菜单显示
+  const toggleMenu = useCallback((id: string) => {
+    setMenuId(prev => prev === id ? null : id);
+  }, []);
 
   // 保存卡片配置
   useEffect(() => {
@@ -147,7 +153,36 @@ export default function Personal_Enterprise() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">待批阅流程</h3>
                   </div>
-                  <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-full">3条</span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-full">3条</span>
+                    <div className="relative">
+                      <button 
+                        onClick={() => toggleMenu('process')}
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                      >
+                        <MoreHorizontal size={18} className="text-gray-400" />
+                      </button>
+                      {menuId === 'process' && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Eye size={16} className="text-gray-400" />
+                              <span>查看全部</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <RefreshCw size={16} className="text-gray-400" />
+                              <span>刷新列表</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Settings size={16} className="text-gray-400" />
+                              <span>卡片设置</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   <ProcessItemFlow 
@@ -185,7 +220,36 @@ export default function Personal_Enterprise() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">今日未读文档</h3>
                   </div>
-                  <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">5条</span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">5条</span>
+                    <div className="relative">
+                      <button 
+                        onClick={() => toggleMenu('documents')}
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                      >
+                        <MoreHorizontal size={18} className="text-gray-400" />
+                      </button>
+                      {menuId === 'documents' && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Eye size={16} className="text-gray-400" />
+                              <span>查看全部</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <RefreshCw size={16} className="text-gray-400" />
+                              <span>刷新列表</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Settings size={16} className="text-gray-400" />
+                              <span>卡片设置</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <DocumentItem 
@@ -218,7 +282,36 @@ export default function Personal_Enterprise() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">关注的项目进度</h3>
                   </div>
-                  <span className="px-3 py-1 bg-cyan-50 text-cyan-700 text-sm font-medium rounded-full">2个</span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-cyan-50 text-cyan-700 text-sm font-medium rounded-full">2个</span>
+                    <div className="relative">
+                      <button 
+                        onClick={() => toggleMenu('projects')}
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                      >
+                        <MoreHorizontal size={18} className="text-gray-400" />
+                      </button>
+                      {menuId === 'projects' && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Eye size={16} className="text-gray-400" />
+                              <span>查看全部</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <RefreshCw size={16} className="text-gray-400" />
+                              <span>刷新进度</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Settings size={16} className="text-gray-400" />
+                              <span>卡片设置</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-4">
                   <GanttChart projectName="新一代智能客服系统" progress={65} tasks={[
@@ -252,9 +345,38 @@ export default function Personal_Enterprise() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">2026年5月</h3>
                   </div>
-                  <button className="p-2 hover:bg-pink-50 rounded-xl transition-colors">
-                    <Plus size={18} className="text-pink-700" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button className="p-2 hover:bg-pink-50 rounded-xl transition-colors">
+                      <Plus size={18} className="text-pink-700" />
+                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={() => toggleMenu('calendar')}
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                      >
+                        <MoreHorizontal size={18} className="text-gray-400" />
+                      </button>
+                      {menuId === 'calendar' && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Eye size={16} className="text-gray-400" />
+                              <span>查看全部</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <RefreshCw size={16} className="text-gray-400" />
+                              <span>刷新日历</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Settings size={16} className="text-gray-400" />
+                              <span>卡片设置</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-7 gap-1 text-center mb-6">
@@ -302,9 +424,34 @@ export default function Personal_Enterprise() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">常用系统</h3>
                   </div>
-                  <span className="px-3 py-1 bg-amber-50 text-amber-700 text-sm font-medium rounded-full">
-                    {displayedSystems.length}个
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-amber-50 text-amber-700 text-sm font-medium rounded-full">
+                      {displayedSystems.length}个
+                    </span>
+                    <div className="relative">
+                      <button 
+                        onClick={() => toggleMenu('systems')}
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                      >
+                        <MoreHorizontal size={18} className="text-gray-400" />
+                      </button>
+                      {menuId === 'systems' && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Layout size={16} className="text-gray-400" />
+                              <span>管理应用</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Settings size={16} className="text-gray-400" />
+                              <span>卡片设置</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-3">
@@ -333,9 +480,38 @@ export default function Personal_Enterprise() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-800">临期课程</h3>
                   </div>
-                  <button className="text-sm font-medium text-pink-700 hover:text-pink-900 transition-colors">
-                    查看全部 →
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button className="text-sm font-medium text-pink-700 hover:text-pink-900 transition-colors">
+                      查看全部 →
+                    </button>
+                    <div className="relative">
+                      <button 
+                        onClick={() => toggleMenu('courses')}
+                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                      >
+                        <MoreHorizontal size={18} className="text-gray-400" />
+                      </button>
+                      {menuId === 'courses' && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
+                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Eye size={16} className="text-gray-400" />
+                              <span>查看全部</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <RefreshCw size={16} className="text-gray-400" />
+                              <span>刷新列表</span>
+                            </button>
+                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                              <Settings size={16} className="text-gray-400" />
+                              <span>卡片设置</span>
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-3">
                   <CourseItem 
@@ -505,26 +681,55 @@ function StatsCard({ title, count, amount, change, icon, color }: {
     blue: { bg: 'bg-blue-100', icon: 'text-blue-700', border: 'border-blue-200', gradient: 'from-blue-600 to-blue-800' },
   };
   const c = colorMap[color as keyof typeof colorMap];
-
+  
   return (
     <div className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-4 sm:p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden`}>
       <div className={`absolute -top-10 -right-10 w-24 sm:w-32 h-24 sm:h-32 bg-gradient-to-br ${c.gradient} opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity`} />
       <div className="flex flex-col relative z-10">
         <div className="flex justify-between items-start mb-2 sm:mb-3">
           <p className="text-gray-500 text-xs sm:text-sm font-medium">{title}</p>
-          <div className={`p-2 sm:p-3 ${c.bg} rounded-lg sm:rounded-xl shadow-sm group-hover:shadow-md transition-shadow flex-shrink-0`}>
-            <div className={`${c.icon} scale-75 sm:scale-100`}>{icon}</div>
+          <div className="relative">
+            <button 
+              onClick={() => toggleMenu(`stats-${color}`)}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+            >
+              <MoreHorizontal size={16} className="text-gray-400" />
+            </button>
+            {menuId === `stats-${color}` && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <ExternalLink size={16} className="text-gray-400" />
+                    <span>查看详情</span>
+                  </button>
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <RefreshCw size={16} className="text-gray-400" />
+                    <span>刷新数据</span>
+                  </button>
+                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <Settings size={16} className="text-gray-400" />
+                    <span>卡片设置</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
-        <div className="space-y-1">
-          {count && <p className="text-2xl sm:text-3xl font-bold text-gray-800">{count}</p>}
-          {amount && <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-800 truncate">{amount}</p>}
-          {change && (
-            <p className="text-green-600 text-xs sm:text-sm flex items-center font-medium">
-              <TrendingUp size={14} className="mr-1 flex-shrink-0" />
-              <span className="truncate">{change} <span className="text-gray-400 sm:inline">较上月</span></span>
-            </p>
-          )}
+        <div className="flex justify-between items-end">
+          <div className="space-y-1">
+            {count && <p className="text-2xl sm:text-3xl font-bold text-gray-800">{count}</p>}
+            {amount && <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-800 truncate">{amount}</p>}
+            {change && (
+              <p className="text-green-600 text-xs sm:text-sm flex items-center font-medium">
+                <TrendingUp size={14} className="mr-1 flex-shrink-0" />
+                <span className="truncate">{change} <span className="text-gray-400 sm:inline">较上月</span></span>
+              </p>
+            )}
+          </div>
+          <div className={`p-2 sm:p-3 ${c.bg} rounded-lg sm:rounded-xl shadow-sm group-hover:shadow-md transition-shadow flex-shrink-0 ml-2`}>
+            <div className={`${c.icon} scale-75 sm:scale-100`}>{icon}</div>
+          </div>
         </div>
       </div>
     </div>
