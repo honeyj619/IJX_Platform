@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import MobileDevicePrompt from "@/components/MobileDevicePrompt";
 import Home from "@/pages/Home";
-import Enterprise from "@/pages/Enterprise";
+import Personal_Enterprise from "@/pages/Personal_Enterprise";
 import Assistant from "@/pages/Assistant";
 import Process from "@/pages/Process";
 import Knowledge from "@/pages/Knowledge";
@@ -107,7 +107,7 @@ export default function App() {
       <Layout>
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/enterprise" element={<Enterprise />} />
+          <Route path="/enterprise" element={<Personal_Enterprise />} />
           <Route path="/assistant" element={<Assistant />} />
           <Route path="/process" element={<Process />} />
           <Route path="/knowledge" element={<Knowledge />} />
