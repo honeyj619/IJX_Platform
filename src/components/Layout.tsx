@@ -123,17 +123,22 @@ export default function Layout({ children }: LayoutProps) {
     };
   }, [isDragging, showNavigation, toggleNavigation]);
   
-  // 响应式检测 - 多断点优化
+  // 响应式检测 - 简化版本
   useEffect(() => {
+    let initialCheck = true;
+    
     const checkResponsive = () => {
       const width = window.innerWidth;
-      const isNarrow = width < 1400;
+      const isNarrow = width < 1024; // 更低的断点，避免过度响应
       setIsResponsive(isNarrow);
       
-      // 在小屏幕上默认折叠导航栏
-      if (width < 1024 && showNavigation && !isManuallyCollapsed) {
-        setIsManuallyCollapsed(true);
-        toggleNavigation();
+      // 只在首次加载和小屏幕情况下自动折叠，避免循环
+      if (initialCheck && width < 1024) {
+        initialCheck = false;
+        if (showNavigation) {
+          setIsManuallyCollapsed(true);
+          toggleNavigation();
+        }
       }
     };
     
@@ -141,7 +146,7 @@ export default function Layout({ children }: LayoutProps) {
     window.addEventListener('resize', checkResponsive);
     
     return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive, showNavigation, toggleNavigation, isManuallyCollapsed]);
+  }, [setIsResponsive]); // 移除会导致循环的依赖
   
   useEffect(() => {
     const applyTheme = () => {
@@ -189,7 +194,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* 响应式侧边栏遮罩 - 移动端 */}
       {isResponsive && showNavigation && (
         <div 
-          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-40"
           onClick={() => {
             setIsManuallyCollapsed(true);
             toggleNavigation();
@@ -197,19 +202,23 @@ export default function Layout({ children }: LayoutProps) {
         />
       )}
       
-      {/* 左侧导航栏 */}
+      {/* 左侧导航栏 - 简化响应式逻辑 */}
       <div 
         className={`
-          bg-gradient-to-theme text-white flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out
-          ${showNavigation ? '' : 'w-16'}
+          bg-gradient-to-theme text-white flex flex-col transition-all duration-300 ease-in-out
           ${isDragging ? 'select-none' : ''}
-          ${isResponsive && !showNavigation ? 'translate-x-0' : ''}
-          ${isResponsive && showNavigation ? 'translate-x-0' : ''}
-          lg:translate-x-0
         `}
         style={{ 
-          width: showNavigation ? `${sidebarWidth}px` : undefined,
-          transform: isResponsive && !showNavigation ? 'translateX(-100%)' : 'translateX(0)'
+          width: showNavigation ? `${sidebarWidth}px` : '64px',
+          // 响应式模式下处理侧边栏位置
+          ...(isResponsive && {
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            height: '100vh',
+            zIndex: 50,
+            transform: showNavigation ? 'translateX(0)' : 'translateX(-100%)'
+          })
         }}
       >
         <div className={`${showNavigation ? 'p-4 space-y-4' : 'p-2 pt-3 space-y-3 flex flex-col items-center'}`}>
@@ -338,24 +347,26 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </div>
 
-      {/* 拖动条 - 左侧导航栏 */}
-      <div
-        className={`fixed top-0 w-1 h-full cursor-col-resize z-[55] group transition-opacity ${
-          isDragging ? 'bg-theme-300' : 'hover:bg-theme-300'
-        } ${!showNavigation && !isDragging ? 'opacity-0' : 'opacity-100'}`}
-        style={{ left: `${showNavigation ? sidebarWidth : COLLAPSED_WIDTH}px` }}
-        onMouseDown={handleMouseDown}
-      >
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="w-1 h-16 bg-white/50 rounded-full"></div>
+      {/* 拖动条 - 左侧导航栏 (仅在非响应式模式下显示) */}
+      {!isResponsive && (
+        <div
+          className={`fixed top-0 w-1 h-full cursor-col-resize z-[55] group transition-opacity ${
+            isDragging ? 'bg-theme-300' : 'hover:bg-theme-300'
+          } ${!showNavigation && !isDragging ? 'opacity-0' : 'opacity-100'}`}
+          style={{ left: `${showNavigation ? sidebarWidth : COLLAPSED_WIDTH}px` }}
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-1 h-16 bg-white/50 rounded-full"></div>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* 主内容区域 */}
+      {/* 主内容区域 - 简化响应式逻辑 */}
       <div 
         className="flex-1 overflow-hidden flex flex-col transition-all duration-300"
         style={{ 
-          marginLeft: showNavigation ? (isResponsive ? '0px' : `${sidebarWidth}px`) : '64px'
+          marginLeft: isResponsive ? '0px' : (showNavigation ? `${sidebarWidth}px` : '64px')
         }}
       >
         {/* 移动端菜单按钮 - 仅在响应式模式下显示 */}
