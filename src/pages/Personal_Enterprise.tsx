@@ -128,11 +128,11 @@ export default function Personal_Enterprise() {
             {/* 数据概览卡片 */}
             {visibleCards.find(c => c.id === 'stats') && (
               <div className="group relative">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <ProcessCard title="流程审批" count="21" icon={<FileText size={24} />} color="pink" />
-                  <RevenueCard title="业务收入" amount="¥12,580,000" change="+12.5%" icon={<TrendingUp size={24} />} color="green" />
-                  <NotificationCard title="待办事项" count="8" icon={<Bell size={24} />} color="amber" />
-                  <ProjectCard title="项目进度" count="12" icon={<CalendarIcon size={24} />} color="blue" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <StatsCard title="流程审批" count="21" icon={<FileText size={24} />} color="pink" />
+                  <StatsCard title="业务收入" amount="¥12,580,000" change="+12.5%" icon={<TrendingUp size={24} />} color="green" />
+                  <StatsCard title="待办事项" count="8" icon={<Bell size={24} />} color="amber" />
+                  <StatsCard title="项目进度" count="12" icon={<CalendarIcon size={24} />} color="blue" />
                 </div>
               </div>
             )}
@@ -489,8 +489,15 @@ export default function Personal_Enterprise() {
   );
 }
 
-// 统计卡片组件
-function ProcessCard({ title, count, icon, color }: { title: string; count: string; icon: React.ReactNode; color: string }) {
+// 统一的数据统计卡片组件
+function StatsCard({ title, count, amount, change, icon, color }: { 
+  title: string; 
+  count?: string; 
+  amount?: string;
+  change?: string;
+  icon: React.ReactNode; 
+  color: string 
+}) {
   const colorMap = {
     pink: { bg: 'bg-pink-100', icon: 'text-pink-700', border: 'border-pink-200', gradient: 'from-pink-700 to-pink-900' },
     green: { bg: 'bg-green-100', icon: 'text-green-700', border: 'border-green-200', gradient: 'from-green-600 to-green-800' },
@@ -500,99 +507,31 @@ function ProcessCard({ title, count, icon, color }: { title: string; count: stri
   const c = colorMap[color as keyof typeof colorMap];
 
   return (
-    <div className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden`}>
-      <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${c.gradient} opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity`} />
-      <div className="flex justify-between items-start relative z-10">
-        <div>
-          <p className="text-gray-500 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mt-2">{count}</p>
+    <div className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-4 sm:p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden`}>
+      <div className={`absolute -top-10 -right-10 w-24 sm:w-32 h-24 sm:h-32 bg-gradient-to-br ${c.gradient} opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity`} />
+      <div className="flex flex-col relative z-10">
+        <div className="flex justify-between items-start mb-2 sm:mb-3">
+          <p className="text-gray-500 text-xs sm:text-sm font-medium">{title}</p>
+          <div className={`p-2 sm:p-3 ${c.bg} rounded-lg sm:rounded-xl shadow-sm group-hover:shadow-md transition-shadow flex-shrink-0`}>
+            <div className={`${c.icon} scale-75 sm:scale-100`}>{icon}</div>
+          </div>
         </div>
-        <div className={`p-3 ${c.bg} rounded-xl shadow-sm group-hover:shadow-md transition-shadow`}>
-          <div className={c.icon}>{icon}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function RevenueCard({ title, amount, change, icon, color }: { title: string; amount: string; change: string; icon: React.ReactNode; color: string }) {
-  const colorMap = {
-    pink: { bg: 'bg-pink-100', icon: 'text-pink-700', border: 'border-pink-200', gradient: 'from-pink-700 to-pink-900' },
-    green: { bg: 'bg-green-100', icon: 'text-green-700', border: 'border-green-200', gradient: 'from-green-600 to-green-800' },
-    amber: { bg: 'bg-amber-100', icon: 'text-amber-700', border: 'border-amber-200', gradient: 'from-amber-600 to-amber-800' },
-    blue: { bg: 'bg-blue-100', icon: 'text-blue-700', border: 'border-blue-200', gradient: 'from-blue-600 to-blue-800' },
-  };
-  const c = colorMap[color as keyof typeof colorMap];
-
-  return (
-    <div className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden`}>
-      <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${c.gradient} opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity`} />
-      <div className="flex justify-between items-start relative z-10">
-        <div>
-          <p className="text-gray-500 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mt-2">{amount}</p>
-          <p className="text-green-600 text-sm mt-2 flex items-center font-medium">
-            <TrendingUp size={14} className="mr-1" />
-            {change} <span className="text-gray-400 ml-1">较上月</span>
-          </p>
-        </div>
-        <div className={`p-3 ${c.bg} rounded-xl shadow-sm group-hover:shadow-md transition-shadow`}>
-          <div className={c.icon}>{icon}</div>
+        <div className="space-y-1">
+          {count && <p className="text-2xl sm:text-3xl font-bold text-gray-800">{count}</p>}
+          {amount && <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-800 truncate">{amount}</p>}
+          {change && (
+            <p className="text-green-600 text-xs sm:text-sm flex items-center font-medium">
+              <TrendingUp size={14} className="mr-1 flex-shrink-0" />
+              <span className="truncate">{change} <span className="text-gray-400 sm:inline">较上月</span></span>
+            </p>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function NotificationCard({ title, count, icon, color }: { title: string; count: string; icon: React.ReactNode; color: string }) {
-  const colorMap = {
-    pink: { bg: 'bg-pink-100', icon: 'text-pink-700', border: 'border-pink-200', gradient: 'from-pink-700 to-pink-900' },
-    green: { bg: 'bg-green-100', icon: 'text-green-700', border: 'border-green-200', gradient: 'from-green-600 to-green-800' },
-    amber: { bg: 'bg-amber-100', icon: 'text-amber-700', border: 'border-amber-200', gradient: 'from-amber-600 to-amber-800' },
-    blue: { bg: 'bg-blue-100', icon: 'text-blue-700', border: 'border-blue-200', gradient: 'from-blue-600 to-blue-800' },
-  };
-  const c = colorMap[color as keyof typeof colorMap];
-
-  return (
-    <div className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden`}>
-      <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${c.gradient} opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity`} />
-      <div className="flex justify-between items-start relative z-10">
-        <div>
-          <p className="text-gray-500 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mt-2">{count}</p>
-        </div>
-        <div className={`p-3 ${c.bg} rounded-xl shadow-sm group-hover:shadow-md transition-shadow`}>
-          <div className={c.icon}>{icon}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProjectCard({ title, count, icon, color }: { title: string; count: string; icon: React.ReactNode; color: string }) {
-  const colorMap = {
-    pink: { bg: 'bg-pink-100', icon: 'text-pink-700', border: 'border-pink-200', gradient: 'from-pink-700 to-pink-900' },
-    green: { bg: 'bg-green-100', icon: 'text-green-700', border: 'border-green-200', gradient: 'from-green-600 to-green-800' },
-    amber: { bg: 'bg-amber-100', icon: 'text-amber-700', border: 'border-amber-200', gradient: 'from-amber-600 to-amber-800' },
-    blue: { bg: 'bg-blue-100', icon: 'text-blue-700', border: 'border-blue-200', gradient: 'from-blue-600 to-blue-800' },
-  };
-  const c = colorMap[color as keyof typeof colorMap];
-
-  return (
-    <div className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden`}>
-      <div className={`absolute -top-10 -right-10 w-32 h-32 bg-gradient-to-br ${c.gradient} opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity`} />
-      <div className="flex justify-between items-start relative z-10">
-        <div>
-          <p className="text-gray-500 text-sm font-medium">{title}</p>
-          <p className="text-3xl font-bold bg-gradient-to-br from-gray-800 to-gray-600 bg-clip-text text-transparent mt-2">{count}</p>
-        </div>
-        <div className={`p-3 ${c.bg} rounded-xl shadow-sm group-hover:shadow-md transition-shadow`}>
-          <div className={c.icon}>{icon}</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// 其他组件保持不变
 
 function ProcessItemFlow({ title, code, creator, time, location }: { title: string; code: string; creator: string; time: string; location: string }) {
   return (
