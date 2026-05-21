@@ -1,4 +1,4 @@
-import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Folder, Settings, ChevronLeft, X, ChevronRight, MessageCircle, Phone, Mail, Clock } from 'lucide-react';
+import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Folder, Settings, ChevronLeft, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const ALL_SYSTEMS = [
@@ -49,31 +49,11 @@ function PortalSwitcher({
   );
 }
 
-const DOCUMENTS = [
-  { title: '关于明确公司航空安全委员会组成人员的通知', time: '2026-05-20 14:53:36', type: 'company' },
-  { title: '关于发布《上海吉祥航空股份有限公司海外经营合规管理制度（试行）》的...', time: '2026-05-20 14:21:49', type: 'company', hot: true },
-  { title: '关于开展2026年下半年兼职教员续聘工作的通知', time: '2026-05-20 09:14:36', type: 'company', hot: true },
-  { title: '关于发布吉祥航空动火作业安全管理和建筑保温材料安全隐患排查整治专项...', time: '2026-05-20 09:12:58', type: 'company', hot: true },
-];
-
-const DOCUMENT_TABS = [
-  { id: 'company', name: '公司文件' },
-  { id: 'party', name: '党群文件' },
-  { id: 'meeting', name: '会议纪要' },
-  { id: 'personnel', name: '人事任免' },
-  { id: 'brief', name: '工作简报' },
-  { id: 'official', name: '局方文件' },
-  { id: 'external', name: '外部文件' },
-  { id: 'safety', name: '安全管理' },
-];
-
 export default function Personal_Enterprise() {
   const [portalType, setPortalType] = useState<'personal' | 'enterprise'>('personal');
   const [selectedSystems, setSelectedSystems] = useState<string[]>(['hr', 'finance', 'oa', 'travel']);
   const [showSettings, setShowSettings] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeDocTab, setActiveDocTab] = useState('company');
-  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     const saved = localStorage.getItem('portalType');
@@ -103,42 +83,6 @@ export default function Personal_Enterprise() {
   };
 
   const displayedSystems = ALL_SYSTEMS.filter(sys => selectedSystems.includes(sys.id));
-
-  const renderCalendarDays = () => {
-    const days = [];
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
-    for (let i = 0; i < firstDay; i++) {
-      days.push(<div key={`empty-${i}`} className="h-10"></div>);
-    }
-    
-    for (let i = 1; i <= daysInMonth; i++) {
-      const isToday = i === 21 && month === 4;
-      const hasEvent = [18, 19, 20].includes(i);
-      days.push(
-        <button
-          key={i}
-          className={`h-10 flex flex-col items-center justify-center rounded-lg transition-colors relative ${
-            isToday 
-              ? 'bg-pink-700 text-white' 
-              : i === currentDate.getDate() 
-                ? 'bg-gray-100' 
-                : 'hover:bg-gray-50'
-          }`}
-        >
-          {i}
-          {hasEvent && !isToday && (
-            <span className="absolute bottom-1 w-1 h-1 bg-pink-400 rounded-full"></span>
-          )}
-        </button>
-      );
-    }
-    
-    return days;
-  };
 
   return (
     <div className="bg-gray-50 min-h-screen">
@@ -321,197 +265,135 @@ export default function Personal_Enterprise() {
           </div>
         </div>
       ) : (
-        <div className="min-h-screen bg-gray-100">
-          <div className="relative bg-gradient-to-r from-amber-100 via-amber-50 to-amber-100 overflow-hidden">
-            <button className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 rounded-full hover:bg-white/80 transition-colors z-10">
-              <ChevronLeft size={20} className="text-gray-600" />
-            </button>
-            
-            <div className="flex items-center justify-center py-8 px-20">
-              <div className="flex-1 text-center">
-                <h1 className="text-4xl font-bold text-orange-700 mb-2">党员先锋在行动</h1>
-                <h2 className="text-3xl font-bold text-orange-600 mb-3">理财知识宣贯</h2>
-                <p className="text-orange-600">提升财商素养、增强个人理财规划能力</p>
-                <div className="flex justify-center gap-4 mt-8">
-                  <div className="w-2 h-2 bg-white rounded-full shadow"></div>
-                  <div className="w-2 h-2 bg-white/50 rounded-full"></div>
-                  <div className="w-2 h-2 bg-white/50 rounded-full"></div>
-                  <div className="w-2 h-2 bg-white/50 rounded-full"></div>
-                  <div className="w-2 h-2 bg-white/50 rounded-full"></div>
-                </div>
-              </div>
-              
-              <div className="flex-1 max-w-md">
-                <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-orange-400">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="px-3 py-1 bg-orange-500 text-white text-sm font-medium rounded-full">活动背景</span>
-                  </div>
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    为进一步发挥党员先锋模范作用，切实将党建与业务相融合，帮助员工提升财商素养、增强个人理财规划能力，在金融服务中感受公司"家文化"的温度与关怀。
-                  </p>
-                  <div className="flex items-center gap-2 mt-4">
-                    <span className="px-3 py-1 bg-orange-500 text-white text-sm font-medium rounded-full">活动安排</span>
-                  </div>
-                  <div className="mt-3 text-sm text-gray-600 space-y-1">
-                    <p><strong>活动时间：</strong>2026年5月22日 13:30-15:00</p>
-                    <p><strong>活动地点：</strong>康桥2801会议室</p>
-                    <p><strong>报名方式：</strong>名额有限，感兴趣的员工向直属党组织、组织委员报名，报名截止时间5月20日16:00</p>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-4 text-center">公司党委主办，财务党支部承办</p>
-                </div>
-              </div>
-              
-              <div className="w-64 flex-shrink-0">
-                <div className="bg-gradient-to-b from-purple-300 to-purple-400 rounded-xl p-4 mb-4">
-                  <h4 className="text-white font-medium mb-2">我的已办</h4>
-                  <p className="text-white/80 text-sm">点击查看全部我的已办</p>
-                </div>
-                <div className="bg-gradient-to-b from-purple-400 to-purple-500 rounded-xl p-4 mb-4">
-                  <div className="text-white">
-                    <p className="text-sm opacity-80">公司值班领导</p>
-                    <p className="font-bold">朱可辛</p>
-                  </div>
-                  <div className="text-white mt-2">
-                    <p className="text-sm opacity-80">公司总值班</p>
-                    <p className="font-bold">张正</p>
-                  </div>
-                  <button className="text-white/80 text-xs hover:text-white mt-3 flex items-center gap-1">
-                    查看公司值班表
-                  </button>
-                </div>
-                <div className="bg-white rounded-xl overflow-hidden shadow">
-                  <img 
-                    src="https://neeko-copilot.bytedance.net/api/text_to_image?prompt=Juneyao%20Air%202026%20conference%20banner%20pink%20purple%20gradient%20elegant%20airline&image_size=landscape_4_3" 
-                    alt="吉祥航空2026年度会议" 
-                    className="w-full h-32 object-cover"
-                  />
-                  <div className="p-3 text-center">
-                    <p className="text-sm font-medium text-gray-700">吉祥航空2026年度会议</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <button className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/50 rounded-full hover:bg-white/80 transition-colors z-10">
-              <ChevronRight size={20} className="text-gray-600" />
-            </button>
-          </div>
+        <EnterpriseContent />
+      )}
+    </div>
+  );
+}
 
-          <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                  <div className="flex items-center gap-6 p-4 border-b border-gray-100">
-                    <h3 className="text-lg font-bold text-gray-800">文件中心</h3>
-                    <div className="flex items-center gap-2 text-sm">
-                      <button className="text-gray-600 hover:text-pink-700">通告中心</button>
-                      <button className="text-gray-400 hover:text-pink-700">手册制度</button>
-                      <button className="text-gray-400 hover:text-pink-700">文化专栏</button>
-                      <button className="text-gray-400 hover:text-pink-700">部门文档</button>
-                      <button className="text-gray-400 hover:text-pink-700">内部招聘</button>
-                    </div>
-                    <button className="ml-auto text-gray-400 hover:text-pink-700 text-sm">More</button>
-                  </div>
-                  
-                  <div className="flex border-b border-gray-100">
-                    {DOCUMENT_TABS.map(tab => (
-                      <button
-                        key={tab.id}
-                        onClick={() => setActiveDocTab(tab.id)}
-                        className={`px-4 py-3 text-sm font-medium transition-colors ${
-                          activeDocTab === tab.id 
-                            ? 'text-gray-800 border-b-2 border-pink-700' 
-                            : 'text-gray-500 hover:text-gray-700'
-                        }`}
-                      >
-                        {tab.name}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  <div className="p-4">
-                    <div className="space-y-3">
-                      {DOCUMENTS.map((doc, index) => (
-                        <div key={index} className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-800 truncate">{doc.title}</p>
-                            <p className="text-xs text-gray-400 mt-1">{doc.time}</p>
-                          </div>
-                          {doc.hot && (
-                            <span className="w-2 h-2 bg-red-400 rounded-full"></span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                    <div className="flex items-center gap-2">
-                      <CalendarIcon size={20} className="text-pink-600" />
-                      <h3 className="font-semibold text-gray-800">我的日程</h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="text-gray-400 hover:text-gray-600">公司会议</button>
-                      <button className="text-gray-400 hover:text-pink-700 text-sm">更多日程</button>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-lg font-bold text-gray-800">2026.05</span>
-                      <div className="flex items-center gap-1">
-                        <button className="p-1 hover:bg-gray-100 rounded">
-                          <ChevronLeft size={16} />
-                        </button>
-                        <button className="px-2 py-1 bg-gray-100 rounded text-xs font-medium">今日</button>
-                        <button className="p-1 hover:bg-gray-100 rounded">
-                          <ChevronRight size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-7 gap-1 mb-2">
-                      {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-                        <div key={day} className="text-center text-xs text-gray-400 font-medium">
-                          {day}
-                        </div>
-                      ))}
-                    </div>
-                    
-                    <div className="grid grid-cols-7 gap-1">
-                      {renderCalendarDays()}
-                    </div>
-                    
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock size={14} className="text-pink-600" />
-                        <span className="text-gray-600">16:30-18:00</span>
-                        <span className="text-gray-800">管理支撑产品处例会</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+function EnterpriseContent() {
+  return (
+    <div className="p-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-pink-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-500 text-sm">流程审批</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">21</p>
             </div>
-          </div>
-
-          <div className="fixed right-4 bottom-20 flex flex-col gap-3 z-50">
-            <button className="w-12 h-12 bg-pink-700 rounded-full shadow-lg flex items-center justify-center hover:bg-pink-800 transition-colors">
-              <MessageCircle size={20} className="text-white" />
-            </button>
-            <button className="w-12 h-12 bg-purple-600 rounded-full shadow-lg flex items-center justify-center hover:bg-purple-700 transition-colors">
-              <Phone size={20} className="text-white" />
-            </button>
-            <button className="w-12 h-12 bg-blue-600 rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors">
-              <Mail size={20} className="text-white" />
-            </button>
+            <div className="p-3 bg-pink-100 rounded-full text-pink-600">
+              <FileText size={24} />
+            </div>
           </div>
         </div>
-      )}
+        <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-500 text-sm">业务收入</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">¥12,580,000</p>
+              <p className="text-green-600 text-sm mt-1">+12.5% 较上月</p>
+            </div>
+            <div className="p-3 bg-green-100 rounded-full text-green-600">
+              <TrendingUp size={24} />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-yellow-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-500 text-sm">待办事项</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">8</p>
+            </div>
+            <div className="p-3 bg-yellow-100 rounded-full text-yellow-600">
+              <Bell size={24} />
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
+          <div className="flex justify-between items-start">
+            <div>
+              <p className="text-gray-500 text-sm">项目进度</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">12</p>
+            </div>
+            <div className="p-3 bg-blue-100 rounded-full text-blue-600">
+              <CalendarIcon size={24} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <h3 className="font-semibold text-lg text-gray-900 mb-4">待批阅流程</h3>
+            <div className="space-y-3">
+              <div className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-blue-500">📋</span>
+                  <h4 className="font-medium text-gray-900 truncate">关于开展2025年第二期黄沙活动的预告</h4>
+                </div>
+                <p className="text-xs text-gray-500">编号：TSP-2025-0073</p>
+                <p className="text-xs text-gray-500">当前节点：4执行</p>
+              </div>
+              <div className="p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-blue-500">📋</span>
+                  <h4 className="font-medium text-gray-900 truncate">关于高乐飞机涂装宣传</h4>
+                </div>
+                <p className="text-xs text-gray-500">编号：TSP-2025-0074</p>
+                <p className="text-xs text-gray-500">当前节点：4执行</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <h3 className="font-semibold text-lg text-gray-900 mb-4">今日未读文档</h3>
+            <div className="space-y-3">
+              <div className="p-2 hover:bg-gray-50 transition-colors rounded">
+                <h4 className="font-medium text-gray-900 truncate">关于明确公司领导分工工作和工作接替顺序的通知</h4>
+                <p className="text-xs text-gray-500 mt-1">2025-06-12 09:25:07</p>
+              </div>
+              <div className="p-2 hover:bg-gray-50 transition-colors rounded">
+                <h4 className="font-medium text-gray-900 truncate">关于发布浦东-伊宁、浦东-喀什新开航线评估结果的通知</h4>
+                <p className="text-xs text-gray-500 mt-1">2025-06-12 09:20:05</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <h3 className="font-semibold text-lg text-gray-900 mb-4">2024年11月</h3>
+            <div className="grid grid-cols-7 gap-1 text-center">
+              {['日', '一', '二', '三', '四', '五', '六'].map(day => (
+                <div key={day} className="text-sm font-medium text-gray-500">{day}</div>
+              ))}
+              <div className="text-sm text-gray-400">9</div>
+              <div className="text-sm">10</div>
+              <div className="text-sm">11</div>
+              <div className="text-sm">12</div>
+              <div className="text-sm bg-red-100 text-red-600 font-medium rounded">13</div>
+              <div className="text-sm bg-red-100 text-red-600 font-medium rounded">14</div>
+              <div className="text-sm bg-red-100 text-red-600 font-medium rounded">15</div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100">
+            <h3 className="font-semibold text-lg text-gray-900">临期课程</h3>
+            <div className="space-y-3 mt-4">
+              <div className="flex gap-3 p-3 border border-gray-100 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className="w-12 h-12 bg-gray-100 rounded flex items-center justify-center">
+                  📚
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-gray-900 truncate">上海吉祥航空股份有限公司IT质量指标评估标准V6.0</h4>
+                  <p className="text-xs text-gray-500 mt-1">5节课 · 10积分</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
