@@ -6,10 +6,8 @@ import {
   Clock,
   XCircle,
   Hexagon,
-  Inbox,
   FileText,
   ChevronRight,
-  Menu,
   ThumbsUp,
   Quote,
   Copy,
@@ -40,8 +38,6 @@ import {
   Check,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { MessageHeader } from "@/components/MessageHeader";
-import { useLayoutStore } from "@/store/layoutStore";
 
 interface CardContent {
   title: string;
@@ -744,13 +740,10 @@ export default function Home() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [contentRefReady, setContentRefReady] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
-  const { showSidebar, toggleSidebar, isResponsive, setIsResponsive } = useLayoutStore();
 
+  // 简化逻辑：移除响应式和拖动相关的复杂处理
   const handleMessageClick = (message: Message) => {
     setSelectedMessage(message);
-    if (isResponsive) {
-      setIsResponsive(false); // 选择消息后，在窄屏上隐藏侧边栏
-    }
   };
 
   useEffect(() => {
@@ -762,19 +755,6 @@ export default function Home() {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
   }, [selectedMessage, contentRefReady]);
-
-  useEffect(() => {
-    const checkResponsive = () => {
-      const width = window.innerWidth;
-      const isNarrow = width < 1400;
-      setIsResponsive(isNarrow);
-    };
-    
-    checkResponsive();
-    window.addEventListener('resize', checkResponsive);
-    
-    return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive]);
 
   const renderContent = () => {
     if (!selectedMessage) {
@@ -1402,12 +1382,18 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-0px)]">
-      {/* 对话列表 */}
-      <div className={`
-        w-96 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col shrink-0
-        ${showSidebar ? 'flex' : 'hidden'}
-      `}>
+    <div className="flex h-full min-h-full">
+      {/* 消息列表 - 固定宽度 */}
+      <div className="flex flex-col w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shrink-0">
+        {/* 消息列表头部 */}
+        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <h2 className="font-semibold text-gray-900 dark:text-white">消息</h2>
+          <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+            <Plus size={20} className="text-gray-600 dark:text-gray-300" />
+          </button>
+        </div>
+        
+        {/* 消息列表 */}
         <div className="flex-1 overflow-y-auto">
           {messages.map((msg) => (
             <MessageItem 
@@ -1419,44 +1405,32 @@ export default function Home() {
           ))}
         </div>
       </div>
-      
-      {/* 对话内容 - 充满整个右侧容器 */}
-      <div className="flex-1 flex flex-col min-h-0 relative">
-        {/* 顶部栏：包含切换侧边栏按钮 */}
-        <div className="flex items-center gap-2 p-4 border-b border-gray-200 bg-white dark:bg-gray-800 shrink-0">
-          {/* 切换消息列表按钮 */}
-          <button 
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            onClick={toggleSidebar}
-            title={showSidebar ? "隐藏消息列表" : "显示消息列表"}
-          >
-            <Menu size={20} className="text-gray-600 dark:text-gray-300" />
-          </button>
-          
-          {/* 消息标题（仅在侧边栏隐藏时显示） */}
-          {!showSidebar && selectedMessage && (
-            <MessageHeader 
-              title={selectedMessage.name} 
-              showBackButton={true}
-              onBack={toggleSidebar}
-            />
-          )}
-        </div>
+
+      {/* 聊天内容区域 - 撑满剩余空间 */}
+      <div className="flex-1 flex flex-col h-full min-h-full bg-gray-50 dark:bg-gray-900">
+        {/* 聊天头部 - 当有选中消息时显示 */}
+        {selectedMessage ? (
+          <div className="h-14 flex items-center gap-3 px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+            <div className="flex-1">
+              <h3 className="font-semibold text-gray-900 dark:text-white">{selectedMessage.name}</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {selectedMessage.count ? `${selectedMessage.count}条消息` : '在线'}
+              </p>
+            </div>
+            <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+              <MoreHorizontal size={20} className="text-gray-600 dark:text-gray-300" />
+            </button>
+          </div>
+        ) : (
+          <div className="h-14 flex items-center px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+            <h3 className="font-semibold text-gray-900 dark:text-white">选择联系人开始聊天</h3>
+          </div>
+        )}
         
-        <div className="flex-1 min-h-0 overflow-hidden">
+        {/* 聊天内容 */}
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {renderContent()}
         </div>
-        
-        {/* 浮动消息列表切换按钮（仅在侧边栏隐藏时显示） */}
-        {!showSidebar && (
-          <button 
-            className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-30 hover:bg-theme-600 transition-all hover:scale-110"
-            onClick={toggleSidebar}
-            title="显示消息列表"
-          >
-            <Menu size={24} />
-          </button>
-        )}
       </div>
     </div>
   );

@@ -49,7 +49,7 @@ const usePagesStore = create<PagesStore>((set, get) => ({
 
 const pageTitles: Record<string, string> = {
   '/': '消息',
-  '/enterprise': '企业门户',
+  '/enterprise': '工作门户',
   '/calendar': '日历',
   '/knowledge': '知识库',
   '/ekb': '知识库',
@@ -69,19 +69,84 @@ export default function Layout({ children }: LayoutProps) {
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  // 响应式检测
+  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
+  const COLLAPSED_WIDTH = 64;
+  const AUTO_COLLAPSE_THRESHOLD = 80;
+  const DEFAULT_WIDTH = 256;
+
+  // 拖动调整左侧导航栏宽度
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
   useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!showNavigation) {
+        const expandedWidth = Math.min(384, e.clientX);
+        if (expandedWidth > COLLAPSED_WIDTH) {
+          setSidebarWidth(expandedWidth);
+          setIsManuallyCollapsed(false);
+          toggleNavigation();
+          setSidebarWidth(Math.max(COLLAPSED_WIDTH + 10, expandedWidth));
+        }
+        return;
+      }
+      
+      const newWidth = Math.max(COLLAPSED_WIDTH, Math.min(384, e.clientX));
+      setSidebarWidth(newWidth);
+      
+      if (newWidth <= COLLAPSED_WIDTH && showNavigation) {
+        setIsManuallyCollapsed(true);
+        toggleNavigation();
+        setIsDragging(false);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      if (!showNavigation && sidebarWidth <= COLLAPSED_WIDTH) {
+        setIsManuallyCollapsed(true);
+      }
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, showNavigation, toggleNavigation]);
+  
+  // 响应式检测 - 简化版本
+  useEffect(() => {
+    let initialCheck = true;
+    
     const checkResponsive = () => {
-      const isNarrow = window.innerWidth < 1400;
+      const width = window.innerWidth;
+      const isNarrow = width < 1024; // 更低的断点，避免过度响应
       setIsResponsive(isNarrow);
+      
+      // 只在首次加载和小屏幕情况下自动折叠，避免循环
+      if (initialCheck && width < 1024) {
+        initialCheck = false;
+        if (showNavigation) {
+          setIsManuallyCollapsed(true);
+          toggleNavigation();
+        }
+      }
     };
     
     checkResponsive();
     window.addEventListener('resize', checkResponsive);
     
     return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive]);
+  }, [setIsResponsive]); // 移除会导致循环的依赖
   
   useEffect(() => {
     const applyTheme = () => {
@@ -97,7 +162,7 @@ export default function Layout({ children }: LayoutProps) {
   
   const navItems = [
     { icon: <MessageSquare size={20} />, label: '消息', to: '/' },
-    { icon: <Bell size={20} />, label: '企业门户', to: '/enterprise' },
+    { icon: <Bell size={20} />, label: '工作门户', to: '/enterprise' },
     { icon: <Calendar size={20} />, label: '日历', to: '/calendar' },
     { icon: <Folder size={20} />, label: '知识库', to: '/ekb' },
     { icon: <Hexagon size={20} />, label: '业务系统', to: '/business' },
@@ -126,11 +191,36 @@ export default function Layout({ children }: LayoutProps) {
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900">
-      {/* 左侧导航栏 */}
-      <div className={`
-        bg-gradient-to-theme text-white flex flex-col fixed h-full z-50 transition-all duration-300 ease-in-out
-        ${showNavigation ? 'w-64' : 'w-16'}
-      `}>
+      {/* 响应式侧边栏遮罩 - 移动端 */}
+      {isResponsive && showNavigation && (
+        <div 
+          className="fixed inset-0 bg-black/40 z-40"
+          onClick={() => {
+            setIsManuallyCollapsed(true);
+            toggleNavigation();
+          }}
+        />
+      )}
+      
+      {/* 左侧导航栏 - 简化响应式逻辑 */}
+      <div 
+        className={`
+          bg-gradient-to-theme text-white flex flex-col transition-all duration-300 ease-in-out
+          ${isDragging ? 'select-none' : ''}
+        `}
+        style={{ 
+          width: showNavigation ? `${sidebarWidth}px` : '64px',
+          // 响应式模式下处理侧边栏位置
+          ...(isResponsive && {
+            position: 'fixed',
+            left: 0,
+            top: 0,
+            height: '100vh',
+            zIndex: 50,
+            transform: showNavigation ? 'translateX(0)' : 'translateX(-100%)'
+          })
+        }}
+      >
         <div className={`${showNavigation ? 'p-4 space-y-4' : 'p-2 pt-3 space-y-3 flex flex-col items-center'}`}>
           <UserMenu collapsed={!showNavigation} />
 
@@ -236,29 +326,68 @@ export default function Layout({ children }: LayoutProps) {
           )}
         </div>
 
-        <div className={`border-t border-white/20 ${showNavigation ? 'p-4 space-y-2' : 'p-2 flex flex-col items-center'}`}>
+        <div className={`border-t border-white/20 ${showNavigation ? 'p-3' : 'p-2 flex flex-col items-center'} flex-shrink-0`}>
+          <button
+            onClick={() => {
+              if (!showNavigation && isManuallyCollapsed) {
+                setSidebarWidth(DEFAULT_WIDTH);
+                setIsManuallyCollapsed(false);
+              }
+              toggleNavigation();
+            }}
+            className={`
+              ${showNavigation ? 'inline-flex justify-end' : 'flex justify-center'}
+              p-2 rounded-lg hover:bg-white/20 transition-all duration-300
+              text-white/80 hover:text-white
+            `}
+            title={showNavigation ? "收起导航栏" : "展开导航栏"}
+          >
+            {showNavigation ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+          </button>
         </div>
       </div>
 
-      {/* 切换按钮 */}
-      <button
-        onClick={toggleNavigation}
-        className={`
-          fixed top-4 z-[60] bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm
-          rounded-full p-2 shadow-lg border border-gray-200 dark:border-gray-700
-          hover:bg-white dark:hover:bg-gray-700 transition-all duration-300
-          ${showNavigation ? 'left-60' : 'left-14'}
-        `}
-      >
-        {showNavigation ? <ChevronLeft size={20} className="text-gray-600 dark:text-gray-300" /> : <ChevronRight size={20} className="text-gray-600 dark:text-gray-300" />}
-      </button>
+      {/* 拖动条 - 左侧导航栏 (仅在非响应式模式下显示) */}
+      {!isResponsive && (
+        <div
+          className={`fixed top-0 w-1 h-full cursor-col-resize z-[55] group transition-opacity ${
+            isDragging ? 'bg-theme-300' : 'hover:bg-theme-300'
+          } ${!showNavigation && !isDragging ? 'opacity-0' : 'opacity-100'}`}
+          style={{ left: `${showNavigation ? sidebarWidth : COLLAPSED_WIDTH}px` }}
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-1 h-16 bg-white/50 rounded-full"></div>
+          </div>
+        </div>
+      )}
 
       {/* 主内容区域 */}
-      <div className={`
-        flex-1 overflow-hidden flex flex-col transition-all duration-300
-        ${showNavigation ? 'ml-64' : 'ml-16'}
-      `}>
-        <div className="flex-1 overflow-y-auto">
+      <div 
+        className="flex-1 overflow-hidden flex flex-col h-full transition-all duration-300"
+        style={{ 
+          marginLeft: isResponsive ? '0px' : (showNavigation ? `${sidebarWidth}px` : '64px'),
+          height: '100%'
+        }}
+      >
+        {/* 移动端顶部导航栏 - 包含菜单按钮 */}
+        {isResponsive && (
+          <div className="lg:hidden h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0">
+            <button 
+              onClick={() => {
+                setIsManuallyCollapsed(false);
+                toggleNavigation();
+              }}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <Menu size={24} className="text-gray-700 dark:text-gray-300" />
+            </button>
+            <span className="font-semibold text-gray-900 dark:text-white">工作空间</span>
+            <div className="w-10"></div> {/* 占位，保持居中 */}
+          </div>
+        )}
+
+        <div className="flex-1 overflow-y-auto min-h-0">
           {children}
         </div>
         

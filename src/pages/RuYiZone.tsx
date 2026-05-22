@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Palette, Code, FileText as FileTextIcon, PresentationIcon, MessageCircle, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import DocumentEditor from "./DocumentEditor";
 
 interface Assistant {
   id: number;
@@ -52,9 +53,31 @@ const suggestions: Suggestion[] = [
 
 const tools: Tool[] = [
   { id: 1, name: "写作", icon: <FileTextIcon size={18} />, description: "智能文案生成", color: "from-blue-400 to-indigo-500" },
-  { id: 2, name: "PPT", icon: <PresentationIcon size={18} />, description: "快速演示文稿", color: "from-orange-400 to-amber-500" },
-  { id: 3, name: "代码", icon: <Code size={18} />, description: "编程助手", color: "from-green-400 to-emerald-500" },
-  { id: 4, name: "设计", icon: <Palette size={18} />, description: "创意设计", color: "from-purple-400 to-violet-500" },
+  { id: 2, name: "公文", icon: <FileTextIcon size={18} />, description: "公文快速撰写", color: "from-cyan-400 to-blue-500" },
+  { id: 3, name: "PPT", icon: <PresentationIcon size={18} />, description: "快速演示文稿", color: "from-orange-400 to-amber-500" },
+  { id: 4, name: "代码", icon: <Code size={18} />, description: "编程助手", color: "from-green-400 to-emerald-500" },
+  { id: 5, name: "设计", icon: <Palette size={18} />, description: "创意设计", color: "from-purple-400 to-violet-500" },
+];
+
+const docTypes = [
+  "工作总结",
+  "会议讲话",
+  "通知",
+  "会议纪要",
+  "请示报告",
+  "函",
+  "批复",
+  "决定",
+  "公告",
+  "通报",
+];
+
+const lengthOptions = [
+  "300-500",
+  "500-800",
+  "600-1200",
+  "1000-1500",
+  "1500-2000",
 ];
 
 export default function RuYiZone() {
@@ -64,11 +87,24 @@ export default function RuYiZone() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [docType, setDocType] = useState("");
+  const [docTitle, setDocTitle] = useState("");
+  const [docLength, setDocLength] = useState("600-1200");
+  const [docContent, setDocContent] = useState("");
+  const [showEditor, setShowEditor] = useState(false);
 
   const handleSend = () => {
     if (input.trim()) {
       setInput("");
     }
+    if (activeTool === '公文') {
+      setShowEditor(true);
+    }
+  };
+  
+  const handleBackFromEditor = () => {
+    setShowEditor(false);
   };
 
   const handleAssistantSelect = (assistant: Assistant) => {
@@ -97,8 +133,17 @@ export default function RuYiZone() {
   }, []);
 
   return (
-    
-      <div className="flex h-full bg-gradient-to-br from-gray-50 via-white to-theme-50">
+    <>
+      {showEditor ? (
+        <DocumentEditor 
+          docType={docType} 
+          docTitle={docTitle} 
+          docLength={docLength} 
+          docContent={docContent}
+          onBack={handleBackFromEditor}
+        />
+      ) : (
+        <div className="flex h-full bg-gradient-to-br from-gray-50 via-white to-theme-50">
         {/* 移动端菜单按钮 - 放在内容区右侧 */}
         {isMobile && (
           <button 
@@ -217,13 +262,25 @@ export default function RuYiZone() {
                 {tools.map((tool) => (
                   <button 
                     key={tool.id} 
-                    className="inline-flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-gray-50 transition-all duration-300 group"
+                    className={`inline-flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-300 group ${activeTool === tool.name ? 'bg-theme-50 ring-2 ring-theme-200' : 'hover:bg-gray-50'}`}
+                    onClick={() => {
+                      if (tool.name === '公文') {
+                        setActiveTool('公文');
+                        setInput('');
+                      } else if (tool.name === '写作') {
+                        setActiveTool('写作');
+                        setInput('');
+                      } else {
+                        setActiveTool(null);
+                        setInput('');
+                      }
+                    }}
                   >
                     <div className={`w-8 h-8 bg-gradient-to-br ${tool.color} rounded flex items-center justify-center text-white shadow-sm group-hover:shadow transition-all duration-300 transform group-hover:scale-105`}>
                       {tool.icon}
                     </div>
                     <div className="text-center">
-                      <h4 className="text-sm font-medium text-gray-900">{tool.name}</h4>
+                      <h4 className={`text-sm font-medium ${activeTool === tool.name ? 'text-theme-700' : 'text-gray-900'}`}>{tool.name}</h4>
                     </div>
                   </button>
                 ))}
@@ -231,15 +288,83 @@ export default function RuYiZone() {
 
               {/* 问答对话框 */}
               <div className="mb-16 relative">
-                <div className="relative border border-gray-100 rounded-xl p-5 md:p-6 h-40 md:h-48 shadow-sm bg-white hover:shadow-md transition-all duration-300">
-                  <input
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="你想问我什么呢？"
-                    className="w-full border-none outline-none h-full text-lg font-medium placeholder-gray-400"
-                  />
-                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white hover:shadow-md transition-all duration-300 ${activeTool === '公文' ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100'}`}>
+                  {/* 公文模式 */}
+                  {activeTool === '公文' && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-theme-50 rounded-full">
+                        <Sparkles size={14} className="text-theme-600" />
+                        <span className="text-sm font-medium text-theme-700">快速写作</span>
+                      </div>
+                      <span className="text-gray-600">帮我写一篇</span>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={docType}
+                          onChange={(e) => setDocType(e.target.value)}
+                          placeholder="输入类型"
+                          className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 w-28"
+                          list="doc-type-list"
+                        />
+                        <datalist id="doc-type-list">
+                          {docTypes.map((type) => (
+                            <option key={type} value={type} />
+                          ))}
+                        </datalist>
+                      </div>
+                      <span className="text-gray-600">，文章标题是</span>
+                      <input
+                        type="text"
+                        value={docTitle}
+                        onChange={(e) => setDocTitle(e.target.value)}
+                        placeholder="输入标题"
+                        className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 w-36"
+                      />
+                      <span className="text-gray-600">，文章篇幅</span>
+                      <select
+                        value={docLength}
+                        onChange={(e) => setDocLength(e.target.value)}
+                        className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer"
+                      >
+                        {lengthOptions.map((length) => (
+                          <option key={length} value={length}>{length}</option>
+                        ))}
+                      </select>
+                      <span className="text-gray-600">字左右，内容要求</span>
+                      <input
+                        type="text"
+                        value={docContent}
+                        onChange={(e) => setDocContent(e.target.value)}
+                        placeholder="输入内容"
+                        className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 flex-1 min-w-[120px]"
+                      />
+                      <span className="text-gray-600">。</span>
+                    </div>
+                  )}
+                  
+                  {/* 写作模式 */}
+                  {activeTool === '写作' && (
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="请输入您的写作需求..."
+                      className="w-full border-none outline-none h-full text-lg font-medium placeholder-gray-400"
+                    />
+                  )}
+                  
+                  {/* 默认模式 */}
+                  {!activeTool && (
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="你想问我什么呢？"
+                      className="w-full border-none outline-none h-full text-lg font-medium placeholder-gray-400"
+                    />
+                  )}
+                  
+                  <div className="absolute right-4 bottom-4 flex items-center gap-2">
                     <button className="text-gray-400 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50">
                       <Paperclip size={18} />
                     </button>
@@ -251,6 +376,19 @@ export default function RuYiZone() {
                     </button>
                   </div>
                 </div>
+                
+                {/* 添加参考文档按钮 */}
+                {activeTool === '公文' && (
+                  <div className="mt-3 flex items-center justify-between">
+                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors text-sm">
+                      <Paperclip size={14} />
+                      添加参考文档
+                    </button>
+                    <div className="text-xs text-gray-400">
+                      "工作总结"、"会议讲话"、"通知"、"会议纪要"
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 猜你想问 */}
@@ -282,6 +420,8 @@ export default function RuYiZone() {
           </div>
         </div>
       </div>
+      )}
+    </>
     
   );
 }
