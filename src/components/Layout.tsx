@@ -362,16 +362,17 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       )}
 
-      {/* 主内容区域 - 简化响应式逻辑 */}
+      {/* 主内容区域 */}
       <div 
-        className="flex-1 overflow-hidden flex flex-col transition-all duration-300"
+        className="flex-1 overflow-hidden flex flex-col h-full transition-all duration-300"
         style={{ 
-          marginLeft: isResponsive ? '0px' : (showNavigation ? `${sidebarWidth}px` : '64px')
+          marginLeft: isResponsive ? '0px' : (showNavigation ? `${sidebarWidth}px` : '64px'),
+          height: '100%'
         }}
       >
         {/* 移动端顶部导航栏 - 包含菜单按钮 */}
         {isResponsive && (
-          <div className="lg:hidden h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
+          <div className="lg:hidden h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0">
             <button 
               onClick={() => {
                 setIsManuallyCollapsed(false);
@@ -386,7 +387,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {children}
         </div>
         

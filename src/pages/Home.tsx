@@ -1382,9 +1382,9 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-[calc(100vh-0px)]">
-      {/* 消息列表 - 始终显示 */}
-      <div className="flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+    <div className="flex h-full min-h-full">
+      {/* 消息列表 - 固定宽度 */}
+      <div className="flex flex-col w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shrink-0">
         {/* 消息列表头部 */}
         <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           <h2 className="font-semibold text-gray-900 dark:text-white">消息</h2>
@@ -1406,8 +1406,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 聊天内容区域 */}
-      <div className="flex-1 flex flex-col min-h-0 bg-gray-50 dark:bg-gray-900">
+      {/* 聊天内容区域 - 撑满剩余空间 */}
+      <div className="flex-1 flex flex-col h-full min-h-full bg-gray-50 dark:bg-gray-900">
         {/* 聊天头部 - 当有选中消息时显示 */}
         {selectedMessage ? (
           <div className="h-14 flex items-center gap-3 px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
