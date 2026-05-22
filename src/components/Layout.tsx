@@ -369,17 +369,21 @@ export default function Layout({ children }: LayoutProps) {
           marginLeft: isResponsive ? '0px' : (showNavigation ? `${sidebarWidth}px` : '64px')
         }}
       >
-        {/* 移动端浮动菜单按钮 - 固定在左上角 */}
-        {isResponsive && !showNavigation && (
-          <button 
-            onClick={() => {
-              setIsManuallyCollapsed(false);
-              toggleNavigation();
-            }}
-            className="fixed top-6 left-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-40 hover:bg-theme-600 transition-all hover:scale-110 lg:hidden"
-          >
-            <Menu size={24} />
-          </button>
+        {/* 移动端顶部导航栏 - 包含菜单按钮 */}
+        {isResponsive && (
+          <div className="lg:hidden h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4">
+            <button 
+              onClick={() => {
+                setIsManuallyCollapsed(false);
+                toggleNavigation();
+              }}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            >
+              <Menu size={24} className="text-gray-700 dark:text-gray-300" />
+            </button>
+            <span className="font-semibold text-gray-900 dark:text-white">工作空间</span>
+            <div className="w-10"></div> {/* 占位，保持居中 */}
+          </div>
         )}
 
         <div className="flex-1 overflow-y-auto">
