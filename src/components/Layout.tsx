@@ -369,22 +369,17 @@ export default function Layout({ children }: LayoutProps) {
           marginLeft: isResponsive ? '0px' : (showNavigation ? `${sidebarWidth}px` : '64px')
         }}
       >
-        {/* 移动端菜单按钮 - 仅在响应式模式下显示 */}
-        {isResponsive && (
-          <div className="lg:hidden p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-            <button 
-              onClick={() => {
-                if (!showNavigation) {
-                  setIsManuallyCollapsed(false);
-                  toggleNavigation();
-                }
-              }}
-              className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-            >
-                <Menu size={20} className="text-gray-700 dark:text-gray-300" />
-                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">菜单</span>
-            </button>
-          </div>
+        {/* 移动端浮动菜单按钮 - 固定在右下角 */}
+        {isResponsive && !showNavigation && (
+          <button 
+            onClick={() => {
+              setIsManuallyCollapsed(false);
+              toggleNavigation();
+            }}
+            className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-40 hover:bg-theme-600 transition-all hover:scale-110 lg:hidden"
+          >
+            <Menu size={24} />
+          </button>
         )}
 
         <div className="flex-1 overflow-y-auto">
