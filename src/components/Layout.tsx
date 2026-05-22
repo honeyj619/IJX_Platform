@@ -369,14 +369,14 @@ export default function Layout({ children }: LayoutProps) {
           marginLeft: isResponsive ? '0px' : (showNavigation ? `${sidebarWidth}px` : '64px')
         }}
       >
-        {/* 移动端浮动菜单按钮 - 固定在右下角 */}
+        {/* 移动端浮动菜单按钮 - 固定在左上角 */}
         {isResponsive && !showNavigation && (
           <button 
             onClick={() => {
               setIsManuallyCollapsed(false);
               toggleNavigation();
             }}
-            className="fixed bottom-6 right-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-40 hover:bg-theme-600 transition-all hover:scale-110 lg:hidden"
+            className="fixed top-6 left-6 bg-theme-500 text-white w-12 h-12 rounded-full shadow-lg flex items-center justify-center z-40 hover:bg-theme-600 transition-all hover:scale-110 lg:hidden"
           >
             <Menu size={24} />
           </button>
