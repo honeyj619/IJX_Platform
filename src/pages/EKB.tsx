@@ -68,7 +68,7 @@ export default function EKB() {
               <Link to="/" className="text-white hover:text-blue-200 transition-colors">管理后台</Link>
             </nav>
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-              <div className="relative flex-1 min-w-[200px] md:min-w-[300px]">
+              <div className="relative flex-1 min-w-[150px] sm:min-w-[200px] md:min-w-[250px] lg:min-w-[300px]">
                 <input 
                   type="text" 
                   placeholder="请输入关键词" 

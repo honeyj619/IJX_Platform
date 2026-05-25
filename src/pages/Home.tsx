@@ -762,7 +762,7 @@ export default function Home() {
       const isDay = hour >= 6 && hour < 18;
       
       return (
-        <div className="flex-1 relative overflow-hidden min-h-[calc(100vh-0px)]">
+        <div className="flex-1 relative overflow-hidden min-h-screen">
           {isDay ? (
             <>
               <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-theme-50/30 to-gray-100 dark:from-gray-900 dark:via-theme-900/10 dark:to-gray-900" />
@@ -774,14 +774,14 @@ export default function Home() {
                 </div>
               </div>
               
-              <div className="absolute top-20 left-[20%] animate-float pointer-events-none">
+              <div className="absolute top-20 left-[10%] md:left-[15%] lg:left-[20%] animate-float pointer-events-none">
                 <div className="flex gap-2">
                   <div className="w-16 h-10 bg-white/80 rounded-full" />
                   <div className="w-12 h-8 bg-white/60 rounded-full -ml-6 mt-2" />
                   <div className="w-14 h-9 bg-white/70 rounded-full -ml-5 mt-1" />
                 </div>
               </div>
-              <div className="absolute top-32 left-[60%] animate-float animation-delay-3000 pointer-events-none">
+              <div className="absolute top-32 left-[50%] md:left-[55%] lg:left-[60%] animate-float animation-delay-3000 pointer-events-none">
                 <div className="flex gap-2">
                   <div className="w-12 h-8 bg-white/60 rounded-full" />
                   <div className="w-10 h-6 bg-white/50 rounded-full -ml-4 mt-1" />
@@ -790,7 +790,7 @@ export default function Home() {
 
               <div className="relative h-full flex items-center justify-center p-8">
                 <div className="relative w-full max-w-2xl">
-                  <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden min-h-[500px] flex flex-col">
+                  <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden min-h-[400px] md:min-h-[450px] lg:min-h-[500px] flex flex-col">
                     <div className="h-1.5 bg-gradient-to-r from-amber-300 via-orange-400 to-amber-300" />
                     
                     <div className="p-10">
@@ -860,7 +860,7 @@ export default function Home() {
                 ))}
               </div>
               
-              <div className="absolute top-8 right-[15%] pointer-events-none">
+              <div className="absolute top-8 right-[5%] md:right-[10%] lg:right-[15%] pointer-events-none">
                 <div className="relative">
                   <div className="absolute inset-0 bg-indigo-200/20 dark:bg-indigo-200/30 rounded-full blur-xl animate-pulse-slow" />
                   <div className="relative w-24 h-24">
@@ -872,13 +872,13 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="absolute top-[20%] left-[25%] animate-shooting-star pointer-events-none">
+              <div className="absolute top-[20%] left-[15%] md:left-[20%] lg:left-[25%] animate-shooting-star pointer-events-none">
                 <div className="w-20 h-0.5 bg-gradient-to-r from-gray-400 via-gray-300 to-transparent dark:from-white dark:via-indigo-200 dark:to-transparent rounded-full" />
               </div>
 
               <div className="relative h-full flex items-center justify-center p-8">
                 <div className="relative w-full max-w-2xl">
-                  <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden min-h-[500px] flex flex-col">
+                  <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden min-h-[400px] md:min-h-[450px] lg:min-h-[500px] flex flex-col">
                     <div className="h-1.5 bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400" />
                     
                     <div className="p-10">
@@ -1042,15 +1042,15 @@ export default function Home() {
                 }
               }} />
             </div>
-            <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
               <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder="输入消息..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500"
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                 />
                 <div className="flex gap-2">
-                  <button className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors">
+                  <button className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
                   </button>
                   <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
@@ -1098,12 +1098,12 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <div className="p-4 border-t border-gray-200 bg-white">
+              <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="输入消息..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-500"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                   />
                   <button className="bg-pink-500 text-white p-2 rounded-full hover:bg-pink-600 transition-colors">
                     <MessageSquare size={20} />
@@ -1234,23 +1234,23 @@ export default function Home() {
                   </MessageBubble>
                 </div>
               </div>
-              <div className="p-4 border-t border-gray-200 bg-white shrink-0">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="输入消息..."
+                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                />
                 <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="输入消息..."
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500"
-                  />
-                  <div className="flex gap-2">
-                    <button className="bg-gray-100 text-gray-700 p-2 rounded-full hover:bg-gray-200 transition-colors">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
-                    </button>
-                    <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
-                      <MessageSquare size={20} />
-                    </button>
-                  </div>
+                  <button className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+                  </button>
+                  <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
+                    <MessageSquare size={20} />
+                  </button>
                 </div>
               </div>
+            </div>
             </div>
           );
         }
@@ -1428,7 +1428,7 @@ export default function Home() {
         )}
         
         {/* 聊天内容 */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-6">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {renderContent()}
         </div>
       </div>

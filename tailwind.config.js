@@ -8,6 +8,8 @@ export default {
       center: true,
     },
     fontSize: {
+      '3xs': ['0.5625rem', { lineHeight: '0.75rem' }],   // 9px
+      '2xs': ['0.625rem', { lineHeight: '0.875rem' }],    // 10px
       'xs': ['0.75rem', { lineHeight: '1rem' }],
       'sm': ['0.8125rem', { lineHeight: '1.25rem' }],
       'base': ['0.875rem', { lineHeight: '1.5rem' }],
@@ -20,6 +22,9 @@ export default {
       '6xl': ['2rem', { lineHeight: '2.5rem' }],
     },
     extend: {
+      screens: {
+        '3xl': '1920px',   // 大屏优化
+      },
       spacing: {
         '1': '0.25rem',
         '2': '0.5rem',

@@ -159,7 +159,7 @@ export default function Enterprise() {
       ) : (
         <div className="relative">
           {/* 广告横幅 */}
-          <div className="relative w-full h-[400px] bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-700">
+          <div className="relative w-full h-[280px] md:h-[340px] lg:h-[400px] bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-700">
             <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
               <div className="absolute inset-0">
                 <div className="absolute top-20 left-20 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
@@ -175,9 +175,9 @@ export default function Enterprise() {
               <div className="relative z-10 text-center text-white max-w-4xl px-4">
                 <div className="flex items-center justify-center gap-3 mb-4">
                   <span className="bg-white/20 px-4 py-2 rounded text-lg font-semibold">1458N</span>
-                  <div className="h-px bg-white/30 flex-1 max-w-[200px]"></div>
+                  <div className="h-px bg-white/30 flex-1 max-w-[120px] md:max-w-[160px] lg:max-w-[200px]"></div>
                   <div className="text-lg">✈️</div>
-                  <div className="h-px bg-white/30 flex-1 max-w-[200px]"></div>
+                  <div className="h-px bg-white/30 flex-1 max-w-[120px] md:max-w-[160px] lg:max-w-[200px]"></div>
                 </div>
                 <h1 className="text-6xl font-bold mb-2 tracking-wider">
                   <span className="text-white/90">“</span>

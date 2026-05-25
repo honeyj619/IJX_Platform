@@ -3,6 +3,7 @@ import {
   Menu, X, Shield, Lock, GitBranch, LayoutDashboard, 
   Globe, Network, Palette, ChevronRight, User, FolderTree
 } from 'lucide-react';
+import { SIDEBAR } from '../constants/layout';
 
 interface MenuItem {
   id: string;
@@ -102,7 +103,7 @@ export default function Admin() {
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className="absolute top-4 left-64 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
-          style={{ left: sidebarOpen ? '256px' : '64px' }}
+          style={{ left: sidebarOpen ? SIDEBAR.EXPANDED : SIDEBAR.COLLAPSED }}
         >
           {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
         </button>

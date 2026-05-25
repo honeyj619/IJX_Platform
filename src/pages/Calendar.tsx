@@ -313,7 +313,7 @@ export default function Calendar() {
                     return (
                       <div 
                         key={index} 
-                        className={`min-h-[120px] p-3 border-r border-b border-slate-100 ${index % 7 === 6 ? 'border-r-0' : ''} ${item.isCurrentMonth ? 'bg-white' : 'bg-slate-50/50'}`}
+                        className={`min-h-[80px] md:min-h-[100px] lg:min-h-[120px] p-3 border-r border-b border-slate-100 ${index % 7 === 6 ? 'border-r-0' : ''} ${item.isCurrentMonth ? 'bg-white' : 'bg-slate-50/50'}`}
                       >
                         <div className="flex justify-end mb-2">
                           {today ? (

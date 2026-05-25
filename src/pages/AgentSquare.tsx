@@ -396,7 +396,7 @@ export default function AgentSquare() {
 
                   <div className="flex flex-wrap gap-1.5 mb-4">
                     {agent.aiType.slice(0, 2).map((type, index) => (
-                      <span key={index} className="text-[11px] px-2 py-1 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30 font-mono">
+                      <span key={index} className="text-2xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30 font-mono">
                         {type}
                       </span>
                     ))}
@@ -459,7 +459,7 @@ export default function AgentSquare() {
                     <div className="flex items-center gap-3">
                       <div className="flex flex-wrap gap-1.5">
                         {agent.aiType.slice(0, 3).map((type, index) => (
-                          <span key={index} className="text-[11px] px-2 py-1 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30 font-mono">
+                          <span key={index} className="text-2xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30 font-mono">
                             {type}
                           </span>
                         ))}

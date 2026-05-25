@@ -164,7 +164,7 @@ export default function RuYiZone() {
 
         {/* 移动端导航栏 - 从右侧滑入 */}
         <div className={`
-          ${isMobile ? 'fixed inset-y-0 right-0 z-40 w-64' : 'w-[280px] min-w-[240px]'}
+          ${isMobile ? 'fixed inset-y-0 right-0 z-40 w-64' : 'w-[240px] lg:w-[280px] flex-shrink-0'}
           ${showSidebar || mobileMenuOpen ? 'flex' : 'hidden'}
           bg-white border-l border-gray-100 flex flex-col shadow-lg
           transition-transform duration-300 ease-in-out
@@ -336,7 +336,7 @@ export default function RuYiZone() {
                         value={docContent}
                         onChange={(e) => setDocContent(e.target.value)}
                         placeholder="输入内容"
-                        className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 flex-1 min-w-[120px]"
+                        className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 flex-1 min-w-[80px] md:min-w-[120px]"
                       />
                       <span className="text-gray-600">。</span>
                     </div>

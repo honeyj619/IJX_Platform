@@ -5,6 +5,7 @@ import { create } from 'zustand';
 import { useThemeStore } from '../store/themeStore';
 import { useLayoutStore } from '../store/layoutStore';
 import { UserMenu } from './UserMenu';
+import { SIDEBAR } from '../constants/layout';
 
 interface LayoutProps {
   children: ReactNode;
@@ -69,12 +70,9 @@ export default function Layout({ children }: LayoutProps) {
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sidebarWidth, setSidebarWidth] = useState(256);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR.EXPANDED_WIDTH);
   const [isDragging, setIsDragging] = useState(false);
   const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
-  const COLLAPSED_WIDTH = 64;
-  const AUTO_COLLAPSE_THRESHOLD = 80;
-  const DEFAULT_WIDTH = 256;
 
   // 拖动调整左侧导航栏宽度
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -87,20 +85,20 @@ export default function Layout({ children }: LayoutProps) {
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!showNavigation) {
-        const expandedWidth = Math.min(384, e.clientX);
-        if (expandedWidth > COLLAPSED_WIDTH) {
+        const expandedWidth = Math.min(SIDEBAR.MAX_DRAG_WIDTH, e.clientX);
+        if (expandedWidth > SIDEBAR.COLLAPSED_WIDTH) {
           setSidebarWidth(expandedWidth);
           setIsManuallyCollapsed(false);
           toggleNavigation();
-          setSidebarWidth(Math.max(COLLAPSED_WIDTH + 10, expandedWidth));
+          setSidebarWidth(Math.max(SIDEBAR.COLLAPSED_WIDTH + 10, expandedWidth));
         }
         return;
       }
       
-      const newWidth = Math.max(COLLAPSED_WIDTH, Math.min(384, e.clientX));
+      const newWidth = Math.max(SIDEBAR.COLLAPSED_WIDTH, Math.min(SIDEBAR.MAX_DRAG_WIDTH, e.clientX));
       setSidebarWidth(newWidth);
       
-      if (newWidth <= COLLAPSED_WIDTH && showNavigation) {
+      if (newWidth <= SIDEBAR.COLLAPSED_WIDTH && showNavigation) {
         setIsManuallyCollapsed(true);
         toggleNavigation();
         setIsDragging(false);
@@ -109,7 +107,7 @@ export default function Layout({ children }: LayoutProps) {
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      if (!showNavigation && sidebarWidth <= COLLAPSED_WIDTH) {
+      if (!showNavigation && sidebarWidth <= SIDEBAR.COLLAPSED_WIDTH) {
         setIsManuallyCollapsed(true);
       }
     };
@@ -209,7 +207,7 @@ export default function Layout({ children }: LayoutProps) {
           ${isDragging ? 'select-none' : ''}
         `}
         style={{ 
-          width: showNavigation ? `${sidebarWidth}px` : '64px',
+          width: showNavigation ? `${sidebarWidth}px` : SIDEBAR.COLLAPSED,
           // 响应式模式下处理侧边栏位置
           ...(isResponsive && {
             position: 'fixed',
@@ -330,7 +328,7 @@ export default function Layout({ children }: LayoutProps) {
           <button
             onClick={() => {
               if (!showNavigation && isManuallyCollapsed) {
-                setSidebarWidth(DEFAULT_WIDTH);
+                setSidebarWidth(SIDEBAR.EXPANDED_WIDTH);
                 setIsManuallyCollapsed(false);
               }
               toggleNavigation();
@@ -353,7 +351,7 @@ export default function Layout({ children }: LayoutProps) {
           className={`fixed top-0 w-1 h-full cursor-col-resize z-[55] group transition-opacity ${
             isDragging ? 'bg-theme-300' : 'hover:bg-theme-300'
           } ${!showNavigation && !isDragging ? 'opacity-0' : 'opacity-100'}`}
-          style={{ left: `${showNavigation ? sidebarWidth : COLLAPSED_WIDTH}px` }}
+          style={{ left: `${showNavigation ? sidebarWidth : SIDEBAR.COLLAPSED_WIDTH}px` }}
           onMouseDown={handleMouseDown}
         >
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -365,10 +363,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* 主内容区域 */}
       <div 
         className="flex-1 overflow-hidden flex flex-col h-full transition-all duration-300"
-        style={{ 
-          marginLeft: isResponsive ? '0px' : (showNavigation ? `${sidebarWidth}px` : '64px'),
-          height: '100%'
-        }}
+        style={{ height: '100%' }}
       >
         {/* 移动端顶部导航栏 - 包含菜单按钮 */}
         {isResponsive && (
@@ -520,7 +515,7 @@ function NavItem({ icon, label, to, active = false, collapsed = false }: { icon:
       title={label}
     >
       {icon && <span className="text-white flex-shrink-0">{icon}</span>}
-      <span className={`text-white ${collapsed ? 'text-[10px] leading-tight text-center w-full truncate' : 'flex-1 min-w-0 truncate'}`}>
+      <span className={`text-white ${collapsed ? 'text-2xs leading-tight text-center w-full truncate' : 'flex-1 min-w-0 truncate'}`}>
         {label}
       </span>
     </Link>
