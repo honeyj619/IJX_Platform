@@ -1,4 +1,4 @@
-import { Search, MessageSquare, Smartphone, BarChart3, ArrowUp, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X, Mail, Monitor, MoreHorizontal } from 'lucide-react';
+import { Search, MessageSquare, Smartphone, BarChart3, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X, Mail, Monitor, MoreHorizontal } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
 
@@ -69,99 +69,41 @@ export default function Enterprise() {
   const displayedSystems = ALL_SYSTEMS.filter(sys => selectedSystems.includes(sys.id));
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* 门户Tab切换 - 顶部醒目位置 */}
-      <div className="bg-gray-800 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPortalType('personal')}
-              className={`px-6 py-3 text-sm font-semibold tracking-wide transition-all duration-200 ${
-                portalType === 'personal'
-                  ? 'bg-white text-gray-800 rounded-t-lg'
-                  : 'text-gray-300 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              个人门户
-            </button>
-            <button
-              onClick={() => setPortalType('enterprise')}
-              className={`px-6 py-3 text-sm font-semibold tracking-wide transition-all duration-200 ${
-                portalType === 'enterprise'
-                  ? 'bg-white text-gray-800 rounded-t-lg'
-                  : 'text-gray-300 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              企业门户
-            </button>
-          </div>
+    <div className="h-full flex flex-col bg-gray-100 dark:bg-gray-900">
+      {/* 内联工具栏 — 轻量切换条 */}
+      <div className="flex items-center justify-between px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-700/60 shrink-0">
+        <div className="flex items-center bg-gray-100/80 dark:bg-gray-700/80 rounded-lg p-0.5">
+          <button
+            onClick={() => setPortalType('personal')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              portalType === 'personal'
+                ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            个人门户
+          </button>
+          <button
+            onClick={() => setPortalType('enterprise')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              portalType === 'enterprise'
+                ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            企业门户
+          </button>
         </div>
+        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400">
+          <Search size={18} />
+        </button>
       </div>
 
-      {/* 企业门户专属导航栏 */}
-      {portalType === 'enterprise' && (
-        <>
-          {/* 顶部粉色语言栏 */}
-          <div className="bg-pink-700 text-white px-4 py-2 flex justify-end">
-            <button className="flex items-center gap-1 hover:bg-pink-600 px-3 py-1 rounded text-sm">
-              <span>语言</span>
-              <span className="text-xs">▼</span>
-            </button>
-          </div>
-
-          {/* 主导航栏 */}
-          <div className="bg-white shadow-sm">
-            <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-              {/* Logo */}
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center border border-amber-200">
-                  <div className="text-pink-700 font-bold text-xl">龍</div>
-                </div>
-                <div>
-                  <div className="text-pink-700 font-bold text-lg">JUNEYAO AIR</div>
-                  <div className="text-pink-700 font-medium text-sm">吉祥航空</div>
-                </div>
-              </div>
-
-              {/* 导航菜单 */}
-              <nav className="flex items-center gap-6 text-sm">
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">首页</button>
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">文档中心</button>
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">流程中心</button>
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">协作办公</button>
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">AI工作台</button>
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">业务系统</button>
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">航班动态</button>
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">通讯录</button>
-                <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">数据看板</button>
-              </nav>
-
-              {/* 右侧用户区 */}
-              <div className="flex items-center gap-4">
-                <button className="text-gray-600 hover:text-pink-700">
-                  <Search size={20} />
-                </button>
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  <img
-                    src="https://api.dicebear.com/7.x/initials/svg?seed=梁劼&backgroundColor=ec4899"
-                    alt="用户"
-                    className="w-full h-full rounded-full"
-                  />
-                </div>
-                <span className="text-gray-700 font-medium text-sm">梁劼</span>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
       {/* 主内容区 */}
+      <div className="flex-1 overflow-y-auto">
       {portalType === 'personal' ? (
         <div className="relative">
-          <Personal_Enterprise 
-            displayedSystems={displayedSystems}
-            onSettingsClick={() => setShowSettings(true)}
-          />
+          <Personal_Enterprise />
         </div>
       ) : (
         <div className="relative">
@@ -189,10 +131,10 @@ export default function Enterprise() {
             </div>
             
             {/* 左右切换箭头 */}
-            <button className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-gray-600 backdrop-blur-sm z-20 transition-colors">
+            <button className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 backdrop-blur-sm z-20 transition-colors">
               <ChevronLeft size={24} />
             </button>
-            <button className="absolute right-[320px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-gray-600 backdrop-blur-sm z-20 transition-colors">
+            <button className="absolute right-[320px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-gray-600 dark:text-gray-300 backdrop-blur-sm z-20 transition-colors">
               <ChevronRight size={24} />
             </button>
             
@@ -264,13 +206,13 @@ export default function Enterprise() {
           {/* 主要内容区域 */}
           <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
             {/* 近期待办 */}
-            <div className="bg-white rounded-xl shadow-sm p-5">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <Monitor size={20} className="text-gray-600" />
+                  <div className="w-9 h-9 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                    <Monitor size={20} className="text-gray-600 dark:text-gray-300" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-800">近期待办</h2>
+                  <h2 className="text-xl font-bold text-gray-800 dark:text-white">近期待办</h2>
                 </div>
                 <button className="bg-pink-700 hover:bg-pink-800 text-white px-6 py-1.5 rounded text-sm font-medium transition-colors">
                   查看全部
@@ -281,9 +223,9 @@ export default function Enterprise() {
                 {TODO_ITEMS.map((item, index) => (
                   <div key={index} className="flex items-center gap-3 text-sm">
                     <span className="text-pink-500 text-xs">▸</span>
-                    <span className="text-gray-700 flex-1 truncate">{item.title}</span>
-                    <span className="px-2 py-0.5 bg-teal-50 text-teal-600 rounded text-xs whitespace-nowrap">{item.status}</span>
-                    <span className="text-gray-400 text-xs whitespace-nowrap">{item.date}</span>
+                    <span className="text-gray-700 dark:text-gray-200 flex-1 truncate">{item.title}</span>
+                    <span className="px-2 py-0.5 bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 rounded text-xs whitespace-nowrap">{item.status}</span>
+                    <span className="text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap">{item.date}</span>
                   </div>
                 ))}
               </div>
@@ -292,45 +234,45 @@ export default function Enterprise() {
             {/* 文件中心和我的日程 */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* 文件中心 */}
-              <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100">
+              <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <h2 className="text-xl font-bold text-gray-800">文件中心</h2>
+                      <h2 className="text-xl font-bold text-gray-800 dark:text-white">文件中心</h2>
                       <div className="flex gap-3 text-sm">
-                        <button className="text-gray-400 hover:text-gray-600">通告中心</button>
-                        <button className="text-gray-400 hover:text-gray-600">手册制度</button>
-                        <button className="text-gray-400 hover:text-gray-600">文化专栏</button>
-                        <button className="text-gray-400 hover:text-gray-600">部门文档</button>
-                        <button className="text-gray-400 hover:text-gray-600">内部招聘</button>
+                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">通告中心</button>
+                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">手册制度</button>
+                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">文化专栏</button>
+                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">部门文档</button>
+                        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">内部招聘</button>
                       </div>
                     </div>
-                    <button className="text-gray-400 hover:text-gray-600 text-sm">More</button>
+                    <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm">More</button>
                   </div>
                 </div>
                 
                 {/* 文件子标签 */}
                 <div className="px-5">
-                  <div className="flex border-b border-gray-200 overflow-x-auto">
+                  <div className="flex border-b border-gray-200 dark:border-gray-600 overflow-x-auto">
                     <button className="px-4 py-2.5 border-b-2 border-pink-700 text-pink-700 font-medium text-sm whitespace-nowrap">公司文件</button>
-                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">党群文件</button>
-                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">会议纪要</button>
-                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">人事任免</button>
-                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">工作简报</button>
-                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">局方文件</button>
-                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">外部文件</button>
-                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">安全管理</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm whitespace-nowrap">党群文件</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm whitespace-nowrap">会议纪要</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm whitespace-nowrap">人事任免</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm whitespace-nowrap">工作简报</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm whitespace-nowrap">局方文件</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm whitespace-nowrap">外部文件</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-sm whitespace-nowrap">安全管理</button>
                   </div>
                   
                   {/* 文件列表 */}
                   <div className="py-3">
                     {FILE_ITEMS.map((file, index) => (
-                      <div key={index} className="flex items-center justify-between py-2.5 border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
+                      <div key={index} className="flex items-center justify-between py-2.5 border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer">
                         <div className="flex items-center gap-2">
-                          <span className="text-gray-700 text-sm truncate">{file.title}</span>
+                          <span className="text-gray-700 dark:text-gray-200 text-sm truncate">{file.title}</span>
                           {file.isNew && <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />}
                         </div>
-                        <span className="text-gray-400 text-xs whitespace-nowrap">{file.date}</span>
+                        <span className="text-gray-400 dark:text-gray-500 text-xs whitespace-nowrap">{file.date}</span>
                       </div>
                     ))}
                   </div>
@@ -338,71 +280,71 @@ export default function Enterprise() {
               </div>
 
               {/* 我的日程 */}
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="px-5 py-4 border-b border-gray-100">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <div className="w-9 h-9 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
                         <CalendarIcon />
                       </div>
-                      <h2 className="text-xl font-bold text-gray-800">我的日程</h2>
+                      <h2 className="text-xl font-bold text-gray-800 dark:text-white">我的日程</h2>
                     </div>
-                    <button className="text-gray-400 hover:text-gray-600 text-sm">更多日程</button>
+                    <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-sm">更多日程</button>
                   </div>
                 </div>
                 
                 <div className="p-5">
                   {/* 日历头部 */}
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-800">2026.05</h3>
+                    <h3 className="text-lg font-bold text-gray-800 dark:text-white">2026.05</h3>
                     <div className="flex items-center gap-1">
-                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
-                        <Plus size={14} />
+                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <Plus size={14} className="dark:text-gray-300" />
                       </button>
-                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
-                        <ChevronLeft size={14} />
+                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <ChevronLeft size={14} className="dark:text-gray-300" />
                       </button>
                       <button className="px-2 py-0.5 bg-pink-700 text-white rounded text-xs">今日</button>
-                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
-                        <ChevronRight size={14} />
+                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 dark:border-gray-600 rounded hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <ChevronRight size={14} className="dark:text-gray-300" />
                       </button>
                     </div>
                   </div>
                   
                   {/* 日历网格 */}
-                  <div className="border border-gray-200 rounded-lg p-2">
+                  <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-2">
                     <div className="grid grid-cols-7 gap-0 text-center mb-1">
-                      <div className="text-gray-400 text-xs py-1">日</div>
-                      <div className="text-gray-400 text-xs py-1">一</div>
-                      <div className="text-gray-400 text-xs py-1">二</div>
-                      <div className="text-gray-400 text-xs py-1">三</div>
-                      <div className="text-gray-400 text-xs py-1">四</div>
-                      <div className="text-gray-400 text-xs py-1">五</div>
-                      <div className="text-gray-400 text-xs py-1">六</div>
+                      <div className="text-gray-400 dark:text-gray-500 text-xs py-1">日</div>
+                      <div className="text-gray-400 dark:text-gray-500 text-xs py-1">一</div>
+                      <div className="text-gray-400 dark:text-gray-500 text-xs py-1">二</div>
+                      <div className="text-gray-400 dark:text-gray-500 text-xs py-1">三</div>
+                      <div className="text-gray-400 dark:text-gray-500 text-xs py-1">四</div>
+                      <div className="text-gray-400 dark:text-gray-500 text-xs py-1">五</div>
+                      <div className="text-gray-400 dark:text-gray-500 text-xs py-1">六</div>
                     </div>
                     <div className="grid grid-cols-7 gap-0 text-center text-sm">
-                      <div className="py-1.5 text-gray-400">24</div>
+                      <div className="py-1.5 text-gray-400 dark:text-gray-600">24</div>
                       <div className="py-1.5 bg-pink-700 text-white rounded font-medium">25</div>
-                      <div className="py-1.5 text-gray-800">26</div>
-                      <div className="py-1.5 text-gray-800 relative">
+                      <div className="py-1.5 text-gray-800 dark:text-gray-200">26</div>
+                      <div className="py-1.5 text-gray-800 dark:text-gray-200 relative">
                         27
                         <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-red-500 rounded-full" />
                       </div>
-                      <div className="py-1.5 text-gray-800 relative">
+                      <div className="py-1.5 text-gray-800 dark:text-gray-200 relative">
                         28
                         <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-red-500 rounded-full" />
                       </div>
-                      <div className="py-1.5 text-gray-800">29</div>
-                      <div className="py-1.5 text-gray-800">30</div>
+                      <div className="py-1.5 text-gray-800 dark:text-gray-200">29</div>
+                      <div className="py-1.5 text-gray-800 dark:text-gray-200">30</div>
                     </div>
                   </div>
 
                   {/* 今日无日程提示 */}
                   <div className="mt-4 text-center py-4">
-                    <div className="text-gray-300 mb-2">
+                    <div className="text-gray-300 dark:text-gray-600 mb-2">
                       <Monitor size={32} className="mx-auto" />
                     </div>
-                    <p className="text-gray-400 text-sm">当日暂无日程</p>
+                    <p className="text-gray-400 dark:text-gray-500 text-sm">当日暂无日程</p>
                   </div>
                 </div>
               </div>
@@ -411,9 +353,11 @@ export default function Enterprise() {
         </div>
       )}
 
+      </div>{/* end flex-1 overflow-y-auto */}
+
       {/* 企业门户专属右侧固定悬浮栏 */}
       {portalType === 'enterprise' && (
-        <div className="fixed right-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-l-xl flex flex-col overflow-hidden z-30">
+        <div className="fixed right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-lg rounded-l-xl flex flex-col overflow-hidden z-30">
           {/* IT提报 */}
           <div className="p-2 bg-pink-700 text-white">
             <div className="flex flex-col items-center gap-1">
@@ -425,22 +369,22 @@ export default function Enterprise() {
           </div>
           
           <div className="flex flex-col items-center gap-1 p-2">
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
+            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
               <MoreHorizontal size={18} />
             </button>
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
+            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
               <Mail size={18} />
             </button>
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
+            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
               <Smartphone size={18} />
             </button>
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
+            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
               <BarChart3 size={18} />
             </button>
           </div>
           
           {/* 如意助手悬浮 */}
-          <div className="border-t border-gray-100 p-2">
+          <div className="border-t border-gray-100 dark:border-gray-700 p-2">
             <div className="relative flex flex-col items-center">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center overflow-hidden">
                 <img 
@@ -458,63 +402,63 @@ export default function Enterprise() {
       {/* 常用系统设置弹窗 */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-end z-50">
-          <div className="bg-white shadow-xl w-full max-w-lg h-full overflow-hidden flex flex-col">
+          <div className="bg-white dark:bg-gray-800 shadow-xl w-full max-w-lg h-full overflow-hidden flex flex-col">
             {/* 弹窗头部 */}
-            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setShowSettings(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
                 >
                   <ChevronLeft size={20} />
                 </button>
-                <h3 className="text-lg font-bold text-gray-800">常用应用</h3>
+                <h3 className="text-lg font-bold text-gray-800 dark:text-white">常用应用</h3>
               </div>
               <button 
                 onClick={() => setShowSettings(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               >
                 <X size={20} />
               </button>
             </div>
             
             {/* 搜索框 */}
-            <div className="p-4 border-b border-gray-100">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
               <div className="relative">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
                   placeholder="搜索"
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 />
               </div>
             </div>
             
             {/* 已添加应用 */}
-            <div className="p-4 border-b border-gray-100">
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">已添加应用 ({selectedSystems.length})</span>
-                <button className="text-sm text-pink-700 hover:underline">管理</button>
+                <span className="text-sm text-gray-500 dark:text-gray-400">已添加应用 ({selectedSystems.length})</span>
+                <button className="text-sm text-pink-700 dark:text-pink-400 hover:underline">管理</button>
               </div>
             </div>
             
             {/* 全部应用 */}
             <div className="flex-1 overflow-auto">
               <div className="p-4">
-                <h4 className="font-medium text-gray-800 mb-3">全部应用</h4>
+                <h4 className="font-medium text-gray-800 dark:text-white mb-3">全部应用</h4>
                 
                 {/* 分类标签 */}
                 <div className="flex gap-2 mb-4">
                   {SYSTEM_CATEGORIES.map(cat => (
                     <button 
                       key={cat}
-                      className="px-3 py-1.5 text-sm font-medium bg-pink-100 text-pink-700 rounded-lg"
+                      className="px-3 py-1.5 text-sm font-medium bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 rounded-lg"
                     >
                       {cat}
                     </button>
                   ))}
-                  <button className="px-3 py-1.5 text-sm text-gray-400 hover:text-gray-600">其他</button>
-                  <button className="text-gray-400 hover:text-gray-600">
+                  <button className="px-3 py-1.5 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">其他</button>
+                  <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">
                     <ChevronRight size={16} />
                   </button>
                 </div>
@@ -522,28 +466,28 @@ export default function Enterprise() {
                 {/* 应用列表 */}
                 {SYSTEM_CATEGORIES.map(category => (
                   <div key={category} className="mb-6">
-                    <h5 className="text-sm font-medium text-gray-500 mb-3">{category}</h5>
+                    <h5 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">{category}</h5>
                     <div className="space-y-2">
                       {ALL_SYSTEMS.filter(sys => sys.category === category).map(sys => (
                         <div 
                           key={sys.id}
-                          className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                          className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                         >
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 ${sys.bgColor || 'bg-blue-500'} rounded-lg flex items-center justify-center`}>
                               <span className="text-lg text-white">{sys.icon}</span>
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-gray-800">{sys.name}</p>
-                              <p className="text-xs text-gray-400">来源于审批</p>
+                              <p className="text-sm font-medium text-gray-800 dark:text-white">{sys.name}</p>
+                              <p className="text-xs text-gray-400 dark:text-gray-500">来源于审批</p>
                             </div>
                           </div>
                           <button 
                             onClick={() => toggleSystem(sys.id)}
                             className={`px-4 py-1.5 text-sm rounded-lg border transition-colors ${
                               selectedSystems.includes(sys.id)
-                                ? 'border-pink-700 text-pink-700 hover:bg-pink-50'
-                                : 'border-gray-200 text-gray-500 hover:border-pink-300 hover:text-pink-700'
+                                ? 'border-pink-700 text-pink-700 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-900/20'
+                                : 'border-gray-200 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-pink-300 dark:hover:border-pink-600 hover:text-pink-700 dark:hover:text-pink-400'
                             }`}
                           >
                             {selectedSystems.includes(sys.id) ? '已添加' : '添加'}

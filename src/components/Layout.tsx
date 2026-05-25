@@ -1,6 +1,6 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MessageSquare, Bell, Calendar, Folder, Hexagon, User, X, XCircle, Search, Menu, ChevronRight, ChevronLeft } from 'lucide-react';
+import { MessageSquare, Bell, Calendar, Folder, Hexagon, User, X, XCircle, Search, Menu, ChevronRight, ChevronLeft, Plus, Link as LinkIcon } from 'lucide-react';
 import { create } from 'zustand';
 import { useThemeStore } from '../store/themeStore';
 import { useLayoutStore } from '../store/layoutStore';
@@ -57,8 +57,8 @@ const pageTitles: Record<string, string> = {
   '/business': '业务系统',
   '/ruyi-zone': '如意空间',
   '/agent-square': '智能体广场',
-  '/profile': '个人设置',
-  '/settings': '应用设置'
+  '/profile': '个人信息',
+  '/settings': '系统设置'
 };
 
 export default function Layout({ children }: LayoutProps) {
@@ -73,6 +73,10 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR.EXPANDED_WIDTH);
   const [isDragging, setIsDragging] = useState(false);
   const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
+  const [showAddLinkPopup, setShowAddLinkPopup] = useState(false);
+  const [linkLabel, setLinkLabel] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+  const addLinkBtnRef = useRef<HTMLButtonElement>(null);
 
   // 拖动调整左侧导航栏宽度
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -324,24 +328,97 @@ export default function Layout({ children }: LayoutProps) {
           )}
         </div>
 
-        <div className={`border-t border-white/20 ${showNavigation ? 'p-3' : 'p-2 flex flex-col items-center'} flex-shrink-0`}>
-          <button
-            onClick={() => {
-              if (!showNavigation && isManuallyCollapsed) {
-                setSidebarWidth(SIDEBAR.EXPANDED_WIDTH);
-                setIsManuallyCollapsed(false);
-              }
-              toggleNavigation();
-            }}
-            className={`
-              ${showNavigation ? 'inline-flex justify-end' : 'flex justify-center'}
-              p-2 rounded-lg hover:bg-white/20 transition-all duration-300
-              text-white/80 hover:text-white
-            `}
-            title={showNavigation ? "收起导航栏" : "展开导航栏"}
-          >
-            {showNavigation ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
-          </button>
+        <div className={`border-t border-white/20 ${showNavigation ? 'p-3' : 'p-2 flex flex-col items-center gap-2'} flex-shrink-0`}>
+          <div className={`${showNavigation ? 'flex items-center justify-between' : 'flex flex-col items-center gap-2'}`}>
+            {/* 添加链接按钮 */}
+            <div className="relative">
+              <button
+                ref={addLinkBtnRef}
+                onClick={() => setShowAddLinkPopup(!showAddLinkPopup)}
+                className={`
+                  ${showNavigation ? 'inline-flex items-center gap-1.5' : 'flex justify-center'}
+                  p-2 rounded-lg hover:bg-white/20 transition-all duration-300
+                  text-white/80 hover:text-white
+                `}
+                title="添加链接"
+              >
+                <Plus size={18} />
+                {showNavigation && <span className="text-xs font-medium">添加</span>}
+              </button>
+
+              {/* 添加链接弹框 */}
+              {showAddLinkPopup && (
+                <>
+                  <div className="fixed inset-0 z-[60]" onClick={() => setShowAddLinkPopup(false)} />
+                  <div className="absolute bottom-full left-0 mb-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-4 z-[65]">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">添加链接</h3>
+                      <button
+                        onClick={() => setShowAddLinkPopup(false)}
+                        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                      >
+                        <X size={16} className="text-gray-400" />
+                      </button>
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">标签名</label>
+                        <input
+                          type="text"
+                          value={linkLabel}
+                          onChange={(e) => setLinkLabel(e.target.value)}
+                          placeholder="输入标签名称"
+                          className="w-full px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg border border-transparent focus:border-theme-500 focus:ring-1 focus:ring-theme-500 outline-none placeholder-gray-400 dark:placeholder-gray-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">跳转地址</label>
+                        <input
+                          type="text"
+                          value={linkUrl}
+                          onChange={(e) => setLinkUrl(e.target.value)}
+                          placeholder="输入链接地址"
+                          className="w-full px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg border border-transparent focus:border-theme-500 focus:ring-1 focus:ring-theme-500 outline-none placeholder-gray-400 dark:placeholder-gray-500"
+                        />
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (linkLabel && linkUrl) {
+                            setLinkLabel('');
+                            setLinkUrl('');
+                            setShowAddLinkPopup(false);
+                          }
+                        }}
+                        disabled={!linkLabel || !linkUrl}
+                        className="w-full py-2 text-sm font-medium bg-theme-500 text-white rounded-lg hover:bg-theme-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        确认添加
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* 折叠/展开按钮 */}
+            <button
+              onClick={() => {
+                if (!showNavigation && isManuallyCollapsed) {
+                  setSidebarWidth(SIDEBAR.EXPANDED_WIDTH);
+                  setIsManuallyCollapsed(false);
+                }
+                toggleNavigation();
+              }}
+              className={`
+                ${showNavigation ? 'inline-flex justify-end' : 'flex justify-center'}
+                p-2 rounded-lg hover:bg-white/20 transition-all duration-300
+                text-white/80 hover:text-white
+              `}
+              title={showNavigation ? "收起导航栏" : "展开导航栏"}
+            >
+              {showNavigation ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+            </button>
+          </div>
         </div>
       </div>
 

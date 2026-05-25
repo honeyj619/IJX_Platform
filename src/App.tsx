@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import MobileDevicePrompt from "@/components/MobileDevicePrompt";
 import Home from "@/pages/Home";
-import Personal_Enterprise from "@/pages/Personal_Enterprise";
+import Enterprise from "@/pages/Enterprise";
 import Assistant from "@/pages/Assistant";
 import Process from "@/pages/Process";
 import Knowledge from "@/pages/Knowledge";
@@ -104,23 +104,30 @@ export default function App() {
 
   return (
     <Router basename={import.meta.env.BASE_URL}>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/enterprise" element={<Personal_Enterprise />} />
-          <Route path="/assistant" element={<Assistant />} />
-          <Route path="/process" element={<Process />} />
-          <Route path="/knowledge" element={<Knowledge />} />
-          <Route path="/ekb" element={<EKB />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/agent-square" element={<AgentSquarePage />} />
-          <Route path="/ruyi-zone" element={<RuYiZone />} />
-          <Route path="/calendar" element={<Calendar />} />
-          <Route path="/business" element={<Business />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
-      </Layout>
+      <Routes>
+        {/* 管理后台 — 独立页面，不嵌套在 Layout 中 */}
+        <Route path="/admin" element={<Admin />} />
+        
+        {/* 其他所有页面 — 在 Layout 框架内展示 */}
+        <Route path="*" element={
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/enterprise" element={<Enterprise />} />
+              <Route path="/assistant" element={<Assistant />} />
+              <Route path="/process" element={<Process />} />
+              <Route path="/knowledge" element={<Knowledge />} />
+              <Route path="/ekb" element={<EKB />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/agent-square" element={<AgentSquarePage />} />
+              <Route path="/ruyi-zone" element={<RuYiZone />} />
+              <Route path="/calendar" element={<Calendar />} />
+              <Route path="/business" element={<Business />} />
+              <Route path="/settings" element={<SettingsPage />} />
+            </Routes>
+          </Layout>
+        } />
+      </Routes>
     </Router>
   );
 }

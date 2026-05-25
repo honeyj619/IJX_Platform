@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { Search, Hexagon, ArrowRight, Plus, X, User, Upload } from "lucide-react";
-
 interface System {
   id: number;
   name: string;
@@ -160,7 +159,7 @@ export default function Business() {
     setActiveCategory(categoryId);
     const element = document.getElementById(`section-${categoryId}`);
     if (element && contentRef.current) {
-      const headerOffset = 160;
+      const headerOffset = 90;
       const elementPosition = element.getBoundingClientRect().top;
       const scrollTop = contentRef.current.scrollTop;
       const offsetPosition = elementPosition + scrollTop - headerOffset;
@@ -184,7 +183,7 @@ export default function Business() {
 
       for (let i = categories.length - 1; i >= 0; i--) {
         const cat = categories[i];
-        if (cat.element && cat.element.offsetTop <= scrollTop + 160) {
+        if (cat.element && cat.element.offsetTop <= scrollTop + 90) {
           setActiveCategory(cat.id);
           return;
         }
@@ -234,78 +233,62 @@ export default function Business() {
   };
 
   return (
-    
-      <div className="h-full flex flex-col bg-slate-50">
-        <div className="bg-white border-b border-slate-200/60">
-          <div className="px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 pb-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-slate-800 to-slate-600 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200">
-                  <Hexagon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-slate-900 tracking-tight">业务系统</h1>
-                  <p className="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">快速访问企业各类业务系统</p>
-                </div>
+      <div className="h-full flex flex-col bg-slate-50 dark:bg-gray-900">
+        {/* 内联工具栏 — 搜索 + 新增 + 分类筛选 */}
+        <div className="shrink-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-700/60">
+          <div className="px-6 py-3 flex items-center justify-between gap-4">
+            <div className="relative flex-1 max-w-xs">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search size={16} className="text-slate-400 dark:text-slate-500" />
               </div>
-              <div className="flex items-center gap-2 sm:gap-3 lg:gap-4 lg:w-auto">
-                <div className="relative flex-1 lg:flex-none">
-                  <div className="absolute inset-y-0 left-0 pl-3 sm:pl-4 flex items-center pointer-events-none">
-                    <Search size={16} sm:size={18} className="text-slate-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="搜索系统名称..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full lg:w-56 xl:w-64 pl-9 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-slate-100 border-0 rounded-xl text-sm sm:text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:bg-white transition-all"
-                  />
-                </div>
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 bg-theme-600 text-white rounded-xl hover:bg-theme-700 transition-colors shadow-lg shadow-theme-600/30 whitespace-nowrap flex-shrink-0"
-                >
-                  <Plus size={16} sm:size={18} />
-                  <span className="text-sm sm:text-base font-medium">新增</span>
-                </button>
-              </div>
+              <input
+                type="text"
+                placeholder="搜索系统名称..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-gray-700 border-0 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:bg-white dark:focus:bg-gray-700 transition-all"
+              />
             </div>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-theme-600 text-white rounded-xl hover:bg-theme-700 transition-colors shadow-sm whitespace-nowrap"
+            >
+              <Plus size={16} />
+              <span className="text-sm font-medium">新增</span>
+            </button>
           </div>
-
-          <div className="px-4 sm:px-6 lg:px-8 pb-4">
-            <div className="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="px-6 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
+            <button
+              onClick={() => scrollToCategory('all')}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                activeCategory === 'all'
+                  ? 'bg-theme-600 text-white shadow-lg shadow-theme-600/30'
+                  : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-gray-600'
+              }`}
+            >
+              全部
+            </button>
+            {categoryGroups.map(cat => (
               <button
-                onClick={() => scrollToCategory('all')}
-                className={`flex-shrink-0 px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
-                  activeCategory === 'all'
-                    ? 'bg-theme-600 text-white shadow-lg shadow-theme-600/30'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                key={cat.id}
+                onClick={() => scrollToCategory(cat.id)}
+                className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                  activeCategory === cat.id
+                    ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
+                    : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-gray-600'
                 }`}
               >
-                全部
+                <span className={`w-1.5 h-1.5 rounded-full ${activeCategory === cat.id ? 'bg-white/70' : cat.color.replace('from-', 'bg-').split(' ')[0]}`}></span>
+                <span>{cat.name}</span>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeCategory === cat.id ? 'bg-white/20' : 'bg-slate-200 dark:bg-gray-600'}`}>
+                  {cat.count}
+                </span>
               </button>
-              {categoryGroups.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => scrollToCategory(cat.id)}
-                  className={`flex-shrink-0 flex items-center gap-1 sm:gap-2 px-3 sm:px-4 lg:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
-                    activeCategory === cat.id
-                      ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${activeCategory === cat.id ? 'bg-white/70' : cat.color.replace('from-', 'bg-').split(' ')[0]}`}></span>
-                  <span className="hidden xs:inline">{cat.name}</span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeCategory === cat.id ? 'bg-white/20' : 'bg-slate-200'}`}>
-                    {cat.count}
-                  </span>
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
 
-        <div ref={contentRef} className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div ref={contentRef} className="flex-1 overflow-y-auto px-6 py-6">
           {categoryGroups.map((cat) => {
             const categorySystems = getCategorySystems(cat.id);
             if (categorySystems.length === 0) return null;
@@ -317,15 +300,15 @@ export default function Business() {
                     <Hexagon size={22} className="hidden sm:block" />
                   </div>
                   <div>
-                    <h2 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900">{cat.name}</h2>
-                    <p className="text-xs sm:text-sm text-slate-500">{categorySystems.length} 个系统</p>
+                    <h2 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 dark:text-white">{cat.name}</h2>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">{categorySystems.length} 个系统</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
                   {categorySystems.map((system) => (
                     <div
                       key={system.id}
-                      className="group relative bg-white rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-slate-200/60 hover:border-theme-400 hover:shadow-xl hover:shadow-theme-200/50 transition-all duration-300 cursor-pointer overflow-hidden"
+                      className="group relative bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-slate-200/60 dark:border-gray-700 hover:border-theme-400 hover:shadow-xl hover:shadow-theme-200/50 transition-all duration-300 cursor-pointer overflow-hidden"
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-theme-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       
@@ -338,18 +321,18 @@ export default function Business() {
                           )}
                         </div>
                         <div className="flex-1 min-w-0 pt-0.5 sm:pt-1">
-                          <h3 className="font-semibold text-slate-900 group-hover:text-theme-600 transition-colors truncate text-sm sm:text-base lg:text-lg">
+                          <h3 className="font-semibold text-slate-900 dark:text-white group-hover:text-theme-600 transition-colors truncate text-sm sm:text-base lg:text-lg">
                             {system.name}
                           </h3>
-                          <p className="text-xs sm:text-sm text-slate-500 mt-1 sm:mt-2 line-clamp-2 leading-relaxed hidden sm:block">
+                          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 sm:mt-2 line-clamp-2 leading-relaxed hidden sm:block">
                             {system.description}
                           </p>
                         </div>
                       </div>
                       
-                      <div className="relative mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 flex items-center justify-between">
-                        <span className="text-xs text-slate-400 font-medium hidden sm:inline">点击访问</span>
-                        <div className="flex items-center gap-1 text-slate-400 group-hover:text-theme-500 transition-colors ml-auto">
+                      <div className="relative mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-100 dark:border-gray-700 flex items-center justify-between">
+                        <span className="text-xs text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">点击访问</span>
+                        <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500 group-hover:text-theme-500 transition-colors ml-auto">
                           <span className="text-xs font-medium">进入</span>
                           <ArrowRight size={12} sm:size={14} className="group-hover:translate-x-1 transition-transform" />
                         </div>
@@ -363,13 +346,13 @@ export default function Business() {
 
           {filteredSystems.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 sm:py-20 lg:py-24">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full bg-slate-100 flex items-center justify-center mb-4 sm:mb-6">
-                <Search size={28} sm:size={32} lg:size={36} className="text-slate-300" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full bg-slate-100 dark:bg-gray-700 flex items-center justify-center mb-4 sm:mb-6">
+                <Search size={28} sm:size={32} lg:size={36} className="text-slate-300 dark:text-slate-500" />
               </div>
-              <p className="text-base sm:text-lg text-slate-600 font-medium">未找到匹配的系统</p>
+              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 font-medium">未找到匹配的系统</p>
               <button
                 onClick={() => setSearchQuery('')}
-                className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-500 hover:text-slate-700 font-medium"
+                className="mt-3 sm:mt-4 text-sm sm:text-base text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 font-medium"
               >
                 清除搜索条件
               </button>
@@ -380,35 +363,35 @@ export default function Business() {
         {showAddModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4">
             <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowAddModal(false)} />
-            <div className="relative bg-white w-full h-full sm:h-auto sm:w-full sm:max-w-lg sm:max-h-[90vh] sm:rounded-2xl sm:mx-4 shadow-2xl overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 flex-shrink-0">
+            <div className="relative bg-white dark:bg-gray-800 w-full h-full sm:h-auto sm:w-full sm:max-w-lg sm:max-h-[90vh] sm:rounded-2xl sm:mx-4 shadow-2xl overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-gray-700 flex-shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                    <Hexagon size={18} sm:size={20} className="text-slate-600" />
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 bg-slate-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
+                    <Hexagon size={18} sm:size={20} className="text-slate-600 dark:text-slate-300" />
                   </div>
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900">新增业务系统</h2>
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">新增业务系统</h2>
                 </div>
-                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                  <X size={20} className="text-slate-500" />
+                <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+                  <X size={20} className="text-slate-500 dark:text-slate-400" />
                 </button>
               </div>
               
               <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">系统名称 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">系统名称 <span className="text-red-500">*</span></label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 focus:bg-white transition-all"
+                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-700 transition-all"
                     placeholder="请输入系统名称"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">系统图标</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">系统图标</label>
                   <div 
-                    className="border-2 border-dashed border-slate-200 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer"
+                    className="border-2 border-dashed border-slate-200 dark:border-gray-600 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-center hover:border-slate-300 dark:hover:border-gray-500 hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-all cursor-pointer"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     {iconPreview ? (
@@ -423,11 +406,11 @@ export default function Business() {
                       </div>
                     ) : (
                       <>
-                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-100 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
-                          <Upload size={24} sm:size={28} className="text-slate-400" />
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-100 dark:bg-gray-700 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
+                          <Upload size={24} sm:size={28} className="text-slate-400 dark:text-slate-500" />
                         </div>
-                        <p className="text-sm text-slate-500 font-medium">点击上传图标</p>
-                        <p className="text-xs text-slate-400 mt-1">支持 PNG、JPG，最大 2MB</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">点击上传图标</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">支持 PNG、JPG，最大 2MB</p>
                       </>
                     )}
                   </div>
@@ -441,33 +424,33 @@ export default function Business() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">系统描述</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">系统描述</label>
                   <textarea
                     value={formData.description}
                     onChange={(e) => handleInputChange('description', e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 focus:bg-white transition-all resize-none"
+                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-700 transition-all resize-none"
                     placeholder="请输入系统描述"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">跳转地址</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">跳转地址</label>
                   <input
                     type="text"
                     value={formData.url}
                     onChange={(e) => handleInputChange('url', e.target.value)}
-                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 focus:bg-white transition-all"
+                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-700 transition-all"
                     placeholder="请输入系统访问地址"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">所属领域</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">所属领域</label>
                   <select
                     value={formData.domain}
                     onChange={(e) => handleInputChange('domain', e.target.value)}
-                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 focus:bg-white transition-all appearance-none cursor-pointer"
+                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-700 transition-all appearance-none cursor-pointer"
                   >
                     {categoryGroups.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
@@ -476,11 +459,11 @@ export default function Business() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">可见范围</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">可见范围</label>
                   <select
                     value={formData.visibility}
                     onChange={(e) => handleInputChange('visibility', e.target.value)}
-                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 focus:bg-white transition-all appearance-none cursor-pointer"
+                    className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-400/30 focus:border-slate-300 dark:focus:border-gray-500 focus:bg-white dark:focus:bg-gray-700 transition-all appearance-none cursor-pointer"
                   >
                     {visibilityOptions.map(option => (
                       <option key={option.value} value={option.value}>{option.label}</option>
@@ -489,39 +472,39 @@ export default function Business() {
                 </div>
 
                 <div className="relative">
-                  <label className="block text-sm font-medium text-slate-700 mb-2">系统负责人</label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">系统负责人</label>
                   <div className="relative" ref={contactPickerRef}>
                     <div 
-                      className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-slate-300 hover:bg-white transition-all"
+                      className="w-full px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl cursor-pointer hover:border-slate-300 dark:hover:border-gray-500 hover:bg-white dark:hover:bg-gray-700 transition-all"
                       onClick={() => setShowContactPicker(!showContactPicker)}
                     >
                       {formData.ownerName ? (
                         <div className="flex items-center gap-3">
-                          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-200 rounded-lg flex items-center justify-center">
-                            <User size={14} sm:size={16} className="text-slate-600" />
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                            <User size={14} sm:size={16} className="text-slate-600 dark:text-slate-300" />
                           </div>
-                          <span className="text-slate-700 font-medium text-sm sm:text-base">{formData.ownerName}</span>
+                          <span className="text-slate-700 dark:text-slate-200 font-medium text-sm sm:text-base">{formData.ownerName}</span>
                         </div>
                       ) : (
-                        <span className="text-slate-400 text-sm sm:text-base">请选择系统负责人</span>
+                        <span className="text-slate-400 dark:text-slate-500 text-sm sm:text-base">请选择系统负责人</span>
                       )}
                     </div>
                     
                     {showContactPicker && (
-                      <div className="absolute z-20 w-full mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 sm:max-h-60 overflow-y-auto">
+                      <div className="absolute z-20 w-full mt-2 bg-white dark:bg-gray-800 border border-slate-200 dark:border-gray-600 rounded-xl shadow-xl max-h-48 sm:max-h-60 overflow-y-auto">
                         {mockContacts.map(contact => (
                           <div
                             key={contact.id}
-                            className="px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0 transition-colors"
+                            className="px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-slate-50 dark:hover:bg-gray-700/50 cursor-pointer border-b border-slate-100 dark:border-gray-700 last:border-b-0 transition-colors"
                             onClick={() => handleSelectContact(contact)}
                           >
                             <div className="flex items-center gap-2 sm:gap-3">
-                              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-slate-100 rounded-lg flex items-center justify-center">
-                                <User size={14} sm:size={16} className="text-slate-500" />
+                              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-slate-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                                <User size={14} sm:size={16} className="text-slate-500 dark:text-slate-400" />
                               </div>
                               <div>
-                                <p className="text-sm font-medium text-slate-900">{contact.name}</p>
-                                <p className="text-xs text-slate-500 hidden sm:block">{contact.department} · {contact.position}</p>
+                                <p className="text-sm font-medium text-slate-900 dark:text-white">{contact.name}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">{contact.department} · {contact.position}</p>
                               </div>
                             </div>
                           </div>
@@ -532,20 +515,20 @@ export default function Business() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">申请人</label>
-                  <div className="flex items-center gap-2 sm:gap-3 px-4 py-2.5 sm:py-3 bg-slate-50 border border-slate-200 rounded-xl">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-200 rounded-lg flex items-center justify-center">
-                      <User size={14} sm:size={16} className="text-slate-600" />
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">申请人</label>
+                  <div className="flex items-center gap-2 sm:gap-3 px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                      <User size={14} sm:size={16} className="text-slate-600 dark:text-slate-300" />
                     </div>
-                    <span className="text-slate-700 font-medium text-sm sm:text-base">{formData.applicant}</span>
+                    <span className="text-slate-700 dark:text-slate-200 font-medium text-sm sm:text-base">{formData.applicant}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 flex-shrink-0 bg-white">
+              <div className="flex items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-100 dark:border-gray-700 flex-shrink-0 bg-white dark:bg-gray-800">
                 <button
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 sm:px-5 py-2 sm:py-2.5 border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm sm:text-base"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 border border-slate-200 dark:border-gray-600 text-slate-600 dark:text-slate-300 rounded-xl hover:bg-slate-50 dark:hover:bg-gray-700 transition-colors font-medium text-sm sm:text-base"
                 >
                   取消
                 </button>

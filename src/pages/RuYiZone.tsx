@@ -143,7 +143,9 @@ export default function RuYiZone() {
           onBack={handleBackFromEditor}
         />
       ) : (
-        <div className="flex h-full bg-gradient-to-br from-gray-50 via-white to-theme-50">
+        <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 via-white to-theme-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+
+        <div className="flex flex-1 min-h-0">
         {/* 移动端菜单按钮 - 放在内容区右侧 */}
         {isMobile && (
           <button 
@@ -166,27 +168,27 @@ export default function RuYiZone() {
         <div className={`
           ${isMobile ? 'fixed inset-y-0 right-0 z-40 w-64' : 'w-[240px] lg:w-[280px] flex-shrink-0'}
           ${showSidebar || mobileMenuOpen ? 'flex' : 'hidden'}
-          bg-white border-l border-gray-100 flex flex-col shadow-lg
+          bg-white dark:bg-gray-800 border-l border-gray-100 dark:border-gray-700 flex flex-col shadow-lg
           transition-transform duration-300 ease-in-out
           ${isMobile && mobileMenuOpen ? 'translate-x-0' : isMobile ? 'translate-x-full' : ''}
         `}>
-          <div className="p-6 border-b border-gray-100">
-            <h3 className="font-bold text-xl text-gray-900 mb-6 flex items-center gap-2">
+          <div className="p-6 border-b border-gray-100 dark:border-gray-700">
+            <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-6 flex items-center gap-2">
               <div className="w-8 h-8 bg-gradient-to-r from-theme-500 to-theme-600 rounded-lg flex items-center justify-center">
                 <Sparkles className="text-white" size={20} />
               </div>
               如意空间
             </h3>
             <div className="space-y-1 mb-8">
-              <h4 className="text-xs font-medium text-gray-500 mb-3 px-2 uppercase tracking-wider">常用智能助手</h4>
+              <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 px-2 uppercase tracking-wider">常用智能助手</h4>
               {assistants.map((assistant) => (
                 <div
                   key={assistant.id}
                   className={`
                     p-3 rounded-lg cursor-pointer transition-all duration-300
                     ${selectedAssistant.id === assistant.id 
-                      ? 'bg-theme-50 text-theme-700 font-medium border-l-4 border-theme-500'
-                      : 'hover:bg-gray-50 border-l-4 border-transparent hover:border-theme-200'
+                      ? 'bg-theme-50 dark:bg-theme-900/20 text-theme-700 dark:text-theme-300 font-medium border-l-4 border-theme-500'
+                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-4 border-transparent hover:border-theme-200'
                     }
                   `}
                   onClick={() => handleAssistantSelect(assistant)}
@@ -194,11 +196,11 @@ export default function RuYiZone() {
                   <div className="flex items-center gap-3">
                     <div className={`
                       w-8 h-8 rounded-lg flex items-center justify-center
-                      ${selectedAssistant.id === assistant.id ? 'bg-theme-100 text-theme-600' : 'bg-gray-100 text-gray-500'}
+                      ${selectedAssistant.id === assistant.id ? 'bg-theme-100 dark:bg-theme-900/30 text-theme-600 dark:text-theme-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}
                     `}>
                       {assistant.icon}
                     </div>
-                    <span>{assistant.name}</span>
+                    <span className={selectedAssistant.id === assistant.id ? '' : 'dark:text-gray-300'}>{assistant.name}</span>
                   </div>
                 </div>
               ))}
@@ -213,18 +215,18 @@ export default function RuYiZone() {
           </div>
           <div className="flex-1 overflow-y-auto p-6">
             <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wider">历史记录</h4>
+              <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">历史记录</h4>
             </div>
             <div className="space-y-3">
               {historyItems.map((item) => (
-                <div key={item.id} className="p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-all duration-300 transform hover:-translate-x-1">
+                <div key={item.id} className="p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-all duration-300 transform hover:-translate-x-1">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                    <div className="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-gray-500 dark:text-gray-400">
                       {item.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h5 className="text-sm font-medium text-gray-900 truncate">{item.title}</h5>
-                      <span className="text-xs text-gray-400">{item.time}</span>
+                      <h5 className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.title}</h5>
+                      <span className="text-xs text-gray-400 dark:text-gray-500">{item.time}</span>
                     </div>
                   </div>
                 </div>
@@ -244,8 +246,8 @@ export default function RuYiZone() {
                 <div className="absolute -bottom-10 right-10 w-40 h-40 bg-gradient-to-r from-blue-100 to-indigo-50 rounded-full opacity-70"></div>
                 
                 <div className="mb-8 md:mb-0 relative z-10">
-                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Hi，梁吉力</h2>
-                  <p className="text-lg md:text-xl text-gray-600">欢迎回到如意空间，有什么可以帮您的吗？</p>
+                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">Hi，梁吉力</h2>
+                  <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300">欢迎回到如意空间，有什么可以帮您的吗？</p>
                 </div>
                 <div className="relative z-10">
                   <div className="absolute -top-4 -left-4 w-40 h-40 bg-gradient-to-r from-theme-200 to-theme-100 rounded-full opacity-70 animate-pulse"></div>
@@ -262,7 +264,7 @@ export default function RuYiZone() {
                 {tools.map((tool) => (
                   <button 
                     key={tool.id} 
-                    className={`inline-flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-300 group ${activeTool === tool.name ? 'bg-theme-50 ring-2 ring-theme-200' : 'hover:bg-gray-50'}`}
+                    className={`inline-flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-300 group ${activeTool === tool.name ? 'bg-theme-50 dark:bg-theme-900/20 ring-2 ring-theme-200' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                     onClick={() => {
                       if (tool.name === '公文') {
                         setActiveTool('公文');
@@ -280,7 +282,7 @@ export default function RuYiZone() {
                       {tool.icon}
                     </div>
                     <div className="text-center">
-                      <h4 className={`text-sm font-medium ${activeTool === tool.name ? 'text-theme-700' : 'text-gray-900'}`}>{tool.name}</h4>
+                      <h4 className={`text-sm font-medium ${activeTool === tool.name ? 'text-theme-700 dark:text-theme-300' : 'text-gray-900 dark:text-gray-200'}`}>{tool.name}</h4>
                     </div>
                   </button>
                 ))}
@@ -288,7 +290,7 @@ export default function RuYiZone() {
 
               {/* 问答对话框 */}
               <div className="mb-16 relative">
-                <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white hover:shadow-md transition-all duration-300 ${activeTool === '公文' ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100'}`}>
+                <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300 ${activeTool === '公文' ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
                   {/* 公文模式 */}
                   {activeTool === '公文' && (
                     <div className="flex flex-wrap items-center gap-2">
@@ -296,14 +298,14 @@ export default function RuYiZone() {
                         <Sparkles size={14} className="text-theme-600" />
                         <span className="text-sm font-medium text-theme-700">快速写作</span>
                       </div>
-                      <span className="text-gray-600">帮我写一篇</span>
+                      <span className="text-gray-600 dark:text-gray-300">帮我写一篇</span>
                       <div className="relative">
                         <input
                           type="text"
                           value={docType}
                           onChange={(e) => setDocType(e.target.value)}
                           placeholder="输入类型"
-                          className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 w-28"
+                          className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 w-28"
                           list="doc-type-list"
                         />
                         <datalist id="doc-type-list">
@@ -312,33 +314,33 @@ export default function RuYiZone() {
                           ))}
                         </datalist>
                       </div>
-                      <span className="text-gray-600">，文章标题是</span>
+                      <span className="text-gray-600 dark:text-gray-300">，文章标题是</span>
                       <input
                         type="text"
                         value={docTitle}
                         onChange={(e) => setDocTitle(e.target.value)}
                         placeholder="输入标题"
-                        className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 w-36"
+                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 w-36"
                       />
-                      <span className="text-gray-600">，文章篇幅</span>
+                      <span className="text-gray-600 dark:text-gray-300">，文章篇幅</span>
                       <select
                         value={docLength}
                         onChange={(e) => setDocLength(e.target.value)}
-                        className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer"
+                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer"
                       >
                         {lengthOptions.map((length) => (
                           <option key={length} value={length}>{length}</option>
                         ))}
                       </select>
-                      <span className="text-gray-600">字左右，内容要求</span>
+                      <span className="text-gray-600 dark:text-gray-300">字左右，内容要求</span>
                       <input
                         type="text"
                         value={docContent}
                         onChange={(e) => setDocContent(e.target.value)}
                         placeholder="输入内容"
-                        className="px-3 py-1.5 bg-gray-100 rounded-lg text-sm outline-none focus:ring-2 focus:ring-theme-200 flex-1 min-w-[80px] md:min-w-[120px]"
+                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 flex-1 min-w-[80px] md:min-w-[120px]"
                       />
-                      <span className="text-gray-600">。</span>
+                      <span className="text-gray-600 dark:text-gray-300">。</span>
                     </div>
                   )}
                   
@@ -349,7 +351,7 @@ export default function RuYiZone() {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder="请输入您的写作需求..."
-                      className="w-full border-none outline-none h-full text-lg font-medium placeholder-gray-400"
+                      className="w-full border-none outline-none h-full text-lg font-medium bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                     />
                   )}
                   
@@ -360,12 +362,12 @@ export default function RuYiZone() {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder="你想问我什么呢？"
-                      className="w-full border-none outline-none h-full text-lg font-medium placeholder-gray-400"
+                      className="w-full border-none outline-none h-full text-lg font-medium bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                     />
                   )}
                   
                   <div className="absolute right-4 bottom-4 flex items-center gap-2">
-                    <button className="text-gray-400 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50">
+                    <button className="text-gray-400 dark:text-gray-500 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50 dark:hover:bg-theme-900/20">
                       <Paperclip size={18} />
                     </button>
                     <button 
@@ -380,11 +382,11 @@ export default function RuYiZone() {
                 {/* 添加参考文档按钮 */}
                 {activeTool === '公文' && (
                   <div className="mt-3 flex items-center justify-between">
-                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors text-sm">
+                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm">
                       <Paperclip size={14} />
                       添加参考文档
                     </button>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-gray-400 dark:text-gray-500">
                       "工作总结"、"会议讲话"、"通知"、"会议纪要"
                     </div>
                   </div>
@@ -393,7 +395,7 @@ export default function RuYiZone() {
 
               {/* 猜你想问 */}
               <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                   <div className="w-6 h-6 bg-gradient-to-r from-theme-500 to-theme-600 rounded flex items-center justify-center">
                     <Sparkles className="text-white" size={14} />
                   </div>
@@ -403,15 +405,15 @@ export default function RuYiZone() {
                   {suggestions.map((suggestion) => (
                     <div 
                       key={suggestion.id} 
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-theme-50 cursor-pointer transition-all duration-300 transform hover:-translate-y-1"
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-theme-50 dark:hover:bg-theme-900/20 cursor-pointer transition-all duration-300 transform hover:-translate-y-1"
                     >
-                      <div className="w-8 h-8 bg-theme-100 rounded-full flex items-center justify-center text-theme-500">
+                      <div className="w-8 h-8 bg-theme-100 dark:bg-theme-900/30 rounded-full flex items-center justify-center text-theme-500 dark:text-theme-400">
                         {suggestion.icon}
                       </div>
                       <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900">{suggestion.text}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{suggestion.text}</div>
                       </div>
-                      <ChevronRight size={16} className="text-gray-300 hover:text-theme-500 transition-colors" />
+                      <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 hover:text-theme-500 transition-colors" />
                     </div>
                   ))}
                 </div>
@@ -419,6 +421,7 @@ export default function RuYiZone() {
             </div>
           </div>
         </div>
+        </div>{/* end flex-1 min-h-0 */}
       </div>
       )}
     </>

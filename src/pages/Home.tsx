@@ -36,6 +36,8 @@ import {
   Edit3,
   Send,
   Check,
+  Mic,
+  MessageSquarePlus,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
@@ -739,6 +741,7 @@ const processes: ProcessItem[] = [
 export default function Home() {
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [contentRefReady, setContentRefReady] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // 简化逻辑：移除响应式和拖动相关的复杂处理
@@ -1386,11 +1389,37 @@ export default function Home() {
       {/* 消息列表 - 固定宽度 */}
       <div className="flex flex-col w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shrink-0">
         {/* 消息列表头部 */}
-        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="h-14 flex items-center justify-between px-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative">
           <h2 className="font-semibold text-gray-900 dark:text-white">消息</h2>
-          <button className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+          <button
+            onClick={() => setShowPlusMenu(!showPlusMenu)}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          >
             <Plus size={20} className="text-gray-600 dark:text-gray-300" />
           </button>
+
+          {/* 加号下拉菜单 */}
+          {showPlusMenu && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowPlusMenu(false)} />
+              <div className="absolute right-2 top-12 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-20">
+                <button
+                  onClick={() => { setShowPlusMenu(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <MessageSquarePlus size={18} className="text-gray-400" />
+                  <span>创建群聊</span>
+                </button>
+                <button
+                  onClick={() => { setShowPlusMenu(false); }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Mic size={18} className="text-gray-400" />
+                  <span>发起实时录音</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
         
         {/* 消息列表 */}

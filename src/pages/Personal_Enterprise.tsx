@@ -135,10 +135,10 @@ export default function Personal_Enterprise() {
             {visibleCards.find(c => c.id === 'stats') && (
               <div className="group relative">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatsCard title="流程审批" count="21" icon={<FileText size={24} />} color="pink" menuId={menuId} onToggleMenu={toggleMenu} />
-                  <StatsCard title="业务收入" amount="¥12,580,000" change="+12.5%" icon={<TrendingUp size={24} />} color="green" menuId={menuId} onToggleMenu={toggleMenu} />
-                  <StatsCard title="待办事项" count="8" icon={<Bell size={24} />} color="amber" menuId={menuId} onToggleMenu={toggleMenu} />
-                  <StatsCard title="项目进度" count="12" icon={<CalendarIcon size={24} />} color="blue" menuId={menuId} onToggleMenu={toggleMenu} />
+                  <StatsCard title="流程审批" count="21" color="pink" menuId={menuId} onToggleMenu={toggleMenu} />
+                  <StatsCard title="业务收入" amount="¥12,580,000" change="+12.5%" color="green" menuId={menuId} onToggleMenu={toggleMenu} />
+                  <StatsCard title="待办事项" count="8" color="amber" menuId={menuId} onToggleMenu={toggleMenu} />
+                  <StatsCard title="项目进度" count="12" color="blue" menuId={menuId} onToggleMenu={toggleMenu} />
                 </div>
               </div>
             )}
@@ -666,12 +666,11 @@ export default function Personal_Enterprise() {
 }
 
 // 统一的数据统计卡片组件
-function StatsCard({ title, count, amount, change, icon, color, menuId, onToggleMenu }: { 
+function StatsCard({ title, count, amount, change, color, menuId, onToggleMenu }: { 
   title: string; 
   count?: string; 
   amount?: string;
   change?: string;
-  icon: React.ReactNode; 
   color: string;
   menuId: string | null;
   onToggleMenu: (id: string) => void;
@@ -728,9 +727,6 @@ function StatsCard({ title, count, amount, change, icon, color, menuId, onToggle
                 <span className="truncate">{change} <span className="text-gray-400 sm:inline">较上月</span></span>
               </p>
             )}
-          </div>
-          <div className={`p-2 sm:p-3 ${c.bg} rounded-lg sm:rounded-xl shadow-sm group-hover:shadow-md transition-shadow flex-shrink-0 ml-2`}>
-            <div className={`${c.icon} scale-75 sm:scale-100`}>{icon}</div>
           </div>
         </div>
       </div>

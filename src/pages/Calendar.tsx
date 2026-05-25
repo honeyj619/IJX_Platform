@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Plus, CalendarDays } from 'lucide-react';
 
 interface CalendarItem {
   id: string;
@@ -102,48 +102,53 @@ export default function Calendar() {
   const subscribedCalendars = calendarList.filter(c => c.type === 'subscribed');
 
   return (
-    
-      <div className="h-full flex flex-col bg-slate-50 w-full">
-        <div className="bg-white border-b border-slate-200/60 py-3 px-6 w-full">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 w-full">
-            <div className="flex items-center gap-1 bg-white/95 backdrop-blur-sm rounded-xl shadow-md border border-pink-100 p-1.5">
-              <button 
-                className={`px-5 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'schedule' ? 'bg-pink-700 text-white shadow-sm hover:bg-pink-800' : 'text-gray-500 hover:text-pink-700 hover:bg-pink-50'}`}
-                onClick={() => setActiveTab('schedule')}
-              >
-                日历
-              </button>
-              <button 
-                className={`px-5 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === 'meeting-room' ? 'bg-pink-700 text-white shadow-sm hover:bg-pink-800' : 'text-gray-500 hover:text-pink-700 hover:bg-pink-50'}`}
-                onClick={() => setActiveTab('meeting-room')}
-              >
-                会议室
-              </button>
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto">
-              <button className="flex items-center gap-2 px-5 py-2.5 bg-theme-600 text-white rounded-xl text-sm font-medium hover:bg-theme-700 transition-colors shadow-lg">
-                <Plus size={18} />
-                创建日程
-              </button>
-            </div>
+        
+      <div className="h-full flex flex-col bg-slate-50 dark:bg-gray-900 w-full">
+        {/* 内联工具栏 — tabs + 创建日程 */}
+        <div className="flex items-center justify-between px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-700/60 shrink-0">
+          <div className="flex items-center bg-gray-100/80 dark:bg-gray-700/80 rounded-lg p-0.5">
+            <button
+              onClick={() => setActiveTab('schedule')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                activeTab === 'schedule'
+                  ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              日历
+            </button>
+            <button
+              onClick={() => setActiveTab('meeting-room')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+                activeTab === 'meeting-room'
+                  ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+              }`}
+            >
+              会议室
+            </button>
           </div>
+          <button className="flex items-center gap-2 px-4 py-2 bg-theme-600 text-white rounded-xl text-sm font-medium hover:bg-theme-700 transition-colors shadow-sm">
+            <Plus size={16} />
+            创建日程
+          </button>
         </div>
 
         <div className="py-0 w-full flex-1 overflow-hidden">
           <div className="flex flex-col lg:flex-row h-full w-full">
-            <div className="lg:w-80 shrink-0 bg-white lg:border-r lg:border-slate-200/60 h-full overflow-y-auto">
-              <div className="p-5 border-b border-slate-100">
+            <div className="lg:w-80 shrink-0 bg-white dark:bg-gray-800 lg:border-r lg:border-slate-200/60 dark:lg:border-gray-700 h-full overflow-y-auto">
+              <div className="p-5 border-b border-slate-100 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-slate-900">{currentDate.getFullYear()}年{currentDate.getMonth() + 1}月</h3>
+                  <h3 className="font-semibold text-slate-900 dark:text-white">{currentDate.getFullYear()}年{currentDate.getMonth() + 1}月</h3>
                   <div className="flex items-center gap-1">
                     <button 
-                      className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-theme-600 hover:bg-theme-50 rounded-lg transition-colors"
+                      className="w-8 h-8 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-theme-600 hover:bg-theme-50 dark:hover:bg-theme-900/20 rounded-lg transition-colors"
                       onClick={() => changeMonth('prev')}
                     >
                       <ChevronLeft size={18} />
                     </button>
                     <button 
-                      className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-theme-600 hover:bg-theme-50 rounded-lg transition-colors"
+                      className="w-8 h-8 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-theme-600 hover:bg-theme-50 dark:hover:bg-theme-900/20 rounded-lg transition-colors"
                       onClick={() => changeMonth('next')}
                     >
                       <ChevronRight size={18} />
@@ -152,7 +157,7 @@ export default function Calendar() {
                 </div>
                 <div className="grid grid-cols-7 mb-2">
                   {weekdays.map((day, index) => (
-                    <div key={index} className="text-center text-xs font-medium text-slate-400 py-1">
+                    <div key={index} className="text-center text-xs font-medium text-slate-400 dark:text-slate-500 py-1">
                       {day[1]}
                     </div>
                   ))}
@@ -163,7 +168,7 @@ export default function Calendar() {
                     return (
                       <div 
                         key={index} 
-                        className={`w-9 h-9 flex items-center justify-center text-xs ${item.isCurrentMonth ? 'text-slate-700' : 'text-slate-300'} ${today ? 'bg-theme-600 text-white rounded-full font-bold' : 'hover:bg-theme-50 rounded-full transition-colors'}`}
+                        className={`w-9 h-9 flex items-center justify-center text-xs ${item.isCurrentMonth ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'} ${today ? 'bg-theme-600 text-white rounded-full font-bold' : 'hover:bg-theme-50 dark:hover:bg-theme-900/20 rounded-full transition-colors'}`}
                       >
                         {item.day}
                       </div>
@@ -172,15 +177,15 @@ export default function Calendar() {
                 </div>
               </div>
 
-              <div className="p-5 border-b border-slate-100">
+              <div className="p-5 border-b border-slate-100 dark:border-gray-700">
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Search size={16} className="text-slate-400" />
+                    <Search size={16} className="text-slate-400 dark:text-slate-500" />
                   </div>
                   <input 
                     type="text" 
                     placeholder="搜索联系人、公共日历" 
-                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border-0 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-theme-400/50 focus:bg-white transition-all"
+                    className="w-full pl-11 pr-4 py-2.5 bg-slate-50 dark:bg-gray-700 border-0 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-theme-400/50 focus:bg-white dark:focus:bg-gray-700 transition-all"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -202,7 +207,7 @@ export default function Calendar() {
                     {managedCalendars.map((calendar) => (
                       <label 
                         key={calendar.id}
-                        className="group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors"
+                        className="group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors"
                       >
                         <div className="relative">
                           <input 
@@ -211,7 +216,7 @@ export default function Calendar() {
                             onChange={() => toggleCalendar(calendar.id)}
                             className="sr-only peer"
                           />
-                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${calendar.checked ? `${calendar.color} border-transparent` : 'border-slate-300 bg-white hover:border-slate-400'}`}>
+                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${calendar.checked ? `${calendar.color} border-transparent` : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-gray-700 hover:border-slate-400 dark:hover:border-slate-400'}`}>
                             {calendar.checked && (
                               <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -220,7 +225,7 @@ export default function Calendar() {
                           </div>
                         </div>
                         <div className={`w-2.5 h-2.5 rounded-full ${calendar.color} ${!calendar.checked && 'opacity-40'}`} />
-                        <span className={`text-sm ${calendar.checked ? 'text-slate-700' : 'text-slate-400'}`}>{calendar.name}</span>
+                        <span className={`text-sm ${calendar.checked ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}>{calendar.name}</span>
                       </label>
                     ))}
                   </div>
@@ -235,7 +240,7 @@ export default function Calendar() {
                     {subscribedCalendars.map((calendar) => (
                       <label 
                         key={calendar.id}
-                        className="group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors"
+                        className="group flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-gray-700/50 transition-colors"
                       >
                         <div className="relative">
                           <input 
@@ -244,7 +249,7 @@ export default function Calendar() {
                             onChange={() => toggleCalendar(calendar.id)}
                             className="sr-only peer"
                           />
-                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${calendar.checked ? `${calendar.color} border-transparent` : 'border-slate-300 bg-white hover:border-slate-400'}`}>
+                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${calendar.checked ? `${calendar.color} border-transparent` : 'border-slate-300 dark:border-slate-500 bg-white dark:bg-gray-700 hover:border-slate-400 dark:hover:border-slate-400'}`}>
                             {calendar.checked && (
                               <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -253,7 +258,7 @@ export default function Calendar() {
                           </div>
                         </div>
                         <div className={`w-2.5 h-2.5 rounded-full ${calendar.color} ${!calendar.checked && 'opacity-40'}`} />
-                        <span className={`text-sm ${calendar.checked ? 'text-slate-700' : 'text-slate-400'}`}>{calendar.name}</span>
+                        <span className={`text-sm ${calendar.checked ? 'text-slate-700 dark:text-slate-200' : 'text-slate-400 dark:text-slate-500'}`}>{calendar.name}</span>
                       </label>
                     ))}
                   </div>
@@ -261,33 +266,33 @@ export default function Calendar() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col bg-white">
-              <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
+              <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <button className="px-4 py-2 bg-theme-50 text-theme-700 rounded-xl text-sm font-medium hover:bg-theme-100 transition-colors border border-theme-200">
                     今天
                   </button>
                   <div className="flex items-center gap-2">
                     <button 
-                      className="w-9 h-9 flex items-center justify-center text-slate-600 hover:text-theme-600 hover:bg-theme-50 rounded-lg transition-colors"
+                      className="w-9 h-9 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-theme-600 hover:bg-theme-50 dark:hover:bg-theme-900/20 rounded-lg transition-colors"
                       onClick={() => changeMonth('prev')}
                     >
                       <ChevronLeft size={20} />
                     </button>
                     <button 
-                      className="w-9 h-9 flex items-center justify-center text-slate-600 hover:text-theme-600 hover:bg-theme-50 rounded-lg transition-colors"
+                      className="w-9 h-9 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:text-theme-600 hover:bg-theme-50 dark:hover:bg-theme-900/20 rounded-lg transition-colors"
                       onClick={() => changeMonth('next')}
                     >
                       <ChevronRight size={20} />
                     </button>
                   </div>
-                  <h3 className="font-semibold text-slate-900 text-lg">{currentDate.getFullYear()}年{currentDate.getMonth() + 1}月</h3>
+                  <h3 className="font-semibold text-slate-900 dark:text-white text-lg">{currentDate.getFullYear()}年{currentDate.getMonth() + 1}月</h3>
                 </div>
-                <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-                  <button className="px-4 py-2 text-sm text-slate-600 hover:bg-white hover:text-slate-900 rounded-lg transition-all hover:shadow-sm">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-gray-700 p-1 rounded-xl">
+                  <button className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-gray-600 hover:text-slate-900 dark:hover:text-white rounded-lg transition-all hover:shadow-sm">
                     日
                   </button>
-                  <button className="px-4 py-2 text-sm text-slate-600 hover:bg-white hover:text-slate-900 rounded-lg transition-all hover:shadow-sm">
+                  <button className="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-gray-600 hover:text-slate-900 dark:hover:text-white rounded-lg transition-all hover:shadow-sm">
                     周
                   </button>
                   <button className="px-4 py-2 text-sm bg-theme-600 text-white rounded-lg shadow-sm">
@@ -297,9 +302,9 @@ export default function Calendar() {
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                <div className="grid grid-cols-7 border-b border-slate-100">
+                <div className="grid grid-cols-7 border-b border-slate-100 dark:border-gray-700">
                   {weekdays.map((day, index) => (
-                    <div key={index} className="py-4 text-center text-sm font-semibold text-slate-500 border-r border-slate-100 last:border-r-0">
+                    <div key={index} className="py-4 text-center text-sm font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-100 dark:border-gray-700 last:border-r-0">
                       {day}
                     </div>
                   ))}
@@ -313,7 +318,7 @@ export default function Calendar() {
                     return (
                       <div 
                         key={index} 
-                        className={`min-h-[80px] md:min-h-[100px] lg:min-h-[120px] p-3 border-r border-b border-slate-100 ${index % 7 === 6 ? 'border-r-0' : ''} ${item.isCurrentMonth ? 'bg-white' : 'bg-slate-50/50'}`}
+                        className={`min-h-[80px] md:min-h-[100px] lg:min-h-[120px] p-3 border-r border-b border-slate-100 dark:border-gray-700 ${index % 7 === 6 ? 'border-r-0' : ''} ${item.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-slate-50/50 dark:bg-gray-800/50'}`}
                       >
                         <div className="flex justify-end mb-2">
                           {today ? (
@@ -321,7 +326,7 @@ export default function Calendar() {
                               {item.day}
                             </div>
                           ) : (
-                            <span className={`text-sm w-8 h-8 flex items-center justify-center ${item.isCurrentMonth ? 'text-slate-700' : 'text-slate-300'}`}>
+                            <span className={`text-sm w-8 h-8 flex items-center justify-center ${item.isCurrentMonth ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'}`}>
                               {item.day}
                             </span>
                           )}
@@ -330,13 +335,13 @@ export default function Calendar() {
                           {dateEvents.slice(0, 3).map((event) => (
                             <div 
                               key={event.id} 
-                              className={`text-xs px-2 py-1.5 rounded-lg truncate ${event.type === 'meeting' ? 'bg-red-50 text-red-700' : event.type === 'business' ? 'bg-theme-50 text-theme-700' : event.type === 'vacation' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}
+                              className={`text-xs px-2 py-1.5 rounded-lg truncate ${event.type === 'meeting' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : event.type === 'business' ? 'bg-theme-50 dark:bg-theme-900/20 text-theme-700 dark:text-theme-300' : event.type === 'vacation' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300'}`}
                             >
                               {event.title}
                             </div>
                           ))}
                           {dateEvents.length > 3 && (
-                            <div className="text-xs text-slate-400 px-2">+{dateEvents.length - 3} 更多</div>
+                            <div className="text-xs text-slate-400 dark:text-slate-500 px-2">+{dateEvents.length - 3} 更多</div>
                           )}
                         </div>
                       </div>

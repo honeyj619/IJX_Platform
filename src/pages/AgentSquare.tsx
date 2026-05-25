@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Search, Grid, List, Plus, Pin, ChevronRight, Cpu, Zap, Bot } from 'lucide-react';
+import { Search, Grid, List, Plus, Pin, Zap, Bot, ChevronRight } from 'lucide-react';
 
 interface Agent {
   id: string;
@@ -52,7 +52,7 @@ const categories = ['助手', '分析', '开发', '创意', '客服', '管理', 
 const domains = ['所有', '企业服务', '个人效率', '创意娱乐', '专业技术', '教育培训'];
 
 export default function AgentSquare() {
-  const [agents, setAgents] = useState<Agent[]>(mockAgents);
+  const [agents] = useState<Agent[]>(mockAgents);
   const [displayedAgents, setDisplayedAgents] = useState<Agent[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -63,7 +63,6 @@ export default function AgentSquare() {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showDomainDropdown, setShowDomainDropdown] = useState(false);
   const [showAiTypeDropdown, setShowAiTypeDropdown] = useState(false);
-  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   
@@ -75,17 +74,6 @@ export default function AgentSquare() {
 
   const ITEMS_PER_PAGE = 8;
 
-  // 初始化粒子效果
-  useEffect(() => {
-    const newParticles = Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      y: Math.random() * 100,
-      delay: Math.random() * 5
-    }));
-    setParticles(newParticles);
-  }, []);
-
   // 筛选和懒加载
   useEffect(() => {
     const filtered = agents.filter(agent => {
@@ -95,7 +83,6 @@ export default function AgentSquare() {
       return true;
     });
     
-    // 重置并加载第一页
     setDisplayedAgents(filtered.slice(0, ITEMS_PER_PAGE));
     setPage(1);
     setHasMore(filtered.length > ITEMS_PER_PAGE);
@@ -157,85 +144,50 @@ export default function AgentSquare() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 统计
+  const totalFiltered = agents.filter(agent => {
+    if (selectedCategory !== '所有' && agent.category !== selectedCategory) return false;
+    if (selectedDomain !== '所有') return false;
+    if (selectedAiType !== 'AI应用类型' && !agent.aiType.includes(selectedAiType)) return false;
+    return true;
+  }).length;
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-gray-900 via-purple-950 to-gray-900">
-      {/* Cyber Grid Background */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `
-            linear-gradient(rgba(236, 72, 153, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(236, 72, 153, 0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '50px 50px'
-        }} />
-        <div className="absolute inset-0" style={{
-          background: 'radial-gradient(circle at 50% 50%, transparent 0%, rgba(15, 23, 42, 0.8) 100%)'
-        }} />
-      </div>
+    <div className="h-full flex flex-col bg-gray-50">
 
-      {/* Floating Particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {particles.map((particle) => (
-          <div
-            key={particle.id}
-            className="absolute w-1 h-1 bg-pink-500 rounded-full opacity-40"
-            style={{
-              left: `${particle.x}%`,
-              top: `${particle.y}%`,
-              animation: `float 10s ease-in-out infinite`,
-              animationDelay: `${particle.delay}s`
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Scan Line Effect */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-5">
-        <div className="absolute w-full h-1 bg-pink-500 animate-scan" />
-      </div>
-
-      {/* Header */}
-      <div className="relative border-b border-pink-500/20 bg-black/20 backdrop-blur-xl">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-r from-pink-500 to-purple-500 rounded-lg blur opacity-40" />
-                <div className="relative flex items-center gap-3 px-4 py-2 bg-gray-900 rounded-lg border border-pink-500/50">
-                  <Cpu className="text-pink-400 animate-pulse" size={24} />
-                  <div>
-                    <h1 className="text-xl font-bold text-white tracking-wider">AGENT SQUARE</h1>
-                    <p className="text-xs text-pink-400/80 font-mono">// 智能体广场 v2.0</p>
-                  </div>
-                </div>
-              </div>
+      {/* 头部 */}
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200/60 shrink-0 px-6 py-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-400 to-purple-500 flex items-center justify-center">
+              <Bot size={22} className="text-white" />
             </div>
-            
-            <div className="flex items-center gap-4">
-              <button className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all duration-200 flex items-center gap-2 whitespace-nowrap shadow-lg shadow-pink-500/25 hover:shadow-pink-500/40 font-medium">
-                <Plus size={16} />
-                <span>创建智能体</span>
-              </button>
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">智能体广场</h1>
+              <p className="text-sm text-gray-500">发现和使用各种 AI 智能助手</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* 内容区域 */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="max-w-7xl mx-auto space-y-6">
 
           {/* Search Bar */}
-          <div className="relative mb-6 group">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-lg blur opacity-30 group-hover:opacity-50 transition-opacity" />
-            <div className="relative flex items-center">
-              <Search className="absolute left-4 text-pink-400" size={18} />
-              <input
-                type="text"
-                placeholder="搜索智能体..."
-                className="w-full pl-11 pr-4 py-3 bg-gray-900/80 border border-pink-500/30 rounded-lg text-white placeholder-pink-300/50 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent font-mono text-sm"
-              />
-              <div className="absolute right-4 flex items-center gap-2">
-                <kbd className="px-2 py-0.5 bg-pink-500/20 text-pink-300 text-xs rounded border border-pink-500/30">⌘K</kbd>
-              </div>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="搜索智能体..."
+              className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-400/50 focus:border-pink-400 transition-all text-sm shadow-sm"
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <kbd className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-md border border-gray-200">⌘K</kbd>
             </div>
           </div>
 
-          {/* Filters */}
+          {/* Filters + Actions */}
           <div className="flex flex-wrap items-center gap-3">
             {/* Category Dropdown */}
             <div ref={categoryRef} className="relative">
@@ -245,13 +197,17 @@ export default function AgentSquare() {
                   setShowDomainDropdown(false);
                   setShowAiTypeDropdown(false);
                 }}
-                className={`pl-3 pr-8 py-2 bg-gray-800/50 border border-pink-500/30 rounded-lg text-sm transition-all hover:border-pink-500/50 ${selectedCategory !== "所有" ? 'text-pink-400' : 'text-gray-400'}`}
+                className={`pl-3 pr-8 py-2 bg-white border rounded-lg text-sm transition-all hover:border-pink-300 ${
+                  selectedCategory !== "所有" ? 'border-pink-400 text-pink-600 bg-pink-50' : 'border-gray-200 text-gray-600'
+                }`}
               >
                 {selectedCategory}
-                <ChevronRight className={`absolute right-2 top-1/2 -translate-y-1/2 transition-transform ${showCategoryDropdown ? 'rotate-90' : ''} ${selectedCategory !== "所有" ? 'text-pink-400' : 'text-gray-500'}`} size={14} />
+                <ChevronRight className={`absolute right-2 top-1/2 -translate-y-1/2 transition-transform ${
+                  showCategoryDropdown ? 'rotate-90' : ''
+                } ${selectedCategory !== "所有" ? 'text-pink-400' : 'text-gray-400'}`} size={14} />
               </button>
               {showCategoryDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-40 bg-gray-900 border border-pink-500/30 rounded-lg shadow-2xl shadow-pink-500/10 overflow-hidden z-50">
+                <div className="absolute top-full left-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
                   {categories.map(cat => (
                     <button
                       key={cat}
@@ -259,7 +215,9 @@ export default function AgentSquare() {
                         setSelectedCategory(cat);
                         setShowCategoryDropdown(false);
                       }}
-                      className={`w-full px-4 py-2 text-left text-sm transition-all hover:bg-pink-500/20 ${selectedCategory === cat ? 'text-pink-400 bg-pink-500/10' : 'text-gray-400'}`}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-all hover:bg-pink-50 ${
+                        selectedCategory === cat ? 'text-pink-600 bg-pink-50 font-medium' : 'text-gray-600'
+                      }`}
                     >
                       {cat}
                     </button>
@@ -276,13 +234,17 @@ export default function AgentSquare() {
                   setShowCategoryDropdown(false);
                   setShowAiTypeDropdown(false);
                 }}
-                className={`pl-3 pr-8 py-2 bg-gray-800/50 border border-pink-500/30 rounded-lg text-sm transition-all hover:border-pink-500/50 ${selectedDomain !== "所有" ? 'text-pink-400' : 'text-gray-400'}`}
+                className={`pl-3 pr-8 py-2 bg-white border rounded-lg text-sm transition-all hover:border-pink-300 ${
+                  selectedDomain !== "所有" ? 'border-pink-400 text-pink-600 bg-pink-50' : 'border-gray-200 text-gray-600'
+                }`}
               >
                 {selectedDomain}
-                <ChevronRight className={`absolute right-2 top-1/2 -translate-y-1/2 transition-transform ${showDomainDropdown ? 'rotate-90' : ''} ${selectedDomain !== "所有" ? 'text-pink-400' : 'text-gray-500'}`} size={14} />
+                <ChevronRight className={`absolute right-2 top-1/2 -translate-y-1/2 transition-transform ${
+                  showDomainDropdown ? 'rotate-90' : ''
+                } ${selectedDomain !== "所有" ? 'text-pink-400' : 'text-gray-400'}`} size={14} />
               </button>
               {showDomainDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-44 bg-gray-900 border border-pink-500/30 rounded-lg shadow-2xl shadow-pink-500/10 overflow-hidden z-50">
+                <div className="absolute top-full left-0 mt-2 w-44 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
                   {domains.map(dom => (
                     <button
                       key={dom}
@@ -290,7 +252,9 @@ export default function AgentSquare() {
                         setSelectedDomain(dom);
                         setShowDomainDropdown(false);
                       }}
-                      className={`w-full px-4 py-2 text-left text-sm transition-all hover:bg-pink-500/20 ${selectedDomain === dom ? 'text-pink-400 bg-pink-500/10' : 'text-gray-400'}`}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-all hover:bg-pink-50 ${
+                        selectedDomain === dom ? 'text-pink-600 bg-pink-50 font-medium' : 'text-gray-600'
+                      }`}
                     >
                       {dom}
                     </button>
@@ -307,13 +271,17 @@ export default function AgentSquare() {
                   setShowCategoryDropdown(false);
                   setShowDomainDropdown(false);
                 }}
-                className={`pl-3 pr-8 py-2 bg-gray-800/50 border border-pink-500/30 rounded-lg text-sm transition-all hover:border-pink-500/50 ${selectedAiType !== "AI应用类型" ? 'text-pink-400' : 'text-gray-400'}`}
+                className={`pl-3 pr-8 py-2 bg-white border rounded-lg text-sm transition-all hover:border-pink-300 ${
+                  selectedAiType !== "AI应用类型" ? 'border-pink-400 text-pink-600 bg-pink-50' : 'border-gray-200 text-gray-600'
+                }`}
               >
                 {selectedAiType}
-                <ChevronRight className={`absolute right-2 top-1/2 -translate-y-1/2 transition-transform ${showAiTypeDropdown ? 'rotate-90' : ''} ${selectedAiType !== "AI应用类型" ? 'text-pink-400' : 'text-gray-500'}`} size={14} />
+                <ChevronRight className={`absolute right-2 top-1/2 -translate-y-1/2 transition-transform ${
+                  showAiTypeDropdown ? 'rotate-90' : ''
+                } ${selectedAiType !== "AI应用类型" ? 'text-pink-400' : 'text-gray-400'}`} size={14} />
               </button>
               {showAiTypeDropdown && (
-                <div className="absolute top-full left-0 mt-2 w-48 bg-gray-900 border border-pink-500/30 rounded-lg shadow-2xl shadow-pink-500/10 overflow-hidden z-50">
+                <div className="absolute top-full left-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden z-50">
                   {['AI应用类型', '通用助手', '代码助手', '写作助手', '数据分析'].map(type => (
                     <button
                       key={type}
@@ -321,7 +289,9 @@ export default function AgentSquare() {
                         setSelectedAiType(type);
                         setShowAiTypeDropdown(false);
                       }}
-                      className={`w-full px-4 py-2 text-left text-sm transition-all hover:bg-pink-500/20 ${selectedAiType === type ? 'text-pink-400 bg-pink-500/10' : 'text-gray-400'}`}
+                      className={`w-full px-4 py-2.5 text-left text-sm transition-all hover:bg-pink-50 ${
+                        selectedAiType === type ? 'text-pink-600 bg-pink-50 font-medium' : 'text-gray-600'
+                      }`}
                     >
                       {type}
                     </button>
@@ -332,194 +302,192 @@ export default function AgentSquare() {
 
             <div className="flex-1" />
 
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-800/50 border border-pink-500/30 rounded-lg text-pink-400 text-sm font-mono">
-              <Zap size={14} />
-              <span>共 <span className="text-pink-300">{displayedAgents.length}</span> 个智能助手</span>
+            <button className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl hover:from-pink-600 hover:to-purple-700 transition-all shadow-sm font-medium text-sm">
+              <Plus size={16} />
+              <span>创建智能体</span>
+            </button>
+
+            <div className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-500">
+              <Zap size={14} className="text-pink-500" />
+              <span>共 <span className="text-pink-600 font-medium">{totalFiltered}</span> 个智能助手</span>
             </div>
 
             {/* View Toggle */}
-            <div className="flex items-center gap-1 bg-gray-800/50 border border-pink-500/30 rounded-lg p-1">
+            <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 rounded transition-all ${viewMode === 'grid' ? 'bg-pink-500 text-white' : 'text-gray-400 hover:text-pink-400'}`}
+                className={`p-2 rounded-md transition-all ${
+                  viewMode === 'grid' ? 'bg-pink-500 text-white shadow-sm' : 'text-gray-400 hover:text-pink-500 hover:bg-pink-50'
+                }`}
               >
                 <Grid size={16} />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 rounded transition-all ${viewMode === 'list' ? 'bg-pink-500 text-white' : 'text-gray-400 hover:text-pink-400'}`}
+                className={`p-2 rounded-md transition-all ${
+                  viewMode === 'list' ? 'bg-pink-500 text-white shadow-sm' : 'text-gray-400 hover:text-pink-500 hover:bg-pink-50'
+                }`}
               >
                 <List size={16} />
               </button>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {viewMode === 'grid' ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {/* Content */}
+          {viewMode === 'grid' ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {displayedAgents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="group relative bg-white border border-gray-200 rounded-xl p-5 hover:border-pink-300 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
+                    onMouseEnter={() => setHoveredAgentId(agent.id)}
+                    onMouseLeave={() => setHoveredAgentId(null)}
+                  >
+                    <button className="absolute top-3 right-3 p-1.5 text-gray-300 hover:text-pink-400 transition-colors opacity-0 group-hover:opacity-100 z-10">
+                      <Pin size={14} />
+                    </button>
+
+                    <div className="relative flex items-start gap-3 mb-4">
+                      <div className="relative flex-shrink-0">
+                        <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-400 to-purple-400 rounded-full opacity-0 group-hover:opacity-100 blur-sm transition-opacity" />
+                        <img src={agent.avatar} alt={agent.name} className="relative w-12 h-12 rounded-full border-2 border-gray-100 group-hover:border-pink-300 transition-colors" />
+                      </div>
+                      <div className="flex-1 min-w-0 pt-1">
+                        <h3 className="font-bold text-gray-800 truncate text-base mb-1">{agent.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs px-2 py-0.5 bg-pink-50 text-pink-600 rounded border border-pink-200">{agent.category}</span>
+                          <span 
+                            className={`text-xs cursor-pointer transition-colors ${hoveredAgentId === agent.id ? 'text-pink-500' : 'text-gray-400'}`}
+                          >
+                            @{agent.creator}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-gray-500 text-sm mb-4 line-clamp-2 leading-relaxed">{agent.description}</p>
+
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {agent.aiType.slice(0, 2).map((type, index) => (
+                        <span key={index} className="text-2xs px-2 py-1 bg-purple-50 text-purple-600 rounded border border-purple-200">
+                          {type}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Zap size={12} className="text-pink-500" />
+                          <span className="text-pink-500">{agent.likes}</span>
+                        </span>
+                      </div>
+                      <button className="px-3 py-1.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-md hover:from-pink-600 hover:to-purple-700 transition-all text-xs font-medium shadow-sm">
+                        联系ta
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* 懒加载触发器 */}
+              {hasMore && (
+                <div ref={loadMoreRef} className="mt-8 flex justify-center">
+                  <div className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-lg text-gray-500 text-sm shadow-sm">
+                    <div className="w-4 h-4 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
+                    <span>加载更多...</span>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="space-y-3">
               {displayedAgents.map((agent) => (
                 <div
                   key={agent.id}
-                  className="group relative bg-gray-900/80 backdrop-blur-sm border border-pink-500/20 rounded-xl p-5 hover:border-pink-500/60 transition-all duration-300 hover:shadow-2xl hover:shadow-pink-500/10 hover:-translate-y-1"
+                  className="group relative bg-white border border-gray-200 rounded-xl p-5 hover:border-pink-300 hover:shadow-md transition-all duration-300"
                   onMouseEnter={() => setHoveredAgentId(agent.id)}
                   onMouseLeave={() => setHoveredAgentId(null)}
                 >
-                  <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-pink-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  
-                  <button className="absolute top-3 right-3 p-1.5 text-gray-500 hover:text-pink-400 transition-colors opacity-0 group-hover:opacity-100 z-10">
-                    <Pin size={14} />
-                  </button>
-
-                  <div className="relative flex items-start gap-3 mb-4">
-                    <div className="relative">
-                      <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full blur opacity-50" />
-                      <img src={agent.avatar} alt={agent.name} className="relative w-12 h-12 rounded-full border-2 border-pink-500/50" />
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex-shrink-0">
+                      <img src={agent.avatar} alt={agent.name} className="relative w-14 h-14 rounded-full border-2 border-gray-100" />
                     </div>
-                    <div className="flex-1 min-w-0 pt-1">
-                      <h3 className="font-bold text-white truncate text-base mb-1">{agent.name}</h3>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-0.5 bg-pink-500/20 text-pink-400 rounded border border-pink-500/30">{agent.category}</span>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="font-bold text-gray-800 text-lg">{agent.name}</h3>
+                        <span className="text-xs px-2 py-0.5 bg-pink-50 text-pink-600 rounded border border-pink-200">{agent.category}</span>
                         <span 
-                          className={`text-xs cursor-pointer transition-colors ${hoveredAgentId === agent.id ? 'text-pink-400' : 'text-gray-500'}`}
+                          className={`text-xs cursor-pointer transition-colors ${hoveredAgentId === agent.id ? 'text-pink-500' : 'text-gray-400'}`}
                         >
                           @{agent.creator}
                         </span>
                       </div>
+                      <p className="text-gray-500 text-sm mb-2">{agent.description}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap gap-1.5">
+                          {agent.aiType.slice(0, 3).map((type, index) => (
+                            <span key={index} className="text-2xs px-2 py-1 bg-purple-50 text-purple-600 rounded border border-purple-200">
+                              {type}
+                            </span>
+                          ))}
+                        </div>
+                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                          <Zap size={12} className="text-pink-500" />
+                          <span className="text-pink-500">{agent.likes}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button className="p-2 text-gray-300 hover:text-pink-400 transition-colors">
+                        <Pin size={18} />
+                      </button>
+                      <button className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-md hover:from-pink-600 hover:to-purple-700 transition-all text-sm font-medium shadow-sm">
+                        联系ta
+                      </button>
                     </div>
                   </div>
-
-                  <p className="text-gray-400 text-sm mb-4 line-clamp-2 leading-relaxed">{agent.description}</p>
-
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {agent.aiType.slice(0, 2).map((type, index) => (
-                      <span key={index} className="text-2xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30 font-mono">
-                        {type}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-800">
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <Zap size={12} className="text-pink-500" />
-                        <span className="text-pink-400">{agent.likes}</span>
-                      </span>
-                    </div>
-                    <button className="px-3 py-1.5 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-md hover:from-pink-600 hover:to-purple-700 transition-all text-xs font-medium shadow-lg shadow-pink-500/20">
-                      联系ta
-                    </button>
-                  </div>
-
-                  <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-pink-500/50 rounded-tl-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-pink-500/50 rounded-br-xl opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               ))}
+              
+              {hasMore && (
+                <div ref={loadMoreRef} className="mt-8 flex justify-center">
+                  <div className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-lg text-gray-500 text-sm shadow-sm">
+                    <div className="w-4 h-4 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
+                    <span>加载更多...</span>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            {/* 懒加载触发器 */}
-            {hasMore && (
-              <div ref={loadMoreRef} className="mt-8 flex justify-center">
-                <div className="flex items-center gap-2 px-6 py-3 bg-gray-800/50 border border-pink-500/30 rounded-lg text-pink-400 text-sm font-mono">
-                  <div className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
-                  <span>加载更多...</span>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <div className="space-y-3">
-            {displayedAgents.map((agent) => (
-              <div
-                key={agent.id}
-                className="group relative bg-gray-900/80 backdrop-blur-sm border border-pink-500/20 rounded-xl p-4 hover:border-pink-500/60 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/10"
-                onMouseEnter={() => setHoveredAgentId(agent.id)}
-                onMouseLeave={() => setHoveredAgentId(null)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-shrink-0">
-                    <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full blur opacity-30" />
-                    <img src={agent.avatar} alt={agent.name} className="relative w-14 h-14 rounded-full border-2 border-pink-500/50" />
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="font-bold text-white text-lg">{agent.name}</h3>
-                      <span className="text-xs px-2 py-0.5 bg-pink-500/20 text-pink-400 rounded border border-pink-500/30">{agent.category}</span>
-                      <span 
-                        className={`text-xs cursor-pointer transition-colors ${hoveredAgentId === agent.id ? 'text-pink-400' : 'text-gray-500'}`}
-                      >
-                        @{agent.creator}
-                      </span>
-                    </div>
-                    <p className="text-gray-400 text-sm mb-2">{agent.description}</p>
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-wrap gap-1.5">
-                        {agent.aiType.slice(0, 3).map((type, index) => (
-                          <span key={index} className="text-2xs px-2 py-1 bg-purple-500/20 text-purple-300 rounded border border-purple-500/30 font-mono">
-                            {type}
-                          </span>
-                        ))}
-                      </div>
-                      <span className="flex items-center gap-1 text-xs text-gray-500">
-                        <Zap size={12} className="text-pink-500" />
-                        <span className="text-pink-400">{agent.likes}</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button className="p-2 text-gray-500 hover:text-pink-400 transition-colors">
-                      <Pin size={18} />
-                    </button>
-                    <button className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-md hover:from-pink-600 hover:to-purple-700 transition-all text-sm font-medium shadow-lg shadow-pink-500/20">
-                      联系ta
-                    </button>
-                  </div>
-                </div>
-
-                <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-pink-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-            ))}
-            
-            {/* 懒加载触发器 */}
-            {hasMore && (
-              <div ref={loadMoreRef} className="mt-8 flex justify-center">
-                <div className="flex items-center gap-2 px-6 py-3 bg-gray-800/50 border border-pink-500/30 rounded-lg text-pink-400 text-sm font-mono">
-                  <div className="w-4 h-4 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
-                  <span>加载更多...</span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Agent Detail Modal */}
       {selectedAgent && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedAgent(null)}>
-          <div className="bg-gray-900 border border-pink-500/50 rounded-2xl max-w-2xl w-full p-8" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedAgent(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8" onClick={e => e.stopPropagation()}>
             <div className="flex items-start gap-4 mb-6">
-              <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-20 h-20 rounded-full border-2 border-pink-500" />
+              <img src={selectedAgent.avatar} alt={selectedAgent.name} className="w-20 h-20 rounded-full border-2 border-gray-200" />
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2">{selectedAgent.name}</h2>
-                <p className="text-pink-400 text-sm">@{selectedAgent.creator}</p>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">{selectedAgent.name}</h2>
+                <p className="text-pink-500 text-sm">@{selectedAgent.creator}</p>
               </div>
             </div>
-            <p className="text-gray-300 mb-6 leading-relaxed">{selectedAgent.description}</p>
+            <p className="text-gray-600 mb-6 leading-relaxed">{selectedAgent.description}</p>
             <div className="flex flex-wrap gap-2 mb-6">
               {selectedAgent.aiType.map((type, index) => (
-                <span key={index} className="text-xs px-3 py-1 bg-pink-500/20 text-pink-400 rounded-full border border-pink-500/30">{type}</span>
+                <span key={index} className="text-xs px-3 py-1 bg-pink-50 text-pink-600 rounded-full border border-pink-200">{type}</span>
               ))}
             </div>
             <div className="flex gap-3">
-              <button className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all font-medium shadow-lg shadow-pink-500/30">
+              <button className="flex-1 px-4 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-lg hover:from-pink-600 hover:to-purple-700 transition-all font-medium shadow-sm">
                 开始对话
               </button>
-              <button className="px-4 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition-all border border-pink-500/30">
+              <button className="px-4 py-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-all border border-gray-200">
                 收藏
               </button>
             </div>
@@ -528,20 +496,6 @@ export default function AgentSquare() {
       )}
 
       <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0) translateX(0); opacity: 0.4; }
-          50% { transform: translateY(-20px) translateX(10px); opacity: 0.8; }
-        }
-        
-        @keyframes scan {
-          0% { top: 0; }
-          100% { top: 100%; }
-        }
-        
-        .animate-scan {
-          animation: scan 3s linear infinite;
-        }
-        
         .line-clamp-2 {
           display: -webkit-box;
           -webkit-line-clamp: 2;

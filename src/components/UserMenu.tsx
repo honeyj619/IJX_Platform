@@ -57,7 +57,7 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
       id: "admin", 
       label: "管理后台", 
       icon: <Shield size={16} />, 
-      path: "/admin" 
+      path: "/admin"
     },
     { id: "divider2", label: "", icon: null, divider: true },
     { 
@@ -69,11 +69,11 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
   ];
 
   const handleMenuClick = (item: MenuItem) => {
+    setIsOpen(false);
     if (item.action) {
       item.action();
     }
     if (item.path) {
-      setIsOpen(false);
       navigate(item.path);
     }
   };

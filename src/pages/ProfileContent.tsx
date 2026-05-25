@@ -1,18 +1,16 @@
 import { useState, useEffect } from "react";
-import { User, Lock, Calendar, FileText, Settings, Users, Bell, Moon, Sun, Palette } from "lucide-react";
-import { useThemeStore } from "../store/themeStore";
-import { Skin } from "../store/themeStore";
+import { User, Lock, Calendar, FileText, Settings, Users, Bell } from "lucide-react";
+import { PageHeader } from "../components/PageHeader";
 
-type TabType = "profile" | "signature" | "accounts" | "settings";
+type TabType = "profile" | "signature" | "accounts";
 
 export default function ProfileContent() {
   const [activeTab, setActiveTab] = useState<TabType>("profile");
-  const { mode, skin, setMode, setSkin } = useThemeStore();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as TabType;
-    if (tab && ["profile", "signature", "accounts", "settings"].includes(tab)) {
+    if (tab && ["profile", "signature", "accounts"].includes(tab)) {
       setActiveTab(tab);
     }
   }, []);
@@ -21,15 +19,6 @@ export default function ProfileContent() {
     { id: "profile" as TabType, label: "个人信息", icon: <User size={18} /> },
     { id: "signature" as TabType, label: "签名", icon: <FileText size={18} /> },
     { id: "accounts" as TabType, label: "账号切换", icon: <Users size={18} /> },
-    { id: "settings" as TabType, label: "应用设置", icon: <Settings size={18} /> },
-  ];
-
-  const skins: { value: Skin; name: string; color: string }[] = [
-    { value: 'pink', name: '樱花粉', color: '#ec4899' },
-    { value: 'blue', name: '天空蓝', color: '#3b82f6' },
-    { value: 'purple', name: '紫罗兰', color: '#a855f7' },
-    { value: 'green', name: '薄荷绿', color: '#22c55e' },
-    { value: 'orange', name: '日落橙', color: '#f97316' },
   ];
 
   const renderContent = () => {
@@ -179,118 +168,15 @@ export default function ProfileContent() {
             </button>
           </div>
         );
-
-      case "settings":
-        return (
-          <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Palette className="text-theme-500" size={20} />
-                主题设置
-              </h3>
-              
-              <div className="mb-6">
-                <h4 className="text-sm font-medium text-gray-600 mb-3">显示模式</h4>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setMode('light')}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
-                      mode === 'light'
-                        ? 'border-theme-500 bg-theme-50 text-theme-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <Sun size={18} />
-                    <span className="text-sm font-medium">明亮</span>
-                  </button>
-                  <button
-                    onClick={() => setMode('dark')}
-                    className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 transition-all ${
-                      mode === 'dark'
-                        ? 'border-theme-500 bg-theme-50 text-theme-700'
-                        : 'border-gray-200 hover:border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <Moon size={18} />
-                    <span className="text-sm font-medium">暗黑</span>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-gray-600 mb-3">皮肤颜色</h4>
-                <div className="flex gap-3">
-                  {skins.map((s) => (
-                    <button
-                      key={s.value}
-                      onClick={() => setSkin(s.value)}
-                      className="flex flex-col items-center gap-2 p-2 rounded-xl hover:bg-gray-50 transition-all"
-                      title={s.name}
-                    >
-                      <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform ${
-                          skin === s.value ? 'ring-2 ring-offset-2 ring-theme-500 scale-110' : 'hover:scale-105'
-                        }`}
-                        style={{ backgroundColor: s.color }}
-                      >
-                        {skin === s.value && (
-                          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-xs text-gray-600">{s.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">通知设置</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <Bell size={20} className="text-gray-500" />
-                    <span className="text-gray-700">消息通知</span>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-theme-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-theme-500"></div>
-                  </label>
-                </div>
-                <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <Bell size={20} className="text-gray-500" />
-                    <span className="text-gray-700">邮件通知</span>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-theme-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-theme-500"></div>
-                  </label>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3">
-                    <Bell size={20} className="text-gray-500" />
-                    <span className="text-gray-700">桌面通知</span>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input type="checkbox" defaultChecked className="sr-only peer" />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-theme-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-theme-500"></div>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
     }
   };
 
   return (
     <div className="flex-1 flex flex-col bg-gray-50 dark:bg-gray-900 min-h-screen">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">个人设置</h1>
-      </div>
+      <PageHeader
+        icon={<User size={20} className="text-white" />}
+        title="个人信息"
+      />
 
       <div className="flex flex-col lg:flex-row flex-1">
         <div className="w-full lg:w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
