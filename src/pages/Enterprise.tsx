@@ -70,6 +70,34 @@ export default function Enterprise() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* 门户Tab切换 - 顶部醒目位置 */}
+      <div className="bg-gray-800 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPortalType('personal')}
+              className={`px-6 py-3 text-sm font-semibold tracking-wide transition-all duration-200 ${
+                portalType === 'personal'
+                  ? 'bg-white text-gray-800 rounded-t-lg'
+                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              个人门户
+            </button>
+            <button
+              onClick={() => setPortalType('enterprise')}
+              className={`px-6 py-3 text-sm font-semibold tracking-wide transition-all duration-200 ${
+                portalType === 'enterprise'
+                  ? 'bg-white text-gray-800 rounded-t-lg'
+                  : 'text-gray-300 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              企业门户
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* 企业门户专属导航栏 */}
       {portalType === 'enterprise' && (
         <>
@@ -80,7 +108,7 @@ export default function Enterprise() {
               <span className="text-xs">▼</span>
             </button>
           </div>
-          
+
           {/* 主导航栏 */}
           <div className="bg-white shadow-sm">
             <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -94,7 +122,7 @@ export default function Enterprise() {
                   <div className="text-pink-700 font-medium text-sm">吉祥航空</div>
                 </div>
               </div>
-              
+
               {/* 导航菜单 */}
               <nav className="flex items-center gap-6 text-sm">
                 <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">首页</button>
@@ -107,16 +135,16 @@ export default function Enterprise() {
                 <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">通讯录</button>
                 <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">数据看板</button>
               </nav>
-              
+
               {/* 右侧用户区 */}
               <div className="flex items-center gap-4">
                 <button className="text-gray-600 hover:text-pink-700">
                   <Search size={20} />
                 </button>
                 <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                  <img 
-                    src="https://api.dicebear.com/7.x/initials/svg?seed=梁劼&backgroundColor=ec4899" 
-                    alt="用户" 
+                  <img
+                    src="https://api.dicebear.com/7.x/initials/svg?seed=梁劼&backgroundColor=ec4899"
+                    alt="用户"
                     className="w-full h-full rounded-full"
                   />
                 </div>
@@ -126,34 +154,6 @@ export default function Enterprise() {
           </div>
         </>
       )}
-
-      {/* 门户Tab切换 */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-1">
-            <button
-              onClick={() => setPortalType('personal')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
-                portalType === 'personal'
-                  ? 'border-pink-700 text-pink-700'
-                  : 'border-transparent text-gray-500 hover:text-pink-700 hover:border-pink-300'
-              }`}
-            >
-              个人门户
-            </button>
-            <button
-              onClick={() => setPortalType('enterprise')}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
-                portalType === 'enterprise'
-                  ? 'border-pink-700 text-pink-700'
-                  : 'border-transparent text-gray-500 hover:text-pink-700 hover:border-pink-300'
-              }`}
-            >
-              企业门户
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* 主内容区 */}
       {portalType === 'personal' ? (
