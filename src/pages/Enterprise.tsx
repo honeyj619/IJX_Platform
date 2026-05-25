@@ -1,42 +1,6 @@
-import { Search, MessageSquare, Smartphone, BarChart3, ArrowUp, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X } from 'lucide-react';
+import { Search, MessageSquare, Smartphone, BarChart3, ArrowUp, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X, Mail, Monitor, MoreHorizontal } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
-
-// 门户切换组件
-function PortalSwitcher({ 
-  portalType, 
-  onPortalChange 
-}: { 
-  portalType: 'personal' | 'enterprise';
-  onPortalChange: (type: 'personal' | 'enterprise') => void;
-}) {
-  return (
-    <div className="fixed top-4 right-4 z-50">
-      <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-md border border-pink-100 p-1.5 flex gap-1">
-        <button
-          onClick={() => onPortalChange('personal')}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-            portalType === 'personal'
-              ? 'bg-pink-700 text-white shadow-sm hover:bg-pink-800'
-              : 'text-gray-500 hover:text-pink-700 hover:bg-pink-50'
-          }`}
-        >
-          个人门户
-        </button>
-        <button
-          onClick={() => onPortalChange('enterprise')}
-          className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-            portalType === 'enterprise'
-              ? 'bg-pink-700 text-white shadow-sm hover:bg-pink-800'
-              : 'text-gray-500 hover:text-pink-700 hover:bg-pink-50'
-          }`}
-        >
-          企业门户
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // 常用系统数据 - 与导航栏业务系统保持一致
 const ALL_SYSTEMS = [
@@ -52,12 +16,34 @@ const ALL_SYSTEMS = [
 
 const SYSTEM_CATEGORIES = ['效率办公', '业务管理'];
 
+// 近期待办数据
+const TODO_ITEMS = [
+  {
+    title: '关于"AI动态趋势洞察周报"的公告发布申请_20260522',
+    status: '正常',
+    date: '2026-05-25 10:03:29',
+  },
+  {
+    title: 'SOB-2026-Q7 关于规范跨航司联运不正常行李补偿索赔流程的...',
+    status: '正常',
+    date: '2026-05-22 13:31:54',
+  },
+];
+
+// 文件中心数据
+const FILE_ITEMS = [
+  { title: '关于开展2026年部分中坚层岗位评聘及选聘的通知', isNew: true, date: '2026-05-25 08:49:34' },
+  { title: '关于开展2026年IOSA审计准备工作的通知', isNew: true, date: '2026-05-22 14:07:39' },
+  { title: '关于开展飞行机组人为差错系统性专项整治工作的通知', isNew: true, date: '2026-05-22 10:53:46' },
+  { title: '关于组织开展公司飞行员岗位胜任力提升专项行动的通知', isNew: true, date: '2026-05-22 09:46:04' },
+  { title: '关于发布《上海吉祥航空股份有限公司旅客遗失物品管理办法(R3)》的通知', isNew: true, date: '2026-05-21 14:45:35' },
+];
+
 export default function Enterprise() {
   const [portalType, setPortalType] = useState<'personal' | 'enterprise'>(() => {
     const saved = localStorage.getItem('portalType');
     return (saved === 'personal' || saved === 'enterprise') ? saved : 'enterprise';
   });
-  const [currentDate, setCurrentDate] = useState(new Date(2026, 4, 20)); 
   const [showSettings, setShowSettings] = useState(false);
   const [selectedSystems, setSelectedSystems] = useState<string[]>(() => {
     const saved = localStorage.getItem('selectedSystems');
@@ -72,10 +58,6 @@ export default function Enterprise() {
     localStorage.setItem('selectedSystems', JSON.stringify(selectedSystems));
   }, [selectedSystems]);
 
-  const handlePortalChange = (type: 'personal' | 'enterprise') => {
-    setPortalType(type);
-  };
-
   const toggleSystem = (id: string) => {
     setSelectedSystems(prev => 
       prev.includes(id) 
@@ -88,15 +70,12 @@ export default function Enterprise() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* 漂浮的门户切换组件 */}
-      <PortalSwitcher portalType={portalType} onPortalChange={handlePortalChange} />
-
       {/* 企业门户专属导航栏 */}
       {portalType === 'enterprise' && (
         <>
-          {/* 顶部导航栏 */}
+          {/* 顶部粉色语言栏 */}
           <div className="bg-pink-700 text-white px-4 py-2 flex justify-end">
-            <button className="flex items-center gap-1 hover:bg-pink-600 px-3 py-1 rounded">
+            <button className="flex items-center gap-1 hover:bg-pink-600 px-3 py-1 rounded text-sm">
               <span>语言</span>
               <span className="text-xs">▼</span>
             </button>
@@ -112,12 +91,12 @@ export default function Enterprise() {
                 </div>
                 <div>
                   <div className="text-pink-700 font-bold text-lg">JUNEYAO AIR</div>
-                  <div className="text-pink-700 font-medium">吉祥航空</div>
+                  <div className="text-pink-700 font-medium text-sm">吉祥航空</div>
                 </div>
               </div>
               
               {/* 导航菜单 */}
-              <nav className="flex items-center gap-8">
+              <nav className="flex items-center gap-6 text-sm">
                 <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">首页</button>
                 <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">文档中心</button>
                 <button className="text-gray-800 font-medium hover:text-pink-700 transition-colors">流程中心</button>
@@ -134,19 +113,47 @@ export default function Enterprise() {
                 <button className="text-gray-600 hover:text-pink-700">
                   <Search size={20} />
                 </button>
-                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
                   <img 
                     src="https://api.dicebear.com/7.x/initials/svg?seed=梁劼&backgroundColor=ec4899" 
                     alt="用户" 
                     className="w-full h-full rounded-full"
                   />
                 </div>
-                <span className="text-gray-700 font-medium">梁劼</span>
+                <span className="text-gray-700 font-medium text-sm">梁劼</span>
               </div>
             </div>
           </div>
         </>
       )}
+
+      {/* 门户Tab切换 */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-1">
+            <button
+              onClick={() => setPortalType('personal')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
+                portalType === 'personal'
+                  ? 'border-pink-700 text-pink-700'
+                  : 'border-transparent text-gray-500 hover:text-pink-700 hover:border-pink-300'
+              }`}
+            >
+              个人门户
+            </button>
+            <button
+              onClick={() => setPortalType('enterprise')}
+              className={`px-6 py-3 text-sm font-medium border-b-2 transition-all duration-200 ${
+                portalType === 'enterprise'
+                  ? 'border-pink-700 text-pink-700'
+                  : 'border-transparent text-gray-500 hover:text-pink-700 hover:border-pink-300'
+              }`}
+            >
+              企业门户
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* 主内容区 */}
       {portalType === 'personal' ? (
@@ -158,79 +165,96 @@ export default function Enterprise() {
         </div>
       ) : (
         <div className="relative">
-          {/* 广告横幅 */}
-          <div className="relative w-full h-[280px] md:h-[340px] lg:h-[400px] bg-gradient-to-br from-blue-900 via-blue-800 to-cyan-700">
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-              <div className="absolute inset-0">
-                <div className="absolute top-20 left-20 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
-                <div className="absolute bottom-40 right-32 w-48 h-48 bg-cyan-500/20 rounded-full blur-2xl"></div>
-              </div>
-              
-              {/* 左侧导航箭头 */}
-              <button className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white">
-                <ChevronLeft size={24} />
-              </button>
-              
-              {/* 横幅内容 */}
-              <div className="relative z-10 text-center text-white max-w-4xl px-4">
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <span className="bg-white/20 px-4 py-2 rounded text-lg font-semibold">1458N</span>
-                  <div className="h-px bg-white/30 flex-1 max-w-[120px] md:max-w-[160px] lg:max-w-[200px]"></div>
-                  <div className="text-lg">✈️</div>
-                  <div className="h-px bg-white/30 flex-1 max-w-[120px] md:max-w-[160px] lg:max-w-[200px]"></div>
+          {/* Banner 轮播区域 */}
+          <div className="relative w-full h-[320px] md:h-[380px] lg:h-[420px] overflow-hidden">
+            {/* 背景渐变 */}
+            <div className="absolute inset-0 bg-gradient-to-br from-pink-200/60 via-purple-200/50 to-pink-300/60" />
+            <div className="absolute inset-0 bg-gradient-to-r from-pink-100/40 via-transparent to-purple-100/40" />
+            
+            {/* 云层背景装饰 */}
+            <div className="absolute inset-0 overflow-hidden">
+              <div className="absolute top-10 left-[5%] w-64 h-32 bg-white/40 rounded-full blur-2xl" />
+              <div className="absolute top-20 right-[10%] w-80 h-40 bg-pink-100/50 rounded-full blur-3xl" />
+              <div className="absolute bottom-10 left-[20%] w-96 h-48 bg-purple-100/40 rounded-full blur-3xl" />
+              <div className="absolute top-[30%] right-[30%] w-72 h-36 bg-white/30 rounded-full blur-2xl" />
+            </div>
+
+            {/* 飞机图片（左侧） */}
+            <div className="absolute left-[8%] top-1/2 -translate-y-1/2 z-10">
+              <img 
+                src="https://api.dicebear.com/7.x/shapes/svg?seed=airplane&backgroundColor=transparent"
+                alt="飞机"
+                className="w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 object-contain opacity-80"
+              />
+            </div>
+            
+            {/* 左右切换箭头 */}
+            <button className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-gray-600 backdrop-blur-sm z-20 transition-colors">
+              <ChevronLeft size={24} />
+            </button>
+            <button className="absolute right-[320px] top-1/2 -translate-y-1/2 w-10 h-10 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center text-gray-600 backdrop-blur-sm z-20 transition-colors">
+              <ChevronRight size={24} />
+            </button>
+            
+            {/* Banner 内容 */}
+            <div className="absolute inset-0 flex items-center justify-center z-10">
+              <div className="text-center">
+                <div className="text-7xl md:text-8xl lg:text-9xl font-bold text-pink-800/80 tracking-wider mb-2">
+                  2025
                 </div>
-                <h1 className="text-6xl font-bold mb-2 tracking-wider">
-                  <span className="text-white/90">“</span>
-                  一五五
-                  <span className="text-white/90">”</span>
-                  <span className="ml-3">战略规划</span>
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-pink-900/90 tracking-widest mb-4">
+                  可持续发展报告
                 </h1>
-                <p className="text-lg text-white/80 mt-4 flex items-center justify-center gap-8">
-                  <span>✈️</span>
-                  <span>打造客户价值引领、数智驱动运营的“世界一流航空公司”</span>
-                  <span>✈️</span>
-                </p>
+                <div className="flex items-center justify-center gap-4">
+                  <div className="h-px w-16 bg-pink-400/60" />
+                  <p className="text-lg md:text-xl text-pink-800/80 font-medium">
+                    上海吉祥航空股份有限公司
+                  </p>
+                  <div className="h-px w-16 bg-pink-400/60" />
+                </div>
               </div>
-              
-              {/* 右侧导航箭头 */}
-              <button className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white">
-                <ChevronRight size={24} />
-              </button>
-              
-              {/* 右侧我的待办卡片 */}
-              <div className="absolute right-8 top-1/2 -translate-y-1/2 w-72 bg-gradient-to-br from-purple-900/90 to-pink-800/90 backdrop-blur rounded-xl text-white overflow-hidden">
-                <div className="p-4 border-b border-white/20">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold">我的待办</h3>
-                      <p className="text-white/70 text-sm">OA流程、审批</p>
-                    </div>
-                    <div className="text-5xl font-light">11</div>
+            </div>
+
+            {/* 轮播指示点 */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+              <div className="w-8 h-1 bg-white/80 rounded-full" />
+              <div className="w-8 h-1 bg-white/40 rounded-full" />
+              <div className="w-8 h-1 bg-white/40 rounded-full" />
+            </div>
+            
+            {/* 右侧我的待办卡片 */}
+            <div className="absolute right-6 top-1/2 -translate-y-1/2 w-64 bg-gradient-to-br from-purple-800/95 to-pink-700/95 backdrop-blur rounded-xl text-white overflow-hidden shadow-xl z-20">
+              <div className="p-4 border-b border-white/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold">我的待办</h3>
+                    <p className="text-white/70 text-xs">OA流程、审批</p>
                   </div>
+                  <div className="text-4xl font-light">13</div>
                 </div>
-                <div className="p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">公司值班领导</span>
-                    <span className="text-amber-200 font-medium">杨志华</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">公司总值班</span>
-                    <span className="text-amber-200 font-medium">王东</span>
-                  </div>
-                  <button className="text-white/70 hover:text-white text-sm flex items-center gap-1">
-                    查看公司值班表
-                  </button>
+              </div>
+              <div className="p-4 space-y-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span>公司值班领导</span>
+                  <span className="text-amber-200 font-medium">郑晓铭</span>
                 </div>
-                <div className="px-4 pb-4">
-                  <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-pink-400/30 to-purple-500/30">
-                    <img 
-                      src="https://api.dicebear.com/7.x/shapes/svg?seed=jixiang_event&backgroundColor=fce7f3"
-                      alt="会议"
-                      className="w-full h-32 object-cover"
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/50 to-transparent p-3">
-                      <h4 className="text-white font-bold">吉祥航空2026年度会议</h4>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <span>公司总值班</span>
+                  <span className="text-amber-200 font-medium">张正</span>
+                </div>
+                <button className="text-white/70 hover:text-white text-xs flex items-center gap-1 mt-1">
+                  查看公司值班表
+                </button>
+              </div>
+              <div className="px-4 pb-4">
+                <div className="relative overflow-hidden rounded-lg">
+                  <img 
+                    src="https://images.unsplash.com/photo-1557804506-669a67965ba0?w=300&h=120&fit=crop"
+                    alt="会议"
+                    className="w-full h-24 object-cover"
+                  />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2">
+                    <h4 className="text-white text-xs font-bold">吉祥航空2026年度会议</h4>
                   </div>
                 </div>
               </div>
@@ -238,138 +262,147 @@ export default function Enterprise() {
           </div>
 
           {/* 主要内容区域 */}
-          <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
+          <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
             {/* 近期待办 */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between">
+            <div className="bg-white rounded-xl shadow-sm p-5">
+              <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <div className="text-2xl">☑️</div>
+                  <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Monitor size={20} className="text-gray-600" />
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-800">近期待办</h2>
+                  <h2 className="text-xl font-bold text-gray-800">近期待办</h2>
                 </div>
-                <button className="bg-pink-700 hover:bg-pink-800 text-white px-8 py-2 rounded font-medium transition-colors">
+                <button className="bg-pink-700 hover:bg-pink-800 text-white px-6 py-1.5 rounded text-sm font-medium transition-colors">
                   查看全部
                 </button>
               </div>
               
-              <div className="mt-4 ml-13 space-y-2">
-                <div className="flex items-center gap-4">
-                  <span className="text-pink-600">▸</span>
-                  <span className="text-gray-700">ITSR-2026-05 信息管理部2026年4月主动式IT服务工作月度报告</span>
-                  <span className="px-3 py-1 bg-teal-100 text-teal-700 rounded text-sm">正常</span>
-                  <span className="text-gray-400 ml-auto">2026-05-13 08:46:59</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-pink-600">▸</span>
-                  <span className="text-gray-700">IS-2026-06 信息管理部2026年4月安全管理工作月度报告</span>
-                  <span className="px-3 py-1 bg-teal-100 text-teal-700 rounded text-sm">正常</span>
-                  <span className="text-gray-400 ml-auto">2026-05-09 16:17:06</span>
-                </div>
+              <div className="space-y-3">
+                {TODO_ITEMS.map((item, index) => (
+                  <div key={index} className="flex items-center gap-3 text-sm">
+                    <span className="text-pink-500 text-xs">▸</span>
+                    <span className="text-gray-700 flex-1 truncate">{item.title}</span>
+                    <span className="px-2 py-0.5 bg-teal-50 text-teal-600 rounded text-xs whitespace-nowrap">{item.status}</span>
+                    <span className="text-gray-400 text-xs whitespace-nowrap">{item.date}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* 文件中心和我的日程 */}
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* 文件中心 */}
-              <div className="col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
+              <div className="lg:col-span-2 bg-white rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-gray-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <h2 className="text-3xl font-bold text-gray-800">文件中心</h2>
-                      <div className="flex gap-2">
-                        <button className="text-gray-400 hover:text-gray-600 font-medium">通告中心</button>
-                        <button className="text-gray-400 hover:text-gray-600 font-medium">手册制度</button>
-                        <button className="text-gray-400 hover:text-gray-600 font-medium">文化专栏</button>
-                        <button className="text-gray-400 hover:text-gray-600 font-medium">部门文档</button>
-                        <button className="text-gray-400 hover:text-gray-600 font-medium">内部招聘</button>
+                      <h2 className="text-xl font-bold text-gray-800">文件中心</h2>
+                      <div className="flex gap-3 text-sm">
+                        <button className="text-gray-400 hover:text-gray-600">通告中心</button>
+                        <button className="text-gray-400 hover:text-gray-600">手册制度</button>
+                        <button className="text-gray-400 hover:text-gray-600">文化专栏</button>
+                        <button className="text-gray-400 hover:text-gray-600">部门文档</button>
+                        <button className="text-gray-400 hover:text-gray-600">内部招聘</button>
                       </div>
                     </div>
-                    <button className="text-gray-400 hover:text-gray-600">More</button>
+                    <button className="text-gray-400 hover:text-gray-600 text-sm">More</button>
                   </div>
                 </div>
                 
-                {/* 文件标签页 */}
-                <div className="px-6">
-                  <div className="flex border-b border-gray-200">
-                    <button className="px-4 py-3 border-b-2 border-pink-700 text-pink-700 font-medium">公司文件</button>
-                    <button className="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700">党群文件</button>
-                    <button className="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700">会议纪要</button>
-                    <button className="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700">人事任免</button>
-                    <button className="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700">工作简报</button>
-                    <button className="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700">局方文件</button>
-                    <button className="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700">外部文件</button>
-                    <button className="px-4 py-3 border-b-2 border-transparent text-gray-500 hover:text-gray-700">安全管理</button>
+                {/* 文件子标签 */}
+                <div className="px-5">
+                  <div className="flex border-b border-gray-200 overflow-x-auto">
+                    <button className="px-4 py-2.5 border-b-2 border-pink-700 text-pink-700 font-medium text-sm whitespace-nowrap">公司文件</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">党群文件</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">会议纪要</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">人事任免</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">工作简报</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">局方文件</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">外部文件</button>
+                    <button className="px-4 py-2.5 border-b-2 border-transparent text-gray-500 hover:text-gray-700 text-sm whitespace-nowrap">安全管理</button>
                   </div>
                   
                   {/* 文件列表 */}
-                  <div className="py-4">
-                    <div className="flex items-center justify-between py-2 border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <span className="text-gray-800 font-medium">关于发布《上海吉祥航空股份有限公司海外经营合规管理制度（试行）》的...</span>
-                        <span className="w-2 h-2 rounded-full bg-pink-500"></span>
+                  <div className="py-3">
+                    {FILE_ITEMS.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between py-2.5 border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-700 text-sm truncate">{file.title}</span>
+                          {file.isNew && <span className="w-1.5 h-1.5 rounded-full bg-red-500 flex-shrink-0" />}
+                        </div>
+                        <span className="text-gray-400 text-xs whitespace-nowrap">{file.date}</span>
                       </div>
-                      <span className="text-gray-400 text-sm">2026-05-20 14:21:49</span>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
               {/* 我的日程 */}
               <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
+                <div className="px-5 py-4 border-b border-gray-100">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <div className="text-blue-600 text-xl">🪪</div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <CalendarIcon />
                       </div>
-                      <h2 className="text-3xl font-bold text-gray-800">我的日程</h2>
-                      <div className="flex gap-2">
-                        <button className="text-gray-400 hover:text-gray-600 font-medium">公司会议</button>
-                      </div>
+                      <h2 className="text-xl font-bold text-gray-800">我的日程</h2>
                     </div>
-                    <button className="text-gray-400 hover:text-gray-600">更多日程</button>
+                    <button className="text-gray-400 hover:text-gray-600 text-sm">更多日程</button>
                   </div>
                 </div>
                 
-                <div className="p-6">
+                <div className="p-5">
                   {/* 日历头部 */}
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-gray-800">2026.05</h3>
-                    <div className="flex items-center gap-2">
-                      <button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
-                        <Plus size={16} />
+                    <h3 className="text-lg font-bold text-gray-800">2026.05</h3>
+                    <div className="flex items-center gap-1">
+                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
+                        <Plus size={14} />
                       </button>
-                      <button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
-                        <ChevronLeft size={16} />
+                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
+                        <ChevronLeft size={14} />
                       </button>
-                      <button className="px-3 py-1 bg-pink-700 text-white rounded text-sm">今日</button>
-                      <button className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
-                        <ChevronRight size={16} />
+                      <button className="px-2 py-0.5 bg-pink-700 text-white rounded text-xs">今日</button>
+                      <button className="w-7 h-7 flex items-center justify-center border border-gray-200 rounded hover:bg-gray-50">
+                        <ChevronRight size={14} />
                       </button>
                     </div>
                   </div>
                   
                   {/* 日历网格 */}
-                  <div className="bg-white rounded-lg border border-gray-200 p-3">
-                    <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                      <div className="text-gray-400 text-sm py-2">日</div>
-                      <div className="text-gray-400 text-sm py-2">一</div>
-                      <div className="text-gray-400 text-sm py-2">二</div>
-                      <div className="text-gray-400 text-sm py-2">三</div>
-                      <div className="text-gray-400 text-sm py-2">四</div>
-                      <div className="text-gray-400 text-sm py-2">五</div>
-                      <div className="text-gray-400 text-sm py-2">六</div>
+                  <div className="border border-gray-200 rounded-lg p-2">
+                    <div className="grid grid-cols-7 gap-0 text-center mb-1">
+                      <div className="text-gray-400 text-xs py-1">日</div>
+                      <div className="text-gray-400 text-xs py-1">一</div>
+                      <div className="text-gray-400 text-xs py-1">二</div>
+                      <div className="text-gray-400 text-xs py-1">三</div>
+                      <div className="text-gray-400 text-xs py-1">四</div>
+                      <div className="text-gray-400 text-xs py-1">五</div>
+                      <div className="text-gray-400 text-xs py-1">六</div>
                     </div>
-                    <div className="grid grid-cols-7 gap-1 text-center">
-                      <div className="py-2 text-gray-400">17</div>
-                      <div className="py-2 text-gray-400">18</div>
-                      <div className="py-2 text-gray-400">19</div>
-                      <div className="py-2 bg-pink-700 text-white rounded font-medium">20</div>
-                      <div className="py-2 text-gray-800">21</div>
-                      <div className="py-2 text-gray-800">22</div>
-                      <div className="py-2 text-gray-800">23</div>
+                    <div className="grid grid-cols-7 gap-0 text-center text-sm">
+                      <div className="py-1.5 text-gray-400">24</div>
+                      <div className="py-1.5 bg-pink-700 text-white rounded font-medium">25</div>
+                      <div className="py-1.5 text-gray-800">26</div>
+                      <div className="py-1.5 text-gray-800 relative">
+                        27
+                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-red-500 rounded-full" />
+                      </div>
+                      <div className="py-1.5 text-gray-800 relative">
+                        28
+                        <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 bg-red-500 rounded-full" />
+                      </div>
+                      <div className="py-1.5 text-gray-800">29</div>
+                      <div className="py-1.5 text-gray-800">30</div>
                     </div>
+                  </div>
+
+                  {/* 今日无日程提示 */}
+                  <div className="mt-4 text-center py-4">
+                    <div className="text-gray-300 mb-2">
+                      <Monitor size={32} className="mx-auto" />
+                    </div>
+                    <p className="text-gray-400 text-sm">当日暂无日程</p>
                   </div>
                 </div>
               </div>
@@ -381,47 +414,42 @@ export default function Enterprise() {
       {/* 企业门户专属右侧固定悬浮栏 */}
       {portalType === 'enterprise' && (
         <div className="fixed right-0 top-1/2 -translate-y-1/2 bg-white shadow-lg rounded-l-xl flex flex-col overflow-hidden z-30">
+          {/* IT提报 */}
+          <div className="p-2 bg-pink-700 text-white">
+            <div className="flex flex-col items-center gap-1">
+              <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
+                <MessageSquare size={14} />
+              </div>
+              <span className="text-xs font-medium">IT提报</span>
+            </div>
+          </div>
+          
           <div className="flex flex-col items-center gap-1 p-2">
-            <button className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
-              <MessageSquare size={20} />
+            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
+              <MoreHorizontal size={18} />
             </button>
-            <button className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
-              <div className="text-lg">✉️</div>
+            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
+              <Mail size={18} />
             </button>
-            <button className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
-              <Smartphone size={20} />
+            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
+              <Smartphone size={18} />
             </button>
-            <button className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
-              <BarChart3 size={20} />
-            </button>
-            <button className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
-              <ArrowUp size={20} />
+            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 rounded-lg text-gray-600">
+              <BarChart3 size={18} />
             </button>
           </div>
           
           {/* 如意助手悬浮 */}
           <div className="border-t border-gray-100 p-2">
-            <div className="relative">
-              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center overflow-hidden">
+            <div className="relative flex flex-col items-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center overflow-hidden">
                 <img 
                   src="https://api.dicebear.com/7.x/avataaars/svg?seed=ruyi_assistant"
                   alt="如意助手"
                   className="w-full h-full"
                 />
               </div>
-              <div className="absolute -left-2 -bottom-1 bg-pink-500 text-white text-xs px-2 py-0.5 rounded-full whitespace-nowrap">
-                如意助手
-              </div>
-            </div>
-          </div>
-          
-          {/* IT提报 */}
-          <div className="border-t border-gray-100 p-3 bg-pink-700 text-white">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-                <div className="text-sm">📝</div>
-              </div>
-              <span className="text-sm font-medium">IT提报</span>
+              <span className="text-[10px] text-pink-500 mt-0.5">如意助手</span>
             </div>
           </div>
         </div>
@@ -531,5 +559,17 @@ export default function Enterprise() {
         </div>
       )}
     </div>
+  );
+}
+
+// 日历图标组件
+function CalendarIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="8" y1="2" x2="8" y2="6" />
+      <line x1="3" y1="10" x2="21" y2="10" />
+    </svg>
   );
 }
