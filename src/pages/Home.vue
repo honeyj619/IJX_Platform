@@ -1,24 +1,30 @@
 <template>
-  <v-container fluid class="h-100">
+  <v-container fluid class="h-100 pa-0">
     <v-row class="h-100" no-gutters>
+      <!-- 消息列表侧边栏 -->
       <v-col
         cols="12"
         lg="4"
         class="d-flex flex-column"
+        style="border-right: 1px solid rgba(0, 0, 0, 0.08);"
       >
-        <v-card class="rounded-0 pa-4" elevation="0">
+        <!-- 搜索栏 -->
+        <div class="pa-4" style="border-bottom: 1px solid rgba(0, 0, 0, 0.08);">
           <v-text-field
             v-model="searchQuery"
-            placeholder="搜索..."
+            placeholder="搜索消息..."
             prepend-inner-icon="mdi-magnify"
             rounded="pill"
             density="compact"
             variant="outlined"
+            single-line
+            hide-details
           />
-        </v-card>
+        </div>
 
-        <v-card class="flex-grow-1 overflow-y-auto" elevation="0">
-          <v-list density="compact">
+        <!-- 消息列表 -->
+        <div class="flex-grow-1 overflow-y-auto">
+          <v-list density="comfortable" class="py-0">
             <v-list-item
               v-for="message in messages"
               :key="message.id"
@@ -26,99 +32,133 @@
               @click="selectMessage(message)"
               class="cursor-pointer"
               :ripple="false"
+              :class="{ 'bg-primary-lighten-5': selectedMessage?.id === message.id }"
+              link
             >
               <template v-slot:prepend>
-                <v-avatar size="40">
-                  <img :src="message.avatar" :alt="message.name" />
+                <v-avatar size="48">
+                  <v-img :src="message.avatar" :alt="message.name" />
                 </v-avatar>
               </template>
-              <v-list-item-title class="font-weight-medium">{{ message.name }}</v-list-item-title>
-              <v-list-item-subtitle class="text-truncate">{{ message.message }}</v-list-item-subtitle>
+              
+              <v-list-item-content>
+                <v-list-item-title class="font-weight-medium">
+                  {{ message.name }}
+                </v-list-item-title>
+                <v-list-item-subtitle class="text-truncate">
+                  {{ message.message }}
+                </v-list-item-subtitle>
+              </v-list-item-content>
+              
               <template v-slot:append>
                 <div class="d-flex flex-column align-end">
-                  <span class="text-xs text-medium-emphasis">{{ message.time }}</span>
+                  <span class="text-caption text-medium-emphasis mb-1">{{ message.time }}</span>
                   <v-badge
                     v-if="message.unread"
                     color="primary"
                     :content="message.unread"
-                    class="mt-1"
+                    inline
                   />
                 </div>
               </template>
             </v-list-item>
           </v-list>
-        </v-card>
+        </div>
       </v-col>
 
+      <!-- 聊天内容区 -->
       <v-col
         cols="12"
         lg="8"
-        class="d-flex flex-column"
+        class="d-flex flex-column bg-grey-lighten-5"
       >
         <template v-if="selectedMessage">
-          <v-card elevation="0" class="rounded-0">
-            <v-toolbar flat>
-              <v-avatar size="40">
-                <img :src="selectedMessage.avatar" :alt="selectedMessage.name" />
+          <!-- 聊天头部 -->
+          <div class="pa-4 bg-white" style="border-bottom: 1px solid rgba(0, 0, 0, 0.08);">
+            <v-row align="center" no-gutters>
+              <v-avatar size="44">
+                <v-img :src="selectedMessage.avatar" :alt="selectedMessage.name" />
               </v-avatar>
-              <v-toolbar-title class="ms-3">{{ selectedMessage.name }}</v-toolbar-title>
+              <div class="ml-3">
+                <div class="font-weight-medium text-body-1">{{ selectedMessage.name }}</div>
+              </div>
               <v-spacer />
-              <v-btn icon>
-                <v-icon>mdi-phone</v-icon>
+              <v-btn icon variant="text">
+                <v-icon>mdi-phone-outline</v-icon>
               </v-btn>
-              <v-btn icon>
-                <v-icon>mdi-video</v-icon>
+              <v-btn icon variant="text">
+                <v-icon>mdi-video-outline</v-icon>
               </v-btn>
-              <v-btn icon>
+              <v-btn icon variant="text">
                 <v-icon>mdi-dots-vertical</v-icon>
               </v-btn>
-            </v-toolbar>
-          </v-card>
+            </v-row>
+          </div>
 
-          <v-card class="flex-grow-1 overflow-y-auto pa-4" elevation="0">
-            <div v-for="chat in selectedMessage.chatMessages" :key="chat.id" class="mb-4">
-              <v-card
-                :class="chat.sender === 'me' ? 'ms-auto' : 'me-auto'"
-                max-width="80%"
-                :color="chat.sender === 'me' ? 'primary-lighten-4' : 'grey-lighten-1'"
-                rounded="lg"
-              >
-                <v-card-text class="pa-4">
-                  <p>{{ chat.content }}</p>
-                  <p class="text-xs text-medium-emphasis mt-2 mb-0 text-right">{{ chat.time }}</p>
-                </v-card-text>
-              </v-card>
+          <!-- 聊天消息 -->
+          <div class="flex-grow-1 overflow-y-auto pa-6">
+            <div
+              v-for="chat in selectedMessage.chatMessages"
+              :key="chat.id"
+              class="mb-5"
+            >
+              <div :class="chat.sender === 'me' ? 'd-flex justify-end' : 'd-flex justify-start'">
+                <v-sheet
+                  max-width="70%"
+                  :color="chat.sender === 'me' ? 'primary-lighten-4' : 'white'"
+                  rounded="lg"
+                  elevation="0"
+                  class="pa-4"
+                >
+                  <p class="ma-0 text-body-1">{{ chat.content }}</p>
+                  <p class="ma-0 text-right mt-2 text-caption text-medium-emphasis">{{ chat.time }}</p>
+                </v-sheet>
+              </div>
             </div>
-          </v-card>
+          </div>
 
-          <v-card elevation="0" class="rounded-0">
-            <v-toolbar flat>
-              <v-btn icon>
-                <v-icon>mdi-emoticon</v-icon>
+          <!-- 输入栏 -->
+          <div class="pa-4 bg-white" style="border-top: 1px solid rgba(0, 0, 0, 0.08);">
+            <v-row align="center" no-gutters>
+              <v-btn icon variant="text">
+                <v-icon>mdi-emoticon-outline</v-icon>
               </v-btn>
-              <v-text-field
-                v-model="newMessage"
-                placeholder="输入消息..."
-                rounded="pill"
-                variant="outlined"
-                class="flex-grow-1 mx-2"
-                @keyup.enter="sendMessage"
-              />
-              <v-btn icon color="primary" @click="sendMessage">
+              <v-btn icon variant="text">
+                <v-icon>mdi-paperclip</v-icon>
+              </v-btn>
+              <v-col class="mx-3">
+                <v-text-field
+                  v-model="newMessage"
+                  placeholder="输入消息..."
+                  rounded="pill"
+                  variant="outlined"
+                  density="compact"
+                  single-line
+                  hide-details
+                  @keyup.enter="sendMessage"
+                />
+              </v-col>
+              <v-btn
+                icon
+                color="primary"
+                @click="sendMessage"
+                :disabled="!newMessage.trim()"
+              >
                 <v-icon>mdi-send</v-icon>
               </v-btn>
-            </v-toolbar>
-          </v-card>
+            </v-row>
+          </div>
         </template>
 
+        <!-- 空状态 -->
         <template v-else>
           <div class="flex-grow-1 d-flex align-center justify-center">
             <div class="text-center">
-              <div class="mb-6">
-                <v-icon size="128" color="primary-lighten-3">mdi-message-circle</v-icon>
-              </div>
-              <h2 class="text-h4 font-weight-bold mb-2">选择一个对话开始聊天</h2>
-              <p class="text-medium-emphasis">从左侧列表中选择一个消息对话</p>
+              <v-icon size="120" color="primary-lighten-3" class="mb-6">
+                mdi-message-outline
+              </v-icon>
+              <h2 class="text-h5 font-weight-bold mb-2">选择一个对话开始聊天</h2>
+              <p class="text-medium-emphasis mb-0">从左侧列表中选择一个消息对话</p>
             </div>
           </div>
         </template>
@@ -128,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 
 interface ChatMessage {
   id: number
