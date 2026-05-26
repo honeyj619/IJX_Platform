@@ -6,7 +6,7 @@
       permanent
       width="280"
       mini-variant-width="80"
-      class="bg-gradient-to-b from-pink-200 to-pink-400"
+      color="primary"
     >
       <v-list density="compact">
         <v-list-item
@@ -14,16 +14,17 @@
           :key="item.path"
           :active="currentPath === item.path"
           :to="item.path"
-          class="text-white"
+          color="white"
+          :ripple="false"
         >
           <template v-slot:prepend>
-            <v-icon>{{ item.icon }}</v-icon>
+            <v-icon color="white">{{ item.icon }}</v-icon>
           </template>
-          <v-list-item-title v-if="!miniVariant">{{ item.label }}</v-list-item-title>
+          <v-list-item-title v-if="!miniVariant" color="white">{{ item.label }}</v-list-item-title>
         </v-list-item>
       </v-list>
 
-      <v-divider class="my-4 bg-white/30" />
+      <v-divider class="ma-4" color="white" style="opacity: 0.3" />
 
       <v-list density="compact">
         <v-list-item
@@ -31,14 +32,15 @@
           :key="page.id"
           :active="currentPath === page.path"
           :to="page.path"
-          class="text-white"
+          color="white"
+          :ripple="false"
         >
           <template v-slot:prepend>
-            <v-icon>mdi-file</v-icon>
+            <v-icon color="white">mdi-file</v-icon>
           </template>
-          <v-list-item-title v-if="!miniVariant">{{ page.title }}</v-list-item-title>
+          <v-list-item-title v-if="!miniVariant" color="white">{{ page.title }}</v-list-item-title>
           <template v-slot:append v-if="!miniVariant">
-            <v-btn icon @click.stop="closePage(page.path)">
+            <v-btn icon @click.stop="closePage(page.path)" color="white" variant="text">
               <v-icon size="16">mdi-close</v-icon>
             </v-btn>
           </template>
@@ -46,36 +48,37 @@
       </v-list>
 
       <template v-slot:append>
-        <div class="pa-4">
+        <v-card-text>
           <v-btn
             icon
             @click="miniVariant = !miniVariant"
-            class="text-white/80 hover:text-white"
+            color="white"
+            variant="text"
           >
             <v-icon>{{ miniVariant ? 'mdi-chevron-right' : 'mdi-chevron-left' }}</v-icon>
           </v-btn>
-        </div>
+        </v-card-text>
       </template>
     </v-navigation-drawer>
 
     <v-app-bar
       app
-      color="white"
-      class="shadow-sm"
+      color="surface"
+      elevation="2"
     >
-      <v-btn icon @click="drawer = !drawer" class="lg:hidden">
+      <v-btn icon @click="drawer = !drawer" class="d-lg-none">
         <v-icon>mdi-menu</v-icon>
       </v-btn>
 
-      <v-toolbar-title class="font-semibold text-gray-800">工作空间</v-toolbar-title>
+      <v-toolbar-title class="font-weight-bold">工作空间</v-toolbar-title>
 
       <v-spacer />
 
-      <v-btn icon class="mr-2">
+      <v-btn icon class="me-2">
         <v-icon>mdi-bell</v-icon>
       </v-btn>
 
-      <v-btn icon class="mr-2">
+      <v-btn icon class="me-2">
         <v-icon>mdi-search</v-icon>
       </v-btn>
 
@@ -86,9 +89,15 @@
           </v-btn>
         </template>
         <v-list>
-          <v-list-item :to="'/profile'">个人信息</v-list-item>
-          <v-list-item :to="'/settings'">系统设置</v-list-item>
-          <v-list-item>退出登录</v-list-item>
+          <v-list-item :to="'/profile'">
+            <v-list-item-title>个人信息</v-list-item-title>
+          </v-list-item>
+          <v-list-item :to="'/settings'">
+            <v-list-item-title>系统设置</v-list-item-title>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-title>退出登录</v-list-item-title>
+          </v-list-item>
         </v-list>
       </v-menu>
     </v-app-bar>

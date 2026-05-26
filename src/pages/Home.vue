@@ -1,115 +1,124 @@
 <template>
-  <v-container fluid class="h-full">
-    <v-row class="h-full">
+  <v-container fluid class="h-100">
+    <v-row class="h-100" no-gutters>
       <v-col
         cols="12"
         lg="4"
-        class="bg-gray-50 border-r border-gray-200 flex flex-col"
+        class="d-flex flex-column"
       >
-        <div class="p-4 border-b border-gray-200">
+        <v-card class="rounded-0 pa-4" elevation="0">
           <v-text-field
             v-model="searchQuery"
             placeholder="搜索..."
-            prepend-icon="mdi-magnify"
-            rounded-full
+            prepend-inner-icon="mdi-magnify"
+            rounded="pill"
             density="compact"
-            class="bg-white"
+            variant="outlined"
           />
-        </div>
+        </v-card>
 
-        <v-list class="flex-1 overflow-y-auto">
-          <v-list-item
-            v-for="message in messages"
-            :key="message.id"
-            :active="selectedMessage?.id === message.id"
-            @click="selectMessage(message)"
-            class="cursor-pointer"
-          >
-            <template v-slot:prepend>
-              <v-avatar size="40">
-                <img :src="message.avatar" :alt="message.name" />
-              </v-avatar>
-            </template>
-            <v-list-item-title class="font-medium">{{ message.name }}</v-list-item-title>
-            <v-list-item-subtitle class="text-sm text-gray-500 truncate">{{ message.message }}</v-list-item-subtitle>
-            <template v-slot:append>
-              <div class="text-right">
-                <span class="text-xs text-gray-400">{{ message.time }}</span>
-                <v-badge
-                  v-if="message.unread"
-                  color="pink"
-                  :content="message.unread"
-                  class="ml-2"
-                />
-              </div>
-            </template>
-          </v-list-item>
-        </v-list>
+        <v-card class="flex-grow-1 overflow-y-auto" elevation="0">
+          <v-list density="compact">
+            <v-list-item
+              v-for="message in messages"
+              :key="message.id"
+              :active="selectedMessage?.id === message.id"
+              @click="selectMessage(message)"
+              class="cursor-pointer"
+              :ripple="false"
+            >
+              <template v-slot:prepend>
+                <v-avatar size="40">
+                  <img :src="message.avatar" :alt="message.name" />
+                </v-avatar>
+              </template>
+              <v-list-item-title class="font-weight-medium">{{ message.name }}</v-list-item-title>
+              <v-list-item-subtitle class="text-truncate">{{ message.message }}</v-list-item-subtitle>
+              <template v-slot:append>
+                <div class="d-flex flex-column align-end">
+                  <span class="text-xs text-medium-emphasis">{{ message.time }}</span>
+                  <v-badge
+                    v-if="message.unread"
+                    color="primary"
+                    :content="message.unread"
+                    class="mt-1"
+                  />
+                </div>
+              </template>
+            </v-list-item>
+          </v-list>
+        </v-card>
       </v-col>
 
       <v-col
         cols="12"
         lg="8"
-        class="bg-white flex flex-col"
+        class="d-flex flex-column"
       >
         <template v-if="selectedMessage">
-          <v-toolbar class="border-b border-gray-200">
-            <v-avatar size="40">
-              <img :src="selectedMessage.avatar" :alt="selectedMessage.name" />
-            </v-avatar>
-            <v-toolbar-title class="ml-3">{{ selectedMessage.name }}</v-toolbar-title>
-            <v-spacer />
-            <v-btn icon>
-              <v-icon>mdi-phone</v-icon>
-            </v-btn>
-            <v-btn icon>
-              <v-icon>mdi-video</v-icon>
-            </v-btn>
-            <v-btn icon>
-              <v-icon>mdi-more-vertical</v-icon>
-            </v-btn>
-          </v-toolbar>
+          <v-card elevation="0" class="rounded-0">
+            <v-toolbar flat>
+              <v-avatar size="40">
+                <img :src="selectedMessage.avatar" :alt="selectedMessage.name" />
+              </v-avatar>
+              <v-toolbar-title class="ms-3">{{ selectedMessage.name }}</v-toolbar-title>
+              <v-spacer />
+              <v-btn icon>
+                <v-icon>mdi-phone</v-icon>
+              </v-btn>
+              <v-btn icon>
+                <v-icon>mdi-video</v-icon>
+              </v-btn>
+              <v-btn icon>
+                <v-icon>mdi-dots-vertical</v-icon>
+              </v-btn>
+            </v-toolbar>
+          </v-card>
 
-          <div class="flex-1 overflow-y-auto p-4 space-y-4" ref="contentRef">
-            <v-card
-              v-for="chat in selectedMessage.chatMessages"
-              :key="chat.id"
-              :class="chat.sender === 'me' ? 'ml-auto' : 'mr-auto'"
-              max-width="80%"
-              :color="chat.sender === 'me' ? 'pink lighten-4' : 'gray-lighten-1'"
-              rounded="lg"
-            >
-              <v-card-text class="p-4">
-                <p>{{ chat.content }}</p>
-                <span class="text-xs text-gray-400 ml-auto d-block mt-2">{{ chat.time }}</span>
-              </v-card-text>
-            </v-card>
-          </div>
+          <v-card class="flex-grow-1 overflow-y-auto pa-4" elevation="0">
+            <div v-for="chat in selectedMessage.chatMessages" :key="chat.id" class="mb-4">
+              <v-card
+                :class="chat.sender === 'me' ? 'ms-auto' : 'me-auto'"
+                max-width="80%"
+                :color="chat.sender === 'me' ? 'primary-lighten-4' : 'grey-lighten-1'"
+                rounded="lg"
+              >
+                <v-card-text class="pa-4">
+                  <p>{{ chat.content }}</p>
+                  <p class="text-xs text-medium-emphasis mt-2 mb-0 text-right">{{ chat.time }}</p>
+                </v-card-text>
+              </v-card>
+            </div>
+          </v-card>
 
-          <v-toolbar class="border-t border-gray-200">
-            <v-btn icon>
-              <v-icon>mdi-face</v-icon>
-            </v-btn>
-            <v-text-field
-              v-model="newMessage"
-              placeholder="输入消息..."
-              rounded-full
-              @keyup.enter="sendMessage"
-            />
-            <v-btn icon color="pink" @click="sendMessage">
-              <v-icon>mdi-send</v-icon>
-            </v-btn>
-          </v-toolbar>
+          <v-card elevation="0" class="rounded-0">
+            <v-toolbar flat>
+              <v-btn icon>
+                <v-icon>mdi-emoticon</v-icon>
+              </v-btn>
+              <v-text-field
+                v-model="newMessage"
+                placeholder="输入消息..."
+                rounded="pill"
+                variant="outlined"
+                class="flex-grow-1 mx-2"
+                @keyup.enter="sendMessage"
+              />
+              <v-btn icon color="primary" @click="sendMessage">
+                <v-icon>mdi-send</v-icon>
+              </v-btn>
+            </v-toolbar>
+          </v-card>
         </template>
 
         <template v-else>
-          <div class="flex-1 flex items-center justify-center">
+          <div class="flex-grow-1 d-flex align-center justify-center">
             <div class="text-center">
               <div class="mb-6">
-                <v-icon size="128" color="pink lighten-3">mdi-message-circle</v-icon>
+                <v-icon size="128" color="primary-lighten-3">mdi-message-circle</v-icon>
               </div>
-              <h2 class="text-2xl font-bold text-gray-800 mb-2">选择一个对话开始聊天</h2>
-              <p class="text-gray-500">从左侧列表中选择一个消息对话</p>
+              <h2 class="text-h4 font-weight-bold mb-2">选择一个对话开始聊天</h2>
+              <p class="text-medium-emphasis">从左侧列表中选择一个消息对话</p>
             </div>
           </div>
         </template>
@@ -142,7 +151,6 @@ interface Message {
 const searchQuery = ref('')
 const selectedMessage = ref<Message | null>(null)
 const newMessage = ref('')
-const contentRef = ref<HTMLElement | null>(null)
 
 const messages: Message[] = [
   {
@@ -191,11 +199,6 @@ const messages: Message[] = [
 
 const selectMessage = (message: Message) => {
   selectedMessage.value = message
-  nextTick(() => {
-    if (contentRef.value) {
-      contentRef.value.scrollTop = contentRef.value.scrollHeight
-    }
-  })
 }
 
 const sendMessage = () => {
@@ -211,11 +214,5 @@ const sendMessage = () => {
   
   selectedMessage.value.chatMessages.push(newChatMessage)
   newMessage.value = ''
-  
-  nextTick(() => {
-    if (contentRef.value) {
-      contentRef.value.scrollTop = contentRef.value.scrollHeight
-    }
-  })
 }
 </script>
