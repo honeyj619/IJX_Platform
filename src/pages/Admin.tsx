@@ -115,8 +115,8 @@ const moreApps: NavApp[] = [
 
 export default function Admin() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const [activeSubMenu, setActiveSubMenu] = useState<string | null>(null);
+  const [activeMenu, setActiveMenu] = useState<string | null>('basic');
+  const [activeSubMenu, setActiveSubMenu] = useState<string | null>('basic-navbar');
   const [activeTab, setActiveTab] = useState<'mobile' | 'desktop' | 'name' | 'cache'>('desktop');
   const [activeConfigTab, setActiveConfigTab] = useState<'default' | 'custom'>('custom');
   const [selectedUserGroup, setSelectedUserGroup] = useState('admin');
