@@ -318,39 +318,28 @@ export default function Business() {
           {(() => {
             const frequentSystems = getFrequentSystems();
             return frequentSystems.length > 0 && (
-              <section className="mb-8 sm:mb-10 lg:mb-12">
-                <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                  <div className="w-10 h-10 sm:w-12 lg:w-12 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-400 flex items-center justify-center text-white shadow-lg">
-                    <Star size={20} className="sm:hidden" />
-                    <Star size={22} className="hidden sm:block" />
-                  </div>
-                  <div>
-                    <h2 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 dark:text-white">我的常用</h2>
-                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">根据您的访问频率自动生成</p>
-                  </div>
+              <section className="mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Star size={16} className="text-yellow-500" />
+                  <h2 className="text-sm font-medium text-slate-900 dark:text-white">我的常用</h2>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8 gap-3 sm:gap-4">
+                <div className="flex flex-wrap gap-3">
                   {frequentSystems.map((system) => (
                     <div
                       key={system.id}
                       onClick={() => handleSystemClick(system.id)}
-                      className="group bg-white dark:bg-gray-800 rounded-xl p-3 border border-amber-200/60 dark:border-amber-700/40 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-200/50 transition-all duration-300 cursor-pointer overflow-hidden"
+                      className="group flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 border border-slate-200/60 dark:border-gray-700 hover:border-yellow-400 hover:bg-yellow-50/50 dark:hover:bg-yellow-900/20 transition-all duration-200 cursor-pointer"
                     >
-                      <div className="relative flex flex-col items-center text-center">
-                        <div className={`w-10 h-10 sm:w-12 sm:h-12 ${system.color} rounded-xl flex items-center justify-center text-white shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-300 overflow-hidden mb-2`}>
-                          {system.iconUrl ? (
-                            <img src={system.iconUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            iconMap[system.icon] || <Hexagon size={22} />
-                          )}
-                        </div>
-                        <h3 className="font-medium text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate text-xs sm:text-sm w-full">
-                          {system.name}
-                        </h3>
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-xs text-amber-500 font-medium">{clickCounts[system.id]}次</span>
-                        </div>
+                      <div className={`w-7 h-7 ${system.color} rounded-md flex items-center justify-center text-white flex-shrink-0`}>
+                        {system.iconUrl ? (
+                          <img src={system.iconUrl} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          iconMap[system.icon] || <Hexagon size={14} />
+                        )}
                       </div>
+                      <span className="font-medium text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors text-sm truncate max-w-24">
+                        {system.name}
+                      </span>
                     </div>
                   ))}
                 </div>
