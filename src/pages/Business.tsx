@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Hexagon, ArrowRight, Plus, X, User, Upload } from "lucide-react";
+import { Search, Hexagon, ArrowRight, Plus, X, User, Upload, Star } from "lucide-react";
 interface System {
   id: number;
   name: string;
@@ -97,6 +97,11 @@ export default function Business() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const contactPickerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  
+  const [clickCounts, setClickCounts] = useState<Record<number, number>>(() => {
+    const saved = localStorage.getItem('businessSystemClickCounts');
+    return saved ? JSON.parse(saved) : {};
+  });
 
   const [formData, setFormData] = useState({
     name: '',
@@ -119,6 +124,27 @@ export default function Business() {
 
   const getCategorySystems = (categoryId: string) => {
     return filteredSystems.filter(s => s.category === categoryId);
+  };
+
+  const getFrequentSystems = () => {
+    const allSystems = [...localSystems, ...systems];
+    const uniqueSystems = allSystems.filter(
+      (system, index, self) => index === self.findIndex(s => s.id === system.id)
+    );
+    
+    return uniqueSystems
+      .filter(system => clickCounts[system.id] && clickCounts[system.id] > 0)
+      .sort((a, b) => (clickCounts[b.id] || 0) - (clickCounts[a.id] || 0))
+      .slice(0, 8);
+  };
+
+  const handleSystemClick = (systemId: number) => {
+    const newCounts = {
+      ...clickCounts,
+      [systemId]: (clickCounts[systemId] || 0) + 1
+    };
+    setClickCounts(newCounts);
+    localStorage.setItem('businessSystemClickCounts', JSON.stringify(newCounts));
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -289,6 +315,49 @@ export default function Business() {
         </div>
 
         <div ref={contentRef} className="flex-1 overflow-y-auto px-6 py-6">
+          {(() => {
+            const frequentSystems = getFrequentSystems();
+            return frequentSystems.length > 0 && (
+              <section className="mb-8 sm:mb-10 lg:mb-12">
+                <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                  <div className="w-10 h-10 sm:w-12 lg:w-12 rounded-2xl bg-gradient-to-br from-yellow-500 to-orange-400 flex items-center justify-center text-white shadow-lg">
+                    <Star size={20} className="sm:hidden" />
+                    <Star size={22} className="hidden sm:block" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg lg:text-xl font-bold text-slate-900 dark:text-white">我的常用</h2>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">根据您的访问频率自动生成</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-8 gap-3 sm:gap-4">
+                  {frequentSystems.map((system) => (
+                    <div
+                      key={system.id}
+                      onClick={() => handleSystemClick(system.id)}
+                      className="group bg-white dark:bg-gray-800 rounded-xl p-3 border border-amber-200/60 dark:border-amber-700/40 hover:border-yellow-400 hover:shadow-lg hover:shadow-yellow-200/50 transition-all duration-300 cursor-pointer overflow-hidden"
+                    >
+                      <div className="relative flex flex-col items-center text-center">
+                        <div className={`w-10 h-10 sm:w-12 sm:h-12 ${system.color} rounded-xl flex items-center justify-center text-white shadow-md group-hover:scale-110 group-hover:shadow-lg transition-all duration-300 overflow-hidden mb-2`}>
+                          {system.iconUrl ? (
+                            <img src={system.iconUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            iconMap[system.icon] || <Hexagon size={22} />
+                          )}
+                        </div>
+                        <h3 className="font-medium text-slate-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors truncate text-xs sm:text-sm w-full">
+                          {system.name}
+                        </h3>
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-xs text-amber-500 font-medium">{clickCounts[system.id]}次</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })()}
+
           {categoryGroups.map((cat) => {
             const categorySystems = getCategorySystems(cat.id);
             if (categorySystems.length === 0) return null;
@@ -308,6 +377,7 @@ export default function Business() {
                   {categorySystems.map((system) => (
                     <div
                       key={system.id}
+                      onClick={() => handleSystemClick(system.id)}
                       className="group relative bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-slate-200/60 dark:border-gray-700 hover:border-theme-400 hover:shadow-xl hover:shadow-theme-200/50 transition-all duration-300 cursor-pointer overflow-hidden"
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-theme-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
