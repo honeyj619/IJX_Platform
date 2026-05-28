@@ -135,7 +135,7 @@ export default function Business() {
     return uniqueSystems
       .filter(system => clickCounts[system.id] && clickCounts[system.id] > 0)
       .sort((a, b) => (clickCounts[b.id] || 0) - (clickCounts[a.id] || 0))
-      .slice(0, 8);
+      .slice(0, 5);
   };
 
   const handleSystemClick = (systemId: number) => {
