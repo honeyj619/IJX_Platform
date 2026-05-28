@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import vuetify from 'vite-plugin-vuetify'
+import react from '@vitejs/plugin-react'
 import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
@@ -9,8 +8,7 @@ export default defineConfig({
     sourcemap: 'hidden',
   },
   plugins: [
-    vue(),
-    vuetify({ autoImport: true }),
+    react(),
     tsconfigPaths()
   ],
 })
