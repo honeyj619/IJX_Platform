@@ -125,6 +125,7 @@ export default function Admin() {
   const [previewMode, setPreviewMode] = useState<'light' | 'dark'>('light');
   const [activeApps, setActiveApps] = useState<NavApp[]>(defaultApps);
   const [moreAppsList, setMoreAppsList] = useState<NavApp[]>(moreApps);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   const handleMenuClick = (menuId: string, hasChildren: boolean) => {
     if (hasChildren) {
@@ -543,34 +544,46 @@ export default function Admin() {
                         border-t p-3
                         ${previewMode === 'dark' ? 'border-gray-700' : 'border-gray-200'}
                       `}>
-                        <div className={`
-                          flex items-center gap-3 px-3 py-2.5 rounded-lg
-                          ${previewMode === 'dark' ? 'bg-gray-700 text-white' : 'bg-blue-50 text-blue-600'}
-                        `}>
+                        <button
+                          onClick={() => setShowMoreMenu(!showMoreMenu)}
+                          className={`
+                            w-full flex items-center gap-3 px-3 py-2.5 rounded-lg
+                            ${previewMode === 'dark' ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}
+                            transition-colors
+                          `}
+                        >
                           <div className="text-lg">⠿</div>
                           <span className="font-medium">更多</span>
-                        </div>
+                        </button>
                       </div>
                     </div>
 
                     {/* 弹出的更多菜单预览 */}
-                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                      <div className={`
-                        w-64 rounded-2xl p-4 shadow-2xl
-                        ${previewMode === 'dark' ? 'bg-gray-800' : 'bg-white'}
-                      `}>
-                        <div className="grid grid-cols-3 gap-4">
-                          {moreAppsList.slice(0, 3).map((app) => (
-                            <div key={app.id} className="text-center">
-                              <div className="w-12 h-12 mx-auto mb-2 bg-gray-100 rounded-xl flex items-center justify-center">
-                                <span className="text-2xl">{app.icon}</span>
+                    {showMoreMenu && (
+                      <div 
+                        className="absolute inset-0 bg-black/20 flex items-center justify-center"
+                        onClick={() => setShowMoreMenu(false)}
+                      >
+                        <div 
+                          className={`
+                            w-64 rounded-2xl p-4 shadow-2xl
+                            ${previewMode === 'dark' ? 'bg-gray-800' : 'bg-white'}
+                          `}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="grid grid-cols-3 gap-4">
+                            {moreAppsList.slice(0, 3).map((app) => (
+                              <div key={app.id} className="text-center">
+                                <div className="w-12 h-12 mx-auto mb-2 bg-gray-100 rounded-xl flex items-center justify-center">
+                                  <span className="text-2xl">{app.icon}</span>
+                                </div>
+                                <div className={`text-xs ${previewMode === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{app.name}</div>
                               </div>
-                              <div className={`text-xs ${previewMode === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>{app.name}</div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
