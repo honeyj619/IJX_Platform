@@ -33,9 +33,8 @@ interface Tool {
 }
 
 const defaultAssistants: Assistant[] = [
-  { id: 1, name: "翻译助手", isActive: false, icon: <MessageCircle size={18} /> },
-  { id: 2, name: "智能总结", isActive: false, icon: <FileTextIcon size={18} /> },
-  { id: 3, name: "会议转译", isActive: false, icon: <Brain size={18} /> },
+  { id: 1, name: "企业知识专家", isActive: false, icon: <Brain size={18} /> },
+  { id: 2, name: "IT服务助手", isActive: false, icon: <Code size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -52,11 +51,10 @@ const suggestions: Suggestion[] = [
 ];
 
 const tools: Tool[] = [
-  { id: 1, name: "写作", icon: <FileTextIcon size={18} />, description: "智能文案生成", color: "from-blue-400 to-indigo-500" },
-  { id: 2, name: "公文", icon: <FileTextIcon size={18} />, description: "公文快速撰写", color: "from-cyan-400 to-blue-500" },
-  { id: 3, name: "PPT", icon: <PresentationIcon size={18} />, description: "快速演示文稿", color: "from-orange-400 to-amber-500" },
+  { id: 1, name: "公文", icon: <FileTextIcon size={18} />, description: "公文快速撰写", color: "from-cyan-400 to-blue-500" },
+  { id: 2, name: "PPT", icon: <PresentationIcon size={18} />, description: "快速演示文稿", color: "from-orange-400 to-amber-500" },
+  { id: 3, name: "翻译", icon: <MessageCircle size={18} />, description: "智能翻译助手", color: "from-blue-400 to-indigo-500" },
   { id: 4, name: "代码", icon: <Code size={18} />, description: "编程助手", color: "from-green-400 to-emerald-500" },
-  { id: 5, name: "设计", icon: <Palette size={18} />, description: "创意设计", color: "from-purple-400 to-violet-500" },
 ];
 
 const docTypes = [
