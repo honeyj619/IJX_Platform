@@ -106,7 +106,6 @@ export default function RuYiZone() {
   };
 
   const handleAssistantSelect = (assistant: Assistant) => {
-    // 更新选中状态
     const updatedAssistants = assistants.map(item => ({
       ...item,
       isActive: item.id === assistant.id
@@ -144,7 +143,6 @@ export default function RuYiZone() {
         <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 via-white to-theme-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
 
         <div className="flex flex-1 min-h-0">
-        {/* 移动端菜单按钮 - 放在内容区右侧 */}
         {isMobile && (
           <button 
             className="fixed top-6 right-6 z-50 bg-white p-2 rounded-full shadow-lg"
@@ -154,7 +152,6 @@ export default function RuYiZone() {
           </button>
         )}
 
-        {/* 移动端遮罩层 */}
         {isMobile && mobileMenuOpen && (
           <div 
             className="fixed inset-0 z-30 bg-black/30"
@@ -162,7 +159,6 @@ export default function RuYiZone() {
           />
         )}
 
-        {/* 移动端导航栏 - 从右侧滑入 */}
         <div className={`
           ${isMobile ? 'fixed inset-y-0 right-0 z-40 w-64' : 'w-[240px] lg:w-[280px] flex-shrink-0'}
           ${showSidebar || mobileMenuOpen ? 'flex' : 'hidden'}
@@ -233,13 +229,10 @@ export default function RuYiZone() {
           </div>
         </div>
 
-        {/* 第三列：如意空间内容区域 */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           <div className="px-6 md:px-8 py-6 md:py-8 flex-1 overflow-y-auto">
             <div className="max-w-6xl mx-auto">
-              {/* 欢迎区域 */}
               <div className="flex flex-col md:flex-row items-center justify-between mb-16 mt-4 relative">
-                {/* 背景装饰 */}
                 <div className="absolute -top-20 -left-20 w-64 h-64 bg-gradient-to-r from-theme-100 to-theme-50 rounded-full opacity-70"></div>
                 <div className="absolute -bottom-10 right-10 w-40 h-40 bg-gradient-to-r from-blue-100 to-indigo-50 rounded-full opacity-70"></div>
                 
@@ -257,7 +250,6 @@ export default function RuYiZone() {
                 </div>
               </div>
 
-              {/* 工具按钮 */}
               <div className="flex flex-wrap gap-4 mb-16">
                 {tools.map((tool) => (
                   <button 
@@ -266,7 +258,9 @@ export default function RuYiZone() {
                     onClick={() => {
                       if (tool.name === '公文') {
                         setActiveTool('公文');
-                        setInput('');
+                        setDocTitle('');
+                        setDocType('');
+                        setDocLength('600-1200');
                       } else if (tool.name === '写作') {
                         setActiveTool('写作');
                         setInput('');
@@ -286,140 +280,119 @@ export default function RuYiZone() {
                 ))}
               </div>
 
-              {/* 问答对话框 */}
-              <div className="mb-16 relative">
-                <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300 ${activeTool === '公文' ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
-                  {/* 公文模式 */}
-                  {activeTool === '公文' && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-theme-50 rounded-full">
-                        <Sparkles size={14} className="text-theme-600" />
-                        <span className="text-sm font-medium text-theme-700">快速写作</span>
-                      </div>
-                      <span className="text-gray-600 dark:text-gray-300">帮我写一篇</span>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={docType}
-                          onChange={(e) => setDocType(e.target.value)}
-                          placeholder="输入类型"
-                          className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 w-28"
-                          list="doc-type-list"
-                        />
-                        <datalist id="doc-type-list">
-                          {docTypes.map((type) => (
-                            <option key={type} value={type} />
-                          ))}
-                        </datalist>
-                      </div>
-                      <span className="text-gray-600 dark:text-gray-300">，文章标题是</span>
-                      <input
-                        type="text"
+              {activeTool === '公文' && (
+                <div className="mb-16 relative">
+                  <div className="border-2 border-theme-200 ring-1 ring-theme-100 rounded-xl shadow-sm bg-white dark:bg-gray-800 overflow-hidden">
+                    <div className="flex items-center gap-2 px-5 py-3 bg-theme-50 border-b border-theme-100">
+                      <Sparkles size={16} className="text-theme-600" />
+                      <span className="text-base font-medium text-theme-700">公文助手</span>
+                    </div>
+                    
+                    <div className="p-5">
+                      <textarea
                         value={docTitle}
                         onChange={(e) => setDocTitle(e.target.value)}
-                        placeholder="输入标题"
-                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 w-36"
+                        placeholder="请输入您想要生成的公文内容描述..."
+                        className="w-full h-32 px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg text-base text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 focus:border-transparent resize-none bg-gray-50 dark:bg-gray-700"
                       />
-                      <span className="text-gray-600 dark:text-gray-300">，文章篇幅</span>
-                      <select
-                        value={docLength}
-                        onChange={(e) => setDocLength(e.target.value)}
-                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer"
+                      
+                      <div className="flex flex-wrap gap-4 mt-4">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">场景：</label>
+                          <select
+                            value={docType}
+                            onChange={(e) => setDocType(e.target.value)}
+                            className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer min-w-[140px]"
+                          >
+                            <option value="">请选择场景</option>
+                            <option value="工作总结">工作总结</option>
+                            <option value="会议讲话">会议讲话</option>
+                            <option value="通知">通知</option>
+                            <option value="会议纪要">会议纪要</option>
+                            <option value="请示报告">请示报告</option>
+                            <option value="函">函</option>
+                            <option value="批复">批复</option>
+                            <option value="决定">决定</option>
+                            <option value="公告">公告</option>
+                            <option value="通报">通报</option>
+                          </select>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">字数：</label>
+                          <select
+                            value={docLength}
+                            onChange={(e) => setDocLength(e.target.value)}
+                            className="px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer min-w-[120px]"
+                          >
+                            <option value="300-500">300-500字</option>
+                            <option value="500-800">500-800字</option>
+                            <option value="600-1200">600-1200字</option>
+                            <option value="1000-1500">1000-1500字</option>
+                            <option value="1500-2000">1500-2000字</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between px-5 py-3 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-100 dark:border-gray-700">
+                      <button className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors text-sm">
+                        <Paperclip size={16} />
+                        <span>添加参考文档</span>
+                      </button>
+                      <button 
+                        className="flex items-center gap-2 bg-gradient-to-r from-theme-500 to-theme-600 text-white px-6 py-2 rounded-lg hover:from-theme-600 hover:to-theme-700 transition-all duration-300 shadow-sm hover:shadow font-medium"
+                        onClick={handleSend}
                       >
-                        {lengthOptions.map((length) => (
-                          <option key={length} value={length}>{length}</option>
-                        ))}
-                      </select>
-                      <span className="text-gray-600 dark:text-gray-300">字左右，内容要求</span>
+                        <span>生成</span>
+                        <Send size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {(activeTool === '写作' || activeTool === null) && (
+                <div className="mb-16 relative">
+                  <div className="relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300 border-gray-100 dark:border-gray-700">
+                    {activeTool === '写作' && (
                       <input
                         type="text"
-                        value={docContent}
-                        onChange={(e) => setDocContent(e.target.value)}
-                        placeholder="输入内容"
-                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 flex-1 min-w-[80px] md:min-w-[120px]"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="请输入您的写作需求..."
+                        className="w-full border-none outline-none h-full text-lg font-medium bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                       />
-                      <span className="text-gray-600 dark:text-gray-300">。</span>
+                    )}
+                    
+                    {!activeTool && (
+                      <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="你想问我什么呢？"
+                        className="w-full border-none outline-none h-full text-lg font-medium bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                      />
+                    )}
+                    
+                    <div className="absolute right-4 bottom-4 flex items-center gap-2">
+                      <button className="text-gray-400 dark:text-gray-500 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50 dark:hover:bg-theme-900/20">
+                        <Paperclip size={18} />
+                      </button>
+                      <button 
+                        className="bg-gradient-to-r from-theme-500 to-theme-600 text-white p-2 rounded-full hover:from-theme-600 hover:to-theme-700 transition-all duration-300 shadow-sm hover:shadow transform hover:scale-105"
+                        onClick={handleSend}
+                      >
+                        <Send size={18} />
+                      </button>
                     </div>
-                  )}
-                  
-                  {/* 写作模式 */}
-                  {activeTool === '写作' && (
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="请输入您的写作需求..."
-                      className="w-full border-none outline-none h-full text-lg font-medium bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                    />
-                  )}
-                  
-                  {/* 默认模式 */}
-                  {!activeTool && (
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="你想问我什么呢？"
-                      className="w-full border-none outline-none h-full text-lg font-medium bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                    />
-                  )}
-                  
-                  <div className="absolute right-4 bottom-4 flex items-center gap-2">
-                    <button className="text-gray-400 dark:text-gray-500 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50 dark:hover:bg-theme-900/20">
-                      <Paperclip size={18} />
-                    </button>
-                    <button 
-                      className="bg-gradient-to-r from-theme-500 to-theme-600 text-white p-2 rounded-full hover:from-theme-600 hover:to-theme-700 transition-all duration-300 shadow-sm hover:shadow transform hover:scale-105"
-                      onClick={handleSend}
-                    >
-                      <Send size={18} />
-                    </button>
                   </div>
                 </div>
-                
-                {/* 添加参考文档按钮 */}
-                {activeTool === '公文' && (
-                  <div className="mt-3 flex items-center justify-between">
-                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm">
-                      <Paperclip size={14} />
-                      添加参考文档
-                    </button>
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
-                      "工作总结"、"会议讲话"、"通知"、"会议纪要"
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 猜你想问 */}
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gradient-to-r from-theme-500 to-theme-600 rounded flex items-center justify-center">
-                    <Sparkles className="text-white" size={14} />
-                  </div>
-                  猜你想问
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {suggestions.map((suggestion) => (
-                    <div 
-                      key={suggestion.id} 
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-theme-50 dark:hover:bg-theme-900/20 cursor-pointer transition-all duration-300 transform hover:-translate-y-1"
-                    >
-                      <div className="w-8 h-8 bg-theme-100 dark:bg-theme-900/30 rounded-full flex items-center justify-center text-theme-500 dark:text-theme-400">
-                        {suggestion.icon}
-                      </div>
-                      <div className="flex-1">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">{suggestion.text}</div>
-                      </div>
-                      <ChevronRight size={16} className="text-gray-300 dark:text-gray-600 hover:text-theme-500 transition-colors" />
-                    </div>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
-        </div>{/* end flex-1 min-h-0 */}
+        </div>
       </div>
       )}
     </>
