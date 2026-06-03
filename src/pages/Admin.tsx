@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Menu, X, Shield, Lock, GitBranch, LayoutDashboard, 
-  Globe, Network, Palette, ChevronRight, User, FolderTree
+  Globe, Network, Palette, ChevronRight, User, FolderTree,
+  Route
 } from 'lucide-react';
+import NavigationConfig from '../components/NavigationConfig';
 import { SIDEBAR } from '../constants/layout';
 
 interface MenuItem {
@@ -21,6 +24,7 @@ const menuItems: MenuItem[] = [
       { id: 'system-user', label: '用户管理', icon: <User size={16} /> },
       { id: 'system-role', label: '角色管理', icon: <Lock size={16} /> },
       { id: 'system-permission', label: '权限管理', icon: <Shield size={16} /> },
+      { id: 'system-nav', label: '导航栏配置', icon: <Route size={16} /> },
     ]
   },
   {
@@ -63,14 +67,31 @@ const menuItems: MenuItem[] = [
   },
 ];
 
+function ContentPlaceholder({ title, icon }: { title: string; icon: string }) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
+      <div className="text-5xl mb-4">{icon}</div>
+      <h2 className="text-xl font-bold text-gray-900 mb-2">{title}</h2>
+      <p className="text-gray-500">此功能模块正在开发中，敬请期待。</p>
+    </div>
+  );
+}
+
 export default function Admin() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [activeSubMenu, setActiveSubMenu] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const handleMenuClick = (menuId: string, hasChildren: boolean) => {
+    // 工作台跳转至主应用首页
+    if (menuId === 'workspace') {
+      navigate('/');
+      return;
+    }
     if (hasChildren) {
       setActiveMenu(activeMenu === menuId ? null : menuId);
+      setActiveSubMenu(null);
     } else {
       setActiveMenu(menuId);
       setActiveSubMenu(null);
@@ -196,83 +217,169 @@ export default function Admin() {
 
         {/* 内容区域 */}
         <div className="flex-1 overflow-y-auto p-8">
-          {/* 欢迎页面 */}
-          <div className="max-w-4xl mx-auto">
-            {/* 主卡片 */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12">
-              <div className="text-center">
-                {/* 插图区域 */}
-                <div className="relative mb-8">
-                  {/* 飞机装饰 */}
-                  <div className="absolute -top-4 -left-8 w-32 h-16">
-                    <svg viewBox="0 0 128 64" className="w-full h-full">
-                      <path 
-                        d="M10 32 L100 32 L90 22 L95 32 L90 42 Z" 
-                        fill="#333"
-                        className="animate-pulse"
-                      />
-                      <path 
-                        d="M95 32 L120 32" 
-                        stroke="#ddd" 
-                        strokeWidth="2" 
-                        strokeDasharray="4 4"
-                      />
-                      <circle cx="115" cy="28" r="3" fill="#ddd" />
-                      <circle cx="110" cy="24" r="2" fill="#ddd" />
-                    </svg>
-                  </div>
-
-                  {/* 主图标 */}
-                  <div className="inline-block relative">
-                    <div className="w-32 h-32 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
-                      <div className="w-24 h-24 bg-white rounded-full shadow-lg flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="text-4xl mb-1">💼</div>
-                          <div className="text-xs text-gray-500">管理后台</div>
+          {/* 无选中菜单时显示欢迎页 */}
+          {!activeMenu && !activeSubMenu ? (
+            <div className="max-w-4xl mx-auto">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12">
+                <div className="text-center">
+                  {/* 插图区域 */}
+                  <div className="relative mb-8">
+                    <div className="absolute -top-4 -left-8 w-32 h-16">
+                      <svg viewBox="0 0 128 64" className="w-full h-full">
+                        <path d="M10 32 L100 32 L90 22 L95 32 L90 42 Z" fill="#333" className="animate-pulse" />
+                        <path d="M95 32 L120 32" stroke="#ddd" strokeWidth="2" strokeDasharray="4 4" />
+                        <circle cx="115" cy="28" r="3" fill="#ddd" />
+                        <circle cx="110" cy="24" r="2" fill="#ddd" />
+                      </svg>
+                    </div>
+                    <div className="inline-block relative">
+                      <div className="w-32 h-32 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
+                        <div className="w-24 h-24 bg-white rounded-full shadow-lg flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="text-4xl mb-1">💼</div>
+                            <div className="text-xs text-gray-500">管理后台</div>
+                          </div>
                         </div>
                       </div>
+                      <div className="absolute -right-4 top-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                        <span className="text-sm">✓</span>
+                      </div>
                     </div>
-
-                    {/* 装饰元素 */}
-                    <div className="absolute -right-4 top-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-sm">✓</span>
+                    <div className="absolute -bottom-2 -right-4">
+                      <svg viewBox="0 0 64 32" className="w-16 h-8">
+                        <ellipse cx="20" cy="24" rx="16" ry="8" fill="#f0f0f0" />
+                        <ellipse cx="36" cy="20" rx="14" ry="10" fill="#f0f0f0" />
+                        <ellipse cx="48" cy="24" rx="12" ry="6" fill="#f0f0f0" />
+                      </svg>
                     </div>
                   </div>
-
-                  {/* 云朵装饰 */}
-                  <div className="absolute -bottom-2 -right-4">
-                    <svg viewBox="0 0 64 32" className="w-16 h-8">
-                      <ellipse cx="20" cy="24" rx="16" ry="8" fill="#f0f0f0" />
-                      <ellipse cx="36" cy="20" rx="14" ry="10" fill="#f0f0f0" />
-                      <ellipse cx="48" cy="24" rx="12" ry="6" fill="#f0f0f0" />
-                    </svg>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">欢迎使用管理后台</h1>
+                  <p className="text-gray-500 mb-8">系统管理、安全管理、版本管理等功能入口</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+                    {[
+                      { icon: '🔐', label: '系统管理', color: 'bg-blue-50 text-blue-600', menuId: 'system' },
+                      { icon: '🛡️', label: '安全管理', color: 'bg-green-50 text-green-600', menuId: 'security' },
+                      { icon: '📦', label: '版本管理', color: 'bg-purple-50 text-purple-600', menuId: 'version' },
+                      { icon: '📊', label: '工作台', color: 'bg-orange-50 text-orange-600', menuId: 'workspace' },
+                    ].map((item, index) => (
+                      <div 
+                        key={index}
+                        onClick={() => {
+                          if (item.menuId === 'workspace') {
+                            navigate('/');
+                          } else {
+                            setActiveMenu(item.menuId);
+                            setActiveSubMenu(null);
+                          }
+                        }}
+                        className={`p-4 rounded-xl ${item.color} hover:shadow-md transition-shadow cursor-pointer`}
+                      >
+                        <div className="text-2xl mb-2">{item.icon}</div>
+                        <div className="text-sm font-medium">{item.label}</div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                {/* 文字内容 */}
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">欢迎使用管理后台</h1>
-                <p className="text-gray-500 mb-8">系统管理、安全管理、版本管理等功能入口</p>
-
-                {/* 快捷入口卡片 */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-                  {[
-                    { icon: '🔐', label: '系统管理', color: 'bg-blue-50 text-blue-600' },
-                    { icon: '🛡️', label: '安全管理', color: 'bg-green-50 text-green-600' },
-                    { icon: '📦', label: '版本管理', color: 'bg-purple-50 text-purple-600' },
-                    { icon: '📊', label: '工作台', color: 'bg-orange-50 text-orange-600' },
-                  ].map((item, index) => (
-                    <div 
-                      key={index}
-                      className={`p-4 rounded-xl ${item.color} hover:shadow-md transition-shadow cursor-pointer`}
-                    >
-                      <div className="text-2xl mb-2">{item.icon}</div>
-                      <div className="text-sm font-medium">{item.label}</div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            /* 根据选中菜单展示对应内容 */
+            <div className="max-w-4xl mx-auto">
+              {/* 面包屑导航 */}
+              <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
+                <span className="cursor-pointer hover:text-gray-700" onClick={() => { setActiveMenu(null); setActiveSubMenu(null); }}>首页</span>
+                <ChevronRight size={14} />
+                <span className="text-gray-900 font-medium">
+                  {menuItems.find(m => m.id === activeMenu)?.label || ''}
+                </span>
+                {activeSubMenu && (
+                  <>
+                    <ChevronRight size={14} />
+                    <span className="text-gray-900 font-medium">
+                      {menuItems.find(m => m.id === activeMenu)?.children?.find(c => c.id === activeSubMenu)?.label || ''}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* 系统管理子页面 */}
+              {activeMenu === 'system' && (
+                <div>
+                  {!activeSubMenu && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">系统管理</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {menuItems.find(m => m.id === 'system')?.children?.map(sub => (
+                          <div key={sub.id} onClick={() => setActiveSubMenu(sub.id)}
+                            className="p-6 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md cursor-pointer transition-all">
+                            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-3">{sub.icon}</div>
+                            <div className="font-medium text-gray-900">{sub.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {activeSubMenu === 'system-user' && <ContentPlaceholder title="用户管理" icon="👥" />}
+                  {activeSubMenu === 'system-role' && <ContentPlaceholder title="角色管理" icon="🔑" />}
+                  {activeSubMenu === 'system-permission' && <ContentPlaceholder title="权限管理" icon="🛡️" />}
+                  {activeSubMenu === 'system-nav' && <NavigationConfig />}
+                </div>
+              )}
+
+              {/* 安全管理子页面 */}
+              {activeMenu === 'security' && (
+                <div>
+                  {!activeSubMenu && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">安全管理</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {menuItems.find(m => m.id === 'security')?.children?.map(sub => (
+                          <div key={sub.id} onClick={() => setActiveSubMenu(sub.id)}
+                            className="p-6 rounded-xl border border-gray-100 hover:border-green-200 hover:shadow-md cursor-pointer transition-all">
+                            <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center mb-3">{sub.icon}</div>
+                            <div className="font-medium text-gray-900">{sub.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {activeSubMenu === 'security-log' && <ContentPlaceholder title="操作日志" icon="📋" />}
+                  {activeSubMenu === 'security-audit' && <ContentPlaceholder title="安全审计" icon="🔍" />}
+                </div>
+              )}
+
+              {/* 版本管理子页面 */}
+              {activeMenu === 'version' && (
+                <div>
+                  {!activeSubMenu && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">版本管理</h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {menuItems.find(m => m.id === 'version')?.children?.map(sub => (
+                          <div key={sub.id} onClick={() => setActiveSubMenu(sub.id)}
+                            className="p-6 rounded-xl border border-gray-100 hover:border-purple-200 hover:shadow-md cursor-pointer transition-all">
+                            <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center mb-3">{sub.icon}</div>
+                            <div className="font-medium text-gray-900">{sub.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {activeSubMenu === 'version-list' && <ContentPlaceholder title="版本列表" icon="📦" />}
+                  {activeSubMenu === 'version-release' && <ContentPlaceholder title="发布记录" icon="🚀" />}
+                </div>
+              )}
+
+              {/* 门户基础管理 */}
+              {activeMenu === 'portal' && <ContentPlaceholder title="门户基础管理" icon="🌐" />}
+
+              {/* 业务系统管理 */}
+              {activeMenu === 'business' && <ContentPlaceholder title="业务系统管理" icon="📁" />}
+
+              {/* 主题装扮管理 */}
+              {activeMenu === 'theme' && <ContentPlaceholder title="主题装扮管理" icon="🎨" />}
+            </div>
+          )}
         </div>
       </div>
     </div>

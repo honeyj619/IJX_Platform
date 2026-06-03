@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Palette, Code, FileText as FileTextIcon, PresentationIcon, MessageCircle, ChevronRight, ArrowRight } from "lucide-react";
+import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, ChevronRight, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import DocumentEditor from "./DocumentEditor";
 
@@ -33,9 +33,8 @@ interface Tool {
 }
 
 const defaultAssistants: Assistant[] = [
-  { id: 1, name: "翻译助手", isActive: false, icon: <MessageCircle size={18} /> },
-  { id: 2, name: "智能总结", isActive: false, icon: <FileTextIcon size={18} /> },
-  { id: 3, name: "会议转译", isActive: false, icon: <Brain size={18} /> },
+  { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
+  { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -52,11 +51,10 @@ const suggestions: Suggestion[] = [
 ];
 
 const tools: Tool[] = [
-  { id: 1, name: "写作", icon: <FileTextIcon size={18} />, description: "智能文案生成", color: "from-blue-400 to-indigo-500" },
-  { id: 2, name: "公文", icon: <FileTextIcon size={18} />, description: "公文快速撰写", color: "from-cyan-400 to-blue-500" },
-  { id: 3, name: "PPT", icon: <PresentationIcon size={18} />, description: "快速演示文稿", color: "from-orange-400 to-amber-500" },
+  { id: 1, name: "公文", icon: <FileTextIcon size={18} />, description: "公文快速撰写", color: "from-cyan-400 to-blue-500" },
+  { id: 2, name: "PPT", icon: <PresentationIcon size={18} />, description: "快速演示文稿", color: "from-orange-400 to-amber-500" },
+  { id: 3, name: "翻译", icon: <Languages size={18} />, description: "多语言翻译", color: "from-green-400 to-teal-500" },
   { id: 4, name: "代码", icon: <Code size={18} />, description: "编程助手", color: "from-green-400 to-emerald-500" },
-  { id: 5, name: "设计", icon: <Palette size={18} />, description: "创意设计", color: "from-purple-400 to-violet-500" },
 ];
 
 const docTypes = [
@@ -80,10 +78,22 @@ const lengthOptions = [
   "1500-2000",
 ];
 
+const sceneOptions = [
+  "通用场景",
+  "工作总结",
+  "会议讲话",
+  "会议纪要",
+  "请示报告",
+  "通知公告",
+  "函件往来",
+  "批复决定",
+  "通报汇报",
+];
+
 export default function RuYiZone() {
   const [input, setInput] = useState("");
   const [assistants, setAssistants] = useState<Assistant[]>(defaultAssistants);
-  const [selectedAssistant, setSelectedAssistant] = useState(defaultAssistants[0]);
+  const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null);
   const [showSidebar, setShowSidebar] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -92,6 +102,7 @@ export default function RuYiZone() {
   const [docTitle, setDocTitle] = useState("");
   const [docLength, setDocLength] = useState("600-1200");
   const [docContent, setDocContent] = useState("");
+  const [docScene, setDocScene] = useState("通用场景");
   const [showEditor, setShowEditor] = useState(false);
 
   const handleSend = () => {
@@ -186,7 +197,7 @@ export default function RuYiZone() {
                   key={assistant.id}
                   className={`
                     p-3 rounded-lg cursor-pointer transition-all duration-300
-                    ${selectedAssistant.id === assistant.id 
+                    ${selectedAssistant?.id === assistant.id 
                       ? 'bg-theme-50 dark:bg-theme-900/20 text-theme-700 dark:text-theme-300 font-medium border-l-4 border-theme-500'
                       : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-4 border-transparent hover:border-theme-200'
                     }
@@ -196,11 +207,11 @@ export default function RuYiZone() {
                   <div className="flex items-center gap-3">
                     <div className={`
                       w-8 h-8 rounded-lg flex items-center justify-center
-                      ${selectedAssistant.id === assistant.id ? 'bg-theme-100 dark:bg-theme-900/30 text-theme-600 dark:text-theme-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}
+                      ${selectedAssistant?.id === assistant.id ? 'bg-theme-100 dark:bg-theme-900/30 text-theme-600 dark:text-theme-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}
                     `}>
                       {assistant.icon}
                     </div>
-                    <span className={selectedAssistant.id === assistant.id ? '' : 'dark:text-gray-300'}>{assistant.name}</span>
+                    <span className={selectedAssistant?.id === assistant.id ? '' : 'dark:text-gray-300'}>{assistant.name}</span>
                   </div>
                 </div>
               ))}
@@ -269,9 +280,6 @@ export default function RuYiZone() {
                       if (tool.name === '公文') {
                         setActiveTool('公文');
                         setInput('');
-                      } else if (tool.name === '写作') {
-                        setActiveTool('写作');
-                        setInput('');
                       } else {
                         setActiveTool(null);
                         setInput('');
@@ -293,66 +301,19 @@ export default function RuYiZone() {
                 <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300 ${activeTool === '公文' ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
                   {/* 公文模式 */}
                   {activeTool === '公文' && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-theme-50 rounded-full">
-                        <Sparkles size={14} className="text-theme-600" />
-                        <span className="text-sm font-medium text-theme-700">快速写作</span>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-theme-500 to-theme-600 text-white rounded-full text-sm font-medium">
+                        <Sparkles size={14} />
+                        AI写作
                       </div>
-                      <span className="text-gray-600 dark:text-gray-300">帮我写一篇</span>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={docType}
-                          onChange={(e) => setDocType(e.target.value)}
-                          placeholder="输入类型"
-                          className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 w-28"
-                          list="doc-type-list"
-                        />
-                        <datalist id="doc-type-list">
-                          {docTypes.map((type) => (
-                            <option key={type} value={type} />
-                          ))}
-                        </datalist>
-                      </div>
-                      <span className="text-gray-600 dark:text-gray-300">，文章标题是</span>
                       <input
                         type="text"
-                        value={docTitle}
-                        onChange={(e) => setDocTitle(e.target.value)}
-                        placeholder="输入标题"
-                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 w-36"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="请输入写作主题或需求..."
+                        className="flex-1 min-w-[200px] border-none outline-none text-base bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
                       />
-                      <span className="text-gray-600 dark:text-gray-300">，文章篇幅</span>
-                      <select
-                        value={docLength}
-                        onChange={(e) => setDocLength(e.target.value)}
-                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer"
-                      >
-                        {lengthOptions.map((length) => (
-                          <option key={length} value={length}>{length}</option>
-                        ))}
-                      </select>
-                      <span className="text-gray-600 dark:text-gray-300">字左右，内容要求</span>
-                      <input
-                        type="text"
-                        value={docContent}
-                        onChange={(e) => setDocContent(e.target.value)}
-                        placeholder="输入内容"
-                        className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-theme-200 flex-1 min-w-[80px] md:min-w-[120px]"
-                      />
-                      <span className="text-gray-600 dark:text-gray-300">。</span>
                     </div>
-                  )}
-                  
-                  {/* 写作模式 */}
-                  {activeTool === '写作' && (
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="请输入您的写作需求..."
-                      className="w-full border-none outline-none h-full text-lg font-medium bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                    />
                   )}
                   
                   {/* 默认模式 */}
@@ -379,28 +340,48 @@ export default function RuYiZone() {
                   </div>
                 </div>
                 
-                {/* 添加参考文档按钮 */}
+                {/* 公文模式 - 输入框下部选项 */}
                 {activeTool === '公文' && (
-                  <div className="mt-3 flex items-center justify-between">
-                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm">
-                      <Paperclip size={14} />
-                      添加参考文档
-                    </button>
-                    <div className="text-xs text-gray-400 dark:text-gray-500">
-                      "工作总结"、"会议讲话"、"通知"、"会议纪要"
+                  <div className="mt-3 flex items-center gap-4 flex-wrap">
+                    {/* 场景选择 */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">场景选择</span>
+                      <select
+                        value={docScene}
+                        onChange={(e) => setDocScene(e.target.value)}
+                        className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer appearance-none pr-8 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_0.5rem_center]"
+                      >
+                        {sceneOptions.map((scene) => (
+                          <option key={scene} value={scene}>{scene}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {/* 字数选择 */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">字数选择</span>
+                      <select
+                        value={docLength}
+                        onChange={(e) => setDocLength(e.target.value)}
+                        className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer appearance-none pr-8 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_0.5rem_center]"
+                      >
+                        {lengthOptions.map((length) => (
+                          <option key={length} value={length}>{length} 字</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* 猜你想问 */}
-              <div className="mb-8">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                  <div className="w-6 h-6 bg-gradient-to-r from-theme-500 to-theme-600 rounded flex items-center justify-center">
-                    <Sparkles className="text-white" size={14} />
-                  </div>
-                  猜你想问
-                </h3>
+              {/* 猜你想问 - 公文模式下不展示 */}
+              {activeTool !== '公文' && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                    <div className="w-6 h-6 bg-gradient-to-r from-theme-500 to-theme-600 rounded flex items-center justify-center">
+                      <Sparkles className="text-white" size={14} />
+                    </div>
+                    猜你想问
+                  </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {suggestions.map((suggestion) => (
                     <div 
@@ -418,6 +399,7 @@ export default function RuYiZone() {
                   ))}
                 </div>
               </div>
+            )}
             </div>
           </div>
         </div>
