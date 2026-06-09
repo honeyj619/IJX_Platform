@@ -681,8 +681,8 @@ export default function RuYiZone() {
           {hasConversation && (
           <div className="flex-shrink-0 border-t border-gray-100 bg-white/95 px-6 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.04)] backdrop-blur dark:border-gray-700 dark:bg-gray-900/95 md:px-8">
             <div className="mx-auto max-w-4xl">
-              <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 transition-all duration-300 ${activeTool === '公文' ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
-                {activeTool === '公文' && (
+              <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 transition-all duration-300 ${activeTool === '公文' && conversationKind !== "documentDraft" ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
+                {activeTool === '公文' && conversationKind !== "documentDraft" && (
                   <div className="flex items-center gap-3 flex-wrap pr-24">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-theme-500 to-theme-600 text-white rounded-full text-sm font-medium">
                       <Sparkles size={14} />
@@ -698,7 +698,23 @@ export default function RuYiZone() {
                   </div>
                 )}
 
-                {!activeTool && (
+                {conversationKind === "documentDraft" && (
+                  <div className="flex items-center gap-3 flex-wrap pr-24">
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium dark:bg-gray-700 dark:text-gray-300">
+                      <FileTextIcon size={14} />
+                      AI公文
+                    </div>
+                    <input
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="继续向如意助手提问..."
+                      className="flex-1 min-w-[200px] border-none outline-none text-base bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                    />
+                  </div>
+                )}
+
+                {!activeTool && conversationKind !== "documentDraft" && (
                   <input
                     type="text"
                     value={input}
@@ -721,7 +737,7 @@ export default function RuYiZone() {
                 </div>
               </div>
 
-              {activeTool === '公文' && (
+              {activeTool === '公文' && conversationKind !== "documentDraft" && (
                 <div className="mt-3 flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">场景选择</span>
