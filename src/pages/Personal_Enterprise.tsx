@@ -55,6 +55,7 @@ export default function Personal_Enterprise() {
   
   const [showSettings, setShowSettings] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [jumpTip, setJumpTip] = useState<string | null>(null);
   const [selectedSystems, setSelectedSystems] = useState<string[]>(() => {
     const saved = localStorage.getItem('selectedSystems');
     return saved ? JSON.parse(saved) : ['hr', 'finance', 'oa', 'travel'];
@@ -63,6 +64,11 @@ export default function Personal_Enterprise() {
   // 切换菜单显示
   const toggleMenu = useCallback((id: string) => {
     setMenuId(prev => prev === id ? null : id);
+  }, []);
+
+  const showJumpTip = useCallback((destination: string) => {
+    setJumpTip(destination);
+    window.setTimeout(() => setJumpTip(null), 1800);
   }, []);
 
   // 保存卡片配置
@@ -102,6 +108,11 @@ export default function Personal_Enterprise() {
 
   return (
     <div className="bg-gradient-to-br from-gray-50 via-pink-50/50 to-white min-h-screen">
+      {jumpTip && (
+        <div className="fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-gray-900/90 px-5 py-2.5 text-sm font-medium text-white shadow-xl backdrop-blur">
+          将跳转至：{jumpTip}
+        </div>
+      )}
       {/* 页面头部 */}
       <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -134,11 +145,11 @@ export default function Personal_Enterprise() {
             {/* 数据概览卡片 */}
             {visibleCards.find(c => c.id === 'stats') && (
               <div className="group relative">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <StatsCard title="流程审批" count="21" color="pink" menuId={menuId} onToggleMenu={toggleMenu} />
-                  <StatsCard title="业务收入" amount="¥12,580,000" change="+12.5%" color="green" menuId={menuId} onToggleMenu={toggleMenu} />
-                  <StatsCard title="待办事项" count="8" color="amber" menuId={menuId} onToggleMenu={toggleMenu} />
-                  <StatsCard title="项目进度" count="12" color="blue" menuId={menuId} onToggleMenu={toggleMenu} />
+                <div className="grid grid-cols-1 min-[520px]:grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4">
+                  <StatsCard title="流程审批" count="21" color="pink" destination="OA" menuId={menuId} onToggleMenu={toggleMenu} onNavigate={showJumpTip} />
+                  <StatsCard title="业务收入" amount="¥12,580,000" change="+12.5%" color="green" destination="数据看板" menuId={menuId} onToggleMenu={toggleMenu} onNavigate={showJumpTip} />
+                  <StatsCard title="待办事项" count="8" color="amber" destination="任务" menuId={menuId} onToggleMenu={toggleMenu} onNavigate={showJumpTip} />
+                  <StatsCard title="项目进度" count="12" color="blue" destination="项目管理平台" menuId={menuId} onToggleMenu={toggleMenu} onNavigate={showJumpTip} />
                 </div>
               </div>
             )}
@@ -384,17 +395,18 @@ export default function Personal_Enterprise() {
                     <div key={day} className="text-xs font-semibold text-gray-400 py-2">{day}</div>
                   ))}
                   {[17, 18, 19, 20, 21, 22, 23].map(date => (
-                    <div 
-                      key={date} 
-                      className={`text-sm py-2 rounded-xl transition-all duration-200 ${
-                        date === 20 
-                          ? 'bg-gradient-to-br from-pink-700 to-pink-900 text-white font-bold shadow-lg shadow-pink-700/20' 
-                          : date === 21 
-                            ? 'text-gray-800 font-medium' 
-                            : 'text-gray-400'
-                      }`}
-                    >
-                      {date}
+                    <div key={date} className="flex justify-center py-1.5">
+                      <span
+                        className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-all duration-200 ${
+                          date === 20
+                            ? 'bg-gradient-to-br from-pink-700 to-pink-900 text-white font-bold shadow-lg shadow-pink-700/20'
+                            : date === 21
+                              ? 'text-gray-800 font-medium'
+                              : 'text-gray-400'
+                        }`}
+                      >
+                        {date}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -666,14 +678,16 @@ export default function Personal_Enterprise() {
 }
 
 // 统一的数据统计卡片组件
-function StatsCard({ title, count, amount, change, color, menuId, onToggleMenu }: { 
+function StatsCard({ title, count, amount, change, color, destination, menuId, onToggleMenu, onNavigate }: { 
   title: string; 
   count?: string; 
   amount?: string;
   change?: string;
   color: string;
+  destination: string;
   menuId: string | null;
   onToggleMenu: (id: string) => void;
+  onNavigate: (destination: string) => void;
 }) {
   const colorMap = {
     pink: { bg: 'bg-pink-100', icon: 'text-pink-700', border: 'border-pink-200', gradient: 'from-pink-700 to-pink-900' },
@@ -684,14 +698,28 @@ function StatsCard({ title, count, amount, change, color, menuId, onToggleMenu }
   const c = colorMap[color as keyof typeof colorMap];
   
   return (
-    <div className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-4 sm:p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden`}>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onNavigate(destination)}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onNavigate(destination);
+        }
+      }}
+      className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-4 sm:p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer min-w-0`}
+    >
       <div className={`absolute -top-10 -right-10 w-24 sm:w-32 h-24 sm:h-32 bg-gradient-to-br ${c.gradient} opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity`} />
       <div className="flex flex-col relative z-10">
         <div className="flex justify-between items-start mb-2 sm:mb-3">
           <p className="text-gray-500 text-xs sm:text-sm font-medium">{title}</p>
           <div className="relative">
             <button 
-              onClick={() => onToggleMenu(`stats-${color}`)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleMenu(`stats-${color}`);
+              }}
               className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
             >
               <MoreHorizontal size={16} className="text-gray-400" />
@@ -718,9 +746,9 @@ function StatsCard({ title, count, amount, change, color, menuId, onToggleMenu }
           </div>
         </div>
         <div className="flex justify-between items-end">
-          <div className="space-y-1">
-            {count && <p className="text-2xl sm:text-3xl font-bold text-gray-800">{count}</p>}
-            {amount && <p className="text-lg sm:text-2xl lg:text-3xl font-bold text-gray-800 truncate">{amount}</p>}
+          <div className="space-y-1 min-w-0">
+            {count && <p className="text-2xl sm:text-3xl font-bold text-gray-800 truncate">{count}</p>}
+            {amount && <p className="text-[clamp(1.05rem,2.1vw,1.75rem)] font-bold text-gray-800 truncate leading-tight">{amount}</p>}
             {change && (
               <p className="text-green-600 text-xs sm:text-sm flex items-center font-medium">
                 <TrendingUp size={14} className="mr-1 flex-shrink-0" />

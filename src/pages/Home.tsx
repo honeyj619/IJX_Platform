@@ -988,7 +988,7 @@ export default function Home() {
       case 'process':
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
               <div className="flex gap-4 mb-6">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 flex items-center justify-center">
@@ -1068,7 +1068,7 @@ export default function Home() {
         if (selectedMessage.name === "日程") {
           return (
             <div className="flex flex-col h-full bg-gray-50">
-              <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">今日安排</h3>
@@ -1118,7 +1118,7 @@ export default function Home() {
         } else if (selectedMessage.name === "知识助手") {
           return (
             <div className="flex flex-col h-full bg-gray-50">
-              <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full">
@@ -1259,7 +1259,7 @@ export default function Home() {
         }
         return (
           <div className="flex flex-col h-full bg-gray-50">
-            <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
               <CardMessage message={selectedMessage} />
             </div>
             <div className="p-4 border-t border-gray-200 bg-white shrink-0">
@@ -1284,7 +1284,7 @@ export default function Home() {
       case 'assistant':
         return (
           <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-            <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
               {selectedMessage.chatMessages ? (
                 selectedMessage.chatMessages.map((chatMsg) => (
                   <ChatMessageBubble
@@ -1334,7 +1334,7 @@ export default function Home() {
       default:
         return (
           <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-            <div ref={contentRef} className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
               {selectedMessage.chatMessages ? (
                 selectedMessage.chatMessages.map((chatMsg) => (
                   <ChatMessageBubble
@@ -1655,18 +1655,18 @@ function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; av
         <span className="text-xs text-gray-400 mt-1 px-1">{chatMsg.time}</span>
 
         {/* 悬浮菜单 */}
-        <div className={`absolute top-0 ${isMe ? 'left-0 -translate-x-full -ml-2' : 'right-0 translate-x-full ml-2'} opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 p-1 z-10`}>
-          <button className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="点赞">
-            <ThumbsUp size={14} />
+        <div className="absolute top-2 right-2 lg:right-auto lg:left-full lg:ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 bg-white/95 dark:bg-gray-800/95 rounded-md shadow-lg border border-gray-200 dark:border-gray-600 p-0.5 z-10 backdrop-blur">
+          <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="点赞">
+            <ThumbsUp size={13} />
           </button>
-          <button className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="引用">
-            <Quote size={14} />
+          <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="引用">
+            <Quote size={13} />
           </button>
-          <button className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="复制">
-            <Copy size={14} />
+          <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="复制">
+            <Copy size={13} />
           </button>
-          <button className="p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="更多">
-            <MoreHorizontal size={14} />
+          <button className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors" title="更多">
+            <MoreHorizontal size={13} />
           </button>
         </div>
       </div>
