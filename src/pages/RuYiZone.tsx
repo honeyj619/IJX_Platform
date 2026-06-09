@@ -42,7 +42,8 @@ type ConversationKind =
   | "schedule"
   | "knowledge"
   | "attendance"
-  | "closing";
+  | "closing"
+  | "documentDraft";
 
 const defaultAssistants: Assistant[] = [
   { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
@@ -161,7 +162,15 @@ export default function RuYiZone() {
 
   const handleSend = () => {
     if (activeTool === '公文') {
-      setShowEditor(true);
+      const question = input.trim() || "帮我生成一篇关于推进如意空间智能办公建设的通知";
+      setSentQuestion(question);
+      setConversationKind("documentDraft");
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setDocType(docScene);
+      setDocTitle(question.replace(/^(请|帮我|生成|写一篇|撰写)/, "").slice(0, 32) || "如意空间智能办公建设通知");
+      setDocContent(question);
+      setInput("");
       return;
     }
     const question = input.trim();
@@ -479,6 +488,53 @@ export default function RuYiZone() {
                         <>
                           <p className="mb-4 leading-7">好的，很高兴为您服务。如有需要随时召唤我，祝您工作顺利！</p>
                           <p className="mb-6 leading-7">温馨提示：您今天还有 2 个待办事项，3 条待审批流程。</p>
+                        </>
+                      )}
+
+                      {conversationKind === "documentDraft" && (
+                        <>
+                          <p className="mb-4 leading-7">好的，我已根据您的主题生成公文写作大纲，并为您准备好可继续编辑的公文草稿。</p>
+                          <div className="mb-5 border-b border-gray-200 pb-2 dark:border-gray-700">
+                            <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-950 dark:text-white">
+                              <FileTextIcon size={24} className="text-theme-500" />
+                              公文大纲生成
+                            </h3>
+                          </div>
+
+                          <div className="mb-6 space-y-4">
+                            {[
+                              { title: "一、背景说明", desc: "说明发文背景、建设目标和当前协同办公需求。" },
+                              { title: "二、主要内容", desc: "围绕智能信息汇聚、任务协同、流程处理和知识服务展开。" },
+                              { title: "三、推进安排", desc: "明确责任部门、时间节点、培训安排和上线要求。" },
+                              { title: "四、工作要求", desc: "强调组织保障、数据安全、使用反馈和持续优化机制。" },
+                            ].map((item) => (
+                              <div key={item.title} className="rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/80">
+                                <div className="font-semibold text-gray-950 dark:text-white">{item.title}</div>
+                                <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">{item.desc}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          <button
+                            onClick={() => setShowEditor(true)}
+                            className="mb-6 flex w-full max-w-2xl items-stretch overflow-hidden rounded-xl border border-theme-100 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-theme-200 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                          >
+                            <div className="flex w-24 flex-shrink-0 items-center justify-center bg-gradient-to-br from-theme-500 to-theme-700 text-white">
+                              <FileTextIcon size={34} />
+                            </div>
+                            <div className="flex-1 p-5">
+                              <div className="mb-2 flex items-center gap-2">
+                                <span className="rounded bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">公文草稿</span>
+                                <span className="text-xs text-gray-400">{docScene} · {docLength} 字</span>
+                              </div>
+                              <h4 className="text-lg font-bold text-gray-950 dark:text-white">{docTitle || "如意空间智能办公建设通知"}</h4>
+                              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">已生成正文结构和初稿内容，点击进入公文编辑器继续润色、排版和保存。</p>
+                              <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-theme-700 dark:text-theme-300">
+                                进入公文编辑
+                                <ArrowRight size={16} />
+                              </div>
+                            </div>
+                          </button>
                         </>
                       )}
 
