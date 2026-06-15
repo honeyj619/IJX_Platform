@@ -90,6 +90,102 @@ const lengthOptions = [
   "1500-2000",
 ];
 
+const documentTemplates = [
+  {
+    id: "official-red",
+    name: "红头通知",
+    desc: "适合正式通知、制度发布",
+    accent: "bg-red-500",
+    border: "border-red-200",
+    category: "通知",
+    subCategory: "公司通知",
+  },
+  {
+    id: "policy-notice",
+    name: "制度通知",
+    desc: "适合规章制度、执行要求",
+    accent: "bg-rose-500",
+    border: "border-rose-200",
+    category: "通知",
+    subCategory: "制度发布",
+  },
+  {
+    id: "party-study",
+    name: "党群学习",
+    desc: "适合学习教育、主题活动",
+    accent: "bg-red-600",
+    border: "border-red-200",
+    category: "党群",
+    subCategory: "学习教育",
+  },
+  {
+    id: "party-activity",
+    name: "党群活动",
+    desc: "适合活动方案、组织安排",
+    accent: "bg-orange-500",
+    border: "border-orange-200",
+    category: "党群",
+    subCategory: "活动方案",
+  },
+  {
+    id: "meeting-minutes",
+    name: "项目纪要",
+    desc: "适合项目会议、任务纪要",
+    accent: "bg-sky-500",
+    border: "border-sky-200",
+    category: "会议纪要",
+    subCategory: "项目会议",
+  },
+  {
+    id: "meeting-summary",
+    name: "专题纪要",
+    desc: "适合专题讨论、决策记录",
+    accent: "bg-indigo-500",
+    border: "border-indigo-200",
+    category: "会议纪要",
+    subCategory: "专题会议",
+  },
+  {
+    id: "brief-blue",
+    name: "蓝色简报",
+    desc: "适合工作汇报、会议材料",
+    accent: "bg-blue-500",
+    border: "border-blue-200",
+    category: "工作简报",
+    subCategory: "周报简报",
+  },
+  {
+    id: "report-green",
+    name: "经营报告",
+    desc: "适合数据总结、经营分析",
+    accent: "bg-emerald-500",
+    border: "border-emerald-200",
+    category: "工作简报",
+    subCategory: "经营简报",
+  },
+];
+
+const templateCategories = ["通知", "党群", "会议纪要", "工作简报"];
+
+const templateFilterOptions: Record<string, string[]> = {
+  通知: ["全部", "公司通知", "制度发布"],
+  党群: ["全部", "学习教育", "活动方案"],
+  会议纪要: ["全部", "项目会议", "专题会议"],
+  工作简报: ["全部", "周报简报", "经营简报"],
+};
+
+const templateLayoutRules = [
+  { label: "主标题", value: "二号方正小标宋，居中，段前 0 行、段后 1 行" },
+  { label: "一级标题", value: "三号黑体，序号使用“一、”，段前 0.5 行" },
+  { label: "二级标题", value: "三号楷体，序号使用“（一）”，段前 0.25 行" },
+  { label: "三级标题", value: "三号仿宋加粗，序号使用“1.”，与正文同段缩进" },
+  { label: "正文", value: "三号仿宋，首行缩进 2 字符" },
+  { label: "行间距", value: "固定值 28 磅，段落间距 0.5 行" },
+  { label: "字间距", value: "标准字距，重点标题加宽 0.5 磅" },
+  { label: "页眉页脚", value: "页眉显示单位名称，页脚居中显示页码" },
+  { label: "页数规则", value: "首页不显示页码，正文第 2 页起连续编号" },
+];
+
 const sceneOptions = [
   "通用场景",
   "工作总结",
@@ -136,11 +232,18 @@ export default function RuYiZone() {
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<string | null>(null);
-  const [docType, setDocType] = useState("");
+  const [docType, setDocType] = useState(templateCategories[0]);
   const [docTitle, setDocTitle] = useState("");
   const [docLength, setDocLength] = useState("600-1200");
   const [docContent, setDocContent] = useState("");
-  const [docScene, setDocScene] = useState("通用场景");
+  const [selectedTemplate, setSelectedTemplate] = useState(documentTemplates[0].id);
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const [activeTemplateCategory, setActiveTemplateCategory] = useState(templateCategories[0]);
+  const [activeTemplateFilter, setActiveTemplateFilter] = useState("全部");
+  const [documentReady, setDocumentReady] = useState(false);
+  const [documentPrompt, setDocumentPrompt] = useState("");
+  const [documentConfirmMessage, setDocumentConfirmMessage] = useState("");
+  const [outlineAdjustments, setOutlineAdjustments] = useState<string[]>([]);
   const [showEditor, setShowEditor] = useState(false);
   const [hasConversation, setHasConversation] = useState(false);
   const [sentQuestion, setSentQuestion] = useState("");
@@ -161,15 +264,34 @@ export default function RuYiZone() {
   };
 
   const handleSend = () => {
+    if (activeTool === '公文' && conversationKind === "documentDraft") {
+      const message = input.trim();
+      if (!message) return;
+      if (/确认|可以|没问题|生成|就这样|通过/.test(message)) {
+        setDocumentConfirmMessage(message);
+        setDocumentReady(true);
+      } else {
+        setDocumentReady(false);
+        setOutlineAdjustments(prev => [...prev, message]);
+      }
+      setInput("");
+      return;
+    }
+
     if (activeTool === '公文') {
       const question = input.trim() || "帮我生成一篇关于推进如意空间智能办公建设的通知";
+      const title = docTitle.trim() || question.replace(/^(请|帮我|生成|写一篇|撰写)/, "").slice(0, 32) || "如意空间智能办公建设通知";
       setSentQuestion(question);
+      setDocumentPrompt(question);
+      setDocumentConfirmMessage("");
       setConversationKind("documentDraft");
       setSelectedHistoryId(null);
       setHasConversation(true);
-      setDocType(docScene);
-      setDocTitle(question.replace(/^(请|帮我|生成|写一篇|撰写)/, "").slice(0, 32) || "如意空间智能办公建设通知");
-      setDocContent(question);
+      setDocType(docType);
+      setDocTitle(title);
+      setDocContent(docContent.trim() || question);
+      setDocumentReady(false);
+      setOutlineAdjustments([]);
       setInput("");
       return;
     }
@@ -223,6 +345,20 @@ export default function RuYiZone() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const previewTemplate = documentTemplates.find(t => t.id === previewTemplateId) || documentTemplates[0];
+  const filteredPreviewTemplates = documentTemplates.filter((template) => (
+    template.category === activeTemplateCategory &&
+    (activeTemplateFilter === "全部" || template.subCategory === activeTemplateFilter)
+  ));
+  const filteredDocumentTemplates = documentTemplates.filter((template) => (
+    template.category === docType
+  ));
+
+  const handleDocumentTemplateSelect = (template: typeof documentTemplates[number]) => {
+    setSelectedTemplate(template.id);
+    setDocType(template.category);
+  };
 
   return (
     <>
@@ -493,7 +629,9 @@ export default function RuYiZone() {
 
                       {conversationKind === "documentDraft" && (
                         <>
-                          <p className="mb-4 leading-7">好的，我已根据您的主题生成公文写作大纲，并为您准备好可继续编辑的公文草稿。</p>
+                          <p className="mb-4 leading-7">
+                            好的，我先根据您的主题生成公文写作大纲。请您确认大纲是否合适，也可以直接告诉我需要怎么调整。
+                          </p>
                           <div className="mb-5 border-b border-gray-200 pb-2 dark:border-gray-700">
                             <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-950 dark:text-white">
                               <FileTextIcon size={24} className="text-theme-500" />
@@ -515,26 +653,71 @@ export default function RuYiZone() {
                             ))}
                           </div>
 
-                          <button
-                            onClick={() => setShowEditor(true)}
-                            className="mb-6 flex w-full max-w-2xl items-stretch overflow-hidden rounded-xl border border-theme-100 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-theme-200 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
-                          >
-                            <div className="flex w-24 flex-shrink-0 items-center justify-center bg-gradient-to-br from-theme-500 to-theme-700 text-white">
-                              <FileTextIcon size={34} />
+                          {outlineAdjustments.length > 0 && !documentReady && (
+                            <div className="mb-6 rounded-xl border border-amber-100 bg-amber-50/70 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-100">
+                              <div className="mb-2 font-semibold">已收到您的调整意见：</div>
+                              <ul className="list-disc space-y-1 pl-5">
+                                {outlineAdjustments.map((item, index) => (
+                                  <li key={`${item}-${index}`}>{item}</li>
+                                ))}
+                              </ul>
                             </div>
-                            <div className="flex-1 p-5">
-                              <div className="mb-2 flex items-center gap-2">
-                                <span className="rounded bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">公文草稿</span>
-                                <span className="text-xs text-gray-400">{docScene} · {docLength} 字</span>
-                              </div>
-                              <h4 className="text-lg font-bold text-gray-950 dark:text-white">{docTitle || "如意空间智能办公建设通知"}</h4>
-                              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">已生成正文结构和初稿内容，点击进入公文编辑器继续润色、排版和保存。</p>
-                              <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-theme-700 dark:text-theme-300">
-                                进入公文编辑
-                                <ArrowRight size={16} />
-                              </div>
+                          )}
+
+                          {!documentReady && (
+                            <div className="mb-6 flex flex-wrap gap-3">
+                              <button
+                                onClick={() => {
+                                  setDocumentConfirmMessage("确认，生成公文");
+                                  setDocumentReady(true);
+                                }}
+                                className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-theme-700"
+                              >
+                                确认大纲，生成公文
+                              </button>
+                              <span className="self-center text-sm text-gray-500 dark:text-gray-400">也可以在下方对话框输入调整意见。</span>
                             </div>
-                          </button>
+                          )}
+
+                          {documentReady && (
+                            <>
+                              <div className="mb-6 flex justify-end">
+                                <div className="max-w-2xl rounded-2xl bg-theme-50 px-5 py-4 text-gray-900 shadow-sm dark:bg-theme-900/20 dark:text-white">
+                                  {documentConfirmMessage || "确认，生成公文"}
+                                </div>
+                              </div>
+                              <div className="mb-4 flex gap-4">
+                                <img
+                                  src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd"
+                                  alt="如意助手"
+                                  className="mt-1 h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                                />
+                                <div className="max-w-3xl flex-1">
+                                  <p className="mb-4 leading-7">已根据您确认的大纲生成公文草稿，您可以点击下方入口进入编辑页面继续完善。</p>
+                                  <button
+                                    onClick={() => setShowEditor(true)}
+                                    className="mb-6 flex w-full max-w-2xl items-stretch overflow-hidden rounded-xl border border-theme-100 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-theme-200 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                                  >
+                                    <div className="flex w-24 flex-shrink-0 items-center justify-center bg-gradient-to-br from-theme-500 to-theme-700 text-white">
+                                      <FileTextIcon size={34} />
+                                    </div>
+                                    <div className="flex-1 p-5">
+                                      <div className="mb-2 flex items-center gap-2">
+                                        <span className="rounded bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">公文草稿</span>
+                                        <span className="text-xs text-gray-400">{docType} · {docLength} 字</span>
+                                      </div>
+                                      <h4 className="text-lg font-bold text-gray-950 dark:text-white">{docTitle || "如意空间智能办公建设通知"}</h4>
+                                      <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">已生成正文结构和初稿内容，点击进入公文编辑器继续润色、排版和保存。</p>
+                                      <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-theme-700 dark:text-theme-300">
+                                        进入公文编辑
+                                        <ArrowRight size={16} />
+                                      </div>
+                                    </div>
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </>
                       )}
 
@@ -645,34 +828,244 @@ export default function RuYiZone() {
                 </div>
 
                 {activeTool === '公文' && (
-                  <div className="mt-3 flex items-center gap-4 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">场景选择</span>
-                      <select
-                        value={docScene}
-                        onChange={(e) => setDocScene(e.target.value)}
-                        className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer appearance-none pr-8 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_0.5rem_center]"
-                      >
-                        {sceneOptions.map((scene) => (
-                          <option key={scene} value={scene}>{scene}</option>
-                        ))}
-                      </select>
+                  <div className="mt-4 space-y-4 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <label className="block">
+                        <span className="mb-1 block text-sm text-gray-500 dark:text-gray-400">公文类型</span>
+                        <select
+                          value={docType}
+                          onChange={(e) => {
+                            const nextCategory = e.target.value;
+                            setDocType(nextCategory);
+                            const nextTemplate = documentTemplates.find(template => template.category === nextCategory);
+                            if (nextTemplate) setSelectedTemplate(nextTemplate.id);
+                          }}
+                          className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-theme-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        >
+                          {templateCategories.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-1 block text-sm text-gray-500 dark:text-gray-400">字数选择</span>
+                        <select
+                          value={docLength}
+                          onChange={(e) => setDocLength(e.target.value)}
+                          className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-theme-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        >
+                          {lengthOptions.map((length) => (
+                            <option key={length} value={length}>{length} 字</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="block md:col-span-2">
+                        <span className="mb-1 block text-sm text-gray-500 dark:text-gray-400">文章标题</span>
+                        <input
+                          value={docTitle}
+                          onChange={(e) => setDocTitle(e.target.value)}
+                          className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-theme-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                          placeholder="请输入文章标题"
+                        />
+                      </label>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">字数选择</span>
-                      <select
-                        value={docLength}
-                        onChange={(e) => setDocLength(e.target.value)}
-                        className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer appearance-none pr-8 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_0.5rem_center]"
-                      >
-                        {lengthOptions.map((length) => (
-                          <option key={length} value={length}>{length} 字</option>
+
+                    <label className="block">
+                      <span className="mb-1 block text-sm text-gray-500 dark:text-gray-400">内容要求</span>
+                      <textarea
+                        value={docContent}
+                        onChange={(e) => setDocContent(e.target.value)}
+                        rows={3}
+                        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-theme-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                        placeholder="请输入内容重点、写作要求或参考信息"
+                      />
+                    </label>
+
+                    <div>
+                      <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">选择公文模板</div>
+                      <div className="grid gap-3 md:grid-cols-3">
+                        {filteredDocumentTemplates.map((template) => (
+                          <div
+                            key={template.id}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => handleDocumentTemplateSelect(template)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                handleDocumentTemplateSelect(template);
+                              }
+                            }}
+                            className={`group overflow-hidden rounded-lg border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-800 ${
+                              selectedTemplate === template.id ? `${template.border} ring-2 ring-theme-200` : 'border-gray-200 dark:border-gray-700'
+                            }`}
+                          >
+                              <div className="relative h-24 bg-gray-50 p-3 dark:bg-gray-700/70">
+                                <div className={`mb-2 h-1.5 w-16 rounded-full ${template.accent}`} />
+                                <div className="mx-auto h-full max-w-[82px] rounded-sm bg-white p-2 shadow-sm">
+                                  <div className={`mx-auto mb-2 h-1 w-10 rounded-full ${template.accent}`} />
+                                  <div className="space-y-1.5">
+                                    <div className="h-1 rounded bg-gray-300" />
+                                    <div className="h-1 rounded bg-gray-200" />
+                                    <div className="h-1 rounded bg-gray-200" />
+                                    <div className="h-1 w-2/3 rounded bg-gray-200" />
+                                  </div>
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/0 opacity-0 transition-all group-hover:bg-gray-900/35 group-hover:opacity-100">
+                                  <button
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setActiveTemplateCategory(template.category);
+                                      setActiveTemplateFilter(template.subCategory);
+                                      setPreviewTemplateId(template.id);
+                                    }}
+                                    className="rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-gray-800 shadow-md transition-colors hover:bg-white"
+                                  >
+                                    预览模板
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="p-3 pb-2">
+                                <div className="text-sm font-semibold text-gray-900 dark:text-white">{template.name}</div>
+                                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{template.desc}</div>
+                              </div>
+                          </div>
                         ))}
-                      </select>
+                      </div>
                     </div>
                   </div>
                 )}
               </div>
+
+              {previewTemplateId && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/35 p-3 sm:p-4">
+                  <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white p-4 shadow-2xl dark:bg-gray-800 sm:p-5">
+                    <div className="mb-4 flex flex-shrink-0 items-start justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-bold text-gray-950 dark:text-white">模板选择</h3>
+                        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">选择分类并查看模板具体内容</p>
+                      </div>
+                      <button onClick={() => setPreviewTemplateId(null)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700">
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    <div className="flex flex-shrink-0 flex-col gap-3 border-b border-gray-100 pb-4 dark:border-gray-700">
+                      <div className="flex flex-wrap gap-2">
+                        {templateCategories.map((category) => (
+                          <button
+                            key={category}
+                            onClick={() => {
+                              setActiveTemplateCategory(category);
+                              setActiveTemplateFilter("全部");
+                              const nextTemplate = documentTemplates.find(t => t.category === category);
+                              if (nextTemplate) setPreviewTemplateId(nextTemplate.id);
+                            }}
+                            className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${activeTemplateCategory === category ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                          >
+                            {category}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {templateFilterOptions[activeTemplateCategory].map((filter) => (
+                          <button
+                            key={filter}
+                            onClick={() => {
+                              setActiveTemplateFilter(filter);
+                              const nextTemplate = documentTemplates.find(t => t.category === activeTemplateCategory && (filter === "全部" || t.subCategory === filter));
+                              if (nextTemplate) setPreviewTemplateId(nextTemplate.id);
+                            }}
+                            className={`rounded-lg border px-3 py-1.5 text-xs transition-colors ${activeTemplateFilter === filter ? 'border-theme-300 bg-theme-50 text-theme-700 dark:border-theme-700 dark:bg-theme-900/30 dark:text-theme-200' : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                          >
+                            {filter}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex gap-2 overflow-x-auto pb-1">
+                        {filteredPreviewTemplates.map((template) => (
+                          <button
+                            key={template.id}
+                            onClick={() => setPreviewTemplateId(template.id)}
+                            className={`flex min-w-[150px] items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700 ${previewTemplateId === template.id ? `${template.border} bg-theme-50/40 dark:bg-theme-900/20` : 'border-gray-200 dark:border-gray-700'}`}
+                          >
+                            <div className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${template.accent}`} />
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-gray-900 dark:text-white">{template.name}</div>
+                              <div className="truncate text-xs text-gray-500 dark:text-gray-400">{template.desc}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid min-h-0 flex-1 gap-4 overflow-hidden py-4 pr-1 lg:grid-cols-[minmax(0,1fr)_300px]">
+                        <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/60 sm:p-5">
+                          <div className="mx-auto h-[52vh] min-h-[330px] max-h-[520px] w-full max-w-[380px] rounded bg-white px-6 py-7 shadow-lg sm:px-9 sm:py-10">
+                            <div className="mb-4 text-right text-[10px] text-gray-400">吉祥航空办公规范模板</div>
+                            <div className={`mx-auto mb-6 h-1.5 w-28 rounded ${previewTemplate.accent}`} />
+                            <div className="mb-6 text-center text-lg font-bold tracking-normal text-gray-900 sm:text-xl">{previewTemplate.name}</div>
+                            <div className="mb-6 space-y-3">
+                              <div className="h-2.5 rounded bg-gray-300" />
+                              <div className="h-2.5 rounded bg-gray-200" />
+                              <div className="h-2.5 rounded bg-gray-200" />
+                              <div className="h-2.5 w-4/5 rounded bg-gray-200" />
+                            </div>
+                            <div className="space-y-4">
+                              {[
+                                { label: "一、一级标题", width: "w-24", indent: "" },
+                                { label: "（一）二级标题", width: "w-28", indent: "ml-4" },
+                                { label: "1. 三级标题", width: "w-20", indent: "ml-8" },
+                              ].map((item) => (
+                                <div key={item.label} className={item.indent}>
+                                  <div className={`mb-2 h-2 rounded bg-gray-300 ${item.width}`} />
+                                  <div className="space-y-2">
+                                    <div className="h-2 rounded bg-gray-200" />
+                                    <div className="h-2 rounded bg-gray-200" />
+                                    <div className="h-2 w-3/4 rounded bg-gray-200" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-6 flex items-center justify-between border-t border-gray-100 pt-3 text-[10px] text-gray-400">
+                              <span>页脚：内部流转</span>
+                              <span>第 2 页 / 共 N 页</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex min-h-0 flex-col rounded-lg border border-gray-100 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
+                          <div className="mb-3 flex-shrink-0 text-sm font-semibold text-gray-700 dark:text-gray-200">模板内容</div>
+                          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                            {templateLayoutRules.map((rule) => (
+                              <div key={rule.label} className="rounded-lg bg-gray-50 p-3 dark:bg-gray-700/60">
+                                <div className="text-xs font-semibold text-gray-500 dark:text-gray-400">{rule.label}</div>
+                                <div className="mt-1 text-sm leading-5 text-gray-800 dark:text-gray-100">{rule.value}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                    <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">
+                      <button className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">编辑模板</button>
+                      <div className="flex gap-2">
+                        <button onClick={() => setPreviewTemplateId(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">取消</button>
+                        <button
+                          onClick={() => {
+                            handleDocumentTemplateSelect(previewTemplate);
+                            setPreviewTemplateId(null);
+                          }}
+                          className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700"
+                        >
+                          使用此模板
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               </>
               )}
 
@@ -739,18 +1132,6 @@ export default function RuYiZone() {
 
               {activeTool === '公文' && conversationKind !== "documentDraft" && (
                 <div className="mt-3 flex items-center gap-4 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">场景选择</span>
-                    <select
-                      value={docScene}
-                      onChange={(e) => setDocScene(e.target.value)}
-                      className="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-theme-200 cursor-pointer appearance-none pr-8 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-no-repeat bg-[right_0.5rem_center]"
-                    >
-                      {sceneOptions.map((scene) => (
-                        <option key={scene} value={scene}>{scene}</option>
-                      ))}
-                    </select>
-                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">字数选择</span>
                     <select
