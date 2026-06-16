@@ -236,6 +236,7 @@ export default function RuYiZone() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLegacyMode, setIsLegacyMode] = useState(false);
   const [legacyEditorStartsInRequirements, setLegacyEditorStartsInRequirements] = useState(false);
+  const [legacyEditorStartsInOutline, setLegacyEditorStartsInOutline] = useState(false);
   const [editorSessionId, setEditorSessionId] = useState(0);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [docType, setDocType] = useState(templateCategories[0]);
@@ -350,6 +351,8 @@ export default function RuYiZone() {
     setDocumentReady(false);
     setDocumentConfirmMessage("");
     setOutlineAdjustments([]);
+    setLegacyEditorStartsInRequirements(false);
+    setLegacyEditorStartsInOutline(false);
   };
 
   const openLegacyDocumentAssistant = () => {
@@ -368,6 +371,7 @@ export default function RuYiZone() {
     setDocumentReady(false);
     setOutlineAdjustments([]);
     setLegacyEditorStartsInRequirements(true);
+    setLegacyEditorStartsInOutline(false);
     setEditorSessionId((current) => current + 1);
     setEmbedEditorInRuyiZone(true);
     setShowEditor(true);
@@ -447,10 +451,11 @@ export default function RuYiZone() {
       setHasConversation(true);
       setDocTitle(title);
       setDocContent(docContent.trim() || question);
-      setDocumentReady(true);
+      setDocumentReady(false);
       setOutlineAdjustments([]);
       setInput("");
       setLegacyEditorStartsInRequirements(false);
+      setLegacyEditorStartsInOutline(true);
       setEditorSessionId((current) => current + 1);
       setEmbedEditorInRuyiZone(!isLegacyMode);
       setShowEditor(true);
@@ -671,7 +676,7 @@ export default function RuYiZone() {
           </div>
         </div>
         <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-gray-100 pt-4">
-          <button className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">编辑模板</button>
+          <Link to="/admin?section=ai-template" className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">编辑模板</Link>
           <div className="flex gap-2">
             <button onClick={() => setPreviewTemplateId(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">取消</button>
             <button
@@ -741,6 +746,7 @@ export default function RuYiZone() {
               docContent={docContent}
               attachments={docAttachments}
               startInRequirements={legacyEditorStartsInRequirements}
+              startInOutline={legacyEditorStartsInOutline}
               embedded
               onRemoveAttachment={handleRemoveAttachment}
               onBack={handleBackFromEditor}
@@ -866,6 +872,7 @@ export default function RuYiZone() {
           docLength={docLength} 
           docContent={docContent}
           attachments={docAttachments}
+          startInOutline={legacyEditorStartsInOutline}
           onRemoveAttachment={handleRemoveAttachment}
           onBack={handleBackFromEditor}
         />
@@ -995,6 +1002,7 @@ export default function RuYiZone() {
               docContent={docContent}
               attachments={docAttachments}
               startInRequirements={legacyEditorStartsInRequirements}
+              startInOutline={legacyEditorStartsInOutline}
               embedded
               onRemoveAttachment={handleRemoveAttachment}
               onBack={handleBackFromEditor}
@@ -1238,6 +1246,7 @@ export default function RuYiZone() {
                             onClick={() => {
                               setEmbedEditorInRuyiZone(true);
                               setLegacyEditorStartsInRequirements(false);
+                              setLegacyEditorStartsInOutline(false);
                               setEditorSessionId((current) => current + 1);
                               setShowEditor(true);
                             }}
@@ -1583,7 +1592,7 @@ export default function RuYiZone() {
                       </div>
 
                     <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-700">
-                      <button className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">编辑模板</button>
+                      <Link to="/admin?section=ai-template" className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">编辑模板</Link>
                       <div className="flex gap-2">
                         <button onClick={() => setPreviewTemplateId(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700">取消</button>
                         <button

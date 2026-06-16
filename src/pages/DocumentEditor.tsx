@@ -39,6 +39,7 @@ interface DocumentEditorProps {
   docContent: string;
   attachments?: string[];
   startInRequirements?: boolean;
+  startInOutline?: boolean;
   embedded?: boolean;
   onRemoveAttachment?: (attachment: string) => void;
   onBack: () => void;
@@ -158,8 +159,8 @@ const initialSavedDocuments = [
   },
 ];
 
-export default function DocumentEditor({ docType, docTitle, docLength, docContent, attachments = [], startInRequirements = false, embedded = false, onRemoveAttachment, onBack }: DocumentEditorProps) {
-  const [content, setContent] = useState(startInRequirements ? '' : sampleContent);
+export default function DocumentEditor({ docType, docTitle, docLength, docContent, attachments = [], startInRequirements = false, startInOutline = false, embedded = false, onRemoveAttachment, onBack }: DocumentEditorProps) {
+  const [content, setContent] = useState(startInRequirements || startInOutline ? '' : sampleContent);
   const [requirementTitle, setRequirementTitle] = useState(docTitle || '未命名文档');
   const [requirementType, setRequirementType] = useState(templateCategories.includes(docType) ? docType : templateCategories[0]);
   const [requirementLength, setRequirementLength] = useState(docLength);
@@ -172,12 +173,12 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [activeTemplateFilter, setActiveTemplateFilter] = useState('全部');
   const [requirementsEditable, setRequirementsEditable] = useState(startInRequirements);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
-  const [outlineEditing, setOutlineEditing] = useState(false);
+  const [outlineEditing, setOutlineEditing] = useState(startInOutline);
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [isGeneratingFinalFile, setIsGeneratingFinalFile] = useState(false);
   const [finalFileReady, setFinalFileReady] = useState(false);
   const [requirementsConfirmed, setRequirementsConfirmed] = useState(!startInRequirements);
-  const [outlineConfirmed, setOutlineConfirmed] = useState(!startInRequirements);
+  const [outlineConfirmed, setOutlineConfirmed] = useState(!startInRequirements && !startInOutline);
   const [outlineItems, setOutlineItems] = useState(defaultOutline);
   const [outlineText, setOutlineText] = useState(formatOutlineText(defaultOutline));
   const [outlineDirty, setOutlineDirty] = useState(false);
