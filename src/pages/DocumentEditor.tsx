@@ -25,7 +25,11 @@ import {
   Type,
   FileText,
   X,
-  Loader2
+  Loader2,
+  Download,
+  CheckCircle2,
+  Paperclip,
+  Search
 } from "lucide-react";
 
 interface DocumentEditorProps {
@@ -33,6 +37,10 @@ interface DocumentEditorProps {
   docTitle: string;
   docLength: string;
   docContent: string;
+  attachments?: string[];
+  startInRequirements?: boolean;
+  embedded?: boolean;
+  onRemoveAttachment?: (attachment: string) => void;
   onBack: () => void;
 }
 
@@ -116,25 +124,67 @@ const defaultOutline = [
   { title: '四、工作要求', desc: '强调组织保障、执行反馈和后续优化。' },
 ];
 
-export default function DocumentEditor({ docType, docTitle, docLength, docContent, onBack }: DocumentEditorProps) {
-  const [content, setContent] = useState(sampleContent);
+const formatOutlineText = (items: typeof defaultOutline) => (
+  items.map(item => `${item.title}\n${item.desc}`).join('\n\n')
+);
+
+const initialSavedDocuments = [
+  {
+    id: 'smart-office-notice',
+    title: '如意空间智能办公建设通知',
+    type: '通知',
+    words: '1280',
+    updatedAt: '今天 14:20',
+    content: sampleContent,
+    outline: formatOutlineText(defaultOutline),
+  },
+  {
+    id: 'project-meeting-minutes',
+    title: '项目推进会议纪要',
+    type: '会议纪要',
+    words: '960',
+    updatedAt: '昨天 16:10',
+    content: `会议时间：2026年6月15日 14:00\n会议地点：总部会议室A\n参会人员：项目组、业务代表、技术支持团队\n\n一、会议议题\n围绕项目当前推进情况、关键节点风险和后续协同事项进行讨论。\n\n二、会议结论\n项目整体进度可控，需重点跟进接口联调、上线验证和用户培训安排。\n\n三、待办事项\n1. 技术团队于本周内完成联调问题清单闭环。\n2. 业务团队补充试点部门反馈意见。\n3. 项目经理同步更新项目计划并提交评审。`,
+    outline: `一、会议基本信息\n记录会议时间、地点、参会人员和会议背景。\n\n二、项目推进情况\n概述当前进度、已完成事项和主要风险。\n\n三、会议结论与待办\n明确结论、责任人和完成时间。`,
+  },
+  {
+    id: 'party-study-plan',
+    title: '党群学习活动方案',
+    type: '党群',
+    words: '1520',
+    updatedAt: '6月12日',
+    content: `为进一步强化理论学习成效，提升党群活动组织质量，拟开展主题学习活动。\n\n一、活动主题\n围绕理论学习、岗位实践和团队交流，组织专题学习与分享。\n\n二、活动安排\n活动分为集中学习、交流研讨和成果总结三个环节。\n\n三、工作要求\n各相关部门应高度重视，做好组织发动和材料准备，确保活动取得实效。`,
+    outline: `一、活动背景\n说明开展学习活动的意义和目标。\n\n二、活动安排\n明确活动时间、对象、形式和主要环节。\n\n三、工作要求\n提出组织保障、材料归档和成果总结要求。`,
+  },
+];
+
+export default function DocumentEditor({ docType, docTitle, docLength, docContent, attachments = [], startInRequirements = false, embedded = false, onRemoveAttachment, onBack }: DocumentEditorProps) {
+  const [content, setContent] = useState(startInRequirements ? '' : sampleContent);
   const [requirementTitle, setRequirementTitle] = useState(docTitle || '未命名文档');
   const [requirementType, setRequirementType] = useState(templateCategories.includes(docType) ? docType : templateCategories[0]);
   const [requirementLength, setRequirementLength] = useState(docLength);
-  const [requirementContent, setRequirementContent] = useState(docContent || '暂无补充要求');
+  const [requirementContent, setRequirementContent] = useState(docContent || (startInRequirements ? '' : '暂无补充要求'));
   const [selectedTemplate, setSelectedTemplate] = useState(
     (editorTemplates.find(template => template.category === docType) || editorTemplates[0]).id
   );
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [activeTemplateCategory, setActiveTemplateCategory] = useState(templateCategories[0]);
   const [activeTemplateFilter, setActiveTemplateFilter] = useState('全部');
-  const [requirementsEditable, setRequirementsEditable] = useState(false);
+  const [requirementsEditable, setRequirementsEditable] = useState(startInRequirements);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [outlineEditing, setOutlineEditing] = useState(false);
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
-  const [requirementsConfirmed, setRequirementsConfirmed] = useState(true);
-  const [outlineConfirmed, setOutlineConfirmed] = useState(true);
+  const [isGeneratingFinalFile, setIsGeneratingFinalFile] = useState(false);
+  const [finalFileReady, setFinalFileReady] = useState(false);
+  const [requirementsConfirmed, setRequirementsConfirmed] = useState(!startInRequirements);
+  const [outlineConfirmed, setOutlineConfirmed] = useState(!startInRequirements);
   const [outlineItems, setOutlineItems] = useState(defaultOutline);
+  const [outlineText, setOutlineText] = useState(formatOutlineText(defaultOutline));
+  const [outlineDirty, setOutlineDirty] = useState(false);
+  const [documentTab, setDocumentTab] = useState<'current' | 'mine'>('current');
+  const [selectedSavedDocumentId, setSelectedSavedDocumentId] = useState<string | null>(null);
+  const [savedDocuments, setSavedDocuments] = useState(initialSavedDocuments);
+  const [documentSearch, setDocumentSearch] = useState('');
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
@@ -151,9 +201,31 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const filteredSavedDocuments = savedDocuments.filter((document) => {
+    const keyword = documentSearch.trim().toLowerCase();
+    if (!keyword) return true;
+    return `${document.title} ${document.type} ${document.updatedAt}`.toLowerCase().includes(keyword);
+  });
+
   const handleSave = () => {
+    const trimmedTitle = requirementTitle.trim() || '未命名文档';
+    const nextDocument = {
+      id: selectedSavedDocumentId || `saved-${Date.now()}`,
+      title: trimmedTitle,
+      type: requirementType,
+      words: `${content.length}`,
+      updatedAt: '刚刚',
+      content,
+      outline: outlineText,
+    };
+    setSavedDocuments((current) => {
+      const exists = current.some((item) => item.id === nextDocument.id);
+      return exists
+        ? current.map((item) => (item.id === nextDocument.id ? nextDocument : item))
+        : [nextDocument, ...current];
+    });
+    setSelectedSavedDocumentId(nextDocument.id);
     setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
   };
 
   const generateOutlineDraft = () => {
@@ -162,12 +234,14 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setRequirementsEditable(false);
     setRequirementsConfirmed(true);
     setOutlineConfirmed(false);
-    setOutlineItems(defaultOutline.map((item, index) => ({
+    const nextOutline = defaultOutline.map((item, index) => ({
       title: item.title,
       desc: index === 0
         ? `围绕“${requirementTitle || '当前公文'}”补充背景、依据和目标。`
         : item.desc,
-    })));
+    }));
+    setOutlineItems(nextOutline);
+    setOutlineText(formatOutlineText(nextOutline));
     setIsSaved(false);
   };
 
@@ -186,6 +260,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setOutlineConfirmed(false);
     setContent('');
     setOutlineEditing(false);
+    setOutlineDirty(false);
     setIsSaved(false);
   };
 
@@ -202,6 +277,8 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setRequirementsEditable(false);
     setRequirementsConfirmed(true);
     setOutlineConfirmed(false);
+    setFinalFileReady(false);
+    setOutlineDirty(false);
     setContent('');
     window.setTimeout(() => {
       generateOutlineDraft();
@@ -215,7 +292,51 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setRequirementsEditable(false);
     setRequirementsConfirmed(true);
     setOutlineConfirmed(true);
+    setFinalFileReady(false);
+    setOutlineDirty(false);
+    setIsSaved(false);
+  };
+
+  const handleOutlineTextChange = (value: string) => {
+    setOutlineText(value);
+    setOutlineDirty(outlineConfirmed);
+    setIsSaved(false);
+  };
+
+  const handleRegenerateContent = () => {
+    setContent(sampleContent);
+    setOutlineEditing(false);
+    setRequirementsEditable(false);
+    setRequirementsConfirmed(true);
+    setOutlineConfirmed(true);
+    setFinalFileReady(false);
+    setOutlineDirty(false);
+    setIsSaved(false);
+  };
+
+  const handleOpenSavedDocument = (document: typeof savedDocuments[number]) => {
+    setSelectedSavedDocumentId(document.id);
+    setRequirementTitle(document.title);
+    setRequirementType(document.type);
+    setRequirementLength(document.words);
+    setRequirementContent(`${document.title}，来源：我的公文`);
+    setContent(document.content);
+    setOutlineText(document.outline);
+    setRequirementsEditable(false);
+    setRequirementsConfirmed(true);
+    setOutlineEditing(false);
+    setOutlineConfirmed(true);
+    setFinalFileReady(true);
+    setOutlineDirty(false);
     setIsSaved(true);
+  };
+
+  const handleGenerateFinalFile = () => {
+    setIsGeneratingFinalFile(true);
+    window.setTimeout(() => {
+      setIsGeneratingFinalFile(false);
+      setFinalFileReady(true);
+    }, 900);
   };
 
   const updateOutlineItem = (index: number, field: 'title' | 'desc', value: string) => {
@@ -225,12 +346,42 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setIsSaved(false);
   };
 
+  const removeOutlineItem = (index: number) => {
+    setOutlineItems(prev => prev.filter((_, itemIndex) => itemIndex !== index));
+    setIsSaved(false);
+  };
+
   const filteredTemplates = documentTypes.filter(t => t.category === activeCategory);
   const selectedTemplateMeta = editorTemplates.find(t => t.id === selectedTemplate) || editorTemplates[0];
   const previewTemplateMeta = editorTemplates.find(t => t.id === previewTemplateId) || selectedTemplateMeta;
   const filteredPreviewTemplates = editorTemplates.filter((template) => (
     template.category === activeTemplateCategory
   ));
+  const attachmentPanel = attachments.length > 0 && (
+    <div className="rounded-lg border border-gray-200 bg-white p-3">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-sm font-medium text-gray-700">已上传附件</div>
+        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{attachments.length} 个</span>
+      </div>
+      <div className="space-y-2">
+        {attachments.map((attachment) => (
+          <div key={attachment} className="flex min-w-0 items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+            <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
+            <span className="truncate">{attachment}</span>
+            {onRemoveAttachment && (
+              <button
+                onClick={() => onRemoveAttachment(attachment)}
+                className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500"
+                title="删除附件"
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
   const handleEditorTemplateSelect = (template: typeof editorTemplates[number]) => {
     setSelectedTemplate(template.id);
@@ -239,7 +390,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className={`flex ${embedded ? 'h-full' : 'h-screen'} bg-gray-50`}>
       {/* 左侧编辑区 */}
       <div className="flex-1 flex flex-col border-r border-gray-200 bg-white">
         {/* 顶部工具栏 */}
@@ -253,12 +404,6 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
             </button>
             <div className="flex items-center gap-3">
               <span className="font-medium text-gray-900">{requirementTitle || '未命名文档'}</span>
-              {isSaved && (
-                <span className="flex items-center gap-1 text-xs text-green-600">
-                  <Save size={12} />
-                  保存成功
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -339,27 +484,26 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         {/* 编辑区域 */}
         <div className="flex-1 overflow-y-auto px-8 py-6">
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-8">{requirementTitle || '文档标题'}</h1>
-          <div className="prose prose-gray max-w-none">
-            {content.split('\n').map((paragraph, index) => (
-              <p 
-                key={index} 
-                className={`mb-6 text-gray-700 leading-relaxed ${isBold ? 'font-bold' : ''} ${isItalic ? 'italic' : ''} ${isUnderline ? 'underline' : ''} text-${textAlign}`}
-              >
-                {paragraph}
-              </p>
-            ))}
-          </div>
-          <p className="text-center text-sm text-gray-400 mt-8 pt-4 border-t border-gray-100">
-            以上内容为AI生成，仅供参考使用
-          </p>
+          <textarea
+            value={content}
+            onChange={(event) => {
+              setContent(event.target.value);
+              setIsSaved(false);
+            }}
+            className={`min-h-[520px] w-full resize-none border-none bg-transparent text-gray-700 outline-none leading-relaxed ${isBold ? 'font-bold' : ''} ${isItalic ? 'italic' : ''} ${isUnderline ? 'underline' : ''} text-${textAlign}`}
+            placeholder="正文内容将在这里生成，也可以直接编辑..."
+          />
         </div>
 
         {/* 底部状态栏 */}
-        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex items-center justify-between">
+        <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 grid grid-cols-3 items-center gap-3">
           <div className="text-xs text-gray-500">
-            以上内容由AI生成，仅供参考
+            {isSaved ? '已保存' : '有未保存内容'}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-center text-[11px] text-gray-400">
+            内容AI辅助生成，请谨慎识别
+          </div>
+          <div className="text-right text-xs text-gray-500">
             {content.length} 个字
           </div>
         </div>
@@ -367,44 +511,147 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
 
       {/* 右侧当前公文信息 */}
       <div className="w-80 flex flex-col bg-gray-50 border-l border-gray-200 h-full">
-        <div className="border-b border-gray-200 p-4">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-theme-100 text-theme-600">
-              <FileText size={18} />
-            </div>
-            <div>
-              <div className="text-sm font-semibold text-gray-900">当前公文</div>
-              <div className="text-xs text-gray-500">仅显示本篇文档相关信息</div>
-            </div>
+        <div className="border-b border-gray-200 bg-white px-4 pb-3 pt-4">
+          <div className="mb-3 flex items-center gap-2 text-theme-700">
+            <FileText size={18} />
+            <span className="text-sm font-semibold">公文工作台</span>
+          </div>
+          <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-1 text-sm">
+            {[
+              { id: 'current', label: '当前公文' },
+              { id: 'mine', label: '我的公文' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setDocumentTab(item.id as 'current' | 'mine')}
+                className={`rounded-md px-3 py-2 font-semibold transition-colors ${
+                  documentTab === item.id ? 'bg-theme-600 text-white shadow-sm' : 'text-gray-500 hover:bg-white hover:text-gray-800'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 text-xs leading-5 text-gray-500">
+            {documentTab === 'current' ? '查看并处理当前文档的生成流程' : '查看历史保存的公文'}
           </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
           <div className="space-y-4">
+            {documentTab === 'mine' ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs text-gray-400">文件</span>
+                      <span className="text-lg font-bold text-gray-900">{savedDocuments.length}</span>
+                    </div>
+                    {documentSearch.trim() && (
+                      <span className="rounded-full bg-theme-50 px-2 py-0.5 text-[11px] font-medium text-theme-700">
+                        {filteredSavedDocuments.length} 个匹配
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      value={documentSearch}
+                      onChange={(event) => setDocumentSearch(event.target.value)}
+                      className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs text-gray-800 outline-none transition-colors placeholder:text-gray-400 focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
+                      placeholder="搜索文件名、类型或更新时间"
+                    />
+                  </div>
+                </div>
+                <div className="hidden rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <div className="flex items-baseline gap-2">
+                      <div className="text-xs text-gray-400">文件总数</div>
+                      <div className="text-lg font-bold text-gray-900">{savedDocuments.length}</div>
+                    </div>
+                    <div className="rounded-full bg-theme-50 px-2.5 py-1 text-xs font-medium text-theme-700">点击文件打开编辑</div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {filteredSavedDocuments.map((item) => (
+                    <div
+                      key={item.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleOpenSavedDocument(item)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          handleOpenSavedDocument(item);
+                        }
+                      }}
+                      className={`group w-full rounded-lg border bg-white p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-theme-200 hover:shadow-md ${
+                        selectedSavedDocumentId === item.id ? 'border-theme-200 ring-2 ring-theme-100' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-700">
+                          <FileText size={17} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-gray-900">{item.title}</div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.type}</span>
+                            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.words} 字</span>
+                            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.updatedAt}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-2">
+                        <button
+                          onClick={(event) => event.stopPropagation()}
+                          className="flex items-center justify-center gap-1.5 rounded-lg border border-theme-100 bg-theme-50 px-2 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-100"
+                        >
+                          <Download size={13} />
+                          下载
+                        </button>
+                        <button
+                          onClick={(event) => event.stopPropagation()}
+                          className="flex items-center justify-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
+                        >
+                          <X size={13} />
+                          删除
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {filteredSavedDocuments.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-8 text-center text-sm text-gray-400">
+                      未找到匹配的公文
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+            <>
             <div className="rounded-lg border border-theme-100 bg-white p-3 shadow-sm">
               <div className="mb-3 text-sm font-medium text-gray-800">生成流程</div>
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
+              <div className="grid grid-cols-2 gap-2 text-center text-xs">
                 <div className={`rounded-lg px-2 py-2 ${requirementsEditable ? 'bg-theme-600 text-white' : requirementsConfirmed ? 'bg-theme-50 text-theme-700' : 'bg-gray-100 text-gray-500'}`}>
                   调整要求
                 </div>
-                <div className={`rounded-lg px-2 py-2 ${outlineEditing || isGeneratingOutline ? 'bg-theme-600 text-white' : requirementsConfirmed ? 'bg-theme-50 text-theme-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {isGeneratingOutline ? '生成中' : '确认大纲'}
-                </div>
-                <div className={`rounded-lg px-2 py-2 ${outlineConfirmed ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                  生成正文
+                <div className={`rounded-lg px-2 py-2 ${outlineEditing || isGeneratingOutline || outlineConfirmed ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                  {isGeneratingOutline ? '生成中' : '生成正文'}
                 </div>
               </div>
               <p className="mt-3 text-xs leading-5 text-gray-500">
                 {requirementsEditable
-                  ? '调整公文要求和模板，确认要求后生成大纲。'
+                  ? '调整公文要求和模板，确认后进入正文生成。'
                   : isGeneratingOutline
                     ? '如意助手正在根据已确认的要求生成大纲。'
                   : outlineEditing
-                    ? '请检查并编辑大纲，确认后生成正文。'
+                    ? '请检查并编辑大纲，确认后将直接生成正文。'
                     : '正文已根据确认后的要求和大纲生成。'}
               </p>
             </div>
 
+            {requirementsEditable && (
+              <>
             {/* 公文要求 */}
             <div className="rounded-lg border border-gray-200 bg-white p-3">
               <div className="mb-3 flex items-center justify-between">
@@ -516,10 +763,14 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                 </div>
               </div>
             </div>
+            {attachmentPanel}
+              </>
+            )}
 
+            {(isGeneratingOutline || outlineEditing) && (
             <div className="rounded-lg border border-gray-200 bg-white p-3">
               <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-medium text-gray-700">{isGeneratingOutline ? '生成大纲' : outlineEditing ? '编辑大纲' : '当前大纲'}</div>
+                <div className="text-sm font-medium text-gray-700">{isGeneratingOutline ? '生成大纲' : outlineEditing ? '生成正文 · 大纲确认' : '当前大纲'}</div>
                 {!outlineEditing && <span className="text-xs text-gray-400">已确认</span>}
               </div>
               {isGeneratingOutline ? (
@@ -530,38 +781,96 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   </div>
                 </div>
               ) : (
-              <div className="space-y-3">
-                {outlineItems.map((item, index) => (
-                  <div key={index} className="rounded-lg bg-gray-50 p-2">
-                    {outlineEditing ? (
-                      <div className="space-y-2">
-                        <input
-                          value={item.title}
-                          onChange={(event) => updateOutlineItem(index, 'title', event.target.value)}
-                          className="h-8 w-full rounded border border-gray-200 px-2 text-sm font-medium outline-none focus:ring-2 focus:ring-theme-200"
-                        />
-                        <textarea
-                          value={item.desc}
-                          onChange={(event) => updateOutlineItem(index, 'desc', event.target.value)}
-                          rows={2}
-                          className="w-full resize-none rounded border border-gray-200 px-2 py-1.5 text-sm leading-5 outline-none focus:ring-2 focus:ring-theme-200"
-                        />
-                      </div>
-                    ) : (
-                      <>
-                        <div className="text-sm font-semibold text-gray-800">{item.title}</div>
-                        <div className="mt-1 text-xs leading-5 text-gray-500">{item.desc}</div>
-                      </>
-                    )}
-                  </div>
-                ))}
+              <div className="space-y-2">
+                <textarea
+                  value={outlineText}
+                  onChange={(event) => handleOutlineTextChange(event.target.value)}
+                  rows={12}
+                  className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm leading-6 text-gray-800 outline-none focus:bg-white focus:ring-2 focus:ring-theme-200"
+                />
+                <div className="text-xs leading-5 text-gray-400">
+                  可直接在文本框中调整章节顺序、标题和说明，确认后将按当前大纲生成正文。
+                </div>
               </div>
               )}
             </div>
+            )}
+
+            {!requirementsEditable && !outlineEditing && !isGeneratingOutline && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-sm font-medium text-gray-700">生成正文 · 大纲编辑</div>
+                    {outlineDirty && <span className="rounded bg-amber-50 px-2 py-0.5 text-xs text-amber-700">已调整</span>}
+                  </div>
+                  <textarea
+                    value={outlineText}
+                    onChange={(event) => handleOutlineTextChange(event.target.value)}
+                    rows={10}
+                    className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm leading-6 text-gray-800 outline-none focus:bg-white focus:ring-2 focus:ring-theme-200"
+                  />
+                  <div className="mt-2 text-xs leading-5 text-gray-400">
+                    调整大纲后，可在下方重新生成正文。
+                  </div>
+                </div>
+                <div className="rounded-lg border border-gray-200 bg-white p-3">
+                  <div className="mb-3 text-sm font-medium text-gray-700">正文摘要</div>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-400">文章标题</span>
+                      <span className="text-right font-medium text-gray-800">{requirementTitle || '未命名文档'}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-400">公文类型</span>
+                      <span className="font-medium text-gray-800">{requirementType}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-400">已选模板</span>
+                      <span className="font-medium text-gray-800">{selectedTemplateMeta.name}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-400">篇幅</span>
+                      <span className="font-medium text-gray-800">{requirementLength} 字</span>
+                    </div>
+                  </div>
+                </div>
+                {attachmentPanel}
+                <div className={`rounded-lg border p-3 ${finalFileReady ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg ${finalFileReady ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {finalFileReady ? <CheckCircle2 size={17} /> : <FileText size={17} />}
+                    </div>
+                    <div>
+                      <div className={`text-sm font-medium ${finalFileReady ? 'text-green-800' : 'text-gray-800'}`}>
+                        {finalFileReady ? '最终文件已生成' : '待生成最终公文文件'}
+                      </div>
+                      <div className={`mt-1 text-xs leading-5 ${finalFileReady ? 'text-green-700' : 'text-gray-500'}`}>
+                        {finalFileReady ? '可进入后续下载、归档或流转环节。' : '确认正文无误后，点击下方操作生成最终文件。'}
+                      </div>
+                      {finalFileReady && (
+                        <button className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-700">
+                          <Download size={14} />
+                          下载文件
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+            </>
+            )}
           </div>
         </div>
         <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
-          {isGeneratingOutline ? (
+          {documentTab === 'mine' ? (
+            <button
+              onClick={() => setDocumentTab('current')}
+              className="w-full rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-theme-700"
+            >
+              返回当前公文
+            </button>
+          ) : isGeneratingOutline ? (
             <button
               disabled
               className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white opacity-90"
@@ -574,30 +883,85 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
               onClick={handleConfirmRequirements}
               className="w-full rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-theme-700"
             >
-              确认要求生成大纲
+              确认要求，进入生成正文
             </button>
           ) : outlineEditing ? (
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={generateOutlineDraft}
-                className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                按要求重新生成
-              </button>
+            <div className="space-y-2">
               <button
                 onClick={handleConfirmOutline}
-                className="rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-theme-700"
               >
-                确认大纲生成正文
+                <Sparkles size={15} />
+                确认大纲并生成正文
               </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={generateOutlineDraft}
+                  className="rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  重新生成大纲
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Save size={15} />
+                  保存
+                </button>
+              </div>
             </div>
           ) : (
-            <button
-              onClick={handleEditRequirements}
-              className="w-full rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-medium text-theme-700 transition-colors hover:bg-theme-100"
-            >
-              调整要求
-            </button>
+            <div className="space-y-2">
+              {finalFileReady && (
+                <div className="flex items-center gap-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+                  <CheckCircle2 size={16} />
+                  最终公文文件已生成
+                </div>
+              )}
+              {outlineDirty && (
+                <button
+                  onClick={handleRegenerateContent}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-theme-700"
+                >
+                  <RefreshCw size={15} />
+                  重新生成正文
+                </button>
+              )}
+              <button
+                onClick={handleGenerateFinalFile}
+                disabled={isGeneratingFinalFile}
+                className={`flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80 ${
+                  outlineDirty ? 'border border-theme-200 bg-theme-50 text-theme-700 hover:bg-theme-100' : 'bg-theme-600 text-white hover:bg-theme-700'
+                }`}
+              >
+                {isGeneratingFinalFile ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    正在生成最终公文文件
+                  </>
+                ) : (
+                  <>
+                    <Download size={16} />
+                    生成最终公文文件
+                  </>
+                )}
+              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleSave}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Save size={15} />
+                  保存
+                </button>
+                <button
+                  onClick={handleEditRequirements}
+                  className="rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-medium text-theme-700 transition-colors hover:bg-theme-100"
+                >
+                  调整要求
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

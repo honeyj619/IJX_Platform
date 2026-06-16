@@ -14,7 +14,7 @@ interface HistoryItem {
   id: number;
   title: string;
   time: string;
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
   question: string;
   kind: ConversationKind;
 }
@@ -48,6 +48,7 @@ type ConversationKind =
 const defaultAssistants: Assistant[] = [
   { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
   { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
+  { id: 3, name: "公文辅助助手", isActive: false, icon: <FileTextIcon size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -174,6 +175,8 @@ const templateFilterOptions: Record<string, string[]> = {
   工作简报: ["全部", "周报简报", "经营简报"],
 };
 
+const userAvatarUrl = "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd";
+
 const templateLayoutRules = [
   { label: "主标题", value: "二号方正小标宋，居中，段前 0 行、段后 1 行" },
   { label: "一级标题", value: "三号黑体，序号使用“一、”，段前 0.5 行" },
@@ -231,11 +234,15 @@ export default function RuYiZone() {
   const [showSidebar, setShowSidebar] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isLegacyMode, setIsLegacyMode] = useState(false);
+  const [legacyEditorStartsInRequirements, setLegacyEditorStartsInRequirements] = useState(false);
+  const [editorSessionId, setEditorSessionId] = useState(0);
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [docType, setDocType] = useState(templateCategories[0]);
   const [docTitle, setDocTitle] = useState("");
   const [docLength, setDocLength] = useState("600-1200");
   const [docContent, setDocContent] = useState("");
+  const [docAttachments, setDocAttachments] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState(documentTemplates[0].id);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [activeTemplateCategory, setActiveTemplateCategory] = useState(templateCategories[0]);
@@ -245,6 +252,7 @@ export default function RuYiZone() {
   const [documentConfirmMessage, setDocumentConfirmMessage] = useState("");
   const [outlineAdjustments, setOutlineAdjustments] = useState<string[]>([]);
   const [showEditor, setShowEditor] = useState(false);
+  const [embedEditorInRuyiZone, setEmbedEditorInRuyiZone] = useState(false);
   const [hasConversation, setHasConversation] = useState(false);
   const [sentQuestion, setSentQuestion] = useState("");
   const [conversationKind, setConversationKind] = useState<ConversationKind>("pending");
@@ -261,6 +269,17 @@ export default function RuYiZone() {
     if (/考勤|出勤|迟到|早退|休假/.test(question)) return "attendance";
     if (/谢谢|结束|再见|今天就到这里/.test(question)) return "closing";
     return "pending";
+  };
+
+  const handleUploadAttachment = () => {
+    setDocAttachments((current) => [
+      ...current,
+      `公文参考附件${current.length + 1}.pdf`,
+    ]);
+  };
+
+  const handleRemoveAttachment = (attachment: string) => {
+    setDocAttachments((current) => current.filter((item) => item !== attachment));
   };
 
   const handleSend = () => {
@@ -307,9 +326,58 @@ export default function RuYiZone() {
   
   const handleBackFromEditor = () => {
     setShowEditor(false);
+    setEmbedEditorInRuyiZone(false);
+  };
+
+  const getHistoryAssistantName = (kind: ConversationKind) => {
+    if (kind === "feedback") return "IT服务助手";
+    if (kind === "knowledge" || kind === "operations") return "企业知识专家";
+    if (kind === "documentDraft") return "公文辅助助手";
+    return "";
+  };
+
+  const handleNewConversation = () => {
+    setShowEditor(false);
+    setEmbedEditorInRuyiZone(false);
+    setHasConversation(false);
+    setSentQuestion("");
+    setInput("");
+    setActiveTool(null);
+    setSelectedHistoryId(null);
+    setSelectedAssistant(null);
+    setAssistants(defaultAssistants);
+    setConversationKind("pending");
+    setDocumentReady(false);
+    setDocumentConfirmMessage("");
+    setOutlineAdjustments([]);
+  };
+
+  const openLegacyDocumentAssistant = () => {
+    const documentAssistant = defaultAssistants.find((assistant) => assistant.name === "公文辅助助手") || null;
+    setActiveTool("公文");
+    setConversationKind("documentDraft");
+    setSelectedHistoryId(null);
+    setSelectedAssistant(documentAssistant);
+    setAssistants(defaultAssistants.map((assistant) => ({
+      ...assistant,
+      isActive: assistant.name === "公文辅助助手",
+    })));
+    setDocTitle("");
+    setDocContent("");
+    setInput("");
+    setDocumentReady(false);
+    setOutlineAdjustments([]);
+    setLegacyEditorStartsInRequirements(true);
+    setEditorSessionId((current) => current + 1);
+    setEmbedEditorInRuyiZone(true);
+    setShowEditor(true);
   };
 
   const handleAssistantSelect = (assistant: Assistant) => {
+    if (assistant.name === "公文辅助助手") {
+      openLegacyDocumentAssistant();
+      return;
+    }
     // 更新选中状态
     const updatedAssistants = assistants.map(item => ({
       ...item,
@@ -317,15 +385,24 @@ export default function RuYiZone() {
     }));
     setAssistants(updatedAssistants);
     setSelectedAssistant(assistant);
+    setSelectedHistoryId(null);
+    setHasConversation(false);
+    setActiveTool(null);
+    setShowEditor(false);
+    setEmbedEditorInRuyiZone(false);
   };
 
   const handleHistorySelect = (item: HistoryItem) => {
     setSentQuestion(item.question);
     setConversationKind(item.kind);
     setSelectedHistoryId(item.id);
+    setSelectedAssistant(null);
+    setAssistants(defaultAssistants);
     setHasConversation(true);
     setActiveTool(null);
     setInput("");
+    setShowEditor(false);
+    setEmbedEditorInRuyiZone(false);
     if (isMobile) {
       setMobileMenuOpen(false);
     }
@@ -348,8 +425,7 @@ export default function RuYiZone() {
 
   const previewTemplate = documentTemplates.find(t => t.id === previewTemplateId) || documentTemplates[0];
   const filteredPreviewTemplates = documentTemplates.filter((template) => (
-    template.category === activeTemplateCategory &&
-    (activeTemplateFilter === "全部" || template.subCategory === activeTemplateFilter)
+    template.category === activeTemplateCategory
   ));
   const filteredDocumentTemplates = documentTemplates.filter((template) => (
     template.category === docType
@@ -360,19 +436,443 @@ export default function RuYiZone() {
     setDocType(template.category);
   };
 
+  const handleLegacySend = () => {
+    if (activeTool === "公文") {
+      const question = input.trim() || "帮我生成一篇关于推进如意空间智能办公建设的通知";
+      const title = docTitle.trim() || question.replace(/^(请|帮我|生成|写一篇|撰写)/, "").slice(0, 32) || "如意空间智能办公建设通知";
+      setSentQuestion(question);
+      setDocumentPrompt(question);
+      setConversationKind("documentDraft");
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setDocTitle(title);
+      setDocContent(docContent.trim() || question);
+      setDocumentReady(true);
+      setOutlineAdjustments([]);
+      setInput("");
+      setLegacyEditorStartsInRequirements(false);
+      setEditorSessionId((current) => current + 1);
+      setEmbedEditorInRuyiZone(!isLegacyMode);
+      setShowEditor(true);
+      return;
+    }
+    handleSend();
+  };
+
+  const renderLegacyDocumentSettings = () => (
+    <div className="mx-auto mt-4 w-full max-w-[980px] rounded-xl border border-[#ece8f0] bg-white px-5 py-4 shadow-[0_10px_28px_rgba(23,23,43,0.05)]">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-sm text-gray-500">公文类型</span>
+          <select
+            value={docType}
+            onChange={(event) => {
+              const nextCategory = event.target.value;
+              setDocType(nextCategory);
+              const nextTemplate = documentTemplates.find(template => template.category === nextCategory);
+              if (nextTemplate) setSelectedTemplate(nextTemplate.id);
+            }}
+            className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-theme-200"
+          >
+            {templateCategories.map((type) => (
+              <option key={type} value={type}>{type}</option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm text-gray-500">字数选择</span>
+          <select
+            value={docLength}
+            onChange={(event) => setDocLength(event.target.value)}
+            className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-theme-200"
+          >
+            {lengthOptions.map((length) => (
+              <option key={length} value={length}>{length} 字</option>
+            ))}
+          </select>
+        </label>
+        <label className="block lg:col-span-2">
+          <span className="mb-1 block text-sm text-gray-500">文章标题</span>
+          <input
+            value={docTitle}
+            onChange={(event) => setDocTitle(event.target.value)}
+            className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-theme-200"
+            placeholder="请输入文章标题"
+          />
+        </label>
+      </div>
+      <label className="mt-3 block">
+        <span className="mb-1 block text-sm text-gray-500">内容要求</span>
+        <textarea
+          value={docContent}
+          onChange={(event) => setDocContent(event.target.value)}
+          rows={3}
+          className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-theme-200"
+          placeholder="请输入内容重点、写作要求或参考信息"
+        />
+      </label>
+      {docAttachments.length > 0 && (
+        <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+          <div className="mb-2 text-xs text-gray-500">已上传附件</div>
+          <div className="space-y-1.5">
+            {docAttachments.map((attachment) => (
+              <div key={attachment} className="flex items-center gap-2 text-sm text-gray-700">
+                <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
+                <span className="truncate">{attachment}</span>
+                <button
+                  onClick={() => handleRemoveAttachment(attachment)}
+                  className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500"
+                  title="删除附件"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="mt-4">
+        <div className="mb-2 text-sm text-gray-500">选择公文模板</div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredDocumentTemplates.map((template) => (
+            <div
+              key={template.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => handleDocumentTemplateSelect(template)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  handleDocumentTemplateSelect(template);
+                }
+              }}
+              className={`group overflow-hidden rounded-lg border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                selectedTemplate === template.id ? `${template.border} ring-2 ring-theme-200` : 'border-gray-200'
+              }`}
+            >
+              <div className="relative h-20 bg-gray-50 p-3">
+                <div className={`mb-2 h-1.5 w-16 rounded-full ${template.accent}`} />
+                <div className="mx-auto h-full max-w-[72px] rounded-sm bg-white p-2 shadow-sm">
+                  <div className={`mx-auto mb-2 h-1 w-9 rounded-full ${template.accent}`} />
+                  <div className="space-y-1">
+                    <div className="h-1 rounded bg-gray-300" />
+                    <div className="h-1 rounded bg-gray-200" />
+                    <div className="h-1 w-2/3 rounded bg-gray-200" />
+                  </div>
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-900/0 opacity-0 transition-all group-hover:bg-gray-900/35 group-hover:opacity-100">
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setActiveTemplateCategory(template.category);
+                      setPreviewTemplateId(template.id);
+                    }}
+                    className="rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-gray-800 shadow-md transition-colors hover:bg-white"
+                  >
+                    预览模板
+                  </button>
+                </div>
+              </div>
+              <div className="p-3">
+                <div className="text-sm font-semibold text-gray-900">{template.name}</div>
+                <div className="mt-1 text-xs text-gray-500">{template.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderLegacyTemplatePreview = () => (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/35 p-3 sm:p-4">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white p-4 shadow-2xl sm:p-5">
+        <div className="mb-4 flex flex-shrink-0 items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-bold text-gray-950">模板选择</h3>
+            <p className="mt-1 text-sm text-gray-500">选择分类并查看模板具体内容</p>
+          </div>
+          <button onClick={() => setPreviewTemplateId(null)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700">
+            <X size={18} />
+          </button>
+        </div>
+        <div className="flex flex-shrink-0 flex-col gap-3 border-b border-gray-100 pb-4">
+          <div className="flex flex-wrap gap-2">
+            {templateCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => {
+                  setActiveTemplateCategory(category);
+                  const nextTemplate = documentTemplates.find(t => t.category === category);
+                  if (nextTemplate) setPreviewTemplateId(nextTemplate.id);
+                }}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${activeTemplateCategory === category ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {filteredPreviewTemplates.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => setPreviewTemplateId(template.id)}
+                className={`flex min-w-[150px] items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors hover:bg-gray-50 ${previewTemplateId === template.id ? `${template.border} bg-theme-50/40` : 'border-gray-200'}`}
+              >
+                <div className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${template.accent}`} />
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-gray-900">{template.name}</div>
+                  <div className="truncate text-xs text-gray-500">{template.desc}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden py-4 pr-1 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <div className="rounded-lg bg-gray-50 p-3 sm:p-5">
+            <div className="mx-auto h-[52vh] min-h-[330px] max-h-[520px] w-full max-w-[380px] rounded bg-white px-6 py-7 shadow-lg sm:px-9 sm:py-10">
+              <div className="mb-4 text-right text-[10px] text-gray-400">吉祥航空办公规范模板</div>
+              <div className={`mx-auto mb-6 h-1.5 w-28 rounded ${previewTemplate.accent}`} />
+              <div className="mb-6 text-center text-lg font-bold tracking-normal text-gray-900 sm:text-xl">{previewTemplate.name}</div>
+              <div className="mb-6 space-y-3">
+                <div className="h-2.5 rounded bg-gray-300" />
+                <div className="h-2.5 rounded bg-gray-200" />
+                <div className="h-2.5 rounded bg-gray-200" />
+                <div className="h-2.5 w-4/5 rounded bg-gray-200" />
+              </div>
+              <div className="space-y-4">
+                {[
+                  { label: "一、一级标题", width: "w-24", indent: "" },
+                  { label: "（一）二级标题", width: "w-28", indent: "ml-4" },
+                  { label: "1. 三级标题", width: "w-20", indent: "ml-8" },
+                ].map((item) => (
+                  <div key={item.label} className={item.indent}>
+                    <div className={`mb-2 h-2 rounded bg-gray-300 ${item.width}`} />
+                    <div className="space-y-2">
+                      <div className="h-2 rounded bg-gray-200" />
+                      <div className="h-2 rounded bg-gray-200" />
+                      <div className="h-2 w-3/4 rounded bg-gray-200" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="flex min-h-0 flex-col rounded-lg border border-gray-100 bg-white p-3">
+            <div className="mb-3 flex-shrink-0 text-sm font-semibold text-gray-700">模板内容</div>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+              {templateLayoutRules.map((rule) => (
+                <div key={rule.label} className="rounded-lg bg-gray-50 p-3">
+                  <div className="text-xs font-semibold text-gray-500">{rule.label}</div>
+                  <div className="mt-1 text-sm leading-5 text-gray-800">{rule.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-shrink-0 items-center justify-between gap-3 border-t border-gray-100 pt-4">
+          <button className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">编辑模板</button>
+          <div className="flex gap-2">
+            <button onClick={() => setPreviewTemplateId(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">取消</button>
+            <button
+              onClick={() => {
+                handleDocumentTemplateSelect(previewTemplate);
+                setPreviewTemplateId(null);
+              }}
+              className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700"
+            >
+              使用此模板
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderLegacyAssistant = () => {
+    const legacyHistory = ["年度账单", "你是谁?", "适航指令的评估期限", "我还有几天休假?", "猜你想看[2025", "我还有多少优惠票?", "吉祥航空2023年有", "我能有几天休假"];
+    const legacySuggestions = ["你是谁?", "我还有几天休假?", "我还有什么流程没有处理?"];
+
+    return (
+      <div className="relative flex h-full min-h-screen bg-[#fdfcff] text-gray-900">
+        <aside className="hidden w-[242px] flex-shrink-0 border-r border-[#f1edf6] bg-[#fbf9fd] md:block">
+          <div className="px-6 pt-6">
+            <button
+              onClick={handleNewConversation}
+              className="mb-6 flex h-[52px] w-full items-center gap-3 bg-white px-4 text-left text-[15px] font-medium text-gray-900 shadow-sm"
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#a20b67] text-white">+</span>
+              开启新对话
+            </button>
+            <button className="mb-7 flex h-10 items-center gap-3 text-[15px] font-medium text-gray-900">
+              <span className="flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs text-white">T</span>
+              翻译助手
+            </button>
+            <button
+              onClick={openLegacyDocumentAssistant}
+              className={`mb-7 flex h-10 items-center gap-3 text-[15px] font-medium transition-colors ${
+                showEditor && activeTool === "公文" ? 'text-[#a20b67]' : 'text-gray-900 hover:text-[#a20b67]'
+              }`}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded bg-[#a20b67] text-xs text-white">
+                <FileTextIcon size={13} />
+              </span>
+              公文辅助助手
+            </button>
+            <div className="mb-8 border-t border-dashed border-[#d9d4ea]" />
+            <div className="mb-5 text-[15px] text-gray-500">历史对话</div>
+            <div className="space-y-5">
+              {legacyHistory.map((item) => (
+                <button key={item} className="block w-full truncate text-left text-[15px] text-gray-700 hover:text-[#a20b67]">
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+          {showEditor ? (
+            <DocumentEditor
+              key={`legacy-editor-${editorSessionId}`}
+              docType={docType}
+              docTitle={docTitle}
+              docLength={docLength}
+              docContent={docContent}
+              attachments={docAttachments}
+              startInRequirements={legacyEditorStartsInRequirements}
+              embedded
+              onRemoveAttachment={handleRemoveAttachment}
+              onBack={handleBackFromEditor}
+            />
+          ) : (
+          <>
+          <header className="flex h-[64px] flex-shrink-0 items-center justify-end border-b border-[#f3eff7] bg-[#faf9fc] px-7">
+            <div className="flex items-center gap-4 text-base text-gray-700">
+              <button
+                onClick={() => setIsLegacyMode(false)}
+                className="rounded-full border border-theme-100 bg-white px-4 py-2 text-sm font-semibold text-theme-700 shadow-sm transition-colors hover:bg-theme-50"
+              >
+                返回新版
+              </button>
+              <img
+                src={userAvatarUrl}
+                alt="梁吉力"
+                className="h-10 w-10 rounded-full object-cover"
+              />
+              <span>hello，梁吉力</span>
+            </div>
+          </header>
+
+          <section className="relative flex flex-1 flex-col items-center overflow-y-auto px-6 pb-16 pt-20">
+            <div className="pointer-events-none absolute bottom-0 right-0 h-36 w-36 rounded-tl-full border-[10px] border-[#ead9c7]/70 opacity-70" />
+            <div className="mb-12 text-center">
+              <h1 className="text-4xl font-extrabold italic tracking-normal md:text-5xl">
+                <span className="text-[#a20b67]">如意 如意</span>
+                <span className="ml-4 text-[#3f4669]">按你心意!</span>
+              </h1>
+              <p className="mt-5 text-sm leading-5 text-gray-500">
+                如意如意，按你心意！你感兴趣的问题，都可以问我试试~
+                <br />
+                You can also communicate with me in your mother tongue.
+              </p>
+            </div>
+
+            <div className="mb-4 flex w-full max-w-[980px] items-center gap-3">
+              <button
+                onClick={() => {
+                  setActiveTool(activeTool === "公文" ? null : "公文");
+                  setInput("");
+                }}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                  activeTool === "公文"
+                    ? "border-theme-200 bg-theme-50 text-theme-700 shadow-sm"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-theme-200 hover:text-theme-700"
+                }`}
+              >
+                <FileTextIcon size={16} />
+                公文
+              </button>
+            </div>
+
+            <div className={`relative w-full max-w-[980px] rounded-xl border bg-white px-6 py-5 shadow-sm transition-all ${
+              activeTool === "公文" ? "border-theme-200 ring-1 ring-theme-100" : "border-[#dddce6]"
+            }`}>
+              {activeTool === "公文" ? (
+                <div className="flex items-center gap-3 pr-24">
+                  <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-theme-500 to-theme-600 px-3 py-1.5 text-sm font-medium text-white">
+                    <Sparkles size={14} />
+                    AI写作
+                  </div>
+                  <input
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    placeholder="请输入写作主题或需求..."
+                    className="h-24 min-w-0 flex-1 border-none bg-transparent text-base text-gray-900 outline-none placeholder:text-gray-400"
+                  />
+                </div>
+              ) : (
+                <input
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  placeholder="请问您想要问什么呢?"
+                  className="h-24 w-full border-none bg-transparent pr-24 text-base text-gray-900 outline-none placeholder:text-gray-400"
+                />
+              )}
+              <div className="absolute bottom-5 left-6 flex items-center gap-4">
+                <button onClick={handleUploadAttachment} className="text-gray-900 hover:text-theme-600" title="上传附件">
+                  <Paperclip size={22} />
+                </button>
+              </div>
+              <button
+                onClick={handleLegacySend}
+                className="absolute bottom-5 right-5 rounded-full bg-[#a20b67] p-2 text-white shadow-sm transition-all hover:scale-105 hover:bg-[#8d0a5a]"
+              >
+                <Send size={18} />
+              </button>
+            </div>
+            <div className="mt-2 w-full max-w-[980px] text-center text-[11px] text-gray-400">
+              内容AI辅助生成，请谨慎识别
+            </div>
+
+            {activeTool === "公文" && renderLegacyDocumentSettings()}
+            {previewTemplateId && renderLegacyTemplatePreview()}
+
+            {activeTool !== "公文" && (
+              <div className="mt-6 grid w-full max-w-[980px] gap-5 md:grid-cols-3">
+                {legacySuggestions.map((item) => (
+                  <button key={item} className="flex h-[70px] items-center gap-4 rounded-xl border border-[#dfe4f5] bg-white px-6 text-left text-lg font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#d5b086] hover:shadow-md">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#d7af81] text-xs font-bold text-white">|||</span>
+                    {item}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+          </>
+          )}
+        </main>
+      </div>
+    );
+  };
+
   return (
     <>
-      {showEditor ? (
+      {showEditor && !isLegacyMode && !embedEditorInRuyiZone ? (
         <DocumentEditor 
+          key={`editor-${editorSessionId}`}
           docType={docType} 
           docTitle={docTitle} 
           docLength={docLength} 
           docContent={docContent}
+          attachments={docAttachments}
+          onRemoveAttachment={handleRemoveAttachment}
           onBack={handleBackFromEditor}
         />
+      ) : isLegacyMode ? (
+        renderLegacyAssistant()
       ) : (
         <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 via-white to-theme-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-
         <div className="flex flex-1 min-h-0">
         {/* 移动端菜单按钮 - 放在内容区右侧 */}
         {isMobile && (
@@ -407,6 +907,20 @@ export default function RuYiZone() {
               </div>
               如意空间
             </h3>
+            <button
+              onClick={() => setIsLegacyMode(true)}
+              className="mb-3 flex w-full items-center justify-between rounded-lg border border-theme-100 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 transition-colors hover:bg-theme-100 dark:border-theme-900/40 dark:bg-theme-900/20 dark:text-theme-200 dark:hover:bg-theme-900/30"
+            >
+              <span>切换旧版</span>
+              <ArrowRight size={15} />
+            </button>
+            <button
+              onClick={handleNewConversation}
+              className="mb-6 flex w-full items-center justify-between rounded-lg border border-gray-100 bg-white px-3 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition-colors hover:border-theme-100 hover:bg-theme-50 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700"
+            >
+              <span>新对话</span>
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-theme-600 text-sm leading-none text-white">+</span>
+            </button>
             <div className="space-y-1 mb-8">
               <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 px-2 uppercase tracking-wider">常用智能助手</h4>
               {assistants.map((assistant) => (
@@ -458,17 +972,11 @@ export default function RuYiZone() {
                   `}
                   onClick={() => handleHistorySelect(item)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`
-                      w-8 h-8 rounded-lg flex items-center justify-center
-                      ${selectedHistoryId === item.id ? 'bg-theme-100 dark:bg-theme-900/30 text-theme-600 dark:text-theme-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}
-                    `}>
-                      {item.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h5 className={`text-sm font-medium truncate ${selectedHistoryId === item.id ? 'text-theme-700 dark:text-theme-300' : 'text-gray-900 dark:text-white'}`}>{item.title}</h5>
-                      <span className="text-xs text-gray-400 dark:text-gray-500">{item.time}</span>
-                    </div>
+                  <div className="min-w-0">
+                    <h5 className={`truncate text-sm font-medium ${selectedHistoryId === item.id ? 'text-theme-700 dark:text-theme-300' : 'text-gray-900 dark:text-white'}`}>{item.title}</h5>
+                    {getHistoryAssistantName(item.kind) && (
+                      <span className="mt-1 block truncate text-xs text-gray-400 dark:text-gray-500">{getHistoryAssistantName(item.kind)}</span>
+                    )}
                   </div>
                 </div>
               ))}
@@ -478,6 +986,21 @@ export default function RuYiZone() {
 
         {/* 第三列：如意空间内容区域 */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
+          {showEditor && embedEditorInRuyiZone ? (
+            <DocumentEditor
+              key={`ruyi-editor-${editorSessionId}`}
+              docType={docType}
+              docTitle={docTitle}
+              docLength={docLength}
+              docContent={docContent}
+              attachments={docAttachments}
+              startInRequirements={legacyEditorStartsInRequirements}
+              embedded
+              onRemoveAttachment={handleRemoveAttachment}
+              onBack={handleBackFromEditor}
+            />
+          ) : (
+          <>
           <div className="px-6 md:px-8 py-6 md:py-8 flex-1 overflow-y-auto">
             <div className="max-w-6xl mx-auto">
               {hasConversation && (
@@ -679,45 +1202,6 @@ export default function RuYiZone() {
                             </div>
                           )}
 
-                          {documentReady && (
-                            <>
-                              <div className="mb-6 flex justify-end">
-                                <div className="max-w-2xl rounded-2xl bg-theme-50 px-5 py-4 text-gray-900 shadow-sm dark:bg-theme-900/20 dark:text-white">
-                                  {documentConfirmMessage || "确认，生成公文"}
-                                </div>
-                              </div>
-                              <div className="mb-4 flex gap-4">
-                                <img
-                                  src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd"
-                                  alt="如意助手"
-                                  className="mt-1 h-10 w-10 flex-shrink-0 rounded-full object-cover"
-                                />
-                                <div className="max-w-3xl flex-1">
-                                  <p className="mb-4 leading-7">已根据您确认的大纲生成公文草稿，您可以点击下方入口进入编辑页面继续完善。</p>
-                                  <button
-                                    onClick={() => setShowEditor(true)}
-                                    className="mb-6 flex w-full max-w-2xl items-stretch overflow-hidden rounded-xl border border-theme-100 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-theme-200 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
-                                  >
-                                    <div className="flex w-24 flex-shrink-0 items-center justify-center bg-gradient-to-br from-theme-500 to-theme-700 text-white">
-                                      <FileTextIcon size={34} />
-                                    </div>
-                                    <div className="flex-1 p-5">
-                                      <div className="mb-2 flex items-center gap-2">
-                                        <span className="rounded bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">公文草稿</span>
-                                        <span className="text-xs text-gray-400">{docType} · {docLength} 字</span>
-                                      </div>
-                                      <h4 className="text-lg font-bold text-gray-950 dark:text-white">{docTitle || "如意空间智能办公建设通知"}</h4>
-                                      <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">已生成正文结构和初稿内容，点击进入公文编辑器继续润色、排版和保存。</p>
-                                      <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-theme-700 dark:text-theme-300">
-                                        进入公文编辑
-                                        <ArrowRight size={16} />
-                                      </div>
-                                    </div>
-                                  </button>
-                                </div>
-                              </div>
-                            </>
-                          )}
                         </>
                       )}
 
@@ -735,6 +1219,50 @@ export default function RuYiZone() {
                       </div>
                     </div>
                   </div>
+                  {conversationKind === "documentDraft" && documentReady && (
+                    <>
+                      <div className="flex justify-end">
+                        <div className="max-w-2xl rounded-2xl bg-theme-50 px-5 py-4 text-gray-900 shadow-sm dark:bg-theme-900/20 dark:text-white">
+                          {documentConfirmMessage || "确认，生成公文"}
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <img
+                          src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd"
+                          alt="如意助手"
+                          className="mt-1 h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                        />
+                        <div className="max-w-3xl flex-1 text-gray-900 dark:text-gray-100">
+                          <p className="mb-4 leading-7">已根据您确认的大纲生成公文草稿，您可以点击下方入口进入编辑页面继续完善。</p>
+                          <button
+                            onClick={() => {
+                              setEmbedEditorInRuyiZone(true);
+                              setLegacyEditorStartsInRequirements(false);
+                              setEditorSessionId((current) => current + 1);
+                              setShowEditor(true);
+                            }}
+                            className="mb-6 flex w-full max-w-2xl items-stretch overflow-hidden rounded-xl border border-theme-100 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-theme-200 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                          >
+                            <div className="flex w-24 flex-shrink-0 items-center justify-center bg-gradient-to-br from-theme-500 to-theme-700 text-white">
+                              <FileTextIcon size={34} />
+                            </div>
+                            <div className="flex-1 p-5">
+                              <div className="mb-2 flex items-center gap-2">
+                                <span className="rounded bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">公文草稿</span>
+                                <span className="text-xs text-gray-400">{docType} · {docLength} 字</span>
+                              </div>
+                              <h4 className="text-lg font-bold text-gray-950 dark:text-white">{docTitle || "如意空间智能办公建设通知"}</h4>
+                              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">已生成正文结构和初稿内容，点击进入公文编辑器继续润色、排版和保存。</p>
+                              <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-theme-700 dark:text-theme-300">
+                                进入公文编辑
+                                <ArrowRight size={16} />
+                              </div>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -815,7 +1343,11 @@ export default function RuYiZone() {
                   )}
 
                   <div className="absolute right-4 bottom-4 flex items-center gap-2">
-                    <button className="text-gray-400 dark:text-gray-500 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50 dark:hover:bg-theme-900/20">
+                    <button
+                      onClick={handleUploadAttachment}
+                      className="text-gray-400 dark:text-gray-500 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50 dark:hover:bg-theme-900/20"
+                      title="上传附件"
+                    >
                       <Paperclip size={18} />
                     </button>
                     <button
@@ -829,7 +1361,7 @@ export default function RuYiZone() {
 
                 {activeTool === '公文' && (
                   <div className="mt-4 space-y-4 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                       <label className="block">
                         <span className="mb-1 block text-sm text-gray-500 dark:text-gray-400">公文类型</span>
                         <select
@@ -860,7 +1392,7 @@ export default function RuYiZone() {
                           ))}
                         </select>
                       </label>
-                      <label className="block md:col-span-2">
+                      <label className="block lg:col-span-2">
                         <span className="mb-1 block text-sm text-gray-500 dark:text-gray-400">文章标题</span>
                         <input
                           value={docTitle}
@@ -881,10 +1413,30 @@ export default function RuYiZone() {
                         placeholder="请输入内容重点、写作要求或参考信息"
                       />
                     </label>
+                    {docAttachments.length > 0 && (
+                      <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
+                        <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">已上传附件</div>
+                        <div className="space-y-1.5">
+                          {docAttachments.map((attachment) => (
+                            <div key={attachment} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                              <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
+                              <span className="truncate">{attachment}</span>
+                              <button
+                                onClick={() => handleRemoveAttachment(attachment)}
+                                className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 dark:hover:bg-gray-600"
+                                title="删除附件"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">选择公文模板</div>
-                      <div className="grid gap-3 md:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {filteredDocumentTemplates.map((template) => (
                           <div
                             key={template.id}
@@ -917,7 +1469,6 @@ export default function RuYiZone() {
                                     onClick={(event) => {
                                       event.stopPropagation();
                                       setActiveTemplateCategory(template.category);
-                                      setActiveTemplateFilter(template.subCategory);
                                       setPreviewTemplateId(template.id);
                                     }}
                                     className="rounded-full bg-white/95 px-3 py-1.5 text-xs font-semibold text-gray-800 shadow-md transition-colors hover:bg-white"
@@ -958,28 +1509,12 @@ export default function RuYiZone() {
                             key={category}
                             onClick={() => {
                               setActiveTemplateCategory(category);
-                              setActiveTemplateFilter("全部");
                               const nextTemplate = documentTemplates.find(t => t.category === category);
                               if (nextTemplate) setPreviewTemplateId(nextTemplate.id);
                             }}
                             className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${activeTemplateCategory === category ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
                           >
                             {category}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {templateFilterOptions[activeTemplateCategory].map((filter) => (
-                          <button
-                            key={filter}
-                            onClick={() => {
-                              setActiveTemplateFilter(filter);
-                              const nextTemplate = documentTemplates.find(t => t.category === activeTemplateCategory && (filter === "全部" || t.subCategory === filter));
-                              if (nextTemplate) setPreviewTemplateId(nextTemplate.id);
-                            }}
-                            className={`rounded-lg border px-3 py-1.5 text-xs transition-colors ${activeTemplateFilter === filter ? 'border-theme-300 bg-theme-50 text-theme-700 dark:border-theme-700 dark:bg-theme-900/30 dark:text-theme-200' : 'border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'}`}
-                          >
-                            {filter}
                           </button>
                         ))}
                       </div>
@@ -1118,7 +1653,11 @@ export default function RuYiZone() {
                 )}
 
                 <div className="absolute right-4 bottom-4 flex items-center gap-2">
-                  <button className="text-gray-400 dark:text-gray-500 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50 dark:hover:bg-theme-900/20">
+                  <button
+                    onClick={handleUploadAttachment}
+                    className="text-gray-400 dark:text-gray-500 hover:text-theme-500 transition-colors p-1 rounded-full hover:bg-theme-50 dark:hover:bg-theme-900/20"
+                    title="上传附件"
+                  >
                     <Paperclip size={18} />
                   </button>
                   <button
@@ -1146,8 +1685,13 @@ export default function RuYiZone() {
                   </div>
                 </div>
               )}
+              <div className="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">
+                内容AI辅助生成，请谨慎识别
+              </div>
             </div>
           </div>
+          )}
+          </>
           )}
         </div>
         </div>{/* end flex-1 min-h-0 */}
