@@ -135,8 +135,8 @@ export default function Calendar() {
         </div>
 
         <div className="py-0 w-full flex-1 overflow-hidden">
-          <div className="flex flex-col lg:flex-row h-full w-full">
-            <div className="lg:w-80 shrink-0 bg-white dark:bg-gray-800 lg:border-r lg:border-slate-200/60 dark:lg:border-gray-700 h-full overflow-y-auto">
+          <div className="flex h-full w-max min-w-full overflow-hidden">
+            <div className="w-80 shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200/60 dark:border-gray-700 h-full overflow-y-auto">
               <div className="p-5 border-b border-slate-100 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-slate-900 dark:text-white">{currentDate.getFullYear()}年{currentDate.getMonth() + 1}月</h3>
@@ -266,8 +266,8 @@ export default function Calendar() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col bg-white dark:bg-gray-800">
-              <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex h-full w-[820px] shrink-0 flex-col bg-white dark:bg-gray-800 xl:w-[calc(100vw-20rem)] xl:min-w-[820px]">
+              <div className="p-5 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <button className="px-4 py-2 bg-theme-50 text-theme-700 rounded-xl text-sm font-medium hover:bg-theme-100 transition-colors border border-theme-200">
                     今天
@@ -301,7 +301,7 @@ export default function Calendar() {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-hidden">
                 <div className="grid grid-cols-7 border-b border-slate-100 dark:border-gray-700">
                   {weekdays.map((day, index) => (
                     <div key={index} className="py-4 text-center text-sm font-semibold text-slate-500 dark:text-slate-400 border-r border-slate-100 dark:border-gray-700 last:border-r-0">
@@ -318,7 +318,7 @@ export default function Calendar() {
                     return (
                       <div 
                         key={index} 
-                        className={`min-h-[80px] md:min-h-[100px] lg:min-h-[120px] p-3 border-r border-b border-slate-100 dark:border-gray-700 ${index % 7 === 6 ? 'border-r-0' : ''} ${item.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-slate-50/50 dark:bg-gray-800/50'}`}
+                        className={`min-h-[120px] p-3 border-r border-b border-slate-100 dark:border-gray-700 ${index % 7 === 6 ? 'border-r-0' : ''} ${item.isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-slate-50/50 dark:bg-gray-800/50'}`}
                       >
                         <div className="flex justify-end mb-2">
                           {today ? (

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { 
   ArrowLeft, 
   Save, 
@@ -186,6 +187,10 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [selectedSavedDocumentId, setSelectedSavedDocumentId] = useState<string | null>(null);
   const [savedDocuments, setSavedDocuments] = useState(initialSavedDocuments);
   const [documentSearch, setDocumentSearch] = useState('');
+  const [documentCategoryFilter, setDocumentCategoryFilter] = useState('全部');
+  const [documentStartDate, setDocumentStartDate] = useState('');
+  const [documentEndDate, setDocumentEndDate] = useState('');
+  const [editorAttachments, setEditorAttachments] = useState(attachments);
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
   const [isUnderline, setIsUnderline] = useState(false);
@@ -202,10 +207,12 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const savedDocumentCategories = ['全部', ...Array.from(new Set(savedDocuments.map((document) => document.type)))];
   const filteredSavedDocuments = savedDocuments.filter((document) => {
     const keyword = documentSearch.trim().toLowerCase();
-    if (!keyword) return true;
-    return `${document.title} ${document.type} ${document.updatedAt}`.toLowerCase().includes(keyword);
+    const matchesName = !keyword || document.title.toLowerCase().includes(keyword);
+    const matchesCategory = documentCategoryFilter === '全部' || document.type === documentCategoryFilter;
+    return matchesName && matchesCategory;
   });
 
   const handleSave = () => {
@@ -340,6 +347,20 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     }, 900);
   };
 
+  const handleUploadReferenceFile = () => {
+    setEditorAttachments((current) => [
+      ...current,
+      `公文参考文件${current.length + 1}.docx`,
+    ]);
+    setIsSaved(false);
+  };
+
+  const handleRemoveReferenceFile = (attachment: string) => {
+    setEditorAttachments((current) => current.filter((item) => item !== attachment));
+    onRemoveAttachment?.(attachment);
+    setIsSaved(false);
+  };
+
   const updateOutlineItem = (index: number, field: 'title' | 'desc', value: string) => {
     setOutlineItems(prev => prev.map((item, itemIndex) => (
       itemIndex === index ? { ...item, [field]: value } : item
@@ -358,29 +379,39 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const filteredPreviewTemplates = editorTemplates.filter((template) => (
     template.category === activeTemplateCategory
   ));
-  const attachmentPanel = attachments.length > 0 && (
+  const attachmentPanel = (
     <div className="rounded-lg border border-gray-200 bg-white p-3">
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm font-medium text-gray-700">已上传附件</div>
-        <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{attachments.length} 个</span>
+        <div className="text-sm font-medium text-gray-700">参考文件</div>
+        <button
+          onClick={handleUploadReferenceFile}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-2.5 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-100"
+        >
+          <Plus size={13} />
+          上传参考文件
+        </button>
       </div>
-      <div className="space-y-2">
-        {attachments.map((attachment) => (
+      {editorAttachments.length > 0 ? (
+        <div className="space-y-2">
+        {editorAttachments.map((attachment) => (
           <div key={attachment} className="flex min-w-0 items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
             <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
             <span className="truncate">{attachment}</span>
-            {onRemoveAttachment && (
-              <button
-                onClick={() => onRemoveAttachment(attachment)}
-                className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500"
-                title="删除附件"
-              >
-                <X size={12} />
-              </button>
-            )}
+            <button
+              onClick={() => handleRemoveReferenceFile(attachment)}
+              className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500"
+              title="删除附件"
+            >
+              <X size={12} />
+            </button>
           </div>
         ))}
-      </div>
+        </div>
+      ) : (
+        <div className="rounded-lg bg-gray-50 px-3 py-4 text-center text-xs leading-5 text-gray-400">
+          暂无参考文件，可上传制度依据、会议材料或历史公文作为生成参考。
+        </div>
+      )}
     </div>
   );
 
@@ -484,6 +515,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
 
         {/* 编辑区域 */}
         <div className="flex-1 overflow-y-auto px-8 py-6">
+          <div className="mb-3 text-center text-xs leading-5 text-gray-400">
+            仅支持编辑内容，版式调整请前往编辑模板。
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 text-center mb-8">{requirementTitle || '文档标题'}</h1>
           <textarea
             value={content}
@@ -560,8 +594,41 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                       value={documentSearch}
                       onChange={(event) => setDocumentSearch(event.target.value)}
                       className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs text-gray-800 outline-none transition-colors placeholder:text-gray-400 focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
-                      placeholder="搜索文件名、类型或更新时间"
+                      placeholder="搜索文件名"
                     />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-medium text-gray-400">类别</span>
+                      <select
+                        value={documentCategoryFilter}
+                        onChange={(event) => setDocumentCategoryFilter(event.target.value)}
+                        className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
+                      >
+                        {savedDocumentCategories.map((category) => (
+                          <option key={category} value={category}>{category}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <div>
+                      <span className="mb-1 block text-[11px] font-medium text-gray-400">时间段</span>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <input
+                          type="date"
+                          value={documentStartDate}
+                          onChange={(event) => setDocumentStartDate(event.target.value)}
+                          className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-1.5 text-[11px] text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
+                          title="开始日期"
+                        />
+                        <input
+                          type="date"
+                          value={documentEndDate}
+                          onChange={(event) => setDocumentEndDate(event.target.value)}
+                          className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-1.5 text-[11px] text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
+                          title="结束日期"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="hidden rounded-lg border border-gray-200 bg-white p-2.5 shadow-sm">
@@ -928,25 +995,25 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   重新生成正文
                 </button>
               )}
-              <button
-                onClick={handleGenerateFinalFile}
-                disabled={isGeneratingFinalFile}
-                className={`flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80 ${
-                  outlineDirty ? 'border border-theme-200 bg-theme-50 text-theme-700 hover:bg-theme-100' : 'bg-theme-600 text-white hover:bg-theme-700'
-                }`}
-              >
-                {isGeneratingFinalFile ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    正在生成最终公文文件
-                  </>
-                ) : (
-                  <>
-                    <Download size={16} />
-                    生成最终公文文件
-                  </>
-                )}
-              </button>
+              {!outlineDirty && (
+                <button
+                  onClick={handleGenerateFinalFile}
+                  disabled={isGeneratingFinalFile}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-80"
+                >
+                  {isGeneratingFinalFile ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      正在生成最终公文文件
+                    </>
+                  ) : (
+                    <>
+                      <Download size={16} />
+                      生成最终公文文件
+                    </>
+                  )}
+                </button>
+              )}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={handleSave}
@@ -1084,9 +1151,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                 </div>
 
             <div className="mt-4 flex flex-shrink-0 items-center justify-between gap-3 border-t border-gray-100 pt-4">
-              <button className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+              <Link to="/admin?section=ai-template" className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                 编辑模板
-              </button>
+              </Link>
               <div className="flex gap-2">
                 <button
                   onClick={() => setPreviewTemplateId(null)}

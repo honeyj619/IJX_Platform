@@ -309,7 +309,7 @@ export default function RuYiZone() {
       setHasConversation(true);
       setDocType(docType);
       setDocTitle(title);
-      setDocContent(docContent.trim() || question);
+      setDocContent(question);
       setDocumentReady(false);
       setOutlineAdjustments([]);
       setInput("");
@@ -415,9 +415,10 @@ export default function RuYiZone() {
   useEffect(() => {
     const handleResize = () => {
       const width = window.innerWidth;
-      setIsMobile(width < 768);
+      const useSecondaryDrawer = width < 1024;
+      setIsMobile(useSecondaryDrawer);
       setShowSidebar(width >= 1024);
-      if (width >= 768) {
+      if (!useSecondaryDrawer) {
         setMobileMenuOpen(false);
       }
     };
@@ -450,7 +451,7 @@ export default function RuYiZone() {
       setSelectedHistoryId(null);
       setHasConversation(true);
       setDocTitle(title);
-      setDocContent(docContent.trim() || question);
+      setDocContent(question);
       setDocumentReady(false);
       setOutlineAdjustments([]);
       setInput("");
@@ -506,16 +507,6 @@ export default function RuYiZone() {
           />
         </label>
       </div>
-      <label className="mt-3 block">
-        <span className="mb-1 block text-sm text-gray-500">内容要求</span>
-        <textarea
-          value={docContent}
-          onChange={(event) => setDocContent(event.target.value)}
-          rows={3}
-          className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-theme-200"
-          placeholder="请输入内容重点、写作要求或参考信息"
-        />
-      </label>
       {docAttachments.length > 0 && (
         <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
           <div className="mb-2 text-xs text-gray-500">已上传附件</div>
@@ -1412,16 +1403,6 @@ export default function RuYiZone() {
                       </label>
                     </div>
 
-                    <label className="block">
-                      <span className="mb-1 block text-sm text-gray-500 dark:text-gray-400">内容要求</span>
-                      <textarea
-                        value={docContent}
-                        onChange={(e) => setDocContent(e.target.value)}
-                        rows={3}
-                        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 focus:ring-2 focus:ring-theme-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-                        placeholder="请输入内容重点、写作要求或参考信息"
-                      />
-                    </label>
                     {docAttachments.length > 0 && (
                       <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
                         <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">已上传附件</div>
