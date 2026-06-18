@@ -4,16 +4,9 @@ import {
   ArrowLeft, 
   Save, 
   Plus, 
-  Bold, 
-  Italic, 
-  Underline, 
-  List, 
-  ListOrdered, 
-  AlignLeft, 
-  AlignCenter, 
-  AlignRight, 
   Undo, 
   Redo,
+  Copy,
   ChevronDown,
   Sparkles,
   Wand2,
@@ -191,10 +184,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [documentStartDate, setDocumentStartDate] = useState('');
   const [documentEndDate, setDocumentEndDate] = useState('');
   const [editorAttachments, setEditorAttachments] = useState(attachments);
-  const [isBold, setIsBold] = useState(false);
-  const [isItalic, setIsItalic] = useState(false);
-  const [isUnderline, setIsUnderline] = useState(false);
-  const [textAlign, setTextAlign] = useState('left');
+  const [copySuccess, setCopySuccess] = useState(false);
   const [activeCategory, setActiveCategory] = useState('business');
   const [expandedSections, setExpandedSections] = useState({
     outline: false,
@@ -376,9 +366,38 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const filteredTemplates = documentTypes.filter(t => t.category === activeCategory);
   const selectedTemplateMeta = editorTemplates.find(t => t.id === selectedTemplate) || editorTemplates[0];
   const previewTemplateMeta = editorTemplates.find(t => t.id === previewTemplateId) || selectedTemplateMeta;
+  const templateShellClass = selectedTemplateMeta.category === '通知'
+    ? 'border-t-4 border-red-500'
+    : selectedTemplateMeta.category === '会议纪要'
+      ? 'border-t-4 border-sky-500'
+      : selectedTemplateMeta.category === '工作简报'
+        ? 'border-l-4 border-blue-500'
+        : 'border-t-4 border-theme-500';
+  const templateHeaderLabel = selectedTemplateMeta.category === '通知'
+    ? '吉祥航空正式公文'
+    : selectedTemplateMeta.category === '会议纪要'
+      ? '会议纪要'
+      : selectedTemplateMeta.category === '工作简报'
+        ? '工作简报'
+        : selectedTemplateMeta.category;
   const filteredPreviewTemplates = editorTemplates.filter((template) => (
     template.category === activeTemplateCategory
   ));
+  const handleCopyFullText = async () => {
+    const fullText = `${requirementTitle || '文档标题'}\n\n${content}`;
+    try {
+      await navigator.clipboard.writeText(fullText);
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = fullText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setCopySuccess(true);
+    window.setTimeout(() => setCopySuccess(false), 1200);
+  };
   const attachmentPanel = (
     <div className="rounded-lg border border-gray-200 bg-white p-3">
       <div className="mb-3 flex items-center justify-between">
@@ -441,75 +460,21 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         </div>
 
         {/* 编辑工具栏 */}
-        <div className="flex items-center gap-1 px-4 py-2 border-b border-gray-100 bg-gray-50/50 flex-wrap">
-          <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50/50">
+          <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200">
             <Undo size={16} className="text-gray-600" />
+            撤回
           </button>
-          <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
+          <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200">
             <Redo size={16} className="text-gray-600" />
-          </button>
-          <div className="w-px h-6 bg-gray-200 mx-1" />
-          <select className="px-2 py-1 text-sm border-none bg-transparent hover:bg-gray-200 rounded-lg cursor-pointer">
-            <option>段落</option>
-            <option>标题1</option>
-            <option>标题2</option>
-            <option>标题3</option>
-          </select>
-          <select className="px-2 py-1 text-sm border-none bg-transparent hover:bg-gray-200 rounded-lg cursor-pointer">
-            <option>STSongti</option>
-            <option>SimSun</option>
-            <option>Microsoft YaHei</option>
-          </select>
-          <select className="px-2 py-1 text-sm border-none bg-transparent hover:bg-gray-200 rounded-lg cursor-pointer">
-            <option>小二</option>
-            <option>二号</option>
-            <option>小三</option>
-            <option>四号</option>
-          </select>
-          <div className="w-px h-6 bg-gray-200 mx-1" />
-          <button 
-            className={`p-2 rounded-lg transition-colors ${isBold ? 'bg-gray-200' : 'hover:bg-gray-200'}`}
-            onClick={() => setIsBold(!isBold)}
-          >
-            <Bold size={16} className={isBold ? 'text-gray-900' : 'text-gray-600'} />
+            重做
           </button>
           <button 
-            className={`p-2 rounded-lg transition-colors ${isItalic ? 'bg-gray-200' : 'hover:bg-gray-200'}`}
-            onClick={() => setIsItalic(!isItalic)}
+            onClick={handleCopyFullText}
+            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200"
           >
-            <Italic size={16} className={isItalic ? 'text-gray-900' : 'text-gray-600'} />
-          </button>
-          <button 
-            className={`p-2 rounded-lg transition-colors ${isUnderline ? 'bg-gray-200' : 'hover:bg-gray-200'}`}
-            onClick={() => setIsUnderline(!isUnderline)}
-          >
-            <Underline size={16} className={isUnderline ? 'text-gray-900' : 'text-gray-600'} />
-          </button>
-          <div className="w-px h-6 bg-gray-200 mx-1" />
-          <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-            <List size={16} className="text-gray-600" />
-          </button>
-          <button className="p-2 hover:bg-gray-200 rounded-lg transition-colors">
-            <ListOrdered size={16} className="text-gray-600" />
-          </button>
-          <div className="w-px h-6 bg-gray-200 mx-1" />
-          <button 
-            className={`p-2 rounded-lg transition-colors ${textAlign === 'left' ? 'bg-gray-200' : 'hover:bg-gray-200'}`}
-            onClick={() => setTextAlign('left')}
-          >
-            <AlignLeft size={16} className={textAlign === 'left' ? 'text-gray-900' : 'text-gray-600'} />
-          </button>
-          <button 
-            className={`p-2 rounded-lg transition-colors ${textAlign === 'center' ? 'bg-gray-200' : 'hover:bg-gray-200'}`}
-            onClick={() => setTextAlign('center')}
-          >
-            <AlignCenter size={16} className={textAlign === 'center' ? 'text-gray-900' : 'text-gray-600'} />
-          </button>
-          <button 
-            className={`p-2 rounded-lg transition-colors ${textAlign === 'right' ? 'bg-gray-200' : 'hover:bg-gray-200'}`}
-            onClick={() => setTextAlign('right')}
-          >
-            <AlignRight size={16} className={textAlign === 'right' ? 'text-gray-900' : 'text-gray-600'} />
+            <Copy size={16} className="text-gray-600" />
+            {copySuccess ? '已复制' : '复制全文'}
           </button>
         </div>
 
@@ -518,16 +483,32 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
           <div className="mb-3 text-center text-xs leading-5 text-gray-400">
             仅支持编辑内容，版式调整请前往编辑模板。
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 text-center mb-8">{requirementTitle || '文档标题'}</h1>
-          <textarea
-            value={content}
-            onChange={(event) => {
-              setContent(event.target.value);
-              setIsSaved(false);
-            }}
-            className={`min-h-[520px] w-full resize-none border-none bg-transparent text-gray-700 outline-none leading-relaxed ${isBold ? 'font-bold' : ''} ${isItalic ? 'italic' : ''} ${isUnderline ? 'underline' : ''} text-${textAlign}`}
-            placeholder="正文内容将在这里生成，也可以直接编辑..."
-          />
+          <div className={`mx-auto max-w-3xl rounded-sm bg-white px-10 py-9 shadow-sm ring-1 ring-gray-100 ${templateShellClass}`}>
+            <div className="mb-6 flex items-center justify-between border-b border-gray-100 pb-3 text-[11px] text-gray-400">
+              <span>{templateHeaderLabel}</span>
+              <span>{selectedTemplateMeta.name}</span>
+            </div>
+            {selectedTemplateMeta.category === '通知' && (
+              <div className="mb-6 text-center text-xs font-semibold tracking-[0.28em] text-red-500">
+                JUNEYAO AIR
+              </div>
+            )}
+            <h1 className={`mb-8 text-center font-bold text-gray-950 ${selectedTemplateMeta.category === '会议纪要' ? 'text-xl' : 'text-2xl'}`}>
+              {requirementTitle || '文档标题'}
+            </h1>
+            <textarea
+              value={content}
+              onChange={(event) => {
+                setContent(event.target.value);
+                setIsSaved(false);
+              }}
+              className="min-h-[520px] w-full resize-none border-none bg-transparent text-[15px] leading-8 text-gray-700 outline-none"
+              placeholder="正文内容将在这里生成，也可以直接编辑..."
+            />
+            <div className="mt-8 border-t border-gray-100 pt-3 text-center text-[11px] text-gray-400">
+              第 1 页
+            </div>
+          </div>
         </div>
 
         {/* 底部状态栏 */}
