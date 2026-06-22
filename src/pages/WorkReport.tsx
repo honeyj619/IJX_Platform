@@ -410,6 +410,32 @@ function ReportComposer({
   onImportLast: () => void;
   onToast: (message: string) => void;
 }) {
+  const [nonOkrItems, setNonOkrItems] = useState<NonOkrWorkItem[]>([
+    {
+      id: 1,
+      title: '日常协同事项',
+      thisWeek: '完成跨部门需求沟通、页面验收反馈整理和问题闭环跟进。',
+      nextWeek: '继续跟进遗留问题，补充验收记录并同步相关责任人。',
+    },
+  ]);
+
+  const updateNonOkrItem = (id: number, field: keyof Omit<NonOkrWorkItem, 'id'>, value: string) => {
+    setNonOkrItems(current => current.map(item => (
+      item.id === id ? { ...item, [field]: value.slice(0, field === 'title' ? 80 : 800) } : item
+    )));
+  };
+
+  const addNonOkrItem = () => {
+    setNonOkrItems(current => [
+      ...current,
+      { id: Date.now(), title: '', thisWeek: '', nextWeek: '' },
+    ]);
+  };
+
+  const removeNonOkrItem = (id: number) => {
+    setNonOkrItems(current => current.length === 1 ? current : current.filter(item => item.id !== id));
+  };
+
   return (
     <main className="rounded-2xl border border-gray-100 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-5">
