@@ -15,6 +15,8 @@ import Calendar from "@/pages/Calendar";
 import Business from "@/pages/Business";
 import SettingsPage from "@/pages/SettingsPage";
 import Admin from "@/pages/Admin";
+import WorkReport from "@/pages/WorkReport";
+import OkrModule from "@/pages/OkrModule";
 
 function shouldShowMobileView(width: number, height: number): boolean {
   const aspectRatio = width / height;
@@ -123,6 +125,8 @@ export default function App() {
               <Route path="/ruyi-zone" element={<RuYiZone />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/business" element={<Business />} />
+              <Route path="/work-report" element={<WorkReport />} />
+              <Route path="/okr" element={<OkrModule />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Routes>
           </Layout>

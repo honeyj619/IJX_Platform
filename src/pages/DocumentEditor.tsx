@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -130,6 +130,7 @@ const initialSavedDocuments = [
     type: '通知',
     words: '1280',
     updatedAt: '今天 14:20',
+    hasFinalFile: true,
     content: sampleContent,
     outline: formatOutlineText(defaultOutline),
   },
@@ -139,6 +140,7 @@ const initialSavedDocuments = [
     type: '会议纪要',
     words: '960',
     updatedAt: '昨天 16:10',
+    hasFinalFile: false,
     content: `会议时间：2026年6月15日 14:00\n会议地点：总部会议室A\n参会人员：项目组、业务代表、技术支持团队\n\n一、会议议题\n围绕项目当前推进情况、关键节点风险和后续协同事项进行讨论。\n\n二、会议结论\n项目整体进度可控，需重点跟进接口联调、上线验证和用户培训安排。\n\n三、待办事项\n1. 技术团队于本周内完成联调问题清单闭环。\n2. 业务团队补充试点部门反馈意见。\n3. 项目经理同步更新项目计划并提交评审。`,
     outline: `一、会议基本信息\n记录会议时间、地点、参会人员和会议背景。\n\n二、项目推进情况\n概述当前进度、已完成事项和主要风险。\n\n三、会议结论与待办\n明确结论、责任人和完成时间。`,
   },
@@ -148,6 +150,7 @@ const initialSavedDocuments = [
     type: '党群',
     words: '1520',
     updatedAt: '6月12日',
+    hasFinalFile: true,
     content: `为进一步强化理论学习成效，提升党群活动组织质量，拟开展主题学习活动。\n\n一、活动主题\n围绕理论学习、岗位实践和团队交流，组织专题学习与分享。\n\n二、活动安排\n活动分为集中学习、交流研讨和成果总结三个环节。\n\n三、工作要求\n各相关部门应高度重视，做好组织发动和材料准备，确保活动取得实效。`,
     outline: `一、活动背景\n说明开展学习活动的意义和目标。\n\n二、活动安排\n明确活动时间、对象、形式和主要环节。\n\n三、工作要求\n提出组织保障、材料归档和成果总结要求。`,
   },
@@ -213,6 +216,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       type: requirementType,
       words: `${content.length}`,
       updatedAt: '刚刚',
+      hasFinalFile: finalFileReady,
       content,
       outline: outlineText,
     };
@@ -324,7 +328,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setRequirementsConfirmed(true);
     setOutlineEditing(false);
     setOutlineConfirmed(true);
-    setFinalFileReady(true);
+    setFinalFileReady(document.hasFinalFile);
     setOutlineDirty(false);
     setIsSaved(true);
   };
@@ -334,6 +338,11 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     window.setTimeout(() => {
       setIsGeneratingFinalFile(false);
       setFinalFileReady(true);
+      if (selectedSavedDocumentId) {
+        setSavedDocuments((current) => current.map((item) => (
+          item.id === selectedSavedDocumentId ? { ...item, hasFinalFile: true, updatedAt: '刚刚' } : item
+        )));
+      }
     }, 900);
   };
 
@@ -479,7 +488,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         </div>
 
         {/* 编辑区域 */}
-        <div className="flex-1 overflow-y-auto px-8 py-6">
+        <div className="scrollbar-hover flex-1 overflow-y-auto px-8 py-6">
           <div className="mb-3 text-center text-xs leading-5 text-gray-400">
             仅支持编辑内容，版式调整请前往编辑模板。
           </div>
@@ -502,7 +511,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                 setContent(event.target.value);
                 setIsSaved(false);
               }}
-              className="min-h-[520px] w-full resize-none border-none bg-transparent text-[15px] leading-8 text-gray-700 outline-none"
+              className="scrollbar-hover min-h-[520px] w-full resize-none border-none bg-transparent text-[15px] leading-8 text-gray-700 outline-none"
               placeholder="正文内容将在这里生成，也可以直接编辑..."
             />
             <div className="mt-8 border-t border-gray-100 pt-3 text-center text-[11px] text-gray-400">
@@ -553,7 +562,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="scrollbar-hover flex-1 overflow-y-auto p-4">
           <div className="space-y-4">
             {documentTab === 'mine' ? (
               <div className="space-y-3">
@@ -648,17 +657,25 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.type}</span>
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.words} 字</span>
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.updatedAt}</span>
+
                           </div>
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2">
-                        <button
-                          onClick={(event) => event.stopPropagation()}
-                          className="flex items-center justify-center gap-1.5 rounded-lg border border-theme-100 bg-theme-50 px-2 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-100"
-                        >
-                          <Download size={13} />
-                          下载
-                        </button>
+                        {item.hasFinalFile ? (
+                          <button
+                            onClick={(event) => event.stopPropagation()}
+                            className="flex items-center justify-center gap-1.5 rounded-lg border border-theme-100 bg-theme-50 px-2 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-100"
+                          >
+                            <Download size={13} />
+                            下载
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-400">
+                            <FileText size={13} />
+                            待生成
+                          </div>
+                        )}
                         <button
                           onClick={(event) => event.stopPropagation()}
                           className="flex items-center justify-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
@@ -767,7 +784,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                       setIsSaved(false);
                     }}
                     rows={4}
-                    className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm leading-5 outline-none focus:ring-2 focus:ring-theme-200 disabled:bg-gray-50 disabled:text-gray-500"
+                    className="scrollbar-hover w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm leading-5 outline-none focus:ring-2 focus:ring-theme-200 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </label>
               </div>
@@ -835,7 +852,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   value={outlineText}
                   onChange={(event) => handleOutlineTextChange(event.target.value)}
                   rows={12}
-                  className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm leading-6 text-gray-800 outline-none focus:bg-white focus:ring-2 focus:ring-theme-200"
+                  className="scrollbar-hover w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm leading-6 text-gray-800 outline-none focus:bg-white focus:ring-2 focus:ring-theme-200"
                 />
                 <div className="text-xs leading-5 text-gray-400">
                   可直接在文本框中调整章节顺序、标题和说明，确认后将按当前大纲生成正文。
@@ -856,7 +873,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                     value={outlineText}
                     onChange={(event) => handleOutlineTextChange(event.target.value)}
                     rows={10}
-                    className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm leading-6 text-gray-800 outline-none focus:bg-white focus:ring-2 focus:ring-theme-200"
+                    className="scrollbar-hover w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm leading-6 text-gray-800 outline-none focus:bg-white focus:ring-2 focus:ring-theme-200"
                   />
                   <div className="mt-2 text-xs leading-5 text-gray-400">
                     调整大纲后，可在下方重新生成正文。
@@ -976,7 +993,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   重新生成正文
                 </button>
               )}
-              {!outlineDirty && (
+              {!outlineDirty && !finalFileReady && (
                 <button
                   onClick={handleGenerateFinalFile}
                   disabled={isGeneratingFinalFile}
@@ -989,10 +1006,16 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                     </>
                   ) : (
                     <>
-                      <Download size={16} />
+                      <FileText size={16} />
                       生成最终公文文件
                     </>
                   )}
+                </button>
+              )}
+              {!outlineDirty && finalFileReady && (
+                <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700">
+                  <Download size={16} />
+                  下载文件
                 </button>
               )}
               <div className="grid grid-cols-2 gap-2">
@@ -1067,7 +1090,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   </button>
                 ))}
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="scrollbar-hover flex gap-2 overflow-x-auto pb-1">
                 {filteredPreviewTemplates.map((template) => (
                   <button
                     key={template.id}
@@ -1120,7 +1143,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                 </div>
                 <div className="flex min-h-0 flex-col rounded-lg border border-gray-100 bg-white p-3">
                   <div className="mb-3 flex-shrink-0 text-sm font-semibold text-gray-700">模板内容</div>
-                  <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                  <div className="scrollbar-hover min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                     {templateLayoutRules.map((rule) => (
                       <div key={rule.label} className="rounded-lg bg-gray-50 p-3">
                         <div className="text-xs font-semibold text-gray-500">{rule.label}</div>
@@ -1159,3 +1182,8 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     </div>
   );
 }
+
+
+
+
+

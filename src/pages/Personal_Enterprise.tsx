@@ -1,8 +1,9 @@
-import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight, MoreHorizontal, RefreshCw, ExternalLink, Trash2 } from 'lucide-react';
+﻿import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight, MoreHorizontal, RefreshCw, ExternalLink, Trash2, ClipboardList, Sparkles, Target } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // 定义卡片类型
-type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'courses';
+type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'officeApps' | 'courses';
 
 // 卡片配置接口
 interface CardConfig {
@@ -28,7 +29,8 @@ const initialCards: CardConfig[] = [
   { id: 'projects', name: '关注的项目进度', icon: <Layers size={20} />, visible: true, order: 3 },
   { id: 'calendar', name: '周历', icon: <CalendarIcon size={20} />, visible: true, order: 4 },
   { id: 'systems', name: '常用系统', icon: <Layout size={20} />, visible: true, order: 5 },
-  { id: 'courses', name: '临期课程', icon: <FileText size={20} />, visible: true, order: 6 },
+  { id: 'officeApps', name: '办公应用', icon: <ClipboardList size={20} />, visible: true, order: 6 },
+  { id: 'courses', name: '临期课程', icon: <FileText size={20} />, visible: true, order: 7 },
 ];
 
 const defaultSystems: System[] = [
@@ -41,10 +43,14 @@ const defaultSystems: System[] = [
 ];
 
 export default function Personal_Enterprise() {
+  const navigate = useNavigate();
   // 卡片配置状态
   const [cards, setCards] = useState<CardConfig[]>(() => {
     const saved = localStorage.getItem('dashboardCards');
-    return saved ? JSON.parse(saved) : initialCards;
+    if (!saved) return initialCards;
+    const savedCards = JSON.parse(saved) as CardConfig[];
+    const mergedCards = initialCards.map(card => savedCards.find(savedCard => savedCard.id === card.id) || card);
+    return mergedCards.sort((a, b) => a.order - b.order);
   });
   
   // 系统选择状态
@@ -482,6 +488,80 @@ export default function Personal_Enterprise() {
               </div>
             )}
 
+            {/* 办公应用 */}
+            {visibleCards.find(c => c.id === 'officeApps') && (
+              <div className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-lg">
+                <div className="mb-4 flex flex-col gap-3 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-700 text-white shadow-sm shadow-pink-700/20">
+                      <ClipboardList size={19} />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-bold text-gray-800">办公应用</h3>
+                      <p className="truncate text-xs text-gray-500">汇报填写、OKR拆解与个人工作沉淀</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-center min-[560px]:w-48">
+                    <div className="rounded-lg bg-gray-50 px-3 py-2">
+                      <div className="text-base font-bold text-gray-900">2</div>
+                      <div className="text-[11px] text-gray-500">应用</div>
+                    </div>
+                    <div className="rounded-lg bg-pink-50 px-3 py-2">
+                      <div className="text-base font-bold text-pink-700">1</div>
+                      <div className="text-[11px] text-pink-700/70">待提交</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <button
+                    onClick={() => navigate('/work-report')}
+                    className="group/app flex w-full min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-white px-3.5 py-3 text-left transition-all hover:border-pink-200 hover:bg-pink-50/40"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-700">
+                      <FileText size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <h4 className="font-semibold text-gray-900">工作汇报</h4>
+                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">
+                          <Sparkles size={11} />
+                          AI辅助
+                        </span>
+                      </div>
+                      <p className="mt-0.5 line-clamp-1 text-xs leading-5 text-gray-500">按OKR填写本周总结和下周计划，支持汇报助手生成。</p>
+                    </div>
+                    <div className="hidden shrink-0 text-right sm:block">
+                      <div className="text-xs font-medium text-gray-700">本周周报</div>
+                      <div className="mt-0.5 text-[11px] text-pink-700">待提交</div>
+                    </div>
+                    <ChevronRight size={17} className="shrink-0 text-gray-300 transition-transform group-hover/app:translate-x-0.5 group-hover/app:text-pink-600" />
+                  </button>
+
+                  <button
+                    onClick={() => navigate('/okr')}
+                    className="group/app flex w-full min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-white px-3.5 py-3 text-left transition-all hover:border-blue-200 hover:bg-blue-50/40"
+                  >
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
+                      <Target size={18} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                        <h4 className="font-semibold text-gray-900">OKR</h4>
+                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">拆解</span>
+                      </div>
+                      <p className="mt-0.5 line-clamp-1 text-xs leading-5 text-gray-500">查看目标、关键结果、对齐关系和进度记录。</p>
+                    </div>
+                    <div className="hidden shrink-0 text-right sm:block">
+                      <div className="text-xs font-medium text-gray-700">3项目标</div>
+                      <div className="mt-0.5 text-[11px] text-blue-700">平均73%</div>
+                    </div>
+                    <ChevronRight size={17} className="shrink-0 text-gray-300 transition-transform group-hover/app:translate-x-0.5 group-hover/app:text-blue-600" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* 临期课程 */}
             {visibleCards.find(c => c.id === 'courses') && (
               <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
@@ -856,3 +936,4 @@ function CourseItem({ title, time, color }: { title: string; time: string; color
     </div>
   );
 }
+

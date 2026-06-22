@@ -1,4 +1,4 @@
-import {
+﻿import {
   MessageSquare,
   Lock,
   Calendar as CalendarIcon,
@@ -765,51 +765,51 @@ export default function Home() {
       const isDay = hour >= 6 && hour < 18;
       
       return (
-        <div className="flex-1 relative overflow-hidden min-h-screen">
+        <div className="flex-1 relative overflow-hidden h-full min-h-0">
           {isDay ? (
             <>
               <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-theme-50/30 to-gray-100 dark:from-gray-900 dark:via-theme-900/10 dark:to-gray-900" />
               
-              <div className="absolute top-0 right-0 w-96 h-96 pointer-events-none">
-                <div className="absolute top-8 right-8 w-32 h-32">
+              <div className="absolute top-0 right-0 w-72 h-72 pointer-events-none">
+                <div className="absolute top-6 right-6 w-24 h-24">
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-300 to-orange-400 rounded-full animate-pulse-slow shadow-lg shadow-amber-400/30" />
                   <div className="absolute inset-4 bg-gradient-to-br from-yellow-200 to-amber-300 rounded-full animate-pulse-slow animation-delay-2000" />
                 </div>
               </div>
               
-              <div className="absolute top-20 left-[10%] md:left-[15%] lg:left-[20%] animate-float pointer-events-none">
+              <div className="absolute top-14 left-[10%] md:left-[15%] lg:left-[20%] animate-float pointer-events-none">
                 <div className="flex gap-2">
                   <div className="w-16 h-10 bg-white/80 rounded-full" />
                   <div className="w-12 h-8 bg-white/60 rounded-full -ml-6 mt-2" />
                   <div className="w-14 h-9 bg-white/70 rounded-full -ml-5 mt-1" />
                 </div>
               </div>
-              <div className="absolute top-32 left-[50%] md:left-[55%] lg:left-[60%] animate-float animation-delay-3000 pointer-events-none">
+              <div className="absolute top-24 left-[50%] md:left-[55%] lg:left-[60%] animate-float animation-delay-3000 pointer-events-none">
                 <div className="flex gap-2">
                   <div className="w-12 h-8 bg-white/60 rounded-full" />
                   <div className="w-10 h-6 bg-white/50 rounded-full -ml-4 mt-1" />
                 </div>
               </div>
 
-              <div className="relative h-full flex items-center justify-center p-8">
+              <div className="relative h-full min-h-0 flex items-center justify-center p-4 lg:p-6">
                 <div className="relative w-full max-w-2xl">
-                  <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden min-h-[400px] md:min-h-[450px] lg:min-h-[500px] flex flex-col">
+                  <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden max-h-[calc(100dvh-11rem)] min-h-[min(360px,calc(100dvh-12rem))] flex flex-col">
                     <div className="h-1.5 bg-gradient-to-r from-amber-300 via-orange-400 to-amber-300" />
                     
-                    <div className="p-10">
-                      <div className="flex justify-center mb-8">
+                    <div className="p-6 lg:p-8">
+                      <div className="flex justify-center mb-5 lg:mb-6">
                         <div className="relative">
                           <div className="absolute -inset-4 bg-gradient-to-r from-amber-200 to-orange-200 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full blur-xl opacity-60 animate-pulse" />
                           <div className="relative flex flex-col items-center">
-                            <div className="bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/50 dark:to-orange-900/50 p-6 rounded-3xl shadow-lg">
-                              <span className="text-6xl">☀️</span>
+                            <div className="bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/50 dark:to-orange-900/50 p-4 lg:p-5 rounded-3xl shadow-lg">
+                              <span className="text-5xl lg:text-6xl">☀️</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-center space-y-6 flex-1 flex flex-col justify-center">
-                        <div className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full border border-amber-200/50 dark:border-amber-800/50 shadow-sm">
+                      <div className="text-center space-y-4 lg:space-y-5 flex-1 flex flex-col justify-center">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 rounded-full border border-amber-200/50 dark:border-amber-800/50 shadow-sm">
                           <span className="text-xl">🌤️</span>
                           <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
                             {hour < 12 ? '早安，新的一天' : '下午好，继续加油'}
@@ -817,17 +817,17 @@ export default function Home() {
                         </div>
 
                         <div>
-                          <h1 className="text-4xl font-bold mb-3">
+                          <h1 className="text-3xl lg:text-4xl font-bold mb-2">
                             <span className="bg-gradient-to-r from-gray-900 via-theme-600 to-gray-900 dark:from-white dark:via-theme-400 dark:to-white bg-clip-text text-transparent">
                               今天也辛苦啦
                             </span>
                           </h1>
-                          <p className="text-gray-500 dark:text-gray-400 text-lg font-light">
+                          <p className="text-gray-500 dark:text-gray-400 text-base lg:text-lg font-light">
                             选择左侧对话，开启高效工作
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-center gap-4 py-2">
+                        <div className="flex items-center justify-center gap-4 py-1">
                           <div className="h-px w-20 bg-gradient-to-r from-transparent to-amber-300 dark:to-amber-600" />
                           <span className="text-amber-400">☀️</span>
                           <div className="h-px w-20 bg-gradient-to-l from-transparent to-amber-300 dark:to-amber-600" />
@@ -836,8 +836,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="text-center mt-6 pb-2">
-                    <p className="text-sm text-gray-400 dark:text-gray-500 font-light tracking-wide">
+                  <div className="text-center mt-3 pb-1">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 font-light tracking-wide">
                       点击左侧对话列表开始聊天
                     </p>
                   </div>
@@ -863,13 +863,13 @@ export default function Home() {
                 ))}
               </div>
               
-              <div className="absolute top-8 right-[5%] md:right-[10%] lg:right-[15%] pointer-events-none">
+              <div className="absolute top-6 right-[5%] md:right-[10%] lg:right-[15%] pointer-events-none">
                 <div className="relative">
                   <div className="absolute inset-0 bg-indigo-200/20 dark:bg-indigo-200/30 rounded-full blur-xl animate-pulse-slow" />
-                  <div className="relative w-24 h-24">
+                  <div className="relative w-20 h-20 lg:w-24 lg:h-24">
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-200 via-slate-100 to-indigo-300 rounded-full shadow-lg shadow-indigo-200/30 dark:shadow-indigo-900/50" />
                     <div className="absolute top-4 left-6 w-4 h-4 bg-indigo-200/50 dark:bg-indigo-300/50 rounded-full" />
-                    <div className="absolute top-10 left-10 w-3 h-3 bg-indigo-200/40 dark:bg-indigo-300/40 rounded-full" />
+                    <div className="absolute top-6 lg:p-8 left-10 w-3 h-3 bg-indigo-200/40 dark:bg-indigo-300/40 rounded-full" />
                     <div className="absolute top-6 left-14 w-2 h-2 bg-indigo-200/30 dark:bg-indigo-300/30 rounded-full" />
                   </div>
                 </div>
@@ -879,25 +879,25 @@ export default function Home() {
                 <div className="w-20 h-0.5 bg-gradient-to-r from-gray-400 via-gray-300 to-transparent dark:from-white dark:via-indigo-200 dark:to-transparent rounded-full" />
               </div>
 
-              <div className="relative h-full flex items-center justify-center p-8">
+              <div className="relative h-full min-h-0 flex items-center justify-center p-4 lg:p-6">
                 <div className="relative w-full max-w-2xl">
-                  <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden min-h-[400px] md:min-h-[450px] lg:min-h-[500px] flex flex-col">
+                  <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden max-h-[calc(100dvh-11rem)] min-h-[min(360px,calc(100dvh-12rem))] flex flex-col">
                     <div className="h-1.5 bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400" />
                     
-                    <div className="p-10">
-                      <div className="flex justify-center mb-8">
+                    <div className="p-6 lg:p-8">
+                      <div className="flex justify-center mb-5 lg:mb-6">
                         <div className="relative">
                           <div className="absolute -inset-4 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 dark:from-indigo-500/30 dark:to-purple-500/30 rounded-full blur-xl animate-pulse" />
                           <div className="relative flex flex-col items-center">
-                            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/80 dark:to-purple-950/80 p-6 rounded-3xl shadow-lg border border-indigo-200/50 dark:border-indigo-500/30">
-                              <span className="text-6xl">🌙</span>
+                            <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/80 dark:to-purple-950/80 p-4 lg:p-5 rounded-3xl shadow-lg border border-indigo-200/50 dark:border-indigo-500/30">
+                              <span className="text-5xl lg:text-6xl">🌙</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-center space-y-6 flex-1 flex flex-col justify-center">
-                        <div className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-full border border-indigo-200/50 dark:border-indigo-800/50 shadow-sm">
+                      <div className="text-center space-y-4 lg:space-y-5 flex-1 flex flex-col justify-center">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 rounded-full border border-indigo-200/50 dark:border-indigo-800/50 shadow-sm">
                           <span className="text-xl">🌃</span>
                           <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
                             晚上好，辛苦了
@@ -905,23 +905,23 @@ export default function Home() {
                         </div>
 
                         <div>
-                          <h1 className="text-4xl font-bold mb-3">
+                          <h1 className="text-3xl lg:text-4xl font-bold mb-2">
                             <span className="bg-gradient-to-r from-gray-900 via-theme-600 to-gray-900 dark:from-white dark:via-theme-400 dark:to-white bg-clip-text text-transparent">
                               夜深了，好好休息
                             </span>
                           </h1>
-                          <p className="text-gray-500 dark:text-gray-400 text-lg font-light">
+                          <p className="text-gray-500 dark:text-gray-400 text-base lg:text-lg font-light">
                             选择左侧对话，处理今日未尽事宜
                           </p>
                         </div>
 
-                        <div className="flex items-center justify-center gap-4 py-2">
+                        <div className="flex items-center justify-center gap-4 py-1">
                           <div className="h-px w-20 bg-gradient-to-r from-transparent to-indigo-300 dark:to-indigo-600" />
                           <span className="text-indigo-400 dark:text-indigo-300">🌙</span>
                           <div className="h-px w-20 bg-gradient-to-l from-transparent to-indigo-300 dark:to-indigo-600" />
                         </div>
 
-                        <div className="flex flex-wrap justify-center gap-3 pt-2">
+                        <div className="flex flex-wrap justify-center gap-2 pt-1">
                           {[
                             { icon: '💬', label: '消息', bg: 'from-blue-400 to-blue-500' },
                             { icon: '📋', label: '流程', bg: 'from-purple-400 to-purple-500' },
@@ -929,7 +929,7 @@ export default function Home() {
                           ].map((item, index) => (
                             <button
                               key={index}
-                              className="group relative flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+                              className="group relative flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
                             >
                               <span className={`absolute inset-0 bg-gradient-to-r ${item.bg} rounded-xl opacity-0 group-hover:opacity-10 dark:group-hover:opacity-20 transition-opacity`} />
                               <span className="relative text-lg">{item.icon}</span>
@@ -941,8 +941,8 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="text-center mt-6 pb-2">
-                    <p className="text-sm text-gray-400 dark:text-gray-500 font-light tracking-wide">
+                  <div className="text-center mt-3 pb-1">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 font-light tracking-wide">
                       点击左侧对话列表开始聊天
                     </p>
                   </div>
@@ -2176,3 +2176,4 @@ function renderChatContent(chatMsg: ChatMessage, isMe: boolean) {
     </>
   );
 }
+
