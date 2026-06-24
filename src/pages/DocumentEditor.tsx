@@ -443,6 +443,26 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     </div>
   );
 
+  const readonlyAttachmentPanel = (
+    <div className="rounded-lg border border-gray-200 bg-white p-3">
+      <div className="mb-3 text-sm font-medium text-gray-700">参考文件</div>
+      {editorAttachments.length > 0 ? (
+        <div className="space-y-2">
+          {editorAttachments.map((attachment) => (
+            <div key={attachment} className="flex min-w-0 items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
+              <span className="truncate">{attachment}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg bg-gray-50 px-3 py-4 text-center text-xs leading-5 text-gray-400">
+          无参考文件
+        </div>
+      )}
+    </div>
+  );
+
   const handleEditorTemplateSelect = (template: typeof editorTemplates[number]) => {
     setSelectedTemplate(template.id);
     setRequirementType(template.category);
@@ -861,6 +881,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
               )}
             </div>
             )}
+            {outlineEditing && readonlyAttachmentPanel}
 
             {!requirementsEditable && !outlineEditing && !isGeneratingOutline && (
               <div className="space-y-4">
@@ -900,7 +921,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                     </div>
                   </div>
                 </div>
-                {attachmentPanel}
+                {readonlyAttachmentPanel}
                 <div className={`rounded-lg border p-3 ${finalFileReady ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'}`}>
                   <div className="flex items-start gap-3">
                     <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-lg ${finalFileReady ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -911,7 +932,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                         {finalFileReady ? '最终文件已生成' : '待生成最终公文文件'}
                       </div>
                       <div className={`mt-1 text-xs leading-5 ${finalFileReady ? 'text-green-700' : 'text-gray-500'}`}>
-                        {finalFileReady ? '可进入后续下载、归档或流转环节。' : '确认正文无误后，点击下方操作生成最终文件。'}
+                        {finalFileReady ? '最终文件已生成，可下载或进入后续归档流转。' : '确认正文无误后，点击下方操作生成最终文件。'}
                       </div>
                       {finalFileReady && (
                         <button className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-green-700">
@@ -1013,9 +1034,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                 </button>
               )}
               {!outlineDirty && finalFileReady && (
-                <button className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-700">
-                  <Download size={16} />
-                  下载文件
+                <button disabled className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-lg bg-gray-100 px-3 py-2.5 text-sm font-semibold text-gray-400">
+                  <CheckCircle2 size={16} />
+                  最终公文文件已生成
                 </button>
               )}
               <div className="grid grid-cols-2 gap-2">

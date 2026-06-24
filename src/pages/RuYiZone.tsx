@@ -48,7 +48,7 @@ type ConversationKind =
 const defaultAssistants: Assistant[] = [
   { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
   { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
-  { id: 3, name: "公文辅助助手", isActive: false, icon: <FileTextIcon size={18} /> },
+  { id: 3, name: "如意公文创作", isActive: false, icon: <FileTextIcon size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -333,7 +333,7 @@ export default function RuYiZone() {
   const getHistoryAssistantName = (kind: ConversationKind) => {
     if (kind === "feedback") return "IT服务助手";
     if (kind === "knowledge" || kind === "operations") return "企业知识专家";
-    if (kind === "documentDraft") return "公文辅助助手";
+    if (kind === "documentDraft") return "如意公文创作";
     return "";
   };
 
@@ -356,14 +356,14 @@ export default function RuYiZone() {
   };
 
   const openLegacyDocumentAssistant = () => {
-    const documentAssistant = defaultAssistants.find((assistant) => assistant.name === "公文辅助助手") || null;
+    const documentAssistant = defaultAssistants.find((assistant) => assistant.name === "如意公文创作") || null;
     setActiveTool("公文");
     setConversationKind("documentDraft");
     setSelectedHistoryId(null);
     setSelectedAssistant(documentAssistant);
     setAssistants(defaultAssistants.map((assistant) => ({
       ...assistant,
-      isActive: assistant.name === "公文辅助助手",
+      isActive: assistant.name === "如意公文创作",
     })));
     setDocTitle("");
     setDocContent("");
@@ -378,7 +378,7 @@ export default function RuYiZone() {
   };
 
   const handleAssistantSelect = (assistant: Assistant) => {
-    if (assistant.name === "公文辅助助手") {
+    if (assistant.name === "如意公文创作") {
       openLegacyDocumentAssistant();
       return;
     }
@@ -702,7 +702,7 @@ export default function RuYiZone() {
             </button>
             <button className="mb-7 flex h-10 items-center gap-3 text-[15px] font-medium text-gray-900">
               <span className="flex h-5 w-5 items-center justify-center rounded bg-gray-200 text-xs text-white">T</span>
-              翻译助手
+              如意翻译助手
             </button>
             <button
               onClick={openLegacyDocumentAssistant}
@@ -713,7 +713,7 @@ export default function RuYiZone() {
               <span className="flex h-5 w-5 items-center justify-center rounded bg-[#a20b67] text-xs text-white">
                 <FileTextIcon size={13} />
               </span>
-              公文辅助助手
+              如意公文创作
             </button>
             <div className="mb-8 border-t border-dashed border-[#d9d4ea]" />
             <div className="mb-5 text-[15px] text-gray-500">历史对话</div>
