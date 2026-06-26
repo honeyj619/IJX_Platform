@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Menu, X, Shield, Lock, GitBranch, LayoutDashboard, 
   Globe, Network, Palette, ChevronRight, User, FolderTree,
-  Route, Wand2, FileText, Edit3, Image as ImageIcon, Type, AlignJustify, Plus, Search
+  Route, Wand2, FileText, Edit3, Image as ImageIcon, Type, AlignJustify, Plus, Search, Upload
 } from 'lucide-react';
 import NavigationConfig from '../components/NavigationConfig';
 import { SIDEBAR } from '../constants/layout';
@@ -448,10 +448,11 @@ function AdminTabs({ active }: { active: string }) {
 function DocumentTemplateManagementConsole() {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState('');
-  const [previewImages, setPreviewImages] = useState(['模板预览图 1']);
   const [titleRules, setTitleRules] = useState([
     { level: '一级标题', description: '主标题使用二号方正小标宋，居中展示，段后 1 行。' },
   ]);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [previewImageFile, setPreviewImageFile] = useState<File | null>(null);
   const isCreatingTemplate = editingTemplateId === '__new__';
   const editingTemplate = isCreatingTemplate
     ? { id: '__new__', name: '新增公文模板', category: '通知', updater: '梁吉力', updatedAt: '刚刚', description: '', titleLevel: '一级标题', lineHeight: '固定值 28 磅', letterSpacing: '标准' }
@@ -459,7 +460,8 @@ function DocumentTemplateManagementConsole() {
   const filteredRows = documentTemplateRows.filter((item) => item.name.includes(templateName.trim()));
   const handleOpenTemplateEditor = (templateId: string) => {
     setEditingTemplateId(templateId);
-    setPreviewImages(['模板预览图 1']);
+    setUploadedFile(null);
+    setPreviewImageFile(null);
     setTitleRules([{ level: '一级标题', description: '主标题使用二号方正小标宋，居中展示，段后 1 行。' }]);
   };
   const handleAddTitleRule = () => {
@@ -493,30 +495,35 @@ function DocumentTemplateManagementConsole() {
             <div className="grid min-w-0 gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
               <div>
                 <div className="mb-2 text-sm text-gray-700">预览图</div>
-                <div className="space-y-3">
-                  {previewImages.map((image, index) => (
-                    <div key={`${image}-${index}`} className="rounded border border-gray-200 bg-gray-50 p-2">
-                      <div className="mx-auto w-28">
-                        <TemplatePreviewCard accent={editingTemplate.category === '通知' ? 'bg-red-500' : editingTemplate.category === '工作简报' ? 'bg-blue-500' : 'bg-[#2f75b5]'} />
-                      </div>
-                      <div className="mt-2 flex items-center justify-center gap-2 text-xs text-gray-500">
-                        <span>{image}</span>
-                        <button
-                          onClick={() => setPreviewImages((current) => current.filter((_, imageIndex) => imageIndex !== index))}
-                          className="text-[#2f75b5] hover:underline"
-                        >
-                          删除
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => setPreviewImages((current) => [...current, `模板预览图 ${current.length + 1}`])}
-                    className="w-full rounded border border-dashed border-[#2f75b5] bg-white py-2 text-sm text-[#2f75b5] hover:bg-blue-50"
-                  >
-                    重复上传预览图
-                  </button>
-                </div>
+                {previewImageFile ? (
+                  <div className="relative">
+                    <img
+                      src={URL.createObjectURL(previewImageFile)}
+                      alt="预览图"
+                      className="w-full max-w-[200px] rounded border border-gray-200 object-cover"
+                    />
+                    <button
+                      onClick={() => setPreviewImageFile(null)}
+                      className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-500 hover:border-red-400 hover:text-red-500"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex w-full max-w-[200px] cursor-pointer flex-col items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 py-4 hover:border-[#2f75b5] hover:bg-blue-50/30">
+                    <ImageIcon size={16} className="text-gray-400" />
+                    <span className="mt-1 text-xs text-gray-500">上传预览图</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) setPreviewImageFile(file);
+                      }}
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="min-w-0 space-y-5">
@@ -590,22 +597,39 @@ function DocumentTemplateManagementConsole() {
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="w-24 text-right text-gray-700">排版设置:</span>
-                    <span className="text-gray-700"><span className="text-red-500">*</span> 行间距</span>
-                    <select defaultValue={editingTemplate.lineHeight} className="h-9 w-36 rounded border border-gray-300 px-2 outline-none focus:border-[#2f75b5]">
-                      <option>固定值 26 磅</option>
-                      <option>固定值 28 磅</option>
-                      <option>28 磅</option>
-                      <option>1.5 倍行距</option>
-                    </select>
-                    <span className="ml-4 text-gray-700">字间距</span>
-                    <select defaultValue={editingTemplate.letterSpacing} className="h-9 w-36 rounded border border-gray-300 px-2 outline-none focus:border-[#2f75b5]">
-                      <option>标准</option>
-                      <option>加宽 0.3 磅</option>
-                      <option>加宽 0.5 磅</option>
-                      <option>紧缩 0.2 磅</option>
-                    </select>
+                  <div className="flex flex-wrap items-start gap-2">
+                    <span className="mt-2 w-24 text-right text-gray-700"><span className="text-red-500">*</span> 模板上传:</span>
+                    <div className="flex-1 max-w-[360px]">
+                      {uploadedFile ? (
+                        <div className="flex items-center gap-3 rounded border border-gray-300 bg-gray-50 px-3 py-2">
+                          <FileText size={16} className="text-[#2f75b5] flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="truncate text-sm font-medium text-gray-800">{uploadedFile.name}</div>
+                            <div className="text-xs text-gray-400">{(uploadedFile.size / 1024).toFixed(1)} KB</div>
+                          </div>
+                          <button
+                            onClick={() => setUploadedFile(null)}
+                            className="flex-shrink-0 text-gray-400 hover:text-red-500"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed border-gray-300 bg-gray-50 hover:border-[#2f75b5] hover:bg-blue-50/30">
+                          <Upload size={18} className="text-gray-400" />
+                          <span className="text-sm text-gray-500">上传 Word 模板</span>
+                          <input
+                            type="file"
+                            accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                            className="hidden"
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (file) setUploadedFile(file);
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap items-start gap-2">

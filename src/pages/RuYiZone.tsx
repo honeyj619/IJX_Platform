@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, ArrowRight, Copy, RotateCcw } from "lucide-react";
+import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, Target, ArrowRight, Copy, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import DocumentEditor from "./DocumentEditor";
 
@@ -44,15 +44,13 @@ type ConversationKind =
   | "attendance"
   | "closing"
   | "documentDraft"
-  | "reportAssistant"
-  | "okrAssistant";
+  | "goalAssistant";
 
 const defaultAssistants: Assistant[] = [
   { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
   { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
   { id: 3, name: "如意公文创作", isActive: false, icon: <FileTextIcon size={18} /> },
-  { id: 4, name: "汇报助手", isActive: false, icon: <Bookmark size={18} /> },
-  { id: 5, name: "OKR助手", isActive: false, icon: <Brain size={18} /> },
+  { id: 4, name: "如意目标助手", isActive: false, icon: <Target size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -347,8 +345,7 @@ export default function RuYiZone() {
     if (kind === "feedback") return "IT服务助手";
     if (kind === "knowledge" || kind === "operations") return "企业知识专家";
     if (kind === "documentDraft") return "如意公文创作";
-    if (kind === "reportAssistant") return "汇报助手";
-    if (kind === "okrAssistant") return "OKR助手";
+    if (kind === "goalAssistant") return "如意目标助手";
     return "";
   };
 
@@ -432,7 +429,7 @@ export default function RuYiZone() {
       openLegacyDocumentAssistant();
       return;
     }
-    if (assistant.name === "汇报助手") {
+    if (assistant.name === "如意目标助手") {
       setAssistants(defaultAssistants.map((item) => ({ ...item, isActive: item.id === assistant.id })));
       setSelectedAssistant(assistant);
       setSelectedHistoryId(null);
@@ -440,25 +437,12 @@ export default function RuYiZone() {
       setActiveTool(null);
       setShowEditor(false);
       setEmbedEditorInRuyiZone(false);
-      setConversationKind("reportAssistant");
-      setSentQuestion("请根据我的OKR生成本周工作汇报");
+      setConversationKind("goalAssistant");
+      setSentQuestion("请根据我的OKR生成本周工作汇报并汇总KR进展");
       setInput("");
       setShowReportSubmitTargets(false);
       setSelectedReportSubmitTargets([1]);
       setReportSubmitDone(false);
-      return;
-    }
-    if (assistant.name === "OKR助手") {
-      setAssistants(defaultAssistants.map((item) => ({ ...item, isActive: item.id === assistant.id })));
-      setSelectedAssistant(assistant);
-      setSelectedHistoryId(null);
-      setHasConversation(true);
-      setActiveTool(null);
-      setShowEditor(false);
-      setEmbedEditorInRuyiZone(false);
-      setConversationKind("okrAssistant");
-      setSentQuestion("请帮我发起团队工作承接评估");
-      setInput("");
       return;
     }
     // 更新选中状态
@@ -1239,8 +1223,9 @@ export default function RuYiZone() {
                         </>
                       )}
 
-                      {conversationKind === "reportAssistant" && (
+                      {conversationKind === "goalAssistant" && (
                         <>
+                          {/* ========== 汇报部分 ========== */}
                           <p className="mb-4 leading-7">我已根据日程、待办任务、历史周报和附件，按 OKR 维度为您生成了本周工作汇报草稿。</p>
                           <p className="mb-3 leading-7">数据来源包括：</p>
                           <ul className="mb-6 list-disc space-y-2 pl-6 leading-7">
@@ -1259,7 +1244,7 @@ export default function RuYiZone() {
                             {[
                               { title: "O1 推进工作汇报与OKR联动", kr: "KR1 完成汇报入口、详情、评论与已读状态", thisWeek: "本周完成看汇报列表、详情弹框和关联OKR展示，并补充评论与已读情况。", nextWeek: "下周继续校验统计口径，跟进未提交提醒与汇报导出能力。" },
                               { title: "O2 优化如意空间公文创作链路", kr: "KR2 完成模板预览、大纲确认和最终文件生成", thisWeek: "已调整公文要求、模板选择、参考文件和最终文件下载状态。", nextWeek: "继续梳理管理后台模板字段和前台编辑的一致性。" },
-                              { title: "O3 完善门户办公应用体验", kr: "KR3 接入工作汇报、OKR和AI助手入口", thisWeek: "完成工作门户办公应用、OKR独立入口和汇报助手浮层。", nextWeek: "补充数据权限、人员范围筛选和统计明细联动。" },
+                              { title: "O3 完善门户办公应用体验", kr: "KR3 接入工作汇报、OKR和AI助手入口", thisWeek: "完成工作门户办公应用、OKR独立入口和如意目标助手浮层。", nextWeek: "补充数据权限、人员范围筛选和统计明细联动。" },
                             ].map((draft, index) => (
                               <div key={draft.kr}>
                                 <div className="font-semibold text-gray-950 dark:text-white">{index + 1}. {draft.title}</div>
@@ -1277,19 +1262,16 @@ export default function RuYiZone() {
                           >
                             {showReportSubmitTargets ? '已发起提交流程' : '全局提交工作汇报'}
                           </button>
-                        </>
-                      )}
 
-                      {conversationKind === "okrAssistant" && (
-                        <>
-                          <p className="mb-4 leading-7">OKR助手会先读取我的 O 和下设 KR，再结合各执行人的工作汇报内容，把当前进展汇总到对应 KR 下。</p>
-                          <p className="mb-3 leading-7">本次评估条件：2026-06-22 至 2026-06-28，选择我的 O1、O2，人员范围为直属下级和自定义通讯录人员。</p>
-                          <div className="mb-5 border-b border-gray-200 pb-2 dark:border-gray-700">
+                          {/* ========== OKR 部分 ========== */}
+                          <div className="mb-5 border-gray-200 pt-2 dark:border-gray-700">
                             <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-950 dark:text-white">
-                              <Brain size={24} className="text-theme-500" />
+                              <Target size={24} className="text-theme-500" />
                               KR当前进展汇总
                             </h3>
                           </div>
+                          <p className="mb-4 leading-7">如意目标助手已读取您的 O 和下设 KR，结合各执行人的工作汇报内容，把当前进展汇总到对应 KR 下。</p>
+                          <p className="mb-3 leading-7">本次评估条件：2026-06-22 至 2026-06-28，选择我的 O1、O2，人员范围为直属下级和自定义通讯录人员。</p>
                           <div className="mb-6 space-y-6 leading-7">
                             {[
                               {
@@ -1303,7 +1285,7 @@ export default function RuYiZone() {
                                   {
                                     kr: "KR2 完成汇报统计和助手浮层",
                                     owners: ["肖八", "郑八"],
-                                    progress: "汇报统计明细已按日期展示，汇报助手已支持按自定义时间和人员生成总结，剩余是筛选口径细化。",
+                                    progress: "汇报统计明细已按日期展示，如意目标助手已支持按自定义时间和人员生成总结，剩余是筛选口径细化。",
                                   },
                                 ],
                               },
@@ -1318,7 +1300,7 @@ export default function RuYiZone() {
                                   {
                                     kr: "KR2 统一新版、旧版如意助手入口",
                                     owners: ["梁吉利", "沈十六"],
-                                    progress: "新版常用助手已增加汇报助手和OKR助手，旧版已增加IT服务助手入口，交互已可预览。",
+                                    progress: "新版常用助手已增加如意目标助手，旧版已增加IT服务助手入口，交互已可预览。",
                                   },
                                 ],
                               },
@@ -1410,7 +1392,7 @@ export default function RuYiZone() {
                       </div>
                     </div>
                   </div>
-                  {conversationKind === "reportAssistant" && showReportSubmitTargets && (
+                  {conversationKind === "goalAssistant" && showReportSubmitTargets && (
                     <>
                       <div className="flex justify-end">
                         <div className="max-w-2xl rounded-2xl bg-theme-50 px-5 py-4 text-gray-900 shadow-sm dark:bg-theme-900/20 dark:text-white">
