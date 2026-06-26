@@ -43,12 +43,16 @@ type ConversationKind =
   | "knowledge"
   | "attendance"
   | "closing"
-  | "documentDraft";
+  | "documentDraft"
+  | "reportAssistant"
+  | "okrAssistant";
 
 const defaultAssistants: Assistant[] = [
   { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
   { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
   { id: 3, name: "如意公文创作", isActive: false, icon: <FileTextIcon size={18} /> },
+  { id: 4, name: "汇报助手", isActive: false, icon: <Bookmark size={18} /> },
+  { id: 5, name: "OKR助手", isActive: false, icon: <Brain size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -227,6 +231,12 @@ const operationsLinks: ProcessLink[] = [
   { id: 3, title: "项目交付及时率：89.2%，较上月 -1.5%", to: "/business?metric=delivery&source=ruyi-zone" },
 ];
 
+const reportSubmitTargets = [
+  { id: 1, name: "张鹏", department: "信息管理部", role: "直属上级", type: "汇报对象" },
+  { id: 2, name: "肖林川", department: "信息管理部", role: "项目协同", type: "抄送对象" },
+  { id: 3, name: "梁勃", department: "信息管理部", role: "部门负责人", type: "汇报对象" },
+];
+
 export default function RuYiZone() {
   const [input, setInput] = useState("");
   const [assistants, setAssistants] = useState<Assistant[]>(defaultAssistants);
@@ -258,6 +268,9 @@ export default function RuYiZone() {
   const [sentQuestion, setSentQuestion] = useState("");
   const [conversationKind, setConversationKind] = useState<ConversationKind>("pending");
   const [selectedHistoryId, setSelectedHistoryId] = useState<number | null>(null);
+  const [showReportSubmitTargets, setShowReportSubmitTargets] = useState(false);
+  const [selectedReportSubmitTargets, setSelectedReportSubmitTargets] = useState<number[]>([1]);
+  const [reportSubmitDone, setReportSubmitDone] = useState(false);
 
   const resolveConversationKind = (question: string): ConversationKind => {
     if (/会议纪要|纪要|录音/.test(question)) return "meetingMinutes";
@@ -334,6 +347,8 @@ export default function RuYiZone() {
     if (kind === "feedback") return "IT服务助手";
     if (kind === "knowledge" || kind === "operations") return "企业知识专家";
     if (kind === "documentDraft") return "如意公文创作";
+    if (kind === "reportAssistant") return "汇报助手";
+    if (kind === "okrAssistant") return "OKR助手";
     return "";
   };
 
@@ -353,6 +368,9 @@ export default function RuYiZone() {
     setOutlineAdjustments([]);
     setLegacyEditorStartsInRequirements(false);
     setLegacyEditorStartsInOutline(false);
+    setShowReportSubmitTargets(false);
+    setSelectedReportSubmitTargets([1]);
+    setReportSubmitDone(false);
   };
 
   const openLegacyDocumentAssistant = () => {
@@ -377,9 +395,70 @@ export default function RuYiZone() {
     setShowEditor(true);
   };
 
+
+  const openLegacyItAssistant = () => {
+    const itAssistant = defaultAssistants.find((assistant) => assistant.name === "IT服务助手") || null;
+    setActiveTool(null);
+    setConversationKind("feedback");
+    setSelectedHistoryId(null);
+    setSelectedAssistant(itAssistant);
+    setAssistants(defaultAssistants.map((assistant) => ({
+      ...assistant,
+      isActive: assistant.name === "IT服务助手",
+    })));
+    setSentQuestion("我VPN被禁用了怎么办");
+    setInput("");
+    setHasConversation(true);
+    setShowEditor(false);
+    setEmbedEditorInRuyiZone(false);
+  };
+
+
+  const toggleReportSubmitTarget = (targetId: number) => {
+    setSelectedReportSubmitTargets((current) => (
+      current.includes(targetId)
+        ? current.filter((id) => id !== targetId)
+        : [...current, targetId]
+    ));
+  };
+
+  const handleSubmitWorkReport = () => {
+    if (selectedReportSubmitTargets.length === 0) return;
+    setReportSubmitDone(true);
+  };
+
   const handleAssistantSelect = (assistant: Assistant) => {
     if (assistant.name === "如意公文创作") {
       openLegacyDocumentAssistant();
+      return;
+    }
+    if (assistant.name === "汇报助手") {
+      setAssistants(defaultAssistants.map((item) => ({ ...item, isActive: item.id === assistant.id })));
+      setSelectedAssistant(assistant);
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setActiveTool(null);
+      setShowEditor(false);
+      setEmbedEditorInRuyiZone(false);
+      setConversationKind("reportAssistant");
+      setSentQuestion("请根据我的OKR生成本周工作汇报");
+      setInput("");
+      setShowReportSubmitTargets(false);
+      setSelectedReportSubmitTargets([1]);
+      setReportSubmitDone(false);
+      return;
+    }
+    if (assistant.name === "OKR助手") {
+      setAssistants(defaultAssistants.map((item) => ({ ...item, isActive: item.id === assistant.id })));
+      setSelectedAssistant(assistant);
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setActiveTool(null);
+      setShowEditor(false);
+      setEmbedEditorInRuyiZone(false);
+      setConversationKind("okrAssistant");
+      setSentQuestion("请帮我发起团队工作承接评估");
+      setInput("");
       return;
     }
     // 更新选中状态
@@ -714,6 +793,17 @@ export default function RuYiZone() {
                 <FileTextIcon size={13} />
               </span>
               如意公文创作
+            </button>
+            <button
+              onClick={openLegacyItAssistant}
+              className={`mb-7 flex h-10 items-center gap-3 text-[15px] font-medium transition-colors ${
+                selectedAssistant?.name === "IT服务助手" ? 'text-[#a20b67]' : 'text-gray-900 hover:text-[#a20b67]'
+              }`}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded bg-[#3f4669] text-xs text-white">
+                <MonitorCog size={13} />
+              </span>
+              IT服务助手
             </button>
             <div className="mb-8 border-t border-dashed border-[#d9d4ea]" />
             <div className="mb-5 text-[15px] text-gray-500">历史对话</div>
@@ -1149,6 +1239,108 @@ export default function RuYiZone() {
                         </>
                       )}
 
+                      {conversationKind === "reportAssistant" && (
+                        <>
+                          <p className="mb-4 leading-7">我已根据日程、待办任务、历史周报和附件，按 OKR 维度为您生成了本周工作汇报草稿。</p>
+                          <p className="mb-3 leading-7">数据来源包括：</p>
+                          <ul className="mb-6 list-disc space-y-2 pl-6 leading-7">
+                            <li>日程会议记录：提取会议目标、参与人和下周计划。</li>
+                            <li>待办任务：识别已完成、进行中和风险事项。</li>
+                            <li>历史周报：对齐上周承诺与已落实进展。</li>
+                            <li>参考附件：补充项目背景、材料和业务说明。</li>
+                          </ul>
+                          <div className="mb-5 border-b border-gray-200 pb-2 dark:border-gray-700">
+                            <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-950 dark:text-white">
+                              <Bookmark size={24} className="text-theme-500" />
+                              智能周报草稿
+                            </h3>
+                          </div>
+                          <div className="mb-6 space-y-5 leading-7">
+                            {[
+                              { title: "O1 推进工作汇报与OKR联动", kr: "KR1 完成汇报入口、详情、评论与已读状态", thisWeek: "本周完成看汇报列表、详情弹框和关联OKR展示，并补充评论与已读情况。", nextWeek: "下周继续校验统计口径，跟进未提交提醒与汇报导出能力。" },
+                              { title: "O2 优化如意空间公文创作链路", kr: "KR2 完成模板预览、大纲确认和最终文件生成", thisWeek: "已调整公文要求、模板选择、参考文件和最终文件下载状态。", nextWeek: "继续梳理管理后台模板字段和前台编辑的一致性。" },
+                              { title: "O3 完善门户办公应用体验", kr: "KR3 接入工作汇报、OKR和AI助手入口", thisWeek: "完成工作门户办公应用、OKR独立入口和汇报助手浮层。", nextWeek: "补充数据权限、人员范围筛选和统计明细联动。" },
+                            ].map((draft, index) => (
+                              <div key={draft.kr}>
+                                <div className="font-semibold text-gray-950 dark:text-white">{index + 1}. {draft.title}</div>
+                                <div className="mt-1 text-sm font-semibold text-theme-700 dark:text-theme-300">{draft.kr}</div>
+                                <p className="mt-2"><span className="font-semibold">本周工作：</span>{draft.thisWeek}</p>
+                                <p className="mt-1"><span className="font-semibold">下周计划：</span>{draft.nextWeek}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="mb-3 leading-7">如果确认内容可用，可以发起全局提交。提交前我会在下一轮对话中询问需要提交的对象。</p>
+                          <button
+                            onClick={() => setShowReportSubmitTargets(true)}
+                            disabled={showReportSubmitTargets}
+                            className="mb-6 rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 transition-colors hover:bg-theme-100 disabled:cursor-not-allowed disabled:text-gray-400 dark:bg-theme-900/20 dark:text-theme-300"
+                          >
+                            {showReportSubmitTargets ? '已发起提交流程' : '全局提交工作汇报'}
+                          </button>
+                        </>
+                      )}
+
+                      {conversationKind === "okrAssistant" && (
+                        <>
+                          <p className="mb-4 leading-7">OKR助手会先读取我的 O 和下设 KR，再结合各执行人的工作汇报内容，把当前进展汇总到对应 KR 下。</p>
+                          <p className="mb-3 leading-7">本次评估条件：2026-06-22 至 2026-06-28，选择我的 O1、O2，人员范围为直属下级和自定义通讯录人员。</p>
+                          <div className="mb-5 border-b border-gray-200 pb-2 dark:border-gray-700">
+                            <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-950 dark:text-white">
+                              <Brain size={24} className="text-theme-500" />
+                              KR当前进展汇总
+                            </h3>
+                          </div>
+                          <div className="mb-6 space-y-6 leading-7">
+                            {[
+                              {
+                                objective: "O1 提升门户办公应用体验",
+                                keyResults: [
+                                  {
+                                    kr: "KR1 完成工作汇报与OKR联动能力",
+                                    owners: ["梁吉利", "肖八"],
+                                    progress: "基于梁吉利本周汇报，看汇报列表、详情弹框、关联KR展示已完成；肖八补充了已读情况和评论流程。",
+                                  },
+                                  {
+                                    kr: "KR2 完成汇报统计和助手浮层",
+                                    owners: ["肖八", "郑八"],
+                                    progress: "汇报统计明细已按日期展示，汇报助手已支持按自定义时间和人员生成总结，剩余是筛选口径细化。",
+                                  },
+                                ],
+                              },
+                              {
+                                objective: "O2 完善如意空间公文创作链路",
+                                keyResults: [
+                                  {
+                                    kr: "KR1 完成公文大纲、模板和最终文件流程",
+                                    owners: ["郑八", "沈十六"],
+                                    progress: "郑八的汇报显示模板预览、管理后台字段已连通；沈十六跟进了最终文件生成和参考文件状态。",
+                                  },
+                                  {
+                                    kr: "KR2 统一新版、旧版如意助手入口",
+                                    owners: ["梁吉利", "沈十六"],
+                                    progress: "新版常用助手已增加汇报助手和OKR助手，旧版已增加IT服务助手入口，交互已可预览。",
+                                  },
+                                ],
+                              },
+                            ].map((objective) => (
+                              <div key={objective.objective}>
+                                <div className="mb-2 font-semibold text-gray-950 dark:text-white">{objective.objective}</div>
+                                <ol className="list-decimal space-y-3 pl-6">
+                                  {objective.keyResults.map((item) => (
+                                    <li key={item.kr}>
+                                      <div className="font-semibold text-gray-900 dark:text-white">{item.kr}</div>
+                                      <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">执行人：{item.owners.join(' / ')}</div>
+                                      <p className="mt-1"><span className="font-semibold">当前进展：</span>{item.progress}</p>
+                                    </li>
+                                  ))}
+                                </ol>
+                              </div>
+                            ))}
+                          </div>
+                          <Link to="/okr?assistant=assessment&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">打开 OKR 助手继续调整</Link>
+                        </>
+                      )}
+
                       {conversationKind === "documentDraft" && (
                         <>
                           <p className="mb-4 leading-7">
@@ -1218,6 +1410,77 @@ export default function RuYiZone() {
                       </div>
                     </div>
                   </div>
+                  {conversationKind === "reportAssistant" && showReportSubmitTargets && (
+                    <>
+                      <div className="flex justify-end">
+                        <div className="max-w-2xl rounded-2xl bg-theme-50 px-5 py-4 text-gray-900 shadow-sm dark:bg-theme-900/20 dark:text-white">
+                          全局提交工作汇报
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <img
+                          src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd"
+                          alt="如意助手"
+                          className="mt-1 h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                        />
+                        <div className="max-w-3xl flex-1 text-gray-900 dark:text-gray-100">
+                          <p className="mb-4 leading-7">已调用接口：获取汇报提交对象。请选择本次工作汇报需要提交或抄送的对象。</p>
+                          <div className="mb-4 text-sm text-gray-500 dark:text-gray-400">来源：工作汇报提交对象接口，已选 {selectedReportSubmitTargets.length} 人。</div>
+                          <div className="mb-5 divide-y divide-gray-100 border-y border-gray-100 dark:divide-gray-700 dark:border-gray-700">
+                            {reportSubmitTargets.map((target) => {
+                              const selected = selectedReportSubmitTargets.includes(target.id);
+                              return (
+                                <button
+                                  key={target.id}
+                                  type="button"
+                                  disabled={reportSubmitDone}
+                                  onClick={() => toggleReportSubmitTarget(target.id)}
+                                  className="flex w-full items-center gap-3 py-3 text-left transition-colors hover:text-theme-700 disabled:cursor-default dark:hover:text-theme-300"
+                                >
+                                  <span className={`flex h-4 w-4 flex-shrink-0 items-center justify-center rounded border text-[10px] ${selected ? 'border-theme-600 bg-theme-600 text-white' : 'border-gray-300 text-transparent'}`}>?</span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block font-semibold text-gray-950 dark:text-white">{target.name}</span>
+                                    <span className="block text-xs leading-5 text-gray-500 dark:text-gray-400">{target.department} · {target.role} · {target.type}</span>
+                                  </span>
+                                  <span className="text-xs text-gray-400">{selected ? '已选' : '未选'}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {!reportSubmitDone && (
+                            <button
+                              onClick={handleSubmitWorkReport}
+                              disabled={selectedReportSubmitTargets.length === 0}
+                              className="mb-6 rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 transition-colors hover:bg-theme-100 disabled:cursor-not-allowed disabled:text-gray-400 dark:bg-theme-900/20 dark:text-theme-300"
+                            >
+                              确认对象，提交工作汇报
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {reportSubmitDone && (
+                        <>
+                          <div className="flex justify-end">
+                            <div className="max-w-2xl rounded-2xl bg-theme-50 px-5 py-4 text-gray-900 shadow-sm dark:bg-theme-900/20 dark:text-white">
+                              提交给 {reportSubmitTargets.filter((target) => selectedReportSubmitTargets.includes(target.id)).map((target) => target.name).join(' / ')}
+                            </div>
+                          </div>
+                          <div className="flex gap-4">
+                            <img
+                              src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd"
+                              alt="如意助手"
+                              className="mt-1 h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                            />
+                            <div className="max-w-3xl flex-1 text-gray-900 dark:text-gray-100">
+                              <p className="mb-4 leading-7">已调用提交接口，工作汇报已提交。</p>
+                              <p className="mb-6 leading-7">后续可在“看汇报”中查看详情、评论和已读情况。</p>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+
                   {conversationKind === "documentDraft" && documentReady && (
                     <>
                       <div className="flex justify-end">
