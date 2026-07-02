@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  Menu, X, Shield, Lock, GitBranch, LayoutDashboard, 
-  Globe, Network, Palette, ChevronRight, User, FolderTree,
-  Route, Wand2, FileText, Edit3, Image as ImageIcon, Type, AlignJustify, Plus, Search, Upload
+import {
+  Menu, X, Shield, Lock, GitBranch, LayoutDashboard,
+  Globe, Network, Palette, ChevronRight, User, Users, FolderTree,
+  Route, Wand2, FileText, Edit3, Image as ImageIcon, Type, AlignJustify, Plus, Search, Upload,
+  Database, Briefcase, RefreshCw, CheckCircle2, Layers, Smartphone
 } from 'lucide-react';
 import NavigationConfig from '../components/NavigationConfig';
-import { SIDEBAR } from '../constants/layout';
 
 interface MenuItem {
   id: string;
@@ -21,15 +21,47 @@ const menuItems: MenuItem[] = [
     label: '系统',
     icon: <Shield size={18} />,
     children: [
-      { id: 'system-user', label: '用户管理', icon: <User size={16} /> },
-      { id: 'system-role', label: '角色管理', icon: <Lock size={16} /> },
-      { id: 'system-permission', label: '权限管理', icon: <Shield size={16} /> },
-      { id: 'system-nav', label: '导航栏配置', icon: <Route size={16} /> },
-      { id: 'security-log', label: '操作日志', icon: <GitBranch size={16} /> },
-      { id: 'security-audit', label: '安全审计', icon: <Shield size={16} /> },
-      { id: 'version-list', label: '版本列表', icon: <GitBranch size={16} /> },
-      { id: 'version-release', label: '发布记录', icon: <Globe size={16} /> },
-      { id: 'workspace-admin', label: '工作台', icon: <LayoutDashboard size={16} /> },
+      {
+        id: 'security-management',
+        label: '安全管理',
+        icon: <Shield size={16} />,
+        children: [
+          { id: 'security-log', label: '操作日志', icon: <GitBranch size={15} /> },
+          { id: 'security-audit', label: '安全审计', icon: <Shield size={15} /> },
+        ]
+      },
+      {
+        id: 'system-management',
+        label: '系统管理',
+        icon: <FolderTree size={16} />,
+        children: [
+          { id: 'system-user', label: '用户管理', icon: <User size={15} /> },
+          { id: 'system-user-groups', label: '用户组管理', icon: <Layers size={15} /> },
+          { id: 'system-role', label: '角色管理', icon: <Lock size={15} /> },
+          { id: 'system-menu', label: '菜单管理', icon: <Menu size={15} /> },
+          { id: 'system-dictionary', label: '字典管理', icon: <Database size={15} /> },
+          { id: 'system-external-user', label: '外部人员管理', icon: <Users size={15} /> },
+        ]
+      },
+      {
+        id: 'version-management',
+        label: '版本管理',
+        icon: <GitBranch size={16} />,
+        children: [
+          { id: 'version-list', label: '版本列表', icon: <GitBranch size={15} /> },
+          { id: 'version-release', label: '发布记录', icon: <Globe size={15} /> },
+        ]
+      },
+      {
+        id: 'workspace-management',
+        label: '工作台',
+        icon: <LayoutDashboard size={16} />,
+        children: [
+          { id: 'app-management', label: '应用管理', icon: <Briefcase size={15} /> },
+          { id: 'system-nav', label: '导航栏管理', icon: <Route size={15} /> },
+          { id: 'mobile-download', label: '移动应用下载管理', icon: <Smartphone size={15} /> },
+        ]
+      },
       { id: 'portal-admin', label: '门户基础管理', icon: <Globe size={16} /> },
       { id: 'business-admin', label: '业务系统管理', icon: <FolderTree size={16} /> },
       { id: 'theme-admin', label: '主题装扮管理', icon: <Palette size={16} /> },
@@ -55,12 +87,535 @@ const menuItems: MenuItem[] = [
   },
 ];
 
+const findMenuItemById = (items: MenuItem[], id: string | null): MenuItem | null => {
+  if (!id) return null;
+  for (const item of items) {
+    if (item.id === id) return item;
+    const matched = findMenuItemById(item.children || [], id);
+    if (matched) return matched;
+  }
+  return null;
+};
+
+const topLevelSystemSections = menuItems.find(item => item.id === 'system')?.children || [];
+
+const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
+  'ai-template': { menu: 'ai', subMenu: 'ai-template' },
+  'system-nav': { menu: 'system', subMenu: 'system-nav' },
+};
+
+const adminTheme = {
+  brand: '#d51f5c',
+  primaryMenu: '#32091f',
+  primaryMenuHover: '#48102d',
+  nestedBg: '#061523',
+  nestedBgSoft: '#08243b',
+  nestedBgActive: '#07263f',
+  activeBlue: '#2f7fbd',
+  collapsedFooter: '#041421',
+};
+
+function AdminBrand({ open }: { open: boolean }) {
+  return (
+    <div
+      className={`h-[90px] flex items-center border-b border-white/10 ${open ? 'px-5 justify-start' : 'px-0 justify-center'}`}
+      style={{ backgroundColor: adminTheme.brand }}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="w-11 h-11 rounded-full border-2 border-[#e7c18d] text-[#f3d2a2] flex items-center justify-center flex-shrink-0 text-lg font-bold">
+          吉
+        </div>
+        {open && (
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex flex-col overflow-hidden leading-tight">
+              <span className="text-white font-bold text-base tracking-wide">JUNEYAO AIR</span>
+              <span className="text-white text-xl font-bold">吉祥航空</span>
+            </div>
+            <div className="hidden h-11 w-11 flex-shrink-0 items-center justify-center border border-white/45 text-[9px] font-semibold leading-tight text-white/80 xl:flex">
+              STAR<br />ALLIANCE
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AdminPrimaryMenuButton({
+  item,
+  open,
+  active,
+  onClick,
+}: {
+  item: MenuItem;
+  open: boolean;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        w-full flex items-center gap-3 py-5 transition-colors
+        ${open ? 'px-7 justify-start' : 'px-0 justify-center'}
+        ${active ? 'text-white' : 'text-white hover:text-white'}
+      `}
+      style={{ backgroundColor: active ? adminTheme.brand : adminTheme.primaryMenu }}
+      onMouseEnter={(event) => {
+        if (!active) event.currentTarget.style.backgroundColor = adminTheme.primaryMenuHover;
+      }}
+      onMouseLeave={(event) => {
+        event.currentTarget.style.backgroundColor = active ? adminTheme.brand : adminTheme.primaryMenu;
+      }}
+    >
+      <span className="flex-shrink-0">{item.icon}</span>
+      {open && (
+        <>
+          <span className="flex-1 text-left text-sm font-semibold">{item.label}</span>
+          {item.children && (
+            <ChevronRight
+              size={16}
+              className={`transition-transform ${active ? 'rotate-90' : ''}`}
+            />
+          )}
+        </>
+      )}
+    </button>
+  );
+}
+
+function AdminNestedMenuTree({
+  items,
+  depth = 0,
+  activeSubMenu,
+  expandedMenus,
+  onSelect,
+}: {
+  items: MenuItem[];
+  depth?: number;
+  activeSubMenu: string | null;
+  expandedMenus: Set<string>;
+  onSelect: (item: MenuItem) => void;
+}) {
+  return (
+    <>
+      {items.map((subItem) => {
+    const isActive = activeSubMenu === subItem.id;
+    const hasActiveChild = !!findMenuItemById(subItem.children || [], activeSubMenu);
+    const isBranchOpen = expandedMenus.has(subItem.id);
+    const isLeafActive = isActive && !subItem.children?.length;
+
+        return (
+          <div key={subItem.id}>
+            <button
+              onClick={() => onSelect(subItem)}
+              className={`
+                w-full flex items-center gap-3 text-sm transition-colors
+                ${depth === 0 ? 'h-12 px-7' : 'h-10 pl-14 pr-5'}
+                ${isLeafActive ? 'text-white' : ''}
+                ${isActive && subItem.children?.length ? 'text-white' : ''}
+                ${!isActive && hasActiveChild ? 'text-white' : ''}
+                ${!isActive && !hasActiveChild ? 'text-slate-300 hover:text-white' : ''}
+              `}
+              style={{
+                backgroundColor: isLeafActive
+                  ? adminTheme.activeBlue
+                  : isActive || hasActiveChild
+                    ? adminTheme.nestedBgActive
+                    : 'transparent',
+              }}
+              onMouseEnter={(event) => {
+                if (!isLeafActive && !isActive && !hasActiveChild) {
+                  event.currentTarget.style.backgroundColor = adminTheme.nestedBgSoft;
+                }
+              }}
+              onMouseLeave={(event) => {
+                event.currentTarget.style.backgroundColor = isLeafActive
+                  ? adminTheme.activeBlue
+                  : isActive || hasActiveChild
+                    ? adminTheme.nestedBgActive
+                    : 'transparent';
+              }}
+            >
+              <span className={`flex-shrink-0 ${depth > 0 ? 'opacity-70' : ''}`}>{subItem.icon}</span>
+              <span className="flex-1 text-left">{subItem.label}</span>
+              {subItem.children?.length && (
+                <ChevronRight size={14} className={`transition-transform ${isBranchOpen ? 'rotate-90' : ''}`} />
+              )}
+            </button>
+            {subItem.children?.length && isBranchOpen && (
+              <div style={{ backgroundColor: adminTheme.collapsedFooter }}>
+                <AdminNestedMenuTree
+                  items={subItem.children}
+                  depth={depth + 1}
+                  activeSubMenu={activeSubMenu}
+                  expandedMenus={expandedMenus}
+                  onSelect={onSelect}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+
 function ContentPlaceholder({ title, icon }: { title: string; icon: string }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
       <div className="text-5xl mb-4">{icon}</div>
       <h2 className="text-xl font-bold text-gray-900 mb-2">{title}</h2>
       <p className="text-gray-500">此功能模块正在开发中，敬请期待。</p>
+    </div>
+  );
+}
+
+
+
+type UserGroupSource = 'manual' | 'sync';
+
+type UserGroupMember = {
+  name: string;
+  phone: string;
+  userId: string;
+  department: string;
+  position: string;
+};
+
+type UserGroupRecord = {
+  id: string;
+  name: string;
+  source: UserGroupSource;
+  description: string;
+  updatedAt: string;
+  owner: string;
+  members: UserGroupMember[];
+};
+
+const initialUserGroups: UserGroupRecord[] = [
+  {
+    id: 'project-collab',
+    name: '项目协同组',
+    source: 'manual',
+    description: '由管理员维护，用于跨部门项目工作台、流程和知识库权限授权。',
+    updatedAt: '2026-06-28 16:20',
+    owner: '梁吉利',
+    members: [
+      { name: '梁吉利', phone: '+86 13611750104', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理' },
+      { name: '赖慧娟', phone: '+86 13800138021', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管' },
+      { name: '肖林川', phone: '+86 13900139032', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理' },
+    ]
+  },
+  {
+    id: 'document-pilot',
+    name: 'AI公文试点组',
+    source: 'manual',
+    description: '手动添加的试点用户，可编辑成员，用于AI公文创作灰度范围配置。',
+    updatedAt: '2026-06-27 11:05',
+    owner: '梁勃',
+    members: [
+      { name: '梁勃', phone: '+86 13500135022', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人' },
+      { name: '陈一航', phone: '+86 13400134033', userId: '8ef67331', department: '市场营销部 / 数字营销处', position: '处长' },
+    ]
+  },
+  {
+    id: 'duty-admin',
+    name: '值班排班管理员',
+    source: 'manual',
+    description: '用于值班、排班和移动端通知配置的管理员用户组。',
+    updatedAt: '2026-06-25 09:45',
+    owner: '张鹏',
+    members: [
+      { name: '张鹏', phone: '+86 13700137011', userId: '9aa78120', department: '航务运行部 / 运行支撑处', position: '高级经理' },
+      { name: '赵六', phone: '+86 13100131033', userId: '3da77145', department: '信息管理部', position: '部门负责人' },
+    ]
+  },
+  {
+    id: 'middle-layer',
+    name: '中坚层',
+    source: 'sync',
+    description: '承接核心项目和跨部门推进的业务骨干，由主数据按员工层级同步。',
+    updatedAt: '2026-07-01 09:30',
+    owner: '主数据',
+    members: [
+      { name: '梁吉利', phone: '+86 13611750104', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理' },
+      { name: '赖慧娟', phone: '+86 13800138021', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管' },
+      { name: '肖林川', phone: '+86 13900139032', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理' },
+    ]
+  },
+  {
+    id: 'core-layer',
+    name: '核心层',
+    source: 'sync',
+    description: '关键业务线及重点职能的主要负责人，由主数据按员工层级同步。',
+    updatedAt: '2026-07-01 09:30',
+    owner: '主数据',
+    members: [
+      { name: '张鹏', phone: '+86 13700137011', userId: '9aa78120', department: '航务运行部 / 运行支撑处', position: '高级经理' },
+      { name: '梁勃', phone: '+86 13500135022', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人' },
+      { name: '陈一航', phone: '+86 13400134033', userId: '8ef67331', department: '市场营销部 / 数字营销处', position: '处长' },
+    ]
+  },
+  {
+    id: 'decision-layer',
+    name: '决策层',
+    source: 'sync',
+    description: '公司经营决策、重大项目审批及资源协同人员，由主数据按员工层级同步。',
+    updatedAt: '2026-07-01 09:30',
+    owner: '主数据',
+    members: [
+      { name: '王一', phone: '+86 13300133011', userId: '2ab88901', department: '总经理办公室', position: '决策委员' },
+      { name: '刘十', phone: '+86 13200132022', userId: '5cf90213', department: '经营管理部', position: '经营管理负责人' },
+      { name: '赵六', phone: '+86 13100131033', userId: '3da77145', department: '信息管理部', position: '部门负责人' },
+    ]
+  },
+];
+
+function UserGroupManagement() {
+  const [groups, setGroups] = useState<UserGroupRecord[]>(initialUserGroups);
+  const [selectedGroupId, setSelectedGroupId] = useState(initialUserGroups[0].id);
+  const [keyword, setKeyword] = useState('');
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draftName, setDraftName] = useState('');
+  const [draftDescription, setDraftDescription] = useState('');
+  const [toast, setToast] = useState('');
+  const [lastSyncTime, setLastSyncTime] = useState('2026-07-01 09:30');
+  const selectedGroup = groups.find(group => group.id === selectedGroupId) || groups[0];
+  const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim()));
+  const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim()));
+  const isManual = selectedGroup.source === 'manual';
+  const departmentCount = new Set(selectedGroup.members.map(member => member.department)).size;
+
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(''), 2200);
+  };
+
+  const handleConfirmSync = () => {
+    setSyncOpen(false);
+    setLastSyncTime('2026-07-01 10:30');
+    showToast('已从主数据同步系统用户组');
+  };
+
+  const handleAddGroup = () => {
+    const newGroup: UserGroupRecord = {
+      id: `manual-${groups.length + 1}`,
+      name: `新建用户组${manualGroups.length + 1}`,
+      source: 'manual',
+      description: '手动创建的用户组，可按业务场景维护成员和授权范围。',
+      updatedAt: '2026-07-01 10:35',
+      owner: '梁吉利',
+      members: [],
+    };
+    setGroups(current => [newGroup, ...current]);
+    setSelectedGroupId(newGroup.id);
+    setEditing(true);
+    setDraftName(newGroup.name);
+    setDraftDescription(newGroup.description);
+    showToast('已新增手动用户组');
+  };
+
+  const handleStartEdit = () => {
+    setDraftName(selectedGroup.name);
+    setDraftDescription(selectedGroup.description);
+    setEditing(true);
+  };
+
+  const handleSaveGroup = () => {
+    setGroups(current => current.map(group => group.id === selectedGroup.id
+      ? { ...group, name: draftName || group.name, description: draftDescription || group.description, updatedAt: '2026-07-01 10:40' }
+      : group
+    ));
+    setEditing(false);
+    showToast('用户组信息已保存');
+  };
+
+  const handleAddMember = () => {
+    const nextMember: UserGroupMember = {
+      name: '新增成员',
+      phone: '+86 13000000000',
+      userId: `new${selectedGroup.members.length + 1}`,
+      department: '信息管理部 / 临时授权',
+      position: '成员',
+    };
+    setGroups(current => current.map(group => group.id === selectedGroup.id
+      ? { ...group, members: [...group.members, nextMember], updatedAt: '2026-07-01 10:45' }
+      : group
+    ));
+    showToast('已添加成员');
+  };
+
+  const handleRemoveMember = (userId: string) => {
+    setGroups(current => current.map(group => group.id === selectedGroup.id
+      ? { ...group, members: group.members.filter(member => member.userId !== userId), updatedAt: '2026-07-01 10:45' }
+      : group
+    ));
+    showToast('已移除成员');
+  };
+
+  const renderGroupButton = (group: UserGroupRecord) => (
+    <button
+      key={group.id}
+      onClick={() => {
+        setSelectedGroupId(group.id);
+        setEditing(false);
+      }}
+      className={`flex w-full items-center justify-between rounded px-4 py-3 text-left transition ${selectedGroupId === group.id ? 'bg-blue-50 text-[#2f75b5]' : 'text-gray-700 hover:bg-gray-50'}`}
+    >
+      <span className="flex min-w-0 items-center gap-2 font-medium">
+        <Users size={17} />
+        <span className="truncate">{group.name}</span>
+      </span>
+      <span className="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{group.members.length}</span>
+    </button>
+  );
+
+  return (
+    <div className="min-h-[calc(100vh-12rem)] overflow-hidden bg-white text-sm text-gray-800 shadow-sm">
+      {toast && (
+        <div className="fixed right-8 top-20 z-50 flex items-center gap-2 rounded bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
+          <CheckCircle2 size={16} className="text-green-300" />
+          {toast}
+        </div>
+      )}
+      <div className="border-b border-gray-200 px-8 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-[22px] font-semibold text-gray-900">用户组管理</h2>
+            <p className="mt-2 text-sm text-gray-500">手动用户组支持新增和编辑；系统同步用户组由主数据维护，仅支持同步刷新。</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={handleAddGroup} className="inline-flex h-9 items-center gap-2 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f]">
+              <Plus size={15} />
+              新增用户组
+            </button>
+            <button onClick={() => setSyncOpen(true)} className="inline-flex h-9 items-center gap-2 rounded border border-gray-300 bg-white px-4 text-sm text-gray-700 hover:bg-gray-50">
+              <RefreshCw size={15} />
+              从主数据同步
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid min-h-[620px] grid-cols-[300px_minmax(0,1fr)] max-lg:grid-cols-1">
+        <aside className="border-r border-gray-200 bg-white p-5 max-lg:border-b max-lg:border-r-0">
+          <div className="relative mb-5">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索用户组" className="h-10 w-full rounded border border-gray-300 pl-10 pr-3 text-sm outline-none focus:border-[#2f75b5]" />
+          </div>
+
+          <div className="space-y-5">
+            <div>
+              <div className="mb-2 flex items-center justify-between text-gray-700">
+                <span className="flex items-center gap-2 font-medium"><ChevronRight size={14} className="rotate-90" />手动管理（{manualGroups.length}）</span>
+                <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-[#2f75b5]">可编辑</span>
+              </div>
+              <div className="space-y-2">{manualGroups.map(renderGroupButton)}</div>
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between text-gray-700">
+                <span className="flex items-center gap-2 font-medium"><ChevronRight size={14} className="rotate-90" />系统同步（{syncedGroups.length}）</span>
+                <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">只读</span>
+              </div>
+              <div className="space-y-2">{syncedGroups.map(renderGroupButton)}</div>
+            </div>
+            {manualGroups.length + syncedGroups.length === 0 && <div className="px-4 py-6 text-center text-gray-400">暂无匹配用户组</div>}
+            <div className="flex items-center gap-2 text-gray-600"><ChevronRight size={14} /><span>未分组（0）</span></div>
+          </div>
+        </aside>
+
+        <section className="min-w-0 p-6">
+          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-4">
+                {editing && isManual ? (
+                  <input value={draftName} onChange={(event) => setDraftName(event.target.value)} className="h-9 w-72 rounded border border-gray-300 px-3 text-lg font-semibold text-gray-900 outline-none focus:border-[#2f75b5]" />
+                ) : (
+                  <h3 className="text-lg font-semibold text-gray-900">{selectedGroup.name}</h3>
+                )}
+                <span className="text-gray-500">成员 <b className="ml-1 text-gray-900">{selectedGroup.members.length}</b></span>
+                <span className="h-4 w-px bg-gray-200" />
+                <span className="text-gray-500">部门 <b className="ml-1 text-gray-900">{departmentCount}</b></span>
+                <span className={`rounded px-2 py-1 text-xs ${isManual ? 'bg-blue-50 text-[#2f75b5]' : 'bg-gray-100 text-gray-500'}`}>{isManual ? '手动管理' : '系统同步'}</span>
+              </div>
+              {editing && isManual ? (
+                <textarea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} rows={2} className="mt-3 w-full max-w-3xl resize-none rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:border-[#2f75b5]" />
+              ) : (
+                <p className="mt-2 max-w-3xl text-sm text-gray-500">{selectedGroup.description}</p>
+              )}
+            </div>
+            <div className="text-right text-xs text-gray-500">
+              <div>来源：{isManual ? '后台手动维护' : '主数据员工层级'}</div>
+              <div className="mt-1">负责人：{selectedGroup.owner}</div>
+              <div className="mt-1">更新时间：{isManual ? selectedGroup.updatedAt : lastSyncTime}</div>
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            <button className="h-9 rounded border border-gray-300 bg-gray-50 px-4 text-gray-700">搜索成员</button>
+            <input className="h-9 w-72 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" placeholder="请输入成员姓名、邮箱..." />
+            {isManual ? (
+              <>
+                {editing ? (
+                  <>
+                    <button onClick={handleSaveGroup} className="h-9 rounded bg-[#2f75b5] px-4 text-white hover:bg-[#28669f]">保存</button>
+                    <button onClick={() => setEditing(false)} className="h-9 rounded border border-gray-300 bg-white px-4 text-gray-700 hover:bg-gray-50">取消</button>
+                  </>
+                ) : (
+                  <button onClick={handleStartEdit} className="h-9 rounded border border-[#2f75b5] bg-white px-4 text-[#2f75b5] hover:bg-blue-50">编辑用户组</button>
+                )}
+                <button onClick={handleAddMember} className="h-9 rounded bg-[#2f75b5] px-4 text-white hover:bg-[#28669f]">添加成员</button>
+              </>
+            ) : (
+              <span className="rounded bg-gray-100 px-3 py-2 text-xs text-gray-500">同步组不支持在此编辑成员</span>
+            )}
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-[900px] w-full border-collapse text-left">
+              <thead>
+                <tr className="bg-gray-100 text-gray-600">
+                  <th className="px-4 py-3 font-medium">用户组成员</th>
+                  <th className="px-4 py-3 font-medium">联系手机号/邮箱</th>
+                  <th className="px-4 py-3 font-medium">用户 ID</th>
+                  <th className="px-4 py-3 font-medium">部门</th>
+                  <th className="px-4 py-3 font-medium">岗位</th>
+                  {isManual && <th className="px-4 py-3 font-medium">操作</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {selectedGroup.members.map(member => (
+                  <tr key={member.userId} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-4 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eef4ff] text-sm font-semibold text-[#2f75b5]">{member.name.slice(0, 1)}</div><span className="font-medium text-gray-900">{member.name}</span></div></td>
+                    <td className="px-4 py-4 text-gray-700">{member.phone}</td>
+                    <td className="px-4 py-4 text-gray-700">{member.userId}</td>
+                    <td className="px-4 py-4 text-gray-700">{member.department}</td>
+                    <td className="px-4 py-4 text-gray-700">{member.position}</td>
+                    {isManual && <td className="px-4 py-4"><button onClick={() => handleRemoveMember(member.userId)} className="text-[#2f75b5] hover:underline">移除</button></td>}
+                  </tr>
+                ))}
+                {selectedGroup.members.length === 0 && <tr><td className="px-4 py-12 text-center text-gray-400" colSpan={isManual ? 6 : 5}>暂无成员</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      {syncOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-md rounded bg-white p-6 shadow-xl">
+            <div className="mb-3 text-lg font-semibold text-gray-900">从主数据同步</div>
+            <p className="text-sm leading-6 text-gray-600">上次更新时间{lastSyncTime}，是否需要再次更新？</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setSyncOpen(false)} className="rounded border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">取消</button>
+              <button onClick={handleConfirmSync} className="rounded bg-[#2f75b5] px-4 py-2 text-sm font-medium text-white hover:bg-[#28669f]">确定</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -732,16 +1287,56 @@ function DocumentTemplateManagementConsole() {
 export default function Admin() {
   const [searchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState<string | null>(searchParams.get('section') === 'ai-template' ? 'ai' : null);
-  const [activeSubMenu, setActiveSubMenu] = useState<string | null>(searchParams.get('section') === 'ai-template' ? 'ai-template' : null);
+  const initialSection = searchParams.get('section');
+  const initialAdminState = initialSection ? adminSectionMap[initialSection] : null;
+  const [activeMenu, setActiveMenu] = useState<string | null>(initialAdminState?.menu || null);
+  const [activeSubMenu, setActiveSubMenu] = useState<string | null>(initialAdminState?.subMenu || null);
+  const [expandedMenus, setExpandedMenus] = useState<Set<string>>(() => new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (searchParams.get('section') === 'ai-template') {
-      setActiveMenu('ai');
-      setActiveSubMenu('ai-template');
+    const section = searchParams.get('section');
+    const mappedState = section ? adminSectionMap[section] : null;
+    if (mappedState) {
+      setActiveMenu(mappedState.menu);
+      setActiveSubMenu(mappedState.subMenu);
+      setExpandedMenus(new Set());
     }
   }, [searchParams]);
+
+  const toggleExpandedMenu = (menuId: string) => {
+    setExpandedMenus((current) => {
+      const next = new Set(current);
+      if (next.has(menuId)) {
+        next.delete(menuId);
+      } else {
+        next.add(menuId);
+      }
+      return next;
+    });
+  };
+
+  const handleNestedMenuClick = (item: MenuItem) => {
+    if (item.children?.length) {
+      toggleExpandedMenu(item.id);
+      setActiveSubMenu(item.id);
+      return;
+    }
+    setActiveSubMenu(item.id);
+  };
+
+  const renderMenuCards = (items: MenuItem[]) => (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {items.map(sub => (
+        <button key={sub.id} onClick={() => handleNestedMenuClick(sub)}
+          className="p-6 rounded-xl border border-gray-100 bg-white text-left hover:border-blue-200 hover:shadow-md cursor-pointer transition-all">
+          <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-3 text-[#2f75b5]">{sub.icon}</div>
+          <div className="font-medium text-gray-900">{sub.label}</div>
+          {sub.children?.length && <div className="mt-2 text-xs text-gray-400">{sub.children.map(child => child.label).join(' / ')}</div>}
+        </button>
+      ))}
+    </div>
+  );
 
   const handleMenuClick = (menuId: string, hasChildren: boolean) => {
     // 工作台跳转至主应用首页
@@ -750,11 +1345,14 @@ export default function Admin() {
       return;
     }
     if (hasChildren) {
-      setActiveMenu(activeMenu === menuId ? null : menuId);
+      const closingCurrentMenu = activeMenu === menuId;
+      setActiveMenu(closingCurrentMenu ? null : menuId);
       setActiveSubMenu(null);
+      setExpandedMenus(new Set());
     } else {
       setActiveMenu(menuId);
       setActiveSubMenu(null);
+      setExpandedMenus(new Set());
     }
   };
 
@@ -763,75 +1361,30 @@ export default function Admin() {
       {/* 左侧边栏 */}
       <div className={`
         ${sidebarOpen ? 'w-64' : 'w-16'} 
-        bg-gradient-to-b from-red-600 to-red-800 flex flex-col transition-all duration-300
+        bg-[#061523] flex flex-col transition-all duration-300 shadow-[4px_0_16px_rgba(15,23,42,0.22)]
       `}>
         {/* Logo区域 */}
-        <div className="p-4 border-b border-red-500/30">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-              <span className="text-2xl">🐉</span>
-            </div>
-            {sidebarOpen && (
-              <div className="flex flex-col overflow-hidden">
-                <span className="text-white font-bold text-sm">JUNEYAO AIR</span>
-                <span className="text-white/80 text-xs">吉祥航空</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* 菜单按钮 */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute top-4 left-64 w-8 h-8 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors z-10"
-          style={{ left: sidebarOpen ? SIDEBAR.EXPANDED : SIDEBAR.COLLAPSED }}
-        >
-          {sidebarOpen ? <X size={16} /> : <Menu size={16} />}
-        </button>
+        <AdminBrand open={sidebarOpen} />
 
         {/* 菜单列表 */}
-        <div className="flex-1 overflow-y-auto py-4">
-          <div className="px-3 space-y-1">
-            <div className="text-xs text-red-200/60 px-3 py-2 font-medium uppercase tracking-wider">
-              系统
-            </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="space-y-0">
             {menuItems.map((item) => (
               <div key={item.id}>
-                <button
+                <AdminPrimaryMenuButton
+                  item={item}
+                  open={sidebarOpen}
+                  active={activeMenu === item.id}
                   onClick={() => handleMenuClick(item.id, !!item.children)}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors
-                    ${activeMenu === item.id ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10'}
-                  `}
-                >
-                  <span className="flex-shrink-0">{item.icon}</span>
-                  {sidebarOpen && (
-                    <>
-                      <span className="flex-1 text-left text-sm font-medium">{item.label}</span>
-                      {item.children && (
-                        <ChevronRight 
-                          size={14} 
-                          className={`transition-transform ${activeMenu === item.id ? 'rotate-90' : ''}`} 
-                        />
-                      )}
-                    </>
-                  )}
-                </button>
+                />
                 {sidebarOpen && item.children && activeMenu === item.id && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {item.children.map((subItem) => (
-                      <button
-                        key={subItem.id}
-                        onClick={() => setActiveSubMenu(subItem.id)}
-                        className={`
-                          w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
-                          ${activeSubMenu === subItem.id ? 'bg-white/15 text-white' : 'text-white/60 hover:text-white/80 hover:bg-white/5'}
-                        `}
-                      >
-                        <span>{subItem.icon}</span>
-                        <span>{subItem.label}</span>
-                      </button>
-                    ))}
+                  <div className="space-y-0" style={{ backgroundColor: adminTheme.nestedBg }}>
+                    <AdminNestedMenuTree
+                      items={item.children}
+                      activeSubMenu={activeSubMenu}
+                      expandedMenus={expandedMenus}
+                      onSelect={handleNestedMenuClick}
+                    />
                   </div>
                 )}
               </div>
@@ -841,8 +1394,8 @@ export default function Admin() {
 
         {/* 底部版权 */}
         {sidebarOpen && (
-          <div className="p-4 border-t border-red-500/30">
-            <div className="text-xs text-red-200/60 text-center">
+          <div className="p-4 border-t border-white/10" style={{ backgroundColor: adminTheme.collapsedFooter }}>
+            <div className="text-xs text-slate-500 text-center">
               <div className="flex items-center justify-center gap-2 mb-1">
                 <span>吉祥航空</span>
                 <span>✈️</span>
@@ -940,7 +1493,7 @@ export default function Admin() {
             </div>
           ) : (
             /* 根据选中菜单展示对应内容 */
-            <div className={activeSubMenu === 'ai-template' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
+            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
               {/* 面包屑导航 */}
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                 <span className="cursor-pointer hover:text-gray-700" onClick={() => { setActiveMenu(null); setActiveSubMenu(null); }}>首页</span>
@@ -952,7 +1505,7 @@ export default function Admin() {
                   <>
                     <ChevronRight size={14} />
                     <span className="text-gray-900 font-medium">
-                      {menuItems.find(m => m.id === activeMenu)?.children?.find(c => c.id === activeSubMenu)?.label || ''}
+                      {findMenuItemById(menuItems.find(m => m.id === activeMenu)?.children || [], activeSubMenu)?.label || ''}
                     </span>
                   </>
                 )}
@@ -983,27 +1536,29 @@ export default function Admin() {
                 <div>
                   {!activeSubMenu && (
                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                      <h2 className="text-xl font-bold text-gray-900 mb-6">系统管理</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {menuItems.find(m => m.id === 'system')?.children?.map(sub => (
-                          <div key={sub.id} onClick={() => setActiveSubMenu(sub.id)}
-                            className="p-6 rounded-xl border border-gray-100 hover:border-blue-200 hover:shadow-md cursor-pointer transition-all">
-                            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center mb-3">{sub.icon}</div>
-                            <div className="font-medium text-gray-900">{sub.label}</div>
-                          </div>
-                        ))}
-                      </div>
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">系统</h2>
+                      {renderMenuCards(topLevelSystemSections)}
+                    </div>
+                  )}
+                  {activeSubMenu && findMenuItemById(topLevelSystemSections, activeSubMenu)?.children && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">{findMenuItemById(topLevelSystemSections, activeSubMenu)?.label}</h2>
+                      {renderMenuCards(findMenuItemById(topLevelSystemSections, activeSubMenu)?.children || [])}
                     </div>
                   )}
                   {activeSubMenu === 'system-user' && <ContentPlaceholder title="用户管理" icon="👥" />}
                   {activeSubMenu === 'system-role' && <ContentPlaceholder title="角色管理" icon="🔑" />}
-                  {activeSubMenu === 'system-permission' && <ContentPlaceholder title="权限管理" icon="🛡️" />}
+                  {activeSubMenu === 'system-menu' && <ContentPlaceholder title="菜单管理" icon="📋" />}
+                  {activeSubMenu === 'system-dictionary' && <ContentPlaceholder title="字典管理" icon="📘" />}
+                  {activeSubMenu === 'system-external-user' && <ContentPlaceholder title="外部人员管理" icon="👥" />}
+                  {activeSubMenu === 'system-user-groups' && <UserGroupManagement />}
                   {activeSubMenu === 'system-nav' && <NavigationConfig />}
                   {activeSubMenu === 'security-log' && <ContentPlaceholder title="操作日志" icon="📋" />}
                   {activeSubMenu === 'security-audit' && <ContentPlaceholder title="安全审计" icon="🔍" />}
                   {activeSubMenu === 'version-list' && <ContentPlaceholder title="版本列表" icon="📦" />}
                   {activeSubMenu === 'version-release' && <ContentPlaceholder title="发布记录" icon="🚀" />}
-                  {activeSubMenu === 'workspace-admin' && <ContentPlaceholder title="工作台" icon="📊" />}
+                  {activeSubMenu === 'app-management' && <ContentPlaceholder title="应用管理" icon="📊" />}
+                  {activeSubMenu === 'mobile-download' && <ContentPlaceholder title="移动应用下载管理" icon="📱" />}
                   {activeSubMenu === 'portal-admin' && <ContentPlaceholder title="门户基础管理" icon="🌐" />}
                   {activeSubMenu === 'business-admin' && <ContentPlaceholder title="业务系统管理" icon="📁" />}
                   {activeSubMenu === 'theme-admin' && <ContentPlaceholder title="主题装扮管理" icon="🎨" />}

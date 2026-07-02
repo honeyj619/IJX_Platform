@@ -24,12 +24,12 @@ interface UserGroup {
 }
 
 const ALL_APPS: AppItem[] = [
-  { id: 'msg', label: '消息', icon: <MessageCircle size={18} />, color: 'text-blue-500' },
-  { id: 'portal', label: '工作门户', icon: <LayoutGrid size={18} />, color: 'text-green-500' },
-  { id: 'cal', label: '日历', icon: <Calendar size={18} />, color: 'text-orange-500' },
-  { id: 'knowledge', label: '知识库', icon: <HelpCircle size={18} />, color: 'text-purple-500' },
-  { id: 'business', label: '业务系统', icon: <Table size={18} />, color: 'text-indigo-500' },
-  { id: 'ruyi', label: '如意空间', icon: <Sparkles size={18} />, color: 'text-pink-500' },
+  { id: 'msg', label: '消息', icon: <MessageCircle size={18} />, color: 'text-[#2f75b5]' },
+  { id: 'portal', label: '工作门户', icon: <LayoutGrid size={18} />, color: 'text-[#2f75b5]' },
+  { id: 'cal', label: '日历', icon: <Calendar size={18} />, color: 'text-[#2f75b5]' },
+  { id: 'knowledge', label: '知识库', icon: <HelpCircle size={18} />, color: 'text-[#2f75b5]' },
+  { id: 'business', label: '业务系统', icon: <Table size={18} />, color: 'text-[#2f75b5]' },
+  { id: 'ruyi', label: '如意空间', icon: <Sparkles size={18} />, color: 'text-[#2f75b5]' },
 ];
 
 const DEFAULT_APP_IDS = ['msg', 'portal', 'cal', 'knowledge', 'business', 'ruyi'];
@@ -110,15 +110,15 @@ export default function NavigationConfig() {
   const selectedGroupName = USER_GROUPS.find(g => g.id === selectedGroup)?.name || '';
 
   return (
-    <div className="space-y-6">
+    <div className="bg-white text-sm text-gray-800">
       {/* Tabs */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-gray-200 px-6 pt-2">
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab('default')}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'default'
-                ? 'border-blue-500 text-blue-600'
+                ? 'border-[#2f75b5] text-[#2f75b5]'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -128,7 +128,7 @@ export default function NavigationConfig() {
             onClick={() => setActiveTab('custom')}
             className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'custom'
-                ? 'border-blue-500 text-blue-600'
+                ? 'border-[#2f75b5] text-[#2f75b5]'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -138,19 +138,19 @@ export default function NavigationConfig() {
       </div>
 
       {/* Top bar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
         <div className="flex items-center gap-4">
           {/* User group dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm text-gray-700 hover:border-gray-400 transition-colors min-w-[140px]"
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded text-sm text-gray-700 hover:border-gray-400 transition-colors min-w-[140px]"
             >
               <span className="flex-1 text-left">{selectedGroupName}</span>
               <ChevronDown size={16} className={`transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             {dropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-2">
+              <div className="absolute top-full left-0 mt-1 w-72 bg-white border border-gray-200 rounded shadow-lg z-50 py-2">
                 <div className="px-3 py-2 text-xs text-gray-400 flex items-center gap-1">
                   <Info size={12} />
                   为用户组自定义导航栏，优先级从高到低
@@ -161,17 +161,17 @@ export default function NavigationConfig() {
                     onClick={() => { setSelectedGroup(group.id); setDropdownOpen(false); }}
                     className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
                   >
-                    <span className={selectedGroup === group.id ? 'text-blue-600 font-medium' : 'text-gray-700'}>
+                    <span className={selectedGroup === group.id ? 'text-[#2f75b5] font-medium' : 'text-gray-700'}>
                       {group.name}
                     </span>
-                    {selectedGroup === group.id && <Check size={16} className="text-blue-500" />}
+                    {selectedGroup === group.id && <Check size={16} className="text-[#2f75b5]" />}
                   </button>
                 ))}
                 <div className="border-t border-gray-100 mt-1 pt-1 flex items-center gap-4 px-3 py-2">
-                  <button className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                  <button className="text-sm text-[#2f75b5] hover:text-[#28669f] flex items-center gap-1">
                     <Plus size={14} /> 新建用户组
                   </button>
-                  <button className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1">
+                  <button className="text-sm text-[#2f75b5] hover:text-[#28669f] flex items-center gap-1">
                     <Pencil size={14} /> 编辑用户组
                   </button>
                 </div>
@@ -190,13 +190,13 @@ export default function NavigationConfig() {
             <>
               <button
                 onClick={handleCancel}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors"
               >
                 取消
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-[#2f75b5] text-white rounded text-sm hover:bg-[#28669f] transition-colors"
               >
                 保存
               </button>
@@ -204,7 +204,7 @@ export default function NavigationConfig() {
           ) : (
             <button
               onClick={() => setIsEditing(true)}
-              className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
             >
               <Pencil size={14} /> 编辑导航
             </button>
@@ -213,16 +213,16 @@ export default function NavigationConfig() {
       </div>
 
       {/* Main content */}
-      <div className="flex min-w-[820px] items-start gap-6">
+      <div className="grid min-w-[900px] grid-cols-[420px_minmax(0,1fr)] items-start gap-5 bg-[#eef1f5] p-5">
         {/* Left: Operation Area */}
-        <div className="w-[476px] flex-none">
+        <div className="min-w-0 bg-white p-5">
           <div className="flex items-center gap-2 mb-4">
             <h3 className="text-sm font-medium text-gray-900">操作区域</h3>
             <span className="text-xs text-gray-400">(数量限制: 2~25个)</span>
           </div>
 
-          <div className="w-full bg-white rounded-xl border border-gray-200 p-1">
-            <div className="grid grid-cols-[repeat(5,88px)] gap-1.5">
+          <div className="w-full border border-gray-200 bg-white p-2">
+            <div className="grid grid-cols-[repeat(4,88px)] gap-2">
               {selectedApps.map((app) => (
                 <div
                   key={app.id}
@@ -236,7 +236,7 @@ export default function NavigationConfig() {
                       openEditTileModal(app);
                     }
                   }}
-                  className="relative flex h-[74px] w-[88px] flex-none flex-col items-center justify-center gap-1 rounded-md border border-gray-100 bg-white p-1 transition-colors hover:border-gray-200"
+                  className="relative flex h-[74px] w-[88px] flex-none flex-col items-center justify-center gap-1 rounded border border-gray-200 bg-white p-1 transition-colors hover:border-gray-200"
                 >
                   {isEditing && (
                     <button
@@ -260,7 +260,7 @@ export default function NavigationConfig() {
               {isEditing && (
                 <button
                   onClick={openAddTileModal}
-                  className="flex h-[74px] w-[88px] flex-none flex-col items-center justify-center gap-1 rounded-md border border-dashed border-gray-300 bg-white p-1 transition-colors hover:border-blue-400 hover:bg-blue-50/30"
+                  className="flex h-[74px] w-[88px] flex-none flex-col items-center justify-center gap-1 rounded border border-dashed border-gray-300 bg-white p-1 transition-colors hover:border-[#2f75b5] hover:bg-[#eef6fc]/30"
                 >
                   <div className="w-6 h-6 flex items-center justify-center text-gray-400">
                     <Plus size={18} />
@@ -275,13 +275,13 @@ export default function NavigationConfig() {
         </div>
 
         {/* Right: Preview */}
-        <div className="w-80 flex-shrink-0">
+        <div className="min-w-0 bg-white p-5">
           <div className="flex items-center gap-4 mb-4">
             <button
               onClick={() => setPreviewMode('light')}
               className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
                 previewMode === 'light'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-[#2f75b5] text-[#2f75b5]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -291,7 +291,7 @@ export default function NavigationConfig() {
               onClick={() => setPreviewMode('dark')}
               className={`text-sm font-medium pb-1 border-b-2 transition-colors ${
                 previewMode === 'dark'
-                  ? 'border-blue-500 text-blue-600'
+                  ? 'border-[#2f75b5] text-[#2f75b5]'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -299,7 +299,7 @@ export default function NavigationConfig() {
             </button>
           </div>
 
-          <div className={`rounded-xl border overflow-hidden ${
+          <div className={`rounded border overflow-hidden ${
             previewMode === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-200'
           }`}>
             {/* Window chrome */}
@@ -337,7 +337,7 @@ export default function NavigationConfig() {
                     key={app.id}
                     className={`flex items-center gap-2.5 px-2 py-1.5 rounded-md text-xs ${
                       idx === 0
-                        ? (previewMode === 'dark' ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600')
+                        ? (previewMode === 'dark' ? 'bg-[#2f75b5]/20 text-[#7ab3dd]' : 'bg-[#eef6fc] text-[#2f75b5]')
                         : (previewMode === 'dark' ? 'text-slate-300 hover:bg-slate-700/50' : 'text-gray-700 hover:bg-gray-100')
                     }`}
                   >
@@ -399,7 +399,7 @@ export default function NavigationConfig() {
                 <input
                   value={tileForm.link}
                   onChange={(event) => setTileForm(prev => ({ ...prev, link: event.target.value }))}
-                  className="mt-2 h-8 w-full rounded border border-gray-300 px-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500"
+                  className="mt-2 h-8 w-full rounded border border-gray-300 px-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-[#2f75b5]"
                   placeholder="请填写 HTTP 或 HTTPS 地址"
                 />
               </label>
@@ -409,7 +409,7 @@ export default function NavigationConfig() {
                 <input
                   value={tileForm.name}
                   onChange={(event) => setTileForm(prev => ({ ...prev, name: event.target.value }))}
-                  className="mt-2 h-8 w-full rounded border border-gray-300 px-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-blue-500"
+                  className="mt-2 h-8 w-full rounded border border-gray-300 px-3 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-[#2f75b5]"
                   placeholder="请填写链接展示名称"
                 />
               </label>
@@ -417,7 +417,7 @@ export default function NavigationConfig() {
               <div>
                 <div className="text-sm text-gray-900">展示图标<span className="text-red-500">*</span></div>
                 <div className="mt-2 flex items-center gap-5">
-                  <button className="flex h-[72px] w-[72px] items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 text-gray-800 transition-colors hover:border-blue-400 hover:bg-blue-50">
+                  <button className="flex h-[72px] w-[72px] items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 text-gray-800 transition-colors hover:border-[#2f75b5] hover:bg-[#eef6fc]">
                     {tileModal.app ? (
                       <span className={tileModal.app.color}>{tileModal.app.icon}</span>
                     ) : (

@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, Target, ArrowRight, Copy, RotateCcw } from "lucide-react";
+import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, Target, Copy, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import DocumentEditor from "./DocumentEditor";
 
@@ -50,7 +50,7 @@ const defaultAssistants: Assistant[] = [
   { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
   { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
   { id: 3, name: "如意公文创作", isActive: false, icon: <FileTextIcon size={18} /> },
-  { id: 4, name: "如意目标助手", isActive: false, icon: <Target size={18} /> },
+  { id: 4, name: "如意工作参谋师", isActive: false, icon: <Target size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -235,6 +235,22 @@ const reportSubmitTargets = [
   { id: 3, name: "梁勃", department: "信息管理部", role: "部门负责人", type: "汇报对象" },
 ];
 
+const suggestedPrompts = [
+  "我还有什么流程没有处理？",
+  "帮我生成本周工作汇报",
+  "帮我预约项目会议室",
+  "看看我的 OKR 当前进展",
+];
+
+const itServicePrompts = [
+  "解锁VPN账号",
+  "吉祥账号重置密码",
+  "电脑硬件故障",
+  "网络连接问题",
+  "办公软件使用",
+  "提交ITSM工单报障",
+];
+
 export default function RuYiZone() {
   const [input, setInput] = useState("");
   const [assistants, setAssistants] = useState<Assistant[]>(defaultAssistants);
@@ -345,7 +361,7 @@ export default function RuYiZone() {
     if (kind === "feedback") return "IT服务助手";
     if (kind === "knowledge" || kind === "operations") return "企业知识专家";
     if (kind === "documentDraft") return "如意公文创作";
-    if (kind === "goalAssistant") return "如意目标助手";
+    if (kind === "goalAssistant") return "如意工作参谋师";
     return "";
   };
 
@@ -424,12 +440,39 @@ export default function RuYiZone() {
     setReportSubmitDone(true);
   };
 
+  const sendItServiceQuestion = (question: string) => {
+    const message = question.trim();
+    if (!message) return;
+    const itAssistant = defaultAssistants.find((assistant) => assistant.name === "IT服务助手") || null;
+    setAssistants(defaultAssistants.map((item) => ({ ...item, isActive: item.name === "IT服务助手" })));
+    setSelectedAssistant(itAssistant);
+    setSelectedHistoryId(null);
+    setActiveTool(null);
+    setShowEditor(false);
+    setEmbedEditorInRuyiZone(false);
+    setConversationKind("feedback");
+    setSentQuestion(message);
+    setHasConversation(true);
+    setInput("");
+  };
+
   const handleAssistantSelect = (assistant: Assistant) => {
     if (assistant.name === "如意公文创作") {
       openLegacyDocumentAssistant();
       return;
     }
-    if (assistant.name === "如意目标助手") {
+    if (assistant.name === "IT服务助手") {
+      setAssistants(defaultAssistants.map((item) => ({ ...item, isActive: item.id === assistant.id })));
+      setSelectedAssistant(assistant);
+      setSelectedHistoryId(null);
+      setHasConversation(false);
+      setActiveTool(null);
+      setShowEditor(false);
+      setEmbedEditorInRuyiZone(false);
+      setInput("");
+      return;
+    }
+    if (assistant.name === "如意工作参谋师") {
       setAssistants(defaultAssistants.map((item) => ({ ...item, isActive: item.id === assistant.id })));
       setSelectedAssistant(assistant);
       setSelectedHistoryId(null);
@@ -748,6 +791,64 @@ export default function RuYiZone() {
     </div>
   );
 
+  const renderItServiceLanding = () => (
+    <div className="mx-auto flex min-h-[calc(100vh-9rem)] w-full max-w-5xl flex-col justify-center px-2 py-8">
+      <div className="mb-8">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-theme-50 px-3 py-1 text-xs font-semibold text-theme-700 dark:bg-theme-900/25 dark:text-theme-300">
+          <MonitorCog size={14} />
+          IT服务助手
+        </div>
+        <h2 className="text-3xl font-bold tracking-normal text-gray-950 dark:text-white">你好，我是吉祥航空IT服务助手</h2>
+      </div>
+
+      <div className="grid gap-5 md:grid-cols-2">
+        {itServicePrompts.map((prompt) => (
+          <button
+            key={prompt}
+            type="button"
+            onClick={() => sendItServiceQuestion(prompt)}
+            className="group flex h-[86px] items-center gap-4 rounded-2xl border border-[#dfe4f5] bg-white px-7 text-left text-xl font-semibold text-gray-950 shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#d7af81] hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          >
+            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#d7af81] text-xs font-bold text-white shadow-sm">
+              |||
+            </span>
+            <span className="min-w-0 truncate">{prompt}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-8">
+        <div className="relative min-h-[168px] rounded-2xl border-2 border-gray-100 bg-white p-5 shadow-sm transition-all duration-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 md:p-6">
+          <textarea
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="也可以直接描述您遇到的IT问题..."
+            className="min-h-[112px] w-full resize-none border-none bg-transparent pr-24 text-lg font-medium leading-8 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
+          />
+          <div className="absolute bottom-4 right-4 flex items-center gap-2">
+            <button
+              onClick={handleUploadAttachment}
+              className="rounded-full p-1 text-gray-400 transition-colors hover:bg-theme-50 hover:text-theme-500 dark:text-gray-500 dark:hover:bg-theme-900/20"
+              title="上传附件"
+            >
+              <Paperclip size={18} />
+            </button>
+            <button
+              onClick={() => sendItServiceQuestion(input)}
+              className="rounded-full bg-gradient-to-r from-theme-500 to-theme-600 p-2 text-white shadow-sm transition-all duration-300 hover:scale-105 hover:from-theme-600 hover:to-theme-700 hover:shadow"
+              title="发送"
+            >
+              <Send size={18} />
+            </button>
+          </div>
+        </div>
+        <div className="mt-2 text-center text-[11px] text-gray-400 dark:text-gray-500">
+          内容AI辅助生成，请谨慎识别
+        </div>
+      </div>
+    </div>
+  );
+
   const renderLegacyAssistant = () => {
     const legacyHistory = ["年度账单", "你是谁?", "适航指令的评估期限", "我还有几天休假?", "猜你想看[2025", "我还有多少优惠票?", "吉祥航空2023年有", "我能有几天休假"];
     const legacySuggestions = ["你是谁?", "我还有几天休假?", "我还有什么流程没有处理?"];
@@ -973,18 +1074,24 @@ export default function RuYiZone() {
           ${isMobile && mobileMenuOpen ? 'translate-x-0' : isMobile ? 'translate-x-full' : ''}
         `}>
           <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-            <h3 className="font-bold text-xl text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <h3 className="mb-6 flex items-center gap-2 text-xl font-bold text-gray-900 dark:text-white">
               <div className="w-8 h-8 bg-gradient-to-r from-theme-500 to-theme-600 rounded-lg flex items-center justify-center">
                 <Sparkles className="text-white" size={20} />
               </div>
-              如意空间
+              <span>如意空间</span>
+              <Link
+                to="/agent-square"
+                className="ml-auto inline-flex items-center gap-1 rounded-full border border-theme-100 bg-theme-50 px-2 py-1 text-[11px] font-semibold text-theme-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-theme-100 dark:border-theme-900/40 dark:bg-theme-900/20 dark:text-theme-200"
+                title="进入AI门户"
+              >
+                AI门户
+              </Link>
             </h3>
             <button
               onClick={() => setIsLegacyMode(true)}
               className="mb-3 flex w-full items-center justify-between rounded-lg border border-theme-100 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 transition-colors hover:bg-theme-100 dark:border-theme-900/40 dark:bg-theme-900/20 dark:text-theme-200 dark:hover:bg-theme-900/30"
             >
               <span>切换旧版</span>
-              <ArrowRight size={15} />
             </button>
             <button
               onClick={handleNewConversation}
@@ -993,64 +1100,72 @@ export default function RuYiZone() {
               <span>新对话</span>
               <span className="flex h-5 w-5 items-center justify-center rounded-full bg-theme-600 text-sm leading-none text-white">+</span>
             </button>
-            <div className="space-y-1 mb-8">
-              <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3 px-2 uppercase tracking-wider">常用智能助手</h4>
+            <div className="mb-6">
+              <div className="mb-3 flex items-center justify-between px-1">
+                <h4 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">常用智能助手</h4>
+                <span className="rounded-full bg-theme-50 px-2 py-0.5 text-[10px] font-medium text-theme-600 dark:bg-theme-900/30 dark:text-theme-300">智能体</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
               {assistants.map((assistant) => (
-                <div
+                <button
+                  type="button"
                   key={assistant.id}
                   className={`
-                    p-3 rounded-lg cursor-pointer transition-all duration-300
+                    group relative min-h-[76px] overflow-hidden rounded-xl border p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md
                     ${selectedAssistant?.id === assistant.id 
-                      ? 'bg-theme-50 dark:bg-theme-900/20 text-theme-700 dark:text-theme-300 font-medium border-l-4 border-theme-500'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-4 border-transparent hover:border-theme-200'
+                      ? 'border-theme-200 bg-gradient-to-br from-theme-50 to-white text-theme-700 shadow-sm ring-1 ring-theme-100 dark:border-theme-800 dark:from-theme-900/30 dark:to-gray-800 dark:text-theme-300'
+                      : 'border-gray-100 bg-white text-gray-700 hover:border-theme-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-theme-800'
                     }
                   `}
                   onClick={() => handleAssistantSelect(assistant)}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="absolute -right-4 -top-4 h-10 w-10 rounded-full bg-theme-100/60 opacity-0 transition-opacity group-hover:opacity-100 dark:bg-theme-900/30" />
+                  <div className="relative flex h-full flex-col justify-between gap-3">
                     <div className={`
-                      w-8 h-8 rounded-lg flex items-center justify-center
-                      ${selectedAssistant?.id === assistant.id ? 'bg-theme-100 dark:bg-theme-900/30 text-theme-600 dark:text-theme-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}
+                      flex h-7 w-7 items-center justify-center rounded-lg
+                      ${selectedAssistant?.id === assistant.id ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-theme-50 group-hover:text-theme-600 dark:bg-gray-700 dark:text-gray-400'}
                     `}>
                       {assistant.icon}
                     </div>
-                    <span className={selectedAssistant?.id === assistant.id ? '' : 'dark:text-gray-300'}>{assistant.name}</span>
+                    <span className="block truncate text-xs font-semibold leading-4">{assistant.name}</span>
                   </div>
-                </div>
+                </button>
               ))}
+              </div>
             </div>
             <Link 
               to="/agent-square"
               className="block w-full bg-gradient-to-theme text-white py-3 rounded-lg hover:opacity-90 transition-all duration-300 text-center font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
             >
               前往智能体广场
-              <ArrowRight size={16} className="inline ml-2" />
             </Link>
           </div>
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">历史对话</h4>
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="mb-3 flex items-center justify-between px-1">
+              <h4 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">历史对话</h4>
+              <span className="text-[10px] text-gray-400">{historyItems.length} 条</span>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-1">
               {historyItems.map((item) => (
-                <div
+                <button
+                  type="button"
                   key={item.id}
                   className={`
-                    p-3 rounded-lg cursor-pointer transition-all duration-300 transform hover:-translate-x-1
+                    w-full rounded-lg px-2.5 py-2 text-left transition-all duration-200
                     ${selectedHistoryId === item.id
-                      ? 'bg-theme-50 dark:bg-theme-900/20 text-theme-700 dark:text-theme-300 border-l-4 border-theme-500'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-l-4 border-transparent hover:border-theme-200'
+                      ? 'bg-theme-50 text-theme-700 dark:bg-theme-900/20 dark:text-theme-300'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200'
                     }
                   `}
                   onClick={() => handleHistorySelect(item)}
                 >
                   <div className="min-w-0">
-                    <h5 className={`truncate text-sm font-medium ${selectedHistoryId === item.id ? 'text-theme-700 dark:text-theme-300' : 'text-gray-900 dark:text-white'}`}>{item.title}</h5>
+                    <h5 className="truncate text-xs font-medium leading-5">{item.title}</h5>
                     {getHistoryAssistantName(item.kind) && (
-                      <span className="mt-1 block truncate text-xs text-gray-400 dark:text-gray-500">{getHistoryAssistantName(item.kind)}</span>
+                      <span className="mt-0.5 block truncate text-[11px] text-gray-400 dark:text-gray-500">{getHistoryAssistantName(item.kind)}</span>
                     )}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -1225,8 +1340,7 @@ export default function RuYiZone() {
 
                       {conversationKind === "goalAssistant" && (
                         <>
-                          {/* ========== 汇报部分 ========== */}
-                          <p className="mb-4 leading-7">我已根据日程、待办任务、历史周报和附件，按 OKR 维度为您生成了本周工作汇报草稿。</p>
+                          <p className="mb-4 leading-7">我是如意工作参谋师。我会把工作汇报和 OKR 放在一起看：先根据日程、待办任务、历史周报和附件生成本周汇报草稿，再提示哪些 KR 需要继续跟进。</p>
                           <p className="mb-3 leading-7">数据来源包括：</p>
                           <ul className="mb-6 list-disc space-y-2 pl-6 leading-7">
                             <li>日程会议记录：提取会议目标、参与人和下周计划。</li>
@@ -1244,7 +1358,7 @@ export default function RuYiZone() {
                             {[
                               { title: "O1 推进工作汇报与OKR联动", kr: "KR1 完成汇报入口、详情、评论与已读状态", thisWeek: "本周完成看汇报列表、详情弹框和关联OKR展示，并补充评论与已读情况。", nextWeek: "下周继续校验统计口径，跟进未提交提醒与汇报导出能力。" },
                               { title: "O2 优化如意空间公文创作链路", kr: "KR2 完成模板预览、大纲确认和最终文件生成", thisWeek: "已调整公文要求、模板选择、参考文件和最终文件下载状态。", nextWeek: "继续梳理管理后台模板字段和前台编辑的一致性。" },
-                              { title: "O3 完善门户办公应用体验", kr: "KR3 接入工作汇报、OKR和AI助手入口", thisWeek: "完成工作门户办公应用、OKR独立入口和如意目标助手浮层。", nextWeek: "补充数据权限、人员范围筛选和统计明细联动。" },
+                              { title: "O3 完善门户办公应用体验", kr: "KR3 接入工作汇报、OKR和AI助手入口", thisWeek: "完成工作门户办公应用、OKR独立入口和如意工作参谋师浮层。", nextWeek: "补充数据权限、人员范围筛选和统计明细联动。" },
                             ].map((draft, index) => (
                               <div key={draft.kr}>
                                 <div className="font-semibold text-gray-950 dark:text-white">{index + 1}. {draft.title}</div>
@@ -1263,14 +1377,13 @@ export default function RuYiZone() {
                             {showReportSubmitTargets ? '已发起提交流程' : '全局提交工作汇报'}
                           </button>
 
-                          {/* ========== OKR 部分 ========== */}
                           <div className="mb-5 border-gray-200 pt-2 dark:border-gray-700">
                             <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-950 dark:text-white">
                               <Target size={24} className="text-theme-500" />
                               KR当前进展汇总
                             </h3>
                           </div>
-                          <p className="mb-4 leading-7">如意目标助手已读取您的 O 和下设 KR，结合各执行人的工作汇报内容，把当前进展汇总到对应 KR 下。</p>
+                          <p className="mb-4 leading-7">如意工作参谋师已读取您的 O 和下设 KR，结合各执行人的工作汇报内容，把当前进展汇总到对应 KR 下。</p>
                           <p className="mb-3 leading-7">本次评估条件：2026-06-22 至 2026-06-28，选择我的 O1、O2，人员范围为直属下级和自定义通讯录人员。</p>
                           <div className="mb-6 space-y-6 leading-7">
                             {[
@@ -1285,7 +1398,7 @@ export default function RuYiZone() {
                                   {
                                     kr: "KR2 完成汇报统计和助手浮层",
                                     owners: ["肖八", "郑八"],
-                                    progress: "汇报统计明细已按日期展示，如意目标助手已支持按自定义时间和人员生成总结，剩余是筛选口径细化。",
+                                    progress: "汇报统计明细已按日期展示，如意工作参谋师已支持按自定义时间和人员生成总结，剩余是筛选口径细化。",
                                   },
                                 ],
                               },
@@ -1300,7 +1413,7 @@ export default function RuYiZone() {
                                   {
                                     kr: "KR2 统一新版、旧版如意助手入口",
                                     owners: ["梁吉利", "沈十六"],
-                                    progress: "新版常用助手已增加如意目标助手，旧版已增加IT服务助手入口，交互已可预览。",
+                                    progress: "新版常用助手已整合为如意工作参谋师，旧版已增加IT服务助手入口，交互已可预览。",
                                   },
                                 ],
                               },
@@ -1319,7 +1432,7 @@ export default function RuYiZone() {
                               </div>
                             ))}
                           </div>
-                          <Link to="/okr?assistant=assessment&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">打开 OKR 助手继续调整</Link>
+                          <Link to="/okr?assistant=assessment&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">打开 OKR 页面继续调整</Link>
                         </>
                       )}
 
@@ -1500,7 +1613,6 @@ export default function RuYiZone() {
                               <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">已生成正文结构和初稿内容，点击进入公文编辑器继续润色、排版和保存。</p>
                               <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-theme-700 dark:text-theme-300">
                                 进入公文编辑
-                                <ArrowRight size={16} />
                               </div>
                             </div>
                           </button>
@@ -1512,6 +1624,7 @@ export default function RuYiZone() {
               )}
 
               {!hasConversation && (
+              selectedAssistant?.name === "IT服务助手" ? renderItServiceLanding() : (
               <>
               {/* 欢迎区域 */}
               <div className="flex flex-col md:flex-row items-center justify-between mb-16 mt-4 relative">
@@ -1540,13 +1653,8 @@ export default function RuYiZone() {
                     key={tool.id} 
                     className={`inline-flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-300 group ${activeTool === tool.name ? 'bg-theme-50 dark:bg-theme-900/20 ring-2 ring-theme-200' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                     onClick={() => {
-                      if (tool.name === '公文') {
-                        setActiveTool('公文');
-                        setInput('');
-                      } else {
-                        setActiveTool(null);
-                        setInput('');
-                      }
+                      setActiveTool(activeTool === tool.name ? null : tool.name);
+                      setInput('');
                     }}
                   >
                     <div className={`w-8 h-8 bg-gradient-to-br ${tool.color} rounded flex items-center justify-center text-white shadow-sm group-hover:shadow transition-all duration-300 transform group-hover:scale-105`}>
@@ -1560,30 +1668,43 @@ export default function RuYiZone() {
               </div>
 
               <div className="mb-16 relative">
-                <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300 ${activeTool === '公文' ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
+                <div className={`relative min-h-[168px] border-2 rounded-2xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300 ${activeTool ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
                   {activeTool === '公文' && (
-                    <div className="flex items-center gap-3 flex-wrap pr-24">
+                    <div className="flex items-start gap-3 pr-24">
                       <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-theme-500 to-theme-600 text-white rounded-full text-sm font-medium">
                         <Sparkles size={14} />
                         AI写作
                       </div>
-                      <input
-                        type="text"
+                      <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="请输入写作主题或需求..."
-                        className="flex-1 min-w-[200px] border-none outline-none text-base bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                        className="min-h-[110px] flex-1 resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
+                      />
+                    </div>
+                  )}
+
+                  {activeTool && activeTool !== '公文' && (
+                    <div className="flex items-start gap-3 pr-24">
+                      <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                        {tools.find((tool) => tool.name === activeTool)?.icon}
+                        {activeTool}
+                      </div>
+                      <textarea
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder={`请输入${activeTool}需求...`}
+                        className="min-h-[110px] flex-1 resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
                       />
                     </div>
                   )}
 
                   {!activeTool && (
-                    <input
-                      type="text"
+                    <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder="你想问我什么呢？"
-                      className="w-full pr-24 border-none outline-none h-full text-lg font-medium bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
+                      className="min-h-[112px] w-full resize-none border-none bg-transparent pr-24 text-lg font-medium leading-8 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
                     />
                   )}
 
@@ -1722,6 +1843,34 @@ export default function RuYiZone() {
                     </div>
                   </div>
                 )}
+
+                {!activeTool && (
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-theme-100/70 bg-white/75 shadow-[0_14px_36px_rgba(148,76,126,0.08)] backdrop-blur dark:border-theme-900/40 dark:bg-gray-800/75">
+                    <div className="grid gap-0 md:grid-cols-[150px_1fr]">
+                      <div className="flex items-center gap-2 border-b border-theme-50 bg-gradient-to-br from-theme-50 to-white px-4 py-3 md:border-b-0 md:border-r dark:border-theme-900/40 dark:from-theme-900/25 dark:to-gray-800">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-theme-600 text-white shadow-sm">
+                          <Sparkles size={14} />
+                        </span>
+                        <div>
+                          <div className="text-xs font-semibold text-theme-700 dark:text-theme-300">猜你想问</div>
+                          <div className="mt-0.5 text-[10px] text-gray-400 dark:text-gray-500">快速开始</div>
+                        </div>
+                      </div>
+                      <div className="grid gap-px bg-theme-50/80 p-px dark:bg-gray-700/60 sm:grid-cols-2 xl:grid-cols-4">
+                      {suggestedPrompts.map((prompt) => (
+                        <button
+                          key={prompt}
+                          type="button"
+                          onClick={() => setInput(prompt)}
+                          className="group flex min-h-[52px] items-center justify-between gap-3 bg-white px-3 py-2 text-left text-xs font-medium leading-5 text-gray-600 transition-colors hover:bg-theme-50 hover:text-theme-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-theme-900/25 dark:hover:text-theme-300"
+                        >
+                          <span className="line-clamp-2">{prompt}</span>
+                        </button>
+                      ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {previewTemplateId && (
@@ -1837,6 +1986,7 @@ export default function RuYiZone() {
               )}
 
               </>
+              )
               )}
 
             </div>
