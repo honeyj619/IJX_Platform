@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import {
   ArrowLeft,
   BarChart3,
@@ -19,6 +19,7 @@ import {
   Save,
   Search,
   Send,
+  Settings,
   Sparkles,
   Target,
   UserRound,
@@ -28,6 +29,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 
 type WorkReportView = 'write' | 'reports' | 'stats';
 
@@ -35,46 +37,46 @@ const okrObjectives = [
   {
     id: 'o1',
     title: '目标 1：占据行业绝对领先地位，核心业务收入大幅增长，利润率维持行业第一',
-    owner: '王一',
+    owner: getDemoPerson(0),
     progress: 75,
     score: '0.6',
     keyResults: [
-      { title: '关键结果 1：A 产品营收 8000 万元，B 产品营收 2000 万元', owner: '郑八 / 肖八', progress: 95, weight: '50.0%' },
-      { title: '关键结果 2：优化营业成本结构，较上周期下降 10%', owner: '赵六', progress: 50, weight: '25.0%' },
-      { title: '关键结果 3：规范公司内部审批制度，降低总部管理成本 30%', owner: '刘十', progress: 60, weight: '25.0%' },
+      { title: '关键结果 1：A 产品营收 8000 万元，B 产品营收 2000 万元', owner: `${getDemoPerson(6)} / ${getDemoPerson(5)}`, progress: 95, weight: '50.0%' },
+      { title: '关键结果 2：优化营业成本结构，较上周期下降 10%', owner: getDemoPerson(10), progress: 50, weight: '25.0%' },
+      { title: '关键结果 3：规范公司内部审批制度，降低总部管理成本 30%', owner: getDemoPerson(9), progress: 60, weight: '25.0%' },
     ],
     record: 'A 产品营收 960 万，B 产品营收 480 万，利润率环比增长 20%。',
   },
   {
     id: 'o2',
     title: '目标 2：占领行业先机，新试点业务跑通商业模式，成为营收点',
-    owner: '王一',
+    owner: getDemoPerson(0),
     progress: 69,
     score: '0.5',
     keyResults: [
-      { title: '关键结果 1：新产品达到上线标准，完成路演测试', owner: '肖八 / 袁十一', progress: 100, weight: '33.3%' },
-      { title: '关键结果 2：召开产品发布会，获得媒体和市场认可', owner: '沈十六', progress: 100, weight: '33.3%' },
-      { title: '关键结果 3：第一期使用客户数量达 100 家公司，实现营收 200 万元', owner: '郑八', progress: 8, weight: '33.3%' },
+      { title: '关键结果 1：新产品达到上线标准，完成路演测试', owner: `${getDemoPerson(5)} / ${getDemoPerson(8)}`, progress: 100, weight: '33.3%' },
+      { title: '关键结果 2：召开产品发布会，获得媒体和市场认可', owner: getDemoPerson(7), progress: 100, weight: '33.3%' },
+      { title: '关键结果 3：第一期使用客户数量达 100 家公司，实现营收 200 万元', owner: getDemoPerson(6), progress: 8, weight: '33.3%' },
     ],
     record: '客户招募效果差，第一期使用客户为 8 家，暂无营收。',
   },
   {
     id: 'o3',
     title: '目标 3：提升公司整体工作效率与人员素质，达到国际顶尖公司水平',
-    owner: '王一',
+    owner: getDemoPerson(0),
     progress: 73,
     score: '0.7',
     keyResults: [
-      { title: '关键结果 1：完成核心流程线上化，审批平均时长下降 20%', owner: '梁吉力', progress: 80, weight: '40.0%' },
-      { title: '关键结果 2：建立跨部门协作周报机制，重点问题闭环率达到 90%', owner: '梁吉力', progress: 72, weight: '35.0%' },
-      { title: '关键结果 3：组织智能办公培训，覆盖 300 名员工', owner: '赵六', progress: 66, weight: '25.0%' },
+      { title: '关键结果 1：完成核心流程线上化，审批平均时长下降 20%', owner: MAIN_USER_NAME, progress: 80, weight: '40.0%' },
+      { title: '关键结果 2：建立跨部门协作周报机制，重点问题闭环率达到 90%', owner: MAIN_USER_NAME, progress: 72, weight: '35.0%' },
+      { title: '关键结果 3：组织智能办公培训，覆盖 300 名员工', owner: getDemoPerson(10), progress: 66, weight: '25.0%' },
     ],
     record: '已完成周报模板梳理，跨部门问题跟进表进入试运行。',
   },
 ];
 
-const reportTargets = ['王一', '秦小明', '邱振鲁', '邵奕'];
-const copiedTargets = ['肖八', '郑八', '沈十六'];
+const reportTargets = [getDemoPerson(0), getDemoPerson(16), getDemoPerson(17), getDemoPerson(18)];
+const copiedTargets = [getDemoPerson(5), getDemoPerson(6), getDemoPerson(7)];
 
 const reportHistory = [
   {
@@ -83,12 +85,12 @@ const reportHistory = [
     status: '已提交',
     groupDate: '2026年06月18日',
     date: '2026-06-18 18:20',
-    person: '梁吉力',
+    person: MAIN_USER_NAME,
     department: '信息管理部',
     type: '工作周报',
     unread: false,
-    reportTo: ['王一', '秦小明'],
-    copyTo: ['肖八', '郑八'],
+    reportTo: [getDemoPerson(0), getDemoPerson(16)],
+    copyTo: [getDemoPerson(5), getDemoPerson(6)],
     okrIds: ['o3', 'o1'],
     content: {
       o1: {
@@ -101,14 +103,14 @@ const reportHistory = [
       },
     },
     readReceipts: [
-      { name: '王一', read: true, time: '06-18 19:02' },
-      { name: '秦小明', read: true, time: '06-18 19:18' },
-      { name: '肖八', read: true, time: '06-19 09:10' },
-      { name: '郑八', read: false, time: '' },
+      { name: getDemoPerson(0), read: true, time: '06-18 19:02' },
+      { name: getDemoPerson(16), read: true, time: '06-18 19:18' },
+      { name: getDemoPerson(5), read: true, time: '06-19 09:10' },
+      { name: getDemoPerson(6), read: false, time: '' },
     ],
     comments: [
-      { author: '王一', time: '06-18 19:20', content: 'OKR 3 的下周计划可以补充验收指标，便于下周复盘。' },
-      { author: '秦小明', time: '06-19 09:30', content: '工作门户相关内容已同步，后续可关联任务清单。' },
+      { author: getDemoPerson(0), time: '06-18 19:20', content: 'OKR 3 的下周计划可以补充验收指标，便于下周复盘。' },
+      { author: getDemoPerson(16), time: '06-19 09:30', content: '工作门户相关内容已同步，后续可关联任务清单。' },
     ],
   },
   {
@@ -117,12 +119,12 @@ const reportHistory = [
     status: '已提交',
     groupDate: '2026年06月11日',
     date: '2026-06-11 17:48',
-    person: '梁吉力',
+    person: MAIN_USER_NAME,
     department: '信息管理部',
     type: '工作周报',
     unread: true,
-    reportTo: ['王一'],
-    copyTo: ['沈十六'],
+    reportTo: [getDemoPerson(0)],
+    copyTo: [getDemoPerson(7)],
     okrIds: ['o3'],
     content: {
       o3: {
@@ -131,8 +133,8 @@ const reportHistory = [
       },
     },
     readReceipts: [
-      { name: '王一', read: true, time: '06-11 18:12' },
-      { name: '沈十六', read: false, time: '' },
+      { name: getDemoPerson(0), read: true, time: '06-11 18:12' },
+      { name: getDemoPerson(7), read: false, time: '' },
     ],
     comments: [],
   },
@@ -142,12 +144,12 @@ const reportHistory = [
     status: '已提交',
     groupDate: '2026年06月04日',
     date: '2026-06-04 16:10',
-    person: '梁吉力',
+    person: MAIN_USER_NAME,
     department: '信息管理部',
     type: '工作周报-管理处',
     unread: false,
-    reportTo: ['邱振鲁', '邵奕'],
-    copyTo: ['肖八'],
+    reportTo: [getDemoPerson(17), getDemoPerson(18)],
+    copyTo: [getDemoPerson(5)],
     okrIds: ['o1', 'o2'],
     content: {
       o1: {
@@ -160,12 +162,12 @@ const reportHistory = [
       },
     },
     readReceipts: [
-      { name: '邱振鲁', read: true, time: '06-04 17:02' },
-      { name: '邵奕', read: true, time: '06-04 17:36' },
-      { name: '肖八', read: true, time: '06-05 10:14' },
+      { name: getDemoPerson(17), read: true, time: '06-04 17:02' },
+      { name: getDemoPerson(18), read: true, time: '06-04 17:36' },
+      { name: getDemoPerson(5), read: true, time: '06-05 10:14' },
     ],
     comments: [
-      { author: '邱振鲁', time: '06-04 18:00', content: '下周计划建议补充与数据看板的联动节点。' },
+      { author: getDemoPerson(17), time: '06-04 18:00', content: '下周计划建议补充与数据看板的联动节点。' },
     ],
   },
 ];
@@ -297,7 +299,7 @@ export default function WorkReport() {
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-5 py-3">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/enterprise')}
+              onClick={() => navigate('/web_client/enterprise')}
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700"
               title="返回个人门户"
             >
@@ -326,13 +328,22 @@ export default function WorkReport() {
                 <h2 className="text-lg font-bold text-gray-900">写汇报</h2>
                 <p className="mt-1 text-sm text-gray-500">按 OKR 和工作事项填写本周汇报</p>
               </div>
-              <button
-                onClick={() => setActiveView('reports')}
-                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-              >
-                <Eye size={16} />
-                返回看汇报
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => navigate('/admin?section=report-template')}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-800"
+                >
+                  <Settings size={16} />
+                  模板配置
+                </button>
+                <button
+                  onClick={() => setActiveView('reports')}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  <Eye size={16} />
+                  返回看汇报
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-4">
@@ -357,6 +368,13 @@ export default function WorkReport() {
                     汇报统计
                   </button>
                 </div>
+                <button
+                  onClick={() => navigate('/admin?section=report-template')}
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:border-pink-200 hover:bg-pink-50 hover:text-pink-800"
+                >
+                  <Settings size={16} />
+                  模板配置
+                </button>
                 <button
                   onClick={() => setActiveView('write')}
                   className="inline-flex items-center gap-2 rounded-lg bg-pink-700 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-pink-700/20 hover:bg-pink-800"
@@ -526,7 +544,7 @@ function ReportComposer({
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-pink-800">
                 <Target size={16} />
-                梁吉力的 OKR 工作总结
+                {MAIN_USER_NAME}的 OKR 工作总结
               </div>
               <p className="mt-1 text-xs text-gray-500">每条 KR 分别填写本周事项和下周事项，提交时随周报一起汇总</p>
             </div>
@@ -771,10 +789,10 @@ function ReportAssistantPanel({
 
 
 const reportStatRows = [
-  { name: '梁吉利', department: '信息管理部', role: '产品经理', submitted: 2, missing: 0, task: '工作汇报与OKR联动', progress: '完成看汇报详情、评论与汇报助手入口优化', summary: '围绕门户办公应用、OKR模块拆分和汇报助手体验完成多轮迭代，问题闭环较快。', status: '已提交' },
-  { name: '肖八', department: '产品部', role: '产品经理', submitted: 1, missing: 1, task: '新产品路演测试', progress: '完成路演材料整理，试点反馈待补充', summary: '本周期重点支撑新产品上线标准与发布材料，后续需要补充客户反馈数据。', status: '部分提交' },
-  { name: '郑八', department: '市场部', role: '业务经理', submitted: 0, missing: 2, task: '客户招募转化', progress: '客户招募数据未同步', summary: '缺少本周期汇报，AI判断客户转化事项存在跟进断点，需要提醒补交。', status: '未提交' },
-  { name: '沈十六', department: '信息管理部', role: '研发负责人', submitted: 2, missing: 0, task: '系统上线支撑', progress: '完成配置校验与验收问题梳理', summary: '围绕核心系统实施上线推进较稳定，已形成问题清单和下一步配置校验计划。', status: '已提交' },
+  { name: MAIN_USER_NAME, department: '信息管理部', role: '产品经理', submitted: 2, missing: 0, task: '工作汇报与OKR联动', progress: '完成看汇报详情、评论与汇报助手入口优化', summary: '围绕门户办公应用、OKR模块拆分和汇报助手体验完成多轮迭代，问题闭环较快。', status: '已提交' },
+  { name: getDemoPerson(5), department: '产品部', role: '产品经理', submitted: 1, missing: 1, task: '新产品路演测试', progress: '完成路演材料整理，试点反馈待补充', summary: '本周期重点支撑新产品上线标准与发布材料，后续需要补充客户反馈数据。', status: '部分提交' },
+  { name: getDemoPerson(6), department: '市场部', role: '业务经理', submitted: 0, missing: 2, task: '客户招募转化', progress: '客户招募数据未同步', summary: '缺少本周期汇报，AI判断客户转化事项存在跟进断点，需要提醒补交。', status: '未提交' },
+  { name: getDemoPerson(7), department: '信息管理部', role: '研发负责人', submitted: 2, missing: 0, task: '系统上线支撑', progress: '完成配置校验与验收问题梳理', summary: '围绕核心系统实施上线推进较稳定，已形成问题清单和下一步配置校验计划。', status: '已提交' },
 ];
 
 function ReportStatsView() {
@@ -901,7 +919,7 @@ function ReportSummaryAssistantDrawer({ open, onClose, onGenerate }: { open: boo
             <div className="mb-3 flex items-center gap-2 text-sm font-bold text-pink-800"><Sparkles size={16} />发起工作汇报分析</div>
             <div className="grid gap-3">
               <div className="grid grid-cols-[1fr_24px_1fr] items-center rounded-lg border border-pink-200 bg-pink-50/30 px-3 py-2 text-sm"><span>2026-06-22</span><span className="text-center text-gray-400">~</span><span>2026-06-23</span></div>
-              <button className="flex h-10 items-center justify-between rounded-lg border border-gray-200 px-3 text-sm text-gray-600"><span>人员范围：梁吉利、肖八、郑八、沈十六</span><ChevronRight size={15} className="rotate-90 text-gray-300" /></button>
+              <button className="flex h-10 items-center justify-between rounded-lg border border-gray-200 px-3 text-sm text-gray-600"><span>{`人员范围：${MAIN_USER_NAME}、${getDemoPerson(5)}、${getDemoPerson(6)}、${getDemoPerson(7)}`}</span><ChevronRight size={15} className="rotate-90 text-gray-300" /></button>
               <input className="h-10 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100" defaultValue="工作汇报与OKR联动" />
             </div>
             <button onClick={onGenerate} className="mt-4 w-full rounded-lg bg-pink-700 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-800">生成汇报分析</button>
@@ -910,7 +928,7 @@ function ReportSummaryAssistantDrawer({ open, onClose, onGenerate }: { open: boo
             <div className="mb-3 text-sm font-bold text-pink-900">分析结果</div>
             <div className="space-y-3 text-sm leading-6 text-gray-700">
               <p>本时间范围内共识别 4 名人员、6 条任务进展，已提交率约 72%。</p>
-              <p>梁吉利围绕工作汇报和 OKR 联动推进最充分；沈十六主要承接系统上线支撑；郑八存在未提交风险。</p>
+              <p>{`${MAIN_USER_NAME}围绕工作汇报和 OKR 联动推进最充分；${getDemoPerson(7)}主要承接系统上线支撑；${getDemoPerson(6)}存在未提交风险。`}</p>
               <p>建议对未提交人员发起提醒，并将“工作汇报与OKR联动”事项纳入下周重点跟进。</p>
             </div>
           </section>
@@ -1096,7 +1114,7 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
   const addComment = () => {
     if (!selectedReport || !commentDraft.trim()) return;
     const nextComment = {
-      author: '梁吉力',
+      author: MAIN_USER_NAME,
       time: '刚刚',
       content: commentDraft.trim(),
     };
@@ -1216,7 +1234,7 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              navigate(`/okr?objective=${report.okrIds[0]}`);
+                              navigate(`/web_client/okr?objective=${report.okrIds[0]}`);
                             }}
                             className="block w-full text-left hover:text-pink-900"
                             title={relatedKrTitles.join('；')}
@@ -1480,3 +1498,6 @@ function MetricRing({ label, value, progress }: { label?: string; value: string;
     </div>
   );
 }
+
+
+

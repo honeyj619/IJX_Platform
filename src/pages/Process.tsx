@@ -1,3 +1,4 @@
+﻿import { MAIN_USER_NAME, getDemoPerson } from "../data/people";
 import { Hexagon, CheckCircle, Clock, XCircle } from "lucide-react";
 
 interface ProcessItem {
@@ -12,28 +13,28 @@ const processes: ProcessItem[] = [
   {
     id: 1,
     title: "项目立项申请",
-    applicant: "梁吉力",
+    applicant: MAIN_USER_NAME,
     time: "2025-07-21 10:30",
     status: "pending",
   },
   {
     id: 2,
     title: "合同签署授权委托书",
-    applicant: "赵子龙",
+    applicant: getDemoPerson(4),
     time: "2025-07-20 15:45",
     status: "pending",
   },
   {
     id: 3,
     title: "预算调整申请",
-    applicant: "诸葛亮",
+    applicant: getDemoPerson(3),
     time: "2025-07-19 09:15",
     status: "approved",
   },
   {
     id: 4,
     title: "设备采购申请",
-    applicant: "关羽",
+    applicant: getDemoPerson(1),
     time: "2025-07-18 14:20",
     status: "rejected",
   },
@@ -124,3 +125,5 @@ function ProcessCard({ process }: { process: ProcessItem }) {
     </div>
   );
 }
+
+

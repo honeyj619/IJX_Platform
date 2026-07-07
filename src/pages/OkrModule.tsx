@@ -1,4 +1,4 @@
-import type { DragEvent } from 'react';
+﻿import type { DragEvent } from 'react';
 import { useEffect, useState } from 'react';
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 
 type KeyResult = {
   id: string;
@@ -51,12 +52,12 @@ type Objective = {
   keyResults: KeyResult[];
 };
 
-const people = ['梁吉利', '肖八', '郑八', '沈十六', '袁十一', '刘十', '赵六'];
+const people = [MAIN_USER_NAME, getDemoPerson(5), getDemoPerson(6), getDemoPerson(7), getDemoPerson(8), getDemoPerson(9), getDemoPerson(10)];
 const alignmentUsers = [
-  { name: '梁小劫', department: '市场部', period: '2026 年 4 月 - 6 月', objective: '提升市场协同效率，完成重点航线营销活动转化' },
-  { name: '梁吉利', department: '信息管理部', period: '2026 年 4 月 - 6 月', objective: '推进管理域数字化需求承接、研发与交付' },
-  { name: '梁小明', department: '运行控制部', period: '2026 年 4 月 - 6 月', objective: '完善运行保障流程，提升跨部门协同响应效率' },
-  { name: '肖八', department: '产品部', period: '2026 年 4 月 - 6 月', objective: '完成产品体验优化与业务试点支持' },
+  { name: getDemoPerson(11), department: '市场部', period: '2026 年 4 月 - 6 月', objective: '提升市场协同效率，完成重点航线营销活动转化' },
+  { name: MAIN_USER_NAME, department: '信息管理部', period: '2026 年 4 月 - 6 月', objective: '推进管理域数字化需求承接、研发与交付' },
+  { name: getDemoPerson(12), department: '运行控制部', period: '2026 年 4 月 - 6 月', objective: '完善运行保障流程，提升跨部门协同响应效率' },
+  { name: getDemoPerson(5), department: '产品部', period: '2026 年 4 月 - 6 月', objective: '完成产品体验优化与业务试点支持' },
 ];
 const metricColumns = '72px 72px 72px 72px';
 
@@ -126,15 +127,15 @@ const cloneObjectivesForPerson = (name: string) => baseObjectives.map((objective
   alignments: objective.alignments || [],
   id: `${name}-${objective.id}`,
   code: String(objectiveIndex + 1).padStart(2, '0'),
-  title: name === '梁吉利' ? objective.title : `${name}：${objective.title}`,
-  progress: name === '梁吉利' ? objective.progress : Math.min(96, 42 + objectiveIndex * 18 + name.length * 3),
-  score: name === '梁吉利' ? objective.score : (0.4 + objectiveIndex * 0.2).toFixed(1),
-  recordCount: name === '梁吉利' ? objective.recordCount : objectiveIndex + 1,
+  title: name === MAIN_USER_NAME ? objective.title : `${name}：${objective.title}`,
+  progress: name === MAIN_USER_NAME ? objective.progress : Math.min(96, 42 + objectiveIndex * 18 + name.length * 3),
+  score: name === MAIN_USER_NAME ? objective.score : (0.4 + objectiveIndex * 0.2).toFixed(1),
+  recordCount: name === MAIN_USER_NAME ? objective.recordCount : objectiveIndex + 1,
   keyResults: objective.keyResults.map((result, resultIndex) => ({
     ...result,
     id: `${name}-${result.id}`,
-    progress: name === '梁吉利' ? result.progress : Math.min(100, result.progress + resultIndex * 6 + name.length),
-    latestReport: name === '梁吉利' ? result.latestReport : `${name}本周已更新该 KR 进展，下一步将继续跟进关键阻塞。`,
+    progress: name === MAIN_USER_NAME ? result.progress : Math.min(100, result.progress + resultIndex * 6 + name.length),
+    latestReport: name === MAIN_USER_NAME ? result.latestReport : `${name}本周已更新该 KR 进展，下一步将继续跟进关键阻塞。`,
   })),
 }));
 
@@ -149,8 +150,8 @@ const reorder = <T,>(items: T[], fromIndex: number, toIndex: number) => {
 export default function OkrModule() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [activePerson, setActivePerson] = useState('梁吉利');
-  const [objectives, setObjectives] = useState<Objective[]>(() => cloneObjectivesForPerson('梁吉利'));
+  const [activePerson, setActivePerson] = useState(MAIN_USER_NAME);
+  const [objectives, setObjectives] = useState<Objective[]>(() => cloneObjectivesForPerson(MAIN_USER_NAME));
   const [selectedObjectiveId, setSelectedObjectiveId] = useState(searchParams.get('objective') || objectives[0].id);
   const [editingObjectiveId, setEditingObjectiveId] = useState<string | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -294,7 +295,7 @@ export default function OkrModule() {
       <div className="z-40 shrink-0 border-b border-gray-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1680px] items-center justify-between px-5 py-3">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/enterprise')} className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-800" title="返回个人门户">
+            <button onClick={() => navigate('/web_client/enterprise')} className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-800" title="返回个人门户">
               <ArrowLeft size={18} />
             </button>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-700 text-white shadow-sm shadow-pink-700/20">
@@ -323,10 +324,10 @@ export default function OkrModule() {
               <input className="h-10 w-full rounded-lg bg-gray-50 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-pink-100" placeholder="搜索员工" />
             </div>
             <h3 className="mb-3 text-sm font-semibold text-gray-500">我的 OKR</h3>
-            <PersonButton name="梁吉利" active={activePerson === '梁吉利'} onClick={() => switchPerson('梁吉利')} />
+            <PersonButton name={MAIN_USER_NAME} active={activePerson === MAIN_USER_NAME} onClick={() => switchPerson(MAIN_USER_NAME)} />
             <h3 className="mb-3 mt-4 text-sm font-semibold text-gray-500">直属下级</h3>
             <div className="space-y-1">
-              {people.filter(name => name !== '梁吉利').map(name => (
+              {people.filter(name => name !== MAIN_USER_NAME).map(name => (
                 <PersonButton key={name} name={name} active={activePerson === name} onClick={() => switchPerson(name)} compact />
               ))}
             </div>
@@ -641,10 +642,10 @@ export default function OkrModule() {
 
 function OkrStatsView({ objectives }: { objectives: Objective[] }) {
   const ownerPool = [
-    ['梁吉利', '肖八'],
-    ['沈十六'],
-    ['郑八', '刘十'],
-    ['赵六', '袁十一'],
+    [MAIN_USER_NAME, getDemoPerson(5)],
+    [getDemoPerson(7)],
+    [getDemoPerson(6), getDemoPerson(9)],
+    [getDemoPerson(10), getDemoPerson(8)],
   ];
   const totalKr = objectives.reduce((sum, objective) => sum + objective.keyResults.length, 0);
   const allKrs = objectives.flatMap(objective => objective.keyResults);
@@ -709,7 +710,7 @@ function OkrStatsView({ objectives }: { objectives: Objective[] }) {
 
 
 function OkrAssistantDrawer({ objectives, onClose }: { objectives: Objective[]; onClose: () => void }) {
-  const directReports = people.filter(name => name !== '梁吉利').slice(0, 4);
+  const directReports = people.filter(name => name !== MAIN_USER_NAME).slice(0, 4);
   const [timeRange, setTimeRange] = useState({ start: '2026-06-01', end: '2026-06-30' });
   const [selectedObjectiveIds, setSelectedObjectiveIds] = useState<string[]>(objectives.map(objective => objective.id));
   const [peopleScope, setPeopleScope] = useState<'直属下级' | '自定义'>('直属下级');
@@ -922,3 +923,4 @@ function MetricWeight({ editable, value, onChange }: { editable: boolean; value:
   }
   return <div className="text-center text-sm text-gray-600">{value}</div>;
 }
+

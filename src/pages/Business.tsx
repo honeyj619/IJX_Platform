@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { Search, Hexagon, ArrowRight, Plus, X, User, Upload } from "lucide-react";
+import { MAIN_USER_NAME, getDemoPerson } from "../data/people";
 interface System {
   id: number;
   name: string;
@@ -15,43 +16,91 @@ interface System {
 }
 
 const categoryGroups = [
+  { name: "财务系统", id: "finance", color: "from-amber-500 to-orange-400", count: 7 },
   { name: "人力系统", id: "hr", color: "from-blue-600 to-blue-400", count: 9 },
-  { name: "综合系统", id: "office", color: "from-violet-600 to-purple-400", count: 2 },
+  { name: "综合系统", id: "office", color: "from-violet-600 to-purple-400", count: 15 },
   { name: "运行系统", id: "ops", color: "from-emerald-600 to-teal-400", count: 14 },
-  { name: "财务系统", id: "finance", color: "from-amber-500 to-orange-400", count: 1 },
+  { name: "营销系统", id: "marketing", color: "from-pink-600 to-rose-400", count: 21 },
 ];
 
 const systems: System[] = [
-  { id: 1, name: "人力资源E-HR系统", category: "hr", description: "人力资源管理系统，支持员工信息管理、考勤、薪资等功能", icon: "users", color: "bg-blue-500" },
-  { id: 2, name: "Office", category: "hr", description: "办公自动化系统，支持日常办公流程管理", icon: "briefcase", color: "bg-indigo-500" },
-  { id: 3, name: "梧桐云学堂", category: "hr", description: "企业在线学习平台，提供丰富的课程资源", icon: "graduation-cap", color: "bg-violet-500" },
-  { id: 4, name: "绩效系统", category: "hr", description: "员工绩效考核管理系统", icon: "award", color: "bg-purple-500" },
-  { id: 5, name: "绩效系统南京分公司", category: "hr", description: "南京分公司绩效专项管理系统", icon: "building", color: "bg-pink-500" },
-  { id: 6, name: "绩效系统航服子公司", category: "hr", description: "航服子公司绩效专项管理系统", icon: "plane", color: "bg-rose-500" },
-  { id: 7, name: "OA", category: "office", description: "办公自动化系统", icon: "folder-open", color: "bg-purple-500" },
-  { id: 8, name: "SMS系统", category: "ops", description: "短信服务管理系统", icon: "message-square", color: "bg-emerald-500" },
-  { id: 9, name: "网上准备", category: "ops", description: "网上准备工作管理系统", icon: "check-circle", color: "bg-teal-500" },
-  { id: 10, name: "航班动态", category: "ops", description: "航班实时动态查询系统", icon: "plane-departure", color: "bg-cyan-500" },
-  { id: 11, name: "机务维修", category: "ops", description: "机务维修管理系统", icon: "wrench", color: "bg-green-500" },
-  { id: 12, name: "燃油监控系统", category: "ops", description: "燃油消耗监控与管理系统", icon: "fuel", color: "bg-lime-500" },
-  { id: 13, name: "维修手册系统", category: "ops", description: "维修手册查阅与管理系统", icon: "book-open", color: "bg-emerald-600" },
-  { id: 14, name: "法定自查", category: "ops", description: "法定自查管理系统", icon: "file-check", color: "bg-teal-600" },
-  { id: 15, name: "运行网", category: "ops", description: "运行网络管理系统", icon: "network", color: "bg-green-600" },
-  { id: 16, name: "考评系统", category: "hr", description: "员工考评管理系统", icon: "clipboard-list", color: "bg-violet-600" },
-  { id: 17, name: "内推系统", category: "hr", description: "内部推荐管理系统", icon: "user-plus", color: "bg-indigo-600" },
-  { id: 18, name: "e吉祥管理后台", category: "ops", description: "吉祥航空管理后台系统", icon: "settings", color: "bg-cyan-600" },
-  { id: 19, name: "人力数字平台管理系统", category: "hr", description: "人力资源数字化管理平台", icon: "database", color: "bg-blue-600" },
-  { id: 20, name: "BIP系统", category: "finance", description: "财务综合管理平台", icon: "dollar-sign", color: "bg-amber-500" },
-  { id: 21, name: "运行风控系统", category: "ops", description: "运行风险控制管理系统", icon: "shield", color: "bg-emerald-700" },
-  { id: 22, name: "PLM系统", category: "ops", description: "产品生命周期管理系统", icon: "layers", color: "bg-teal-700" },
-  { id: 23, name: "航空安保管理系统", category: "ops", description: "航空安全保卫管理系统", icon: "shield-check", color: "bg-green-700" },
+  { id: 1, name: "BIP系统", category: "finance", description: "财务综合管理平台", icon: "dollar-sign", color: "bg-amber-500" },
+  { id: 2, name: "财翼融合智能平台FAI", category: "finance", description: "财务智能分析与融合管理平台", icon: "layers", color: "bg-amber-500" },
+  { id: 3, name: "费控商旅系统", category: "finance", description: "费用控制与商旅管理系统", icon: "dollar-sign", color: "bg-orange-500" },
+  { id: 4, name: "合同管理系统", category: "finance", description: "合同台账、审批与履约管理", icon: "file-check", color: "bg-yellow-500" },
+  { id: 5, name: "税务管理系统", category: "finance", description: "税务申报与税务档案管理", icon: "clipboard-list", color: "bg-amber-600" },
+  { id: 6, name: "致远系统", category: "finance", description: "协同与财务流程管理", icon: "check-circle", color: "bg-orange-600" },
+  { id: 7, name: "NC系统", category: "finance", description: "企业财务核算系统", icon: "database", color: "bg-yellow-600" },
+
+  { id: 8, name: "人力资源E-HR系统", category: "hr", description: "人力资源管理系统，支持员工信息管理、考勤、薪资等功能", icon: "users", color: "bg-blue-500" },
+  { id: 9, name: "ioffice", category: "hr", description: "办公协同与人力业务入口", icon: "briefcase", color: "bg-indigo-500" },
+  { id: 10, name: "梧桐云学堂", category: "hr", description: "企业在线学习平台，提供丰富的课程资源", icon: "graduation-cap", color: "bg-violet-500" },
+  { id: 11, name: "绩效系统", category: "hr", description: "员工绩效考核管理系统", icon: "award", color: "bg-purple-500" },
+  { id: 12, name: "绩效系统南京分公司", category: "hr", description: "南京分公司绩效专项管理系统", icon: "building", color: "bg-pink-500" },
+  { id: 13, name: "绩效系统航服子公司", category: "hr", description: "航服子公司绩效专项管理系统", icon: "plane", color: "bg-rose-500" },
+  { id: 14, name: "考评系统", category: "hr", description: "员工考评管理系统", icon: "clipboard-list", color: "bg-violet-600" },
+  { id: 15, name: "内推系统", category: "hr", description: "内部推荐管理系统", icon: "user-plus", color: "bg-indigo-600" },
+  { id: 16, name: "人力数字平台管理系统", category: "hr", description: "人力资源数字化管理平台", icon: "database", color: "bg-blue-600" },
+
+  { id: 17, name: "OA", category: "office", description: "办公自动化系统", icon: "folder-open", color: "bg-purple-500" },
+  { id: 18, name: "吉祥知识平台", category: "office", description: "企业知识沉淀与检索平台", icon: "book-open", color: "bg-violet-500" },
+  { id: 19, name: "企业项目管理平台", category: "office", description: "项目计划、进度和资源管理", icon: "clipboard-list", color: "bg-indigo-500" },
+  { id: 20, name: "运维管理平台", category: "office", description: "IT运维工单和资源管理", icon: "settings", color: "bg-sky-500" },
+  { id: 21, name: "公司数据门户", category: "office", description: "公司经营数据统一入口", icon: "database", color: "bg-blue-500" },
+  { id: 22, name: "公司BI平台", category: "office", description: "经营分析与报表平台", icon: "layers", color: "bg-cyan-500" },
+  { id: 23, name: "低代码平台", category: "office", description: "低代码应用搭建平台", icon: "file-check", color: "bg-emerald-500" },
+  { id: 24, name: "综合数据分析平台", category: "office", description: "综合数据分析与主题报表", icon: "layers", color: "bg-teal-500" },
+  { id: 25, name: "聚数搭数据分析平台", category: "office", description: "数据分析和可视化平台", icon: "database", color: "bg-cyan-600" },
+  { id: 26, name: "数据仓库管理系统", category: "office", description: "数据仓库模型和任务管理", icon: "database", color: "bg-slate-600" },
+  { id: 27, name: "荆棘数据治理平台", category: "office", description: "数据治理、标准和质量管理", icon: "network", color: "bg-emerald-600" },
+  { id: 28, name: "物流数据中台", category: "office", description: "物流数据中台与指标服务", icon: "network", color: "bg-green-600" },
+  { id: 29, name: "CSA系统", category: "office", description: "综合业务支撑系统", icon: "users", color: "bg-indigo-600" },
+  { id: 30, name: "服装模具管理系统", category: "office", description: "服装与模具资产管理", icon: "briefcase", color: "bg-pink-600" },
+  { id: 31, name: "车辆管理系统", category: "office", description: "车辆资产与调度管理", icon: "settings", color: "bg-gray-600" },
+
+  { id: 32, name: "SMS系统", category: "ops", description: "短信服务管理系统", icon: "message-square", color: "bg-emerald-500" },
+  { id: 33, name: "网上准备", category: "ops", description: "网上准备工作管理系统", icon: "check-circle", color: "bg-teal-500" },
+  { id: 34, name: "航班动态", category: "ops", description: "航班实时动态查询系统", icon: "plane-departure", color: "bg-cyan-500" },
+  { id: 35, name: "机务维修", category: "ops", description: "机务维修管理系统", icon: "wrench", color: "bg-green-500" },
+  { id: 36, name: "燃油监控系统", category: "ops", description: "燃油消耗监控与管理系统", icon: "fuel", color: "bg-lime-500" },
+  { id: 37, name: "维修手册系统", category: "ops", description: "维修手册查阅与管理系统", icon: "book-open", color: "bg-emerald-600" },
+  { id: 38, name: "法定自查", category: "ops", description: "法定自查管理系统", icon: "file-check", color: "bg-teal-600" },
+  { id: 39, name: "运行网", category: "ops", description: "运行网络管理系统", icon: "network", color: "bg-green-600" },
+  { id: 40, name: "e吉祥管理后台", category: "ops", description: "吉祥航空管理后台系统", icon: "settings", color: "bg-cyan-600" },
+  { id: 41, name: "运行风控系统", category: "ops", description: "运行风险控制管理系统", icon: "shield", color: "bg-emerald-700" },
+  { id: 42, name: "PLM系统", category: "ops", description: "产品生命周期管理系统", icon: "layers", color: "bg-teal-700" },
+  { id: 43, name: "航空安保管理系统", category: "ops", description: "航空安全保卫管理系统", icon: "shield-check", color: "bg-green-700" },
+  { id: 44, name: "航班正常性管理平台", category: "ops", description: "航班正常性监控与分析", icon: "plane-departure", color: "bg-sky-600" },
+  { id: 45, name: "应急管理平台", category: "ops", description: "应急事件和预案管理平台", icon: "shield", color: "bg-red-500" },
+
+  { id: 46, name: "营销服务后台管理系统", category: "marketing", description: "营销服务后台统一管理", icon: "layers", color: "bg-pink-500" },
+  { id: 47, name: "会员管理系统", category: "marketing", description: "会员权益、积分和画像管理", icon: "users", color: "bg-rose-500" },
+  { id: 48, name: "航空业务产品管理平台", category: "marketing", description: "航空业务产品管理平台", icon: "plane", color: "bg-pink-600" },
+  { id: 49, name: "非航业务产品管理系统", category: "marketing", description: "非航产品配置和管理", icon: "briefcase", color: "bg-rose-600" },
+  { id: 50, name: "精准营销", category: "marketing", description: "客户分群和精准触达", icon: "award", color: "bg-pink-700" },
+  { id: 51, name: "国内运价管理系统", category: "marketing", description: "国内运价维护与管理", icon: "dollar-sign", color: "bg-rose-500" },
+  { id: 52, name: "收入结算系统", category: "marketing", description: "收入结算与核算系统", icon: "dollar-sign", color: "bg-pink-500" },
+  { id: 53, name: "收益管理系统", category: "marketing", description: "收益策略和舱位管理", icon: "dollar-sign", color: "bg-rose-600" },
+  { id: 54, name: "吉祥报表系统", category: "marketing", description: "营销业务报表系统", icon: "layers", color: "bg-pink-600" },
+  { id: 55, name: "吉祥动态运行系统", category: "marketing", description: "营销动态运行监控", icon: "plane-departure", color: "bg-rose-700" },
+  { id: 56, name: "统一消息平台", category: "marketing", description: "统一消息触达平台", icon: "message-square", color: "bg-pink-500" },
+  { id: 57, name: "中文网站", category: "marketing", description: "吉祥航空中文官网", icon: "network", color: "bg-rose-500" },
+  { id: 58, name: "国际网站", category: "marketing", description: "吉祥航空国际官网", icon: "network", color: "bg-pink-600" },
+  { id: 59, name: "吉祥航空M网站", category: "marketing", description: "移动端官网", icon: "network", color: "bg-rose-600" },
+  { id: 60, name: "吉祥航空生活电商平台", category: "marketing", description: "生活电商与商品服务平台", icon: "briefcase", color: "bg-pink-700" },
+  { id: 61, name: "研发流水线", category: "marketing", description: "研发流水线和交付管理", icon: "settings", color: "bg-rose-500" },
+  { id: 62, name: "呼叫中心系统", category: "marketing", description: "客服呼叫中心系统", icon: "message-square", color: "bg-pink-500" },
+  { id: 63, name: "旅客服务系统", category: "marketing", description: "旅客服务与关怀系统", icon: "users", color: "bg-rose-600" },
+  { id: 64, name: "中转管理系统", category: "marketing", description: "中转旅客与行李管理", icon: "plane-departure", color: "bg-pink-600" },
+  { id: 65, name: "智慧贵宾室系统", category: "marketing", description: "贵宾室运营和权益管理", icon: "users", color: "bg-rose-700" },
+  { id: 66, name: "行李全流程跟踪系统", category: "marketing", description: "行李全流程状态跟踪", icon: "briefcase", color: "bg-pink-700" },
 ];
 
 const mockContacts = [
-  { id: "1", name: "张伟", department: "信息管理部", position: "系统管理员" },
-  { id: "2", name: "李娜", department: "人力资源部", position: "HR经理" },
-  { id: "3", name: "王强", department: "财务部", position: "财务总监" },
-  { id: "4", name: "刘洋", department: "运行部", position: "运行经理" },
+  { id: "1", name: getDemoPerson(0), department: "信息管理部", position: "系统管理员" },
+  { id: "2", name: getDemoPerson(1), department: "人力资源部", position: "HR经理" },
+  { id: "3", name: getDemoPerson(2), department: "财务部", position: "财务总监" },
+  { id: "4", name: getDemoPerson(3), department: "运行部", position: "运行经理" },
   { id: "5", name: "陈静", department: "综合管理部", position: "综合管理员" },
 ];
 
@@ -108,7 +157,7 @@ export default function Business() {
     domain: 'hr',
     owner: '',
     ownerName: '',
-    applicant: '梁吉力',
+    applicant: MAIN_USER_NAME,
   });
   const [localSystems, setLocalSystems] = useState<System[]>(systems);
 
@@ -227,7 +276,7 @@ export default function Business() {
       domain: 'hr',
       owner: '',
       ownerName: '',
-      applicant: '梁吉力',
+      applicant: MAIN_USER_NAME,
     });
     setIconPreview(null);
   };
@@ -547,3 +596,6 @@ export default function Business() {
     
   );
 }
+
+
+

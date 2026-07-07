@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState, useRef } from 'react';
+﻿import { ReactNode, useEffect, useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { MessageSquare, Bell, Calendar, Folder, Hexagon, User, X, XCircle, Search, Menu, ChevronRight, ChevronLeft, Plus, Link as LinkIcon } from 'lucide-react';
 import { create } from 'zustand';
@@ -6,6 +6,7 @@ import { useThemeStore } from '../store/themeStore';
 import { useLayoutStore } from '../store/layoutStore';
 import { UserMenu } from './UserMenu';
 import { SIDEBAR } from '../constants/layout';
+import { getDemoPerson, getInitialsAvatar } from '../data/people';
 
 interface LayoutProps {
   children: ReactNode;
@@ -61,6 +62,13 @@ const pageTitles: Record<string, string> = {
   '/agent-square': '智能体广场',
   '/profile': '个人信息',
   '/settings': '系统设置'
+};
+
+const WEB_CLIENT_BASE = '/web_client';
+const clientPath = (path: string) => path === '/' ? WEB_CLIENT_BASE : `${WEB_CLIENT_BASE}${path}`;
+const stripClientBase = (path: string) => {
+  if (path === WEB_CLIENT_BASE) return '/';
+  return path.startsWith(`${WEB_CLIENT_BASE}/`) ? path.slice(WEB_CLIENT_BASE.length) : path;
 };
 
 export default function Layout({ children }: LayoutProps) {
@@ -165,19 +173,19 @@ export default function Layout({ children }: LayoutProps) {
   }, [mode, skin]);
   
   const navItems = [
-    { icon: <MessageSquare size={20} />, label: '消息', to: '/' },
-    { icon: <Bell size={20} />, label: '工作门户', to: '/enterprise' },
-    { icon: <Calendar size={20} />, label: '日历', to: '/calendar' },
-    { icon: <Folder size={20} />, label: '知识库', to: '/ekb' },
-    { icon: <Hexagon size={20} />, label: '业务系统', to: '/business' },
-    { icon: <Bell size={20} />, label: '如意空间', to: '/ruyi-zone' },
+    { icon: <MessageSquare size={20} />, label: '消息', to: clientPath('/'), badge: 8, badgeTitle: '8条未读消息', badgeTone: 'message' },
+    { icon: <Bell size={20} />, label: '工作门户', to: clientPath('/enterprise'), badge: 21, badgeTitle: '21项未办事项', badgeTone: 'work' },
+    { icon: <Calendar size={20} />, label: '日历', to: clientPath('/calendar') },
+    { icon: <Folder size={20} />, label: '知识库', to: clientPath('/ekb') },
+    { icon: <Hexagon size={20} />, label: '业务系统', to: clientPath('/business') },
+    { icon: <Bell size={20} />, label: '如意空间', to: clientPath('/ruyi-zone') },
   ];
 
   const navPaths = navItems.map(item => item.to);
   
   useEffect(() => {
     const currentPath = location.pathname;
-    const pageTitle = pageTitles[currentPath] || currentPath;
+    const pageTitle = pageTitles[stripClientBase(currentPath)] || currentPath;
     
     if (pageTitle && !navPaths.includes(currentPath)) {
       addPage({ title: pageTitle, path: currentPath });
@@ -189,7 +197,7 @@ export default function Layout({ children }: LayoutProps) {
     removePage(path);
     
     if (location.pathname === path) {
-      navigate('/');
+      navigate(WEB_CLIENT_BASE);
     }
   };
 
@@ -256,8 +264,11 @@ export default function Layout({ children }: LayoutProps) {
                 icon={item.icon}
                 label={item.label}
                 to={item.to}
-                active={location.pathname === item.to}
+                active={location.pathname === item.to || (item.to !== WEB_CLIENT_BASE && location.pathname.startsWith(`${item.to}/`))}
                 collapsed={!showNavigation}
+                badge={item.badge}
+                badgeTitle={item.badgeTitle}
+                badgeTone={item.badgeTone}
               />
             ))}
           </nav>
@@ -273,7 +284,7 @@ export default function Layout({ children }: LayoutProps) {
                     onClick={() => {
                       removeAllPages();
                       if (!navPaths.includes(location.pathname)) {
-                        navigate('/');
+                        navigate(WEB_CLIENT_BASE);
                       }
                     }}
                     className="text-xs hover:text-white/80 transition-colors flex items-center gap-1"
@@ -506,13 +517,13 @@ export default function Layout({ children }: LayoutProps) {
                       <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3 text-sm">用户</h3>
                       <div className="flex gap-4">
                         <div className="flex flex-col items-center">
-                          <img src="https://api.dicebear.com/7.x/initials/svg?seed=张三&backgroundColor=3b82f6" alt="张三" className="w-14 h-14 rounded-full mb-2" />
-                          <span className="text-xs text-gray-700 dark:text-gray-300">张三</span>
+                          <img src={getInitialsAvatar(getDemoPerson(0), '3b82f6')} alt={getDemoPerson(0)} className="w-14 h-14 rounded-full mb-2" />
+                          <span className="text-xs text-gray-700 dark:text-gray-300">{getDemoPerson(0)}</span>
                           <span className="text-xs text-gray-400 dark:text-gray-500">项目管理工程师</span>
                         </div>
                         <div className="flex flex-col items-center">
-                          <img src="https://api.dicebear.com/7.x/initials/svg?seed=王肯豆&backgroundColor=ec4899" alt="王肯豆" className="w-14 h-14 rounded-full mb-2" />
-                          <span className="text-xs text-gray-700 dark:text-gray-300">王肯豆</span>
+                          <img src={getInitialsAvatar(getDemoPerson(1), 'ec4899')} alt={getDemoPerson(1)} className="w-14 h-14 rounded-full mb-2" />
+                          <span className="text-xs text-gray-700 dark:text-gray-300">{getDemoPerson(1)}</span>
                           <span className="text-xs text-gray-400 dark:text-gray-500">项目管理工程师</span>
                         </div>
                       </div>
@@ -563,11 +574,11 @@ export default function Layout({ children }: LayoutProps) {
                       <div className="space-y-3">
                         <div className="border-b border-gray-200 dark:border-gray-600 pb-2">
                           <div className="font-medium text-gray-700 dark:text-gray-300 text-sm mb-1">项目管理助手</div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">责任人：赵子龙</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500">责任人：{getDemoPerson(4)}</div>
                         </div>
                         <div>
                           <div className="font-medium text-gray-700 dark:text-gray-300 text-sm mb-1">敏捷项目管理助手</div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">责任人：凉凉</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500">责任人：{getDemoPerson(5)}</div>
                         </div>
                       </div>
                     </div>
@@ -582,21 +593,30 @@ export default function Layout({ children }: LayoutProps) {
   );
 }
 
-function NavItem({ icon, label, to, active = false, collapsed = false }: { icon: React.ReactNode | null; label: string; to: string; active?: boolean; collapsed?: boolean }) {
+function NavItem({ icon, label, to, active = false, collapsed = false, badge, badgeTitle, badgeTone }: { icon: React.ReactNode | null; label: string; to: string; active?: boolean; collapsed?: boolean; badge?: number; badgeTitle?: string; badgeTone?: string }) {
   return (
     <Link
       to={to}
       className={`
-        rounded-md transition-colors text-left
+        relative rounded-md transition-colors text-left
         ${active ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}
         ${collapsed ? 'w-12 flex flex-col items-center justify-center py-2 gap-0.5' : 'w-full flex items-center gap-3 px-3 py-3'}
       `}
-      title={label}
+      title={badgeTitle || label}
     >
       {icon && <span className="text-white flex-shrink-0">{icon}</span>}
       <span className={`text-white ${collapsed ? 'text-2xs leading-tight text-center w-full truncate' : 'flex-1 min-w-0 truncate'}`}>
         {label}
       </span>
+      {badge ? (
+        <span
+          title={badgeTitle}
+          className={`flex items-center justify-center rounded-full font-semibold text-white shadow-sm ${badgeTone === 'work' ? 'bg-amber-500' : 'bg-red-500'} ${collapsed ? 'absolute right-0.5 top-0.5 h-4 min-w-4 px-1 text-[10px] leading-none' : 'ml-auto h-5 min-w-5 px-1.5 text-xs'}`}
+        >
+          {badge > 99 ? '99+' : badge}
+        </span>
+      ) : null}
     </Link>
   );
 }
+

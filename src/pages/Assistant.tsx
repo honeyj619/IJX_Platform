@@ -1,8 +1,9 @@
+import { MAIN_USER_AVATAR } from '../data/people';
 import { MessageSquare, Send, RefreshCw, Copy } from "lucide-react";
 
 export default function Assistant() {
   return (
-    
+
       <div className="flex-1 flex flex-col bg-gray-50 h-full">
         <div className="p-4 border-b border-gray-200 bg-white">
           <h1 className="text-xl font-bold text-gray-900">如意助手</h1>
@@ -40,7 +41,7 @@ export default function Assistant() {
             </div>
             <div className="flex-shrink-0">
               <img
-                src="https://api.dicebear.com/7.x/initials/svg?seed=梁吉力&backgroundColor=8b5cf6"
+                src={MAIN_USER_AVATAR}
                 alt="用户头像"
                 className="w-12 h-12 rounded-full"
               />
@@ -90,6 +91,6 @@ export default function Assistant() {
           </div>
         </div>
       </div>
-    
+
   );
 }

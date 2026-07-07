@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <v-container fluid class="h-100 pa-0">
     <v-row class="h-100" no-gutters>
       <!-- 消息列表侧边栏 -->
@@ -209,8 +209,8 @@ const messages: Message[] = [
   },
   {
     id: 2,
-    name: '张飞',
-    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=张飞&backgroundColor=3b82f6',
+    name: '示例用户',
+    avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=demo-user&backgroundColor=3b82f6',
     message: '已经和相关部门沟通过我们的诉求',
     time: '昨天 16:21',
     chatMessages: [
@@ -223,7 +223,7 @@ const messages: Message[] = [
     id: 3,
     name: '流程',
     avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=流程&backgroundColor=8b5cf6',
-    message: '信息管理部梁吉力提交的项目立项申请需要审批',
+    message: '信息管理部主用户提交的项目立项申请需要审批',
     time: '12:21',
     unread: 8,
   },
@@ -256,3 +256,5 @@ const sendMessage = () => {
   newMessage.value = ''
 }
 </script>
+
+

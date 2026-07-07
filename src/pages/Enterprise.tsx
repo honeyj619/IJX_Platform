@@ -1,4 +1,4 @@
-import { Search, MessageSquare, Smartphone, BarChart3, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X, Mail, Monitor, MoreHorizontal } from 'lucide-react';
+﻿import { Search, MessageSquare, Smartphone, BarChart3, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X, Mail, Monitor, MoreHorizontal } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
 
@@ -40,19 +40,13 @@ const FILE_ITEMS = [
 ];
 
 export default function Enterprise() {
-  const [portalType, setPortalType] = useState<'personal' | 'enterprise'>(() => {
-    const saved = localStorage.getItem('portalType');
-    return (saved === 'personal' || saved === 'enterprise') ? saved : 'enterprise';
-  });
+  const [portalType, setPortalType] = useState<'personal' | 'enterprise'>('personal');
   const [showSettings, setShowSettings] = useState(false);
   const [selectedSystems, setSelectedSystems] = useState<string[]>(() => {
     const saved = localStorage.getItem('selectedSystems');
     return saved ? JSON.parse(saved) : ['hr', 'finance', 'it', 'oa'];
   });
 
-  useEffect(() => {
-    localStorage.setItem('portalType', portalType);
-  }, [portalType]);
 
   useEffect(() => {
     localStorage.setItem('selectedSystems', JSON.stringify(selectedSystems));
@@ -178,11 +172,11 @@ export default function Enterprise() {
               <div className="p-4 space-y-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span>公司值班领导</span>
-                  <span className="text-amber-200 font-medium">郑晓铭</span>
+                  <span className="text-amber-200 font-medium">{getDemoPerson(22)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>公司总值班</span>
-                  <span className="text-amber-200 font-medium">张正</span>
+                  <span className="text-amber-200 font-medium">{getDemoPerson(23)}</span>
                 </div>
                 <button className="text-white/70 hover:text-white text-xs flex items-center gap-1 mt-1">
                   查看公司值班表
@@ -517,3 +511,6 @@ function CalendarIcon() {
     </svg>
   );
 }
+
+
+

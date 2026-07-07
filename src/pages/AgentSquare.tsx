@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Search, Grid, List, Plus, Pin, Zap, Bot, ChevronRight } from 'lucide-react';
+import { getDemoPerson } from '../data/people';
 
 interface Agent {
   id: string;
@@ -14,38 +15,38 @@ interface Agent {
 }
 
 const mockAgents: Agent[] = [
-  { id: '1', name: '项目管家', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=project-manager', description: '项目管理专家，帮助你高效管理项目进度、风险和资源', category: '助手', aiType: ['通用助手', '项目管理', '效率工具'], likes: 234, creator: '赵子龙', tags: ['项目管理', '效率'] },
-  { id: '2', name: '文案大师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=copywriter', description: '创意写作助手，激发灵感，助你创作精彩内容', category: '助手', aiType: ['创意助手', '写作助手'], likes: 189, creator: '诸葛亮', tags: ['写作', '创意'] },
-  { id: '3', name: '数据分析师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=data-analyst', description: '数据分析专家，快速处理数据，生成可视化报告', category: '助手', aiType: ['数据分析', '商业智能'], likes: 156, creator: '司马懿', tags: ['数据', '分析'] },
-  { id: '4', name: '代码审计员', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=code-reviewer', description: '代码审查助手，自动化代码检查，提高代码质量', category: '助手', aiType: ['代码助手', '开发工具'], likes: 298, creator: '周瑜', tags: ['代码', '开发'] },
-  { id: '5', name: '客服小助手', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=customer-service', description: '客服机器人，7x24小时在线，智能回答客户问题', category: '助手', aiType: ['客服助手', '智能客服'], likes: 412, creator: '貂蝉', tags: ['客服', '自动化'] },
-  { id: '6', name: '法务顾问', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=legal-advisor', description: '法律顾问助手，解读法律法规，提供合规建议', category: '助手', aiType: ['法律助手', '合规顾问'], likes: 167, creator: '庞统', tags: ['法律', '合规'] },
-  { id: '7', name: '营销策划师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=marketing', description: '营销策划助手，生成创意营销方案，提升品牌影响力', category: '助手', aiType: ['营销助手', '策划工具'], likes: 234, creator: '郭嘉', tags: ['营销', '策划'] },
-  { id: '8', name: 'HR招聘官', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=hr-recruiter', description: 'HR智能助手，筛选简历，安排面试，提升招聘效率', category: '助手', aiType: ['HR助手', '招聘工具'], likes: 189, creator: '张飞', tags: ['HR', '招聘'] },
-  { id: '9', name: '财务分析师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=financial-analyst', description: '财务分析助手，智能处理财务报表，预测财务趋势', category: '分析', aiType: ['财务分析', '预测助手'], likes: 345, creator: '曹操', tags: ['财务', '分析'] },
-  { id: '10', name: '产品设计师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=product-designer', description: '产品设计助手，快速生成原型，优化用户体验', category: '创意', aiType: ['设计助手', '原型工具'], likes: 278, creator: '黄月英', tags: ['设计', '原型'] },
-  { id: '11', name: '视频剪辑师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=video-editor', description: '视频剪辑助手，智能处理视频素材，生成精彩视频', category: '创意', aiType: ['视频剪辑', '创意工具'], likes: 456, creator: '吕布', tags: ['视频', '剪辑'] },
-  { id: '12', name: '社媒运营官', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=social-media', description: '社交媒体助手，自动发布内容，分析用户数据', category: '客服', aiType: ['社交媒体', '内容运营'], likes: 389, creator: '小乔', tags: ['社交', '运营'] },
-  { id: '13', name: '供应链管家', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=supply-chain', description: '供应链管理助手，优化物流流程，降低成本', category: '管理', aiType: ['供应链', '成本优化'], likes: 267, creator: '关羽', tags: ['供应链', '管理'] },
-  { id: '14', name: '健康顾问', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=health-advisor', description: '健康顾问助手，分析健康数据，提供健康建议', category: '助手', aiType: ['健康顾问', '数据分析'], likes: 523, creator: '华佗', tags: ['健康', '医疗'] },
-  { id: '15', name: '培训讲师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=trainer', description: '学习助手，个性化学习路径，提升学习效率', category: '创意', aiType: ['学习助手', '个性化'], likes: 478, creator: '徐庶', tags: ['学习', '教育'] },
-  { id: '16', name: '行程规划师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=travel-planner', description: '行程规划助手，智能推荐路线，优化出行体验', category: '助手', aiType: ['行程助手', '规划工具'], likes: 345, creator: '鲁肃', tags: ['行程', '规划'] },
-  { id: '17', name: '音乐制作人', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=music-producer', description: '音乐创作助手，灵感生成器，智能编曲工具', category: '创意', aiType: ['音乐创作', '编曲工具'], likes: 567, creator: '蔡文姬', tags: ['音乐', '创作'] },
-  { id: '18', name: '行政助理', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=admin-assistant', description: '行政管理助手，会议安排，文档管理，提升办公效率', category: '助手', aiType: ['行政助手', '办公效率'], likes: 634, creator: '孙权', tags: ['行政', '办公'] },
-  { id: '19', name: '绩效分析师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=performance-analyst', description: '绩效分析助手，数据可视化，团队绩效评估', category: '助手', aiType: ['绩效分析', '数据可视化'], likes: 489, creator: '魏延', tags: ['绩效', '分析'] },
-  { id: '20', name: '采购专员', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=procurement', description: '采购助手，供应商管理，比价推荐，智能采购清单', category: '助手', aiType: ['采购助手', '比价工具'], likes: 378, creator: '马超', tags: ['采购', '供应商'] },
-  { id: '21', name: '投资顾问', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=investment-advisor', description: '投资顾问助手，市场分析，智能投资建议', category: '分析', aiType: ['投资顾问', '市场分析'], likes: 423, creator: '荀彧', tags: ['投资', '金融'] },
-  { id: '22', name: '知识库管理员', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=knowledge-base', description: '知识管理助手，文档归档，知识问答，团队协作', category: '助手', aiType: ['知识管理', '文档助手'], likes: 567, creator: '姜维', tags: ['知识', '文档'] },
-  { id: '23', name: '测试工程师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=test-engineer', description: '测试助手，自动化测试，Bug追踪，质量保障', category: '开发', aiType: ['测试助手', '质量保障'], likes: 489, creator: '夏侯惇', tags: ['测试', '质量'] },
-  { id: '24', name: '编程导师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=coding-tutor', description: '编程教学助手，代码示例，编程问题解答', category: '开发', aiType: ['编程教学', '代码助手'], likes: 356, creator: '许褚', tags: ['编程', '教学'] },
-  { id: '25', name: '股票分析师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=stock-analyst', description: '股票分析助手，实时行情，技术分析', category: '分析', aiType: ['股票分析', '技术分析'], likes: 434, creator: '贾诩', tags: ['股票', '分析'] },
-  { id: '26', name: 'UI设计师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=ui-designer', description: 'UI设计助手，界面设计，交互优化，视觉规范', category: '创意', aiType: ['UI设计', '交互设计'], likes: 578, creator: '甄姬', tags: ['UI', '设计'] },
-  { id: '27', name: '空间设计师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=space-designer', description: '空间设计助手，办公空间规划，风格推荐', category: '创意', aiType: ['空间设计', '规划工具'], likes: 389, creator: '张辽', tags: ['空间', '设计'] },
-  { id: '28', name: '翻译官', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=translator', description: '多语言翻译助手，实时翻译，口语练习', category: '开发', aiType: ['翻译助手', '语言学习'], likes: 467, creator: '陆逊', tags: ['翻译', '语言'] },
-  { id: '29', name: '品牌策划师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=brand-planner', description: '品牌策划助手，品牌定位，视觉识别，传播策略', category: '创意', aiType: ['品牌策划', '营销策略'], likes: 523, creator: '孙策', tags: ['品牌', '策划'] },
-  { id: '30', name: '销售顾问', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=sales-consultant', description: '销售助手，客户管理，销售预测，业绩分析', category: '助手', aiType: ['销售助手', '客户管理'], likes: 345, creator: '黄忠', tags: ['销售', '客户'] },
-  { id: '31', name: '技术架构师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=architect', description: '技术架构助手，系统设计，技术选型，架构优化', category: '开发', aiType: ['架构设计', '技术选型'], likes: 489, creator: '典韦', tags: ['架构', '技术'] },
-  { id: '32', name: '会议助理', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=meeting-assistant', description: '会议管理助手，会议记录，议程安排，纪要生成', category: '助手', aiType: ['会议管理', '效率工具'], likes: 567, creator: '大乔', tags: ['会议', '效率'] },
+  { id: '1', name: '项目管家', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=project-manager', description: '项目管理专家，帮助你高效管理项目进度、风险和资源', category: '助手', aiType: ['通用助手', '项目管理', '效率工具'], likes: 234, creator: getDemoPerson(4), tags: ['项目管理', '效率'] },
+  { id: '2', name: '文案大师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=copywriter', description: '创意写作助手，激发灵感，助你创作精彩内容', category: '助手', aiType: ['创意助手', '写作助手'], likes: 189, creator: getDemoPerson(3), tags: ['写作', '创意'] },
+  { id: '3', name: '数据分析师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=data-analyst', description: '数据分析专家，快速处理数据，生成可视化报告', category: '助手', aiType: ['数据分析', '商业智能'], likes: 156, creator: getDemoPerson(8), tags: ['数据', '分析'] },
+  { id: '4', name: '代码审计员', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=code-reviewer', description: '代码审查助手，自动化代码检查，提高代码质量', category: '助手', aiType: ['代码助手', '开发工具'], likes: 298, creator: getDemoPerson(9), tags: ['代码', '开发'] },
+  { id: '5', name: '客服小助手', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=customer-service', description: '客服机器人，7x24小时在线，智能回答客户问题', category: '助手', aiType: ['客服助手', '智能客服'], likes: 412, creator: getDemoPerson(10), tags: ['客服', '自动化'] },
+  { id: '6', name: '法务顾问', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=legal-advisor', description: '法律顾问助手，解读法律法规，提供合规建议', category: '助手', aiType: ['法律助手', '合规顾问'], likes: 167, creator: getDemoPerson(11), tags: ['法律', '合规'] },
+  { id: '7', name: '营销策划师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=marketing', description: '营销策划助手，生成创意营销方案，提升品牌影响力', category: '助手', aiType: ['营销助手', '策划工具'], likes: 234, creator: getDemoPerson(12), tags: ['营销', '策划'] },
+  { id: '8', name: 'HR招聘官', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=hr-recruiter', description: 'HR智能助手，筛选简历，安排面试，提升招聘效率', category: '助手', aiType: ['HR助手', '招聘工具'], likes: 189, creator: getDemoPerson(2), tags: ['HR', '招聘'] },
+  { id: '9', name: '财务分析师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=financial-analyst', description: '财务分析助手，智能处理财务报表，预测财务趋势', category: '分析', aiType: ['财务分析', '预测助手'], likes: 345, creator: getDemoPerson(13), tags: ['财务', '分析'] },
+  { id: '10', name: '产品设计师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=product-designer', description: '产品设计助手，快速生成原型，优化用户体验', category: '创意', aiType: ['设计助手', '原型工具'], likes: 278, creator: getDemoPerson(26), tags: ['设计', '原型'] },
+  { id: '11', name: '视频剪辑师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=video-editor', description: '视频剪辑助手，智能处理视频素材，生成精彩视频', category: '创意', aiType: ['视频剪辑', '创意工具'], likes: 456, creator: getDemoPerson(14), tags: ['视频', '剪辑'] },
+  { id: '12', name: '社媒运营官', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=social-media', description: '社交媒体助手，自动发布内容，分析用户数据', category: '客服', aiType: ['社交媒体', '内容运营'], likes: 389, creator: getDemoPerson(27), tags: ['社交', '运营'] },
+  { id: '13', name: '供应链管家', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=supply-chain', description: '供应链管理助手，优化物流流程，降低成本', category: '管理', aiType: ['供应链', '成本优化'], likes: 267, creator: getDemoPerson(1), tags: ['供应链', '管理'] },
+  { id: '14', name: '健康顾问', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=health-advisor', description: '健康顾问助手，分析健康数据，提供健康建议', category: '助手', aiType: ['健康顾问', '数据分析'], likes: 523, creator: getDemoPerson(28), tags: ['健康', '医疗'] },
+  { id: '15', name: '培训讲师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=trainer', description: '学习助手，个性化学习路径，提升学习效率', category: '创意', aiType: ['学习助手', '个性化'], likes: 478, creator: getDemoPerson(15), tags: ['学习', '教育'] },
+  { id: '16', name: '行程规划师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=travel-planner', description: '行程规划助手，智能推荐路线，优化出行体验', category: '助手', aiType: ['行程助手', '规划工具'], likes: 345, creator: getDemoPerson(16), tags: ['行程', '规划'] },
+  { id: '17', name: '音乐制作人', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=music-producer', description: '音乐创作助手，灵感生成器，智能编曲工具', category: '创意', aiType: ['音乐创作', '编曲工具'], likes: 567, creator: getDemoPerson(29), tags: ['音乐', '创作'] },
+  { id: '18', name: '行政助理', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=admin-assistant', description: '行政管理助手，会议安排，文档管理，提升办公效率', category: '助手', aiType: ['行政助手', '办公效率'], likes: 634, creator: getDemoPerson(17), tags: ['行政', '办公'] },
+  { id: '19', name: '绩效分析师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=performance-analyst', description: '绩效分析助手，数据可视化，团队绩效评估', category: '助手', aiType: ['绩效分析', '数据可视化'], likes: 489, creator: getDemoPerson(18), tags: ['绩效', '分析'] },
+  { id: '20', name: '采购专员', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=procurement', description: '采购助手，供应商管理，比价推荐，智能采购清单', category: '助手', aiType: ['采购助手', '比价工具'], likes: 378, creator: getDemoPerson(19), tags: ['采购', '供应商'] },
+  { id: '21', name: '投资顾问', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=investment-advisor', description: '投资顾问助手，市场分析，智能投资建议', category: '分析', aiType: ['投资顾问', '市场分析'], likes: 423, creator: getDemoPerson(20), tags: ['投资', '金融'] },
+  { id: '22', name: '知识库管理员', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=knowledge-base', description: '知识管理助手，文档归档，知识问答，团队协作', category: '助手', aiType: ['知识管理', '文档助手'], likes: 567, creator: getDemoPerson(21), tags: ['知识', '文档'] },
+  { id: '23', name: '测试工程师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=test-engineer', description: '测试助手，自动化测试，Bug追踪，质量保障', category: '开发', aiType: ['测试助手', '质量保障'], likes: 489, creator: getDemoPerson(22), tags: ['测试', '质量'] },
+  { id: '24', name: '编程导师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=coding-tutor', description: '编程教学助手，代码示例，编程问题解答', category: '开发', aiType: ['编程教学', '代码助手'], likes: 356, creator: getDemoPerson(23), tags: ['编程', '教学'] },
+  { id: '25', name: '股票分析师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=stock-analyst', description: '股票分析助手，实时行情，技术分析', category: '分析', aiType: ['股票分析', '技术分析'], likes: 434, creator: getDemoPerson(0), tags: ['股票', '分析'] },
+  { id: '26', name: 'UI设计师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=ui-designer', description: 'UI设计助手，界面设计，交互优化，视觉规范', category: '创意', aiType: ['UI设计', '交互设计'], likes: 578, creator: getDemoPerson(1), tags: ['UI', '设计'] },
+  { id: '27', name: '空间设计师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=space-designer', description: '空间设计助手，办公空间规划，风格推荐', category: '创意', aiType: ['空间设计', '规划工具'], likes: 389, creator: getDemoPerson(12), tags: ['空间', '设计'] },
+  { id: '28', name: '翻译官', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=translator', description: '多语言翻译助手，实时翻译，口语练习', category: '开发', aiType: ['翻译助手', '语言学习'], likes: 467, creator: getDemoPerson(24), tags: ['翻译', '语言'] },
+  { id: '29', name: '品牌策划师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=brand-planner', description: '品牌策划助手，品牌定位，视觉识别，传播策略', category: '创意', aiType: ['品牌策划', '营销策略'], likes: 523, creator: getDemoPerson(2), tags: ['品牌', '策划'] },
+  { id: '30', name: '销售顾问', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=sales-consultant', description: '销售助手，客户管理，销售预测，业绩分析', category: '助手', aiType: ['销售助手', '客户管理'], likes: 345, creator: getDemoPerson(25), tags: ['销售', '客户'] },
+  { id: '31', name: '技术架构师', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=architect', description: '技术架构助手，系统设计，技术选型，架构优化', category: '开发', aiType: ['架构设计', '技术选型'], likes: 489, creator: getDemoPerson(3), tags: ['架构', '技术'] },
+  { id: '32', name: '会议助理', avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=meeting-assistant', description: '会议管理助手，会议记录，议程安排，纪要生成', category: '助手', aiType: ['会议管理', '效率工具'], likes: 567, creator: getDemoPerson(4), tags: ['会议', '效率'] },
 ];
 
 const categories = ['助手', '分析', '开发', '创意', '客服', '管理', '所有'];
@@ -506,3 +507,7 @@ export default function AgentSquare() {
     </div>
   );
 }
+
+
+
+

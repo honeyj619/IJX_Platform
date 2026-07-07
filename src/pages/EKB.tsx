@@ -1,3 +1,4 @@
+import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import { Search, Bell, Calendar, User, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -50,41 +51,41 @@ const documentCategories = [
 
 export default function EKB() {
   return (
-    
+
       <div className="bg-gray-50">
         {/* 顶部导航栏 */}
         <div className="bg-blue-800 text-white py-3 px-4 md:px-6">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <nav className="flex flex-wrap gap-4 md:gap-6 text-sm md:text-base">
-              <Link to="/" className="text-white hover:text-blue-200 transition-colors">首页</Link>
-              <Link to="/ekb" className="text-white font-bold border-b-2 border-white pb-1">知识领域</Link>
-              <Link to="/" className="text-white hover:text-blue-200 transition-colors">课堂</Link>
-              <Link to="/" className="text-white hover:text-blue-200 transition-colors">问题反馈</Link>
+              <Link to="/web_client" className="text-white hover:text-blue-200 transition-colors">首页</Link>
+              <Link to="/web_client/ekb" className="text-white font-bold border-b-2 border-white pb-1">知识领域</Link>
+              <Link to="/web_client" className="text-white hover:text-blue-200 transition-colors">课堂</Link>
+              <Link to="/web_client" className="text-white hover:text-blue-200 transition-colors">问题反馈</Link>
               <div className="relative group">
                 <span className="flex items-center gap-1 cursor-pointer">
                   更多 <ChevronDown size={14} />
                 </span>
               </div>
-              <Link to="/" className="text-white hover:text-blue-200 transition-colors">管理后台</Link>
+              <Link to="/admin" className="text-white hover:text-blue-200 transition-colors">管理后台</Link>
             </nav>
             <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
               <div className="relative flex-1 min-w-[150px] sm:min-w-[200px] md:min-w-[250px] lg:min-w-[300px]">
-                <input 
-                  type="text" 
-                  placeholder="请输入关键词" 
+                <input
+                  type="text"
+                  placeholder="请输入关键词"
                   className="bg-white text-gray-800 rounded-md px-4 py-2 text-sm w-full pl-10"
                 />
                 <Search size={16} className="text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full overflow-hidden">
-                  <img 
-                    src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd" 
-                    alt="梁吉力" 
+                  <img
+                    src={MAIN_USER_AVATAR}
+                    alt={MAIN_USER_NAME}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <span className="text-sm whitespace-nowrap">梁吉力</span>
+                <span className="text-sm whitespace-nowrap">{MAIN_USER_NAME}</span>
               </div>
             </div>
           </div>
@@ -92,13 +93,13 @@ export default function EKB() {
 
         {/* 第一块：Banner */}
         <div className="w-full h-48 md:h-64 bg-blue-600 overflow-hidden">
-          <img 
-            src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20blue%20tech%20banner%20with%20knowledge%20base%20concept%2C%20digital%20library%2C%20cloud%20computing%2C%20professional%20business%20style&image_size=landscape_16_9" 
-            alt="Banner" 
+          <img
+            src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=modern%20blue%20tech%20banner%20with%20knowledge%20base%20concept%2C%20digital%20library%2C%20cloud%20computing%2C%20professional%20business%20style&image_size=landscape_16_9"
+            alt="Banner"
             className="w-full h-full object-cover"
           />
         </div>
-        
+
         {/* 第二块：个人信息和统计 */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 -mt-8 relative z-10">
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
@@ -107,10 +108,10 @@ export default function EKB() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full md:w-auto">
                 {/* 个人信息 */}
                 <div>
-                  <h3 className="text-base font-bold text-gray-800">梁吉力</h3>
+                  <h3 className="text-base font-bold text-gray-800">{MAIN_USER_NAME}</h3>
                   <p className="text-xs text-gray-600">保卫防护产品处</p>
                 </div>
-                
+
                 {/* 按钮 */}
                 <div className="flex gap-2 w-full sm:w-auto">
                   <button className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-blue-500 text-white py-1.5 px-3 rounded-md hover:from-blue-700 hover:to-blue-600 transition-all font-medium text-xs shadow-sm flex items-center justify-center gap-2">
@@ -123,7 +124,7 @@ export default function EKB() {
                   </button>
                 </div>
               </div>
-              
+
               {/* 右侧：统计数据 */}
               <div className="w-full md:w-auto">
                 <div className="grid grid-cols-4 sm:grid-cols-4 gap-3">
@@ -162,7 +163,7 @@ export default function EKB() {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
                 {knowledgeDomains.map((domain) => (
-                  <button 
+                  <button
                     key={domain.id}
                     className="flex flex-col items-center justify-center gap-2 bg-white border border-blue-200 rounded-md py-4 px-3 text-blue-700 hover:bg-blue-50 transition-colors text-sm font-medium text-center shadow-sm"
                   >
@@ -189,14 +190,14 @@ export default function EKB() {
                 </button>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* 最新文档 */}
               <div className="lg:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                 <div className="p-4">
                   <div className="space-y-6">
                     {latestDocuments.map((doc, index) => {
-                      const authors = ['梁吉力', '张三三', '王四四', '李四四', '赵五五', '钱六六'];
+                      const authors = [MAIN_USER_NAME, getDemoPerson(0), getDemoPerson(1), getDemoPerson(2), getDemoPerson(3), getDemoPerson(4)];
                       const views = [1216, 987, 756, 543, 321, 198];
                       return (
                         <div key={doc.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
@@ -219,7 +220,7 @@ export default function EKB() {
                   </div>
                 </div>
               </div>
-              
+
               {/* 热门文档和其他 */}
               <div className="space-y-6">
                 {/* 热门文档 */}
@@ -229,7 +230,7 @@ export default function EKB() {
                       <span className="text-orange-500">🔥</span> 热门文档
                     </h3>
                   </div>
-                  
+
                   {/* 热门文档列表 */}
                   <div className="p-4">
                     <div className="space-y-3">
@@ -246,7 +247,7 @@ export default function EKB() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* 大咖分享 */}
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                   <div className="p-4 border-b border-gray-100 flex items-center justify-between">
@@ -263,11 +264,11 @@ export default function EKB() {
                     <div className="space-y-4">
                       <div className="bg-purple-50 border border-purple-200 rounded-md p-3 hover:bg-purple-100 transition-colors cursor-pointer transform hover:scale-[1.02] transition-transform">
                         <div className="font-medium text-purple-800 mb-1">智能体搭建实战指南</div>
-                        <div className="text-xs text-gray-600">梁吉力 · 浏览 2,345</div>
+                        <div className="text-xs text-gray-600">{MAIN_USER_NAME} · 浏览 2,345</div>
                       </div>
                       <div className="bg-blue-50 border border-blue-200 rounded-md p-3 hover:bg-blue-100 transition-colors cursor-pointer transform hover:scale-[1.02] transition-transform">
                         <div className="font-medium text-blue-800 mb-1">知识库高效使用技巧</div>
-                        <div className="text-xs text-gray-600">张三三 · 浏览 1,892</div>
+                        <div className="text-xs text-gray-600">{getDemoPerson(0)} · 浏览 1,892</div>
                       </div>
                       <div className="bg-green-50 border border-green-200 rounded-md p-3 hover:bg-green-100 transition-colors cursor-pointer transform hover:scale-[1.02] transition-transform">
                         <div className="font-medium text-green-800 mb-1">企业AI应用最佳实践</div>
@@ -281,6 +282,6 @@ export default function EKB() {
           </div>
         </div>
       </div>
-    
+
   );
 }

@@ -182,6 +182,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [documentTab, setDocumentTab] = useState<'current' | 'mine'>('current');
   const [selectedSavedDocumentId, setSelectedSavedDocumentId] = useState<string | null>(null);
   const [savedDocuments, setSavedDocuments] = useState(initialSavedDocuments);
+  const [documentPendingDelete, setDocumentPendingDelete] = useState<typeof initialSavedDocuments[number] | null>(null);
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentCategoryFilter, setDocumentCategoryFilter] = useState('全部');
   const [documentStartDate, setDocumentStartDate] = useState('');
@@ -331,6 +332,16 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setFinalFileReady(document.hasFinalFile);
     setOutlineDirty(false);
     setIsSaved(true);
+  };
+
+  const handleConfirmDeleteDocument = () => {
+    if (!documentPendingDelete) return;
+    setSavedDocuments((current) => current.filter((item) => item.id !== documentPendingDelete.id));
+    if (selectedSavedDocumentId === documentPendingDelete.id) {
+      setSelectedSavedDocumentId(null);
+      setFinalFileReady(false);
+    }
+    setDocumentPendingDelete(null);
   };
 
   const handleGenerateFinalFile = () => {
@@ -697,7 +708,10 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                           </div>
                         )}
                         <button
-                          onClick={(event) => event.stopPropagation()}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setDocumentPendingDelete(item);
+                          }}
                           className="flex items-center justify-center gap-1.5 rounded-lg border border-red-100 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100"
                         >
                           <X size={13} />
@@ -1058,6 +1072,29 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
           )}
         </div>
       </div>
+
+      {documentPendingDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+            <div className="text-lg font-semibold text-gray-900">删除公文</div>
+            <p className="mt-3 text-sm leading-6 text-gray-600">是否确认删除该公文所有信息？</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setDocumentPendingDelete(null)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleConfirmDeleteDocument}
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showRegenerateConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">

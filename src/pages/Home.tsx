@@ -1,4 +1,5 @@
-﻿import {
+import { MAIN_USER_AVATAR, MAIN_USER_NAME, MAIN_USER_TITLE, getDemoPerson, getInitialsAvatar } from '../data/people';
+import {
   MessageSquare,
   Lock,
   Calendar as CalendarIcon,
@@ -306,7 +307,7 @@ const messages: Message[] = [
         id: 7,
         sender: 'me',
         type: 'text',
-        content: "帮我预约一下明天下午2点的项目会议，地点在会议室A，参加人有张飞、关羽、诸葛亮",
+        content: `帮我预约一下明天下午2点的项目会议，地点在会议室A，参加人有${getDemoPerson(2)}、${getDemoPerson(1)}、${getDemoPerson(3)}`,
         time: "今天 10:37",
       },
       {
@@ -322,7 +323,7 @@ const messages: Message[] = [
               scheduleTitle: "智能办公系统项目会议",
               scheduleTime: "明天 14:00 - 15:00",
               scheduleLocation: "会议室A",
-              scheduleMembers: ["张飞", "关羽", "诸葛亮"],
+              scheduleMembers: [getDemoPerson(2), getDemoPerson(1), getDemoPerson(3)],
             },
           },
           {
@@ -349,7 +350,7 @@ const messages: Message[] = [
         id: 10,
         sender: 'other',
         type: 'text',
-        content: "✅ 日程已创建！明天下午2点智能办公系统项目会议，地点会议室A，参与人：张飞、关羽、诸葛亮。已发送会议通知。",
+        content: `日程已创建！明天下午2点智能办公系统项目会议，地点会议室A，参与人：${getDemoPerson(2)}、${getDemoPerson(1)}、${getDemoPerson(3)}。已发送会议通知。`,
         time: "今天 10:38",
       },
       // 待审批 - 用户问 + 审批列表
@@ -371,9 +372,9 @@ const messages: Message[] = [
             type: 'approvalList',
             meta: {
               approvals: [
-                { title: "项目立项申请 - 吉祥航空协同平台", status: "pending", applicant: "梁吉力", time: "2026-05-18 14:30" },
-                { title: "预算调整申请 - Q2季度预算追加", status: "pending", applicant: "诸葛亮", time: "2026-05-17 09:15" },
-                { title: "设备采购申请 - 新风系统采购", status: "approved", applicant: "关羽", time: "2026-05-15 11:20" },
+                { title: "项目立项申请 - 吉祥航空协同平台", status: "pending", applicant: MAIN_USER_NAME, time: "2026-05-18 14:30" },
+                { title: "预算调整申请 - Q2季度预算追加", status: "pending", applicant: getDemoPerson(3), time: "2026-05-17 09:15" },
+                { title: "设备采购申请 - 新风系统采购", status: "approved", applicant: getDemoPerson(1), time: "2026-05-15 11:20" },
               ],
             },
           },
@@ -442,7 +443,7 @@ const messages: Message[] = [
   },
   {
     id: 8,
-    name: "张飞",
+    name: getDemoPerson(2),
     avatar: "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20businessman%20avatar%2C%20strong%20features%2C%20confident%20look%2C%20modern%20style%2C%20warm%20colors&image_size=square",
     message: "已经和相关部门沟通过我们的诉求",
     time: "昨天 16:21",
@@ -452,14 +453,14 @@ const messages: Message[] = [
         id: 1,
         sender: 'other',
         type: 'text',
-        content: "梁工，项目最新进展如何？",
+        content: `${MAIN_USER_TITLE}，项目最新进展如何？`,
         time: "昨天 15:30",
       },
       {
         id: 2,
         sender: 'me',
         type: 'text',
-        content: "张工，智能办公系统升级项目现在到什么阶段了？",
+        content: `${getDemoPerson(2)}，智能办公系统升级项目现在到什么阶段了？`,
         time: "昨天 15:35",
       },
       {
@@ -601,7 +602,7 @@ const messages: Message[] = [
     id: 2,
     name: "流程",
     avatar: "https://api.dicebear.com/7.x/initials/svg?seed=流程&backgroundColor=8b5cf6",
-    message: "信息管理部梁吉力提交的'项目立项申请'流...",
+    message: `信息管理部${MAIN_USER_NAME}提交的'项目立项申请'流...`,
     time: "12:21",
     unread: 8,
     icon: <Hexagon className="w-10 h-10" />,
@@ -711,28 +712,28 @@ const processes: ProcessItem[] = [
   {
     id: 1,
     title: "项目立项申请",
-    applicant: "梁吉力",
+    applicant: MAIN_USER_NAME,
     time: "2025-07-21 10:30",
     status: "pending",
   },
   {
     id: 2,
     title: "合同签署授权委托书",
-    applicant: "赵子龙",
+    applicant: getDemoPerson(4),
     time: "2025-07-20 15:45",
     status: "pending",
   },
   {
     id: 3,
     title: "预算调整申请",
-    applicant: "诸葛亮",
+    applicant: getDemoPerson(3),
     time: "2025-07-19 09:15",
     status: "approved",
   },
   {
     id: 4,
     title: "设备采购申请",
-    applicant: "关羽",
+    applicant: getDemoPerson(1),
     time: "2025-07-18 14:20",
     status: "rejected",
   },
@@ -763,20 +764,20 @@ export default function Home() {
     if (!selectedMessage) {
       const hour = new Date().getHours();
       const isDay = hour >= 6 && hour < 18;
-      
+
       return (
         <div className="flex-1 relative overflow-hidden h-full min-h-0">
           {isDay ? (
             <>
               <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-theme-50/30 to-gray-100 dark:from-gray-900 dark:via-theme-900/10 dark:to-gray-900" />
-              
+
               <div className="absolute top-0 right-0 w-72 h-72 pointer-events-none">
                 <div className="absolute top-6 right-6 w-24 h-24">
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-300 to-orange-400 rounded-full animate-pulse-slow shadow-lg shadow-amber-400/30" />
                   <div className="absolute inset-4 bg-gradient-to-br from-yellow-200 to-amber-300 rounded-full animate-pulse-slow animation-delay-2000" />
                 </div>
               </div>
-              
+
               <div className="absolute top-14 left-[10%] md:left-[15%] lg:left-[20%] animate-float pointer-events-none">
                 <div className="flex gap-2">
                   <div className="w-16 h-10 bg-white/80 rounded-full" />
@@ -795,7 +796,7 @@ export default function Home() {
                 <div className="relative w-full max-w-2xl">
                   <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden max-h-[calc(100dvh-11rem)] min-h-[min(360px,calc(100dvh-12rem))] flex flex-col">
                     <div className="h-1.5 bg-gradient-to-r from-amber-300 via-orange-400 to-amber-300" />
-                    
+
                     <div className="p-6 lg:p-8">
                       <div className="flex justify-center mb-5 lg:mb-6">
                         <div className="relative">
@@ -847,7 +848,7 @@ export default function Home() {
           ) : (
             <>
               <div className="absolute inset-0 bg-gradient-to-br from-gray-50 via-theme-50/30 to-gray-100 dark:from-gray-900 dark:via-theme-900/10 dark:to-gray-900" />
-              
+
               <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 {[...Array(20)].map((_, i) => (
                   <div
@@ -862,7 +863,7 @@ export default function Home() {
                   />
                 ))}
               </div>
-              
+
               <div className="absolute top-6 right-[5%] md:right-[10%] lg:right-[15%] pointer-events-none">
                 <div className="relative">
                   <div className="absolute inset-0 bg-indigo-200/20 dark:bg-indigo-200/30 rounded-full blur-xl animate-pulse-slow" />
@@ -883,7 +884,7 @@ export default function Home() {
                 <div className="relative w-full max-w-2xl">
                   <div className="relative bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 overflow-hidden max-h-[calc(100dvh-11rem)] min-h-[min(360px,calc(100dvh-12rem))] flex flex-col">
                     <div className="h-1.5 bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400" />
-                    
+
                     <div className="p-6 lg:p-8">
                       <div className="flex justify-center mb-5 lg:mb-6">
                         <div className="relative">
@@ -1007,7 +1008,7 @@ export default function Home() {
                       <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">截止到目前，2条待办未处理，其中2条已等待超过24小时</p>
                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">请尽快处理以下待办</p>
                       <ul className="list-decimal list-inside space-y-2 text-sm text-blue-600 mb-4">
-                        <li>梁吉力发起的'收款单'</li>
+                        <li>{MAIN_USER_NAME}发起的'收款单'</li>
                         <li>honeyLeung发起的'请假'</li>
                       </ul>
                     </div>
@@ -1023,7 +1024,7 @@ export default function Home() {
                 ...selectedMessage,
                 cardContent: {
                   title: "项目立项申请",
-                  content: "信息管理部梁吉力提交的项目立项申请需要您的审批，项目名称为'智能办公系统升级'，预计投资100万元，周期6个月。",
+                  content: `信息管理部${MAIN_USER_NAME}提交的项目立项申请需要您的审批，项目名称为'智能办公系统升级'，预计投资100万元，周期6个月。`,
                   actions: [
                     { label: "查看详情", type: 'primary' },
                     { label: "通过", type: 'secondary' },
@@ -1036,7 +1037,7 @@ export default function Home() {
                 time: "10:30",
                 cardContent: {
                   title: "合同签署授权委托书",
-                  content: "市场部赵子龙提交的合同签署授权委托书需要您的审批，涉及金额500万元。",
+                  content: `市场部${getDemoPerson(4)}提交的合同签署授权委托书需要您的审批，涉及金额500万元。`,
                   actions: [
                     { label: "查看详情", type: 'primary' },
                     { label: "通过", type: 'secondary' },
@@ -1135,7 +1136,7 @@ export default function Home() {
                           <a href="#" className="text-theme-600 hover:text-theme-700 font-medium text-base mb-1 block truncate">
                             智能办公系统使用指南
                           </a>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">由 梁吉力 发布，浏览量 1,234</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">由 {MAIN_USER_NAME} 发布，浏览量 1,234</span>
                         </div>
                         <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                       </div>
@@ -1145,7 +1146,7 @@ export default function Home() {
                           <a href="#" className="text-theme-600 hover:text-theme-700 font-medium text-base mb-1 block truncate">
                             2025年IT部门工作计划
                           </a>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">由 张三 发布，浏览量 987</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">由 {getDemoPerson(0)} 发布，浏览量 987</span>
                         </div>
                         <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                       </div>
@@ -1155,7 +1156,7 @@ export default function Home() {
                           <a href="#" className="text-theme-600 hover:text-theme-700 font-medium text-base mb-1 block truncate">
                             企业数据安全最佳实践
                           </a>
-                          <span className="text-sm text-gray-500 dark:text-gray-400">由 李四 发布，浏览量 756</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">由 {getDemoPerson(1)} 发布，浏览量 756</span>
                         </div>
                         <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
                       </div>
@@ -1175,7 +1176,7 @@ export default function Home() {
                     </div>
                   </MessageBubble>
                 </div>
-                
+
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full">
@@ -1192,7 +1193,7 @@ export default function Home() {
                             待审批
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">由 梁吉力 提交，需要您的审批</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">由 {MAIN_USER_NAME} 提交，需要您的审批</p>
                         <div className="flex gap-2">
                           <button className={`${cardStyles.button.primary} ${cardStyles.button.size}`}>
                             批准
@@ -1208,7 +1209,7 @@ export default function Home() {
                     </div>
                   </MessageBubble>
                 </div>
-                
+
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
                     <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-full">
@@ -1225,7 +1226,7 @@ export default function Home() {
                             已发布
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">由 张三 发布，已在知识库中上线</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">由 {getDemoPerson(0)} 发布，已在知识库中上线</p>
                         <button className={`${cardStyles.button.secondary} ${cardStyles.button.size}`}>
                           查看详情
                         </button>
@@ -1421,14 +1422,14 @@ export default function Home() {
             </>
           )}
         </div>
-        
+
         {/* 消息列表 */}
         <div className="flex-1 overflow-y-auto">
           {messages.map((msg) => (
-            <MessageItem 
-              key={msg.id} 
-              message={msg} 
-              onClick={() => handleMessageClick(msg)} 
+            <MessageItem
+              key={msg.id}
+              message={msg}
+              onClick={() => handleMessageClick(msg)}
               isSelected={selectedMessage?.id === msg.id}
             />
           ))}
@@ -1455,7 +1456,7 @@ export default function Home() {
             <h3 className="font-semibold text-gray-900 dark:text-white">选择联系人开始聊天</h3>
           </div>
         )}
-        
+
         {/* 聊天内容 */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {renderContent()}
@@ -1467,7 +1468,7 @@ export default function Home() {
 
 function MessageItem({ message, onClick, isSelected }: MessageItemProps) {
   return (
-    <div 
+    <div
       className={`p-4 border-b border-gray-100 dark:border-gray-700 cursor-pointer transition-colors flex gap-4 ${isSelected ? 'bg-gray-100 dark:bg-gray-700' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}`}
       onClick={onClick}
     >
@@ -1481,12 +1482,12 @@ function MessageItem({ message, onClick, isSelected }: MessageItemProps) {
             {message.name.includes('群') ? (
               <div className="relative w-12 h-12">
                 <img
-                  src="https://api.dicebear.com/7.x/initials/svg?seed=王五&backgroundColor=8b5cf6"
+                  src={getInitialsAvatar(getDemoPerson(2), '8b5cf6')}
                   alt=""
                   className="w-8 h-8 rounded-full absolute top-0 left-0 border-2 border-white dark:border-gray-800"
                 />
                 <img
-                  src="https://api.dicebear.com/7.x/initials/svg?seed=赵六&backgroundColor=f97316"
+                  src={getInitialsAvatar(getDemoPerson(10), 'f97316')}
                   alt=""
                   className="w-8 h-8 rounded-full absolute top-0 right-0 border-2 border-white dark:border-gray-800"
                 />
@@ -1641,7 +1642,7 @@ function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; av
     <div className={`flex gap-4 ${isMe ? 'flex-row-reverse' : ''}`}>
       <div className="flex-shrink-0">
         <img
-          src={isMe ? "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd" : avatar}
+          src={isMe ? MAIN_USER_AVATAR : avatar}
           alt={isMe ? "我" : name}
           className="w-12 h-12 rounded-full"
         />
@@ -2176,4 +2177,3 @@ function renderChatContent(chatMsg: ChatMessage, isMe: boolean) {
     </>
   );
 }
-

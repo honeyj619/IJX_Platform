@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Menu, X, Shield, Lock, GitBranch, LayoutDashboard,
   Globe, Network, Palette, ChevronRight, User, Users, FolderTree,
   Route, Wand2, FileText, Edit3, Image as ImageIcon, Type, AlignJustify, Plus, Search, Upload,
-  Database, Briefcase, RefreshCw, CheckCircle2, Layers, Smartphone
+  Database, Briefcase, RefreshCw, CheckCircle2, Layers, Smartphone, ClipboardList
 } from 'lucide-react';
 import NavigationConfig from '../components/NavigationConfig';
+import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 
 interface MenuItem {
   id: string;
@@ -71,6 +72,16 @@ const menuItems: MenuItem[] = [
     id: 'initial',
     label: 'i吉祥初始功能',
     icon: <LayoutDashboard size={18} />,
+    children: [
+      {
+        id: 'report-management',
+        label: '汇报管理',
+        icon: <ClipboardList size={16} />,
+        children: [
+          { id: 'report-template', label: '模板管理', icon: <FileText size={15} /> },
+        ],
+      },
+    ],
   },
   {
     id: 'ai',
@@ -101,6 +112,7 @@ const topLevelSystemSections = menuItems.find(item => item.id === 'system')?.chi
 
 const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
   'ai-template': { menu: 'ai', subMenu: 'ai-template' },
+  'report-template': { menu: 'initial', subMenu: 'report-template' },
   'system-nav': { menu: 'system', subMenu: 'system-nav' },
 };
 
@@ -202,7 +214,7 @@ function AdminNestedMenuTree({
       {items.map((subItem) => {
     const isActive = activeSubMenu === subItem.id;
     const hasActiveChild = !!findMenuItemById(subItem.children || [], activeSubMenu);
-    const isBranchOpen = expandedMenus.has(subItem.id);
+    const isBranchOpen = expandedMenus.has(subItem.id) || hasActiveChild;
     const isLeafActive = isActive && !subItem.children?.length;
 
         return (
@@ -272,6 +284,72 @@ function ContentPlaceholder({ title, icon }: { title: string; icon: string }) {
   );
 }
 
+const reportTemplateRows = [
+  { id: 'weekly', name: '工作周报模板', type: '工作汇报', fields: '关联OKR、本周事项、下周计划、汇报对象', updater: MAIN_USER_NAME, updatedAt: '2026-07-02 18:20' },
+  { id: 'daily', name: '工作日报模板', type: '工作汇报', fields: '今日总结、明日计划、风险问题、抄送对象', updater: MAIN_USER_NAME, updatedAt: '2026-07-01 16:10' },
+  { id: 'okr-weekly', name: 'OKR拆解周报模板', type: 'OKR汇报', fields: 'Objective、Key Result、本周进展、下周计划', updater: MAIN_USER_NAME, updatedAt: '2026-06-28 11:35' },
+];
+
+function ReportTemplateManagement() {
+  return (
+    <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] pt-3 text-sm text-gray-800">
+      <AdminTabs active="模板管理" />
+      <div className="bg-white px-8 py-4">
+        <div className="mb-5 text-sm text-gray-500">
+          首页 <span className="mx-2">/</span> i吉祥初始功能 <span className="mx-2">/</span> 汇报管理 <span className="mx-2">/</span>
+          <span className="text-gray-800">模板管理</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-gray-700">模板名称</span>
+            <input placeholder="请输入模板名称" className="h-9 w-64 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+          </label>
+          <button className="rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">查询</button>
+          <button className="rounded border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50">重置</button>
+        </div>
+      </div>
+
+      <div className="p-5">
+        <div className="bg-white p-5">
+          <button className="mb-4 inline-flex items-center gap-1.5 rounded bg-[#2f75b5] px-4 py-2 font-medium text-white hover:bg-[#28669f]">
+            <Plus size={15} />
+            新增模板
+          </button>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] border-collapse text-left">
+              <thead>
+                <tr className="bg-gray-50 text-gray-700">
+                  <th className="px-3 py-3 font-medium">模板名称</th>
+                  <th className="px-3 py-3 font-medium">汇报类型</th>
+                  <th className="px-3 py-3 font-medium">模板字段</th>
+                  <th className="px-3 py-3 font-medium">更新人</th>
+                  <th className="px-3 py-3 font-medium">更新时间</th>
+                  <th className="px-3 py-3 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {reportTemplateRows.map((item) => (
+                  <tr key={item.id} className="hover:bg-blue-50/40">
+                    <td className="px-3 py-3 font-medium text-gray-900">{item.name}</td>
+                    <td className="px-3 py-3">{item.type}</td>
+                    <td className="px-3 py-3 text-gray-600">{item.fields}</td>
+                    <td className="px-3 py-3">{item.updater}</td>
+                    <td className="px-3 py-3">{item.updatedAt}</td>
+                    <td className="px-3 py-3">
+                      <button className="mr-4 text-[#2f75b5] hover:underline">编辑</button>
+                      <button className="text-[#2f75b5] hover:underline">删除</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 
 type UserGroupSource = 'manual' | 'sync';
@@ -301,11 +379,11 @@ const initialUserGroups: UserGroupRecord[] = [
     source: 'manual',
     description: '由管理员维护，用于跨部门项目工作台、流程和知识库权限授权。',
     updatedAt: '2026-06-28 16:20',
-    owner: '梁吉利',
+    owner: MAIN_USER_NAME,
     members: [
-      { name: '梁吉利', phone: '+86 13611750104', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理' },
-      { name: '赖慧娟', phone: '+86 13800138021', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管' },
-      { name: '肖林川', phone: '+86 13900139032', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理' },
+      { name: MAIN_USER_NAME, phone: '+86 13611750104', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理' },
+      { name: getDemoPerson(13), phone: '+86 13800138021', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管' },
+      { name: getDemoPerson(14), phone: '+86 13900139032', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理' },
     ]
   },
   {
@@ -314,9 +392,9 @@ const initialUserGroups: UserGroupRecord[] = [
     source: 'manual',
     description: '手动添加的试点用户，可编辑成员，用于AI公文创作灰度范围配置。',
     updatedAt: '2026-06-27 11:05',
-    owner: '梁勃',
+    owner: getDemoPerson(11),
     members: [
-      { name: '梁勃', phone: '+86 13500135022', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人' },
+      { name: getDemoPerson(11), phone: '+86 13500135022', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人' },
       { name: '陈一航', phone: '+86 13400134033', userId: '8ef67331', department: '市场营销部 / 数字营销处', position: '处长' },
     ]
   },
@@ -326,10 +404,10 @@ const initialUserGroups: UserGroupRecord[] = [
     source: 'manual',
     description: '用于值班、排班和移动端通知配置的管理员用户组。',
     updatedAt: '2026-06-25 09:45',
-    owner: '张鹏',
+    owner: getDemoPerson(12),
     members: [
-      { name: '张鹏', phone: '+86 13700137011', userId: '9aa78120', department: '航务运行部 / 运行支撑处', position: '高级经理' },
-      { name: '赵六', phone: '+86 13100131033', userId: '3da77145', department: '信息管理部', position: '部门负责人' },
+      { name: getDemoPerson(12), phone: '+86 13700137011', userId: '9aa78120', department: '航务运行部 / 运行支撑处', position: '高级经理' },
+      { name: getDemoPerson(10), phone: '+86 13100131033', userId: '3da77145', department: '信息管理部', position: '部门负责人' },
     ]
   },
   {
@@ -340,9 +418,9 @@ const initialUserGroups: UserGroupRecord[] = [
     updatedAt: '2026-07-01 09:30',
     owner: '主数据',
     members: [
-      { name: '梁吉利', phone: '+86 13611750104', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理' },
-      { name: '赖慧娟', phone: '+86 13800138021', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管' },
-      { name: '肖林川', phone: '+86 13900139032', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理' },
+      { name: MAIN_USER_NAME, phone: '+86 13611750104', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理' },
+      { name: getDemoPerson(13), phone: '+86 13800138021', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管' },
+      { name: getDemoPerson(14), phone: '+86 13900139032', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理' },
     ]
   },
   {
@@ -353,8 +431,8 @@ const initialUserGroups: UserGroupRecord[] = [
     updatedAt: '2026-07-01 09:30',
     owner: '主数据',
     members: [
-      { name: '张鹏', phone: '+86 13700137011', userId: '9aa78120', department: '航务运行部 / 运行支撑处', position: '高级经理' },
-      { name: '梁勃', phone: '+86 13500135022', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人' },
+      { name: getDemoPerson(12), phone: '+86 13700137011', userId: '9aa78120', department: '航务运行部 / 运行支撑处', position: '高级经理' },
+      { name: getDemoPerson(11), phone: '+86 13500135022', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人' },
       { name: '陈一航', phone: '+86 13400134033', userId: '8ef67331', department: '市场营销部 / 数字营销处', position: '处长' },
     ]
   },
@@ -366,9 +444,9 @@ const initialUserGroups: UserGroupRecord[] = [
     updatedAt: '2026-07-01 09:30',
     owner: '主数据',
     members: [
-      { name: '王一', phone: '+86 13300133011', userId: '2ab88901', department: '总经理办公室', position: '决策委员' },
-      { name: '刘十', phone: '+86 13200132022', userId: '5cf90213', department: '经营管理部', position: '经营管理负责人' },
-      { name: '赵六', phone: '+86 13100131033', userId: '3da77145', department: '信息管理部', position: '部门负责人' },
+      { name: getDemoPerson(0), phone: '+86 13300133011', userId: '2ab88901', department: '总经理办公室', position: '决策委员' },
+      { name: getDemoPerson(9), phone: '+86 13200132022', userId: '5cf90213', department: '经营管理部', position: '经营管理负责人' },
+      { name: getDemoPerson(10), phone: '+86 13100131033', userId: '3da77145', department: '信息管理部', position: '部门负责人' },
     ]
   },
 ];
@@ -407,7 +485,7 @@ function UserGroupManagement() {
       source: 'manual',
       description: '手动创建的用户组，可按业务场景维护成员和授权范围。',
       updatedAt: '2026-07-01 10:35',
-      owner: '梁吉利',
+      owner: MAIN_USER_NAME,
       members: [],
     };
     setGroups(current => [newGroup, ...current]);
@@ -621,10 +699,10 @@ function UserGroupManagement() {
 }
 
 const documentTemplateRows = [
-  { id: 'notice-red', name: '红头通知模板', category: '通知', updater: '梁吉力', updatedAt: '2026-06-16 13:20', description: '适用于公司级正式通知、制度发布与跨部门工作安排。', titleLevel: '二号主标题', lineHeight: '28 磅', letterSpacing: '标准' },
-  { id: 'party-study', name: '党群学习模板', category: '党群', updater: '梁吉力', updatedAt: '2026-06-15 16:40', description: '适用于党群学习活动、主题教育、组织生活等材料。', titleLevel: '三号一级标题', lineHeight: '26 磅', letterSpacing: '加宽 0.3 磅' },
-  { id: 'meeting-minutes', name: '会议纪要模板', category: '会议纪要', updater: '王敏', updatedAt: '2026-06-14 11:05', description: '适用于项目会议、专题会议、经营分析会等纪要场景。', titleLevel: '小二主标题', lineHeight: '固定值 28 磅', letterSpacing: '标准' },
-  { id: 'brief-blue', name: '工作简报模板', category: '工作简报', updater: '赵磊', updatedAt: '2026-06-12 09:30', description: '适用于周报简报、经营简报和阶段性工作汇报。', titleLevel: '二号主标题', lineHeight: '1.5 倍行距', letterSpacing: '标准' },
+  { id: 'notice-red', name: '红头通知模板', category: '通知', updater: MAIN_USER_NAME, updatedAt: '2026-06-16 13:20', description: '适用于公司级正式通知、制度发布与跨部门工作安排。', titleLevel: '二号主标题', lineHeight: '28 磅', letterSpacing: '标准' },
+  { id: 'party-study', name: '党群学习模板', category: '党群', updater: MAIN_USER_NAME, updatedAt: '2026-06-15 16:40', description: '适用于党群学习活动、主题教育、组织生活等材料。', titleLevel: '三号一级标题', lineHeight: '26 磅', letterSpacing: '加宽 0.3 磅' },
+  { id: 'meeting-minutes', name: '会议纪要模板', category: '会议纪要', updater: getDemoPerson(15), updatedAt: '2026-06-14 11:05', description: '适用于项目会议、专题会议、经营分析会等纪要场景。', titleLevel: '小二主标题', lineHeight: '固定值 28 磅', letterSpacing: '标准' },
+  { id: 'brief-blue', name: '工作简报模板', category: '工作简报', updater: getDemoPerson(16), updatedAt: '2026-06-12 09:30', description: '适用于周报简报、经营简报和阶段性工作汇报。', titleLevel: '二号主标题', lineHeight: '1.5 倍行距', letterSpacing: '标准' },
 ];
 
 function TemplatePreviewCard({ accent = 'bg-red-500' }: { accent?: string }) {
@@ -1010,7 +1088,7 @@ function DocumentTemplateManagementConsole() {
   const [previewImageFile, setPreviewImageFile] = useState<File | null>(null);
   const isCreatingTemplate = editingTemplateId === '__new__';
   const editingTemplate = isCreatingTemplate
-    ? { id: '__new__', name: '新增公文模板', category: '通知', updater: '梁吉力', updatedAt: '刚刚', description: '', titleLevel: '一级标题', lineHeight: '固定值 28 磅', letterSpacing: '标准' }
+    ? { id: '__new__', name: '新增公文模板', category: '通知', updater: MAIN_USER_NAME, updatedAt: '刚刚', description: '', titleLevel: '一级标题', lineHeight: '固定值 28 磅', letterSpacing: '标准' }
     : documentTemplateRows.find(item => item.id === editingTemplateId) || documentTemplateRows[0];
   const filteredRows = documentTemplateRows.filter((item) => item.name.includes(templateName.trim()));
   const handleOpenTemplateEditor = (templateId: string) => {
@@ -1423,7 +1501,7 @@ export default function Admin() {
               <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
                 <User size={16} className="text-gray-600" />
               </div>
-              <span className="text-sm font-medium text-gray-700">梁劼</span>
+              <span className="text-sm font-medium text-gray-700">{MAIN_USER_NAME}</span>
             </div>
           </div>
         </div>
@@ -1493,7 +1571,7 @@ export default function Admin() {
             </div>
           ) : (
             /* 根据选中菜单展示对应内容 */
-            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
+            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
               {/* 面包屑导航 */}
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                 <span className="cursor-pointer hover:text-gray-700" onClick={() => { setActiveMenu(null); setActiveSubMenu(null); }}>首页</span>
@@ -1609,7 +1687,23 @@ export default function Admin() {
                 </div>
               )}
 
-              {activeMenu === 'initial' && <ContentPlaceholder title="i吉祥初始功能" icon="📊" />}
+              {activeMenu === 'initial' && (
+                <div>
+                  {!activeSubMenu && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">i吉祥初始功能</h2>
+                      {renderMenuCards(menuItems.find(m => m.id === 'initial')?.children || [])}
+                    </div>
+                  )}
+                  {activeSubMenu && findMenuItemById(menuItems.find(m => m.id === 'initial')?.children || [], activeSubMenu)?.children && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                      <h2 className="text-xl font-bold text-gray-900 mb-6">{findMenuItemById(menuItems.find(m => m.id === 'initial')?.children || [], activeSubMenu)?.label}</h2>
+                      {renderMenuCards(findMenuItemById(menuItems.find(m => m.id === 'initial')?.children || [], activeSubMenu)?.children || [])}
+                    </div>
+                  )}
+                  {activeSubMenu === 'report-template' && <ReportTemplateManagement />}
+                </div>
+              )}
 
               {activeMenu === 'business-feature' && <ContentPlaceholder title="业务功能" icon="📁" />}
             </div>
@@ -1619,3 +1713,5 @@ export default function Admin() {
     </div>
   );
 }
+
+

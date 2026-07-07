@@ -1,7 +1,8 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, Target, Copy, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import DocumentEditor from "./DocumentEditor";
+import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from "../data/people";
 
 interface Assistant {
   id: number;
@@ -177,7 +178,7 @@ const templateFilterOptions: Record<string, string[]> = {
   工作简报: ["全部", "周报简报", "经营简报"],
 };
 
-const userAvatarUrl = "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd";
+const userAvatarUrl = MAIN_USER_AVATAR;
 
 const templateLayoutRules = [
   { label: "主标题", value: "二号方正小标宋，居中，段前 0 行、段后 1 行" },
@@ -230,9 +231,9 @@ const operationsLinks: ProcessLink[] = [
 ];
 
 const reportSubmitTargets = [
-  { id: 1, name: "张鹏", department: "信息管理部", role: "直属上级", type: "汇报对象" },
-  { id: 2, name: "肖林川", department: "信息管理部", role: "项目协同", type: "抄送对象" },
-  { id: 3, name: "梁勃", department: "信息管理部", role: "部门负责人", type: "汇报对象" },
+  { id: 1, name: getDemoPerson(12), department: "信息管理部", role: "直属上级", type: "汇报对象" },
+  { id: 2, name: getDemoPerson(14), department: "信息管理部", role: "项目协同", type: "抄送对象" },
+  { id: 3, name: getDemoPerson(11), department: "信息管理部", role: "部门负责人", type: "汇报对象" },
 ];
 
 const suggestedPrompts = [
@@ -351,7 +352,7 @@ export default function RuYiZone() {
       setInput("");
     }
   };
-  
+
   const handleBackFromEditor = () => {
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
@@ -929,10 +930,10 @@ export default function RuYiZone() {
               </button>
               <img
                 src={userAvatarUrl}
-                alt="梁吉力"
+                alt={MAIN_USER_NAME}
                 className="h-10 w-10 rounded-full object-cover"
               />
-              <span>hello，梁吉力</span>
+              <span>hello，{MAIN_USER_NAME}</span>
             </div>
           </header>
 
@@ -1031,11 +1032,11 @@ export default function RuYiZone() {
   return (
     <>
       {showEditor && !isLegacyMode && !embedEditorInRuyiZone ? (
-        <DocumentEditor 
+        <DocumentEditor
           key={`editor-${editorSessionId}`}
-          docType={docType} 
-          docTitle={docTitle} 
-          docLength={docLength} 
+          docType={docType}
+          docTitle={docTitle}
+          docLength={docLength}
           docContent={docContent}
           attachments={docAttachments}
           startInOutline={legacyEditorStartsInOutline}
@@ -1049,7 +1050,7 @@ export default function RuYiZone() {
         <div className="flex flex-1 min-h-0">
         {/* 移动端菜单按钮 - 放在内容区右侧 */}
         {isMobile && (
-          <button 
+          <button
             className="fixed top-6 right-6 z-50 bg-white p-2 rounded-full shadow-lg"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
@@ -1059,7 +1060,7 @@ export default function RuYiZone() {
 
         {/* 移动端遮罩层 */}
         {isMobile && mobileMenuOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-30 bg-black/30"
             onClick={() => setMobileMenuOpen(false)}
           />
@@ -1080,7 +1081,7 @@ export default function RuYiZone() {
               </div>
               <span>如意空间</span>
               <Link
-                to="/agent-square"
+                to="/web_client/agent-square"
                 className="ml-auto inline-flex items-center gap-1 rounded-full border border-theme-100 bg-theme-50 px-2 py-1 text-[11px] font-semibold text-theme-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-theme-100 dark:border-theme-900/40 dark:bg-theme-900/20 dark:text-theme-200"
                 title="进入AI门户"
               >
@@ -1112,7 +1113,7 @@ export default function RuYiZone() {
                   key={assistant.id}
                   className={`
                     group relative min-h-[76px] overflow-hidden rounded-xl border p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md
-                    ${selectedAssistant?.id === assistant.id 
+                    ${selectedAssistant?.id === assistant.id
                       ? 'border-theme-200 bg-gradient-to-br from-theme-50 to-white text-theme-700 shadow-sm ring-1 ring-theme-100 dark:border-theme-800 dark:from-theme-900/30 dark:to-gray-800 dark:text-theme-300'
                       : 'border-gray-100 bg-white text-gray-700 hover:border-theme-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-theme-800'
                     }
@@ -1133,8 +1134,8 @@ export default function RuYiZone() {
               ))}
               </div>
             </div>
-            <Link 
-              to="/agent-square"
+            <Link
+              to="/web_client/agent-square"
               className="block w-full bg-gradient-to-theme text-white py-3 rounded-lg hover:opacity-90 transition-all duration-300 text-center font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
             >
               前往智能体广场
@@ -1247,8 +1248,8 @@ export default function RuYiZone() {
                             <li><span className="font-semibold">根据录音创建：</span>上传会议录音文件，由系统生成纪要草稿。</li>
                           </ol>
                           <div className="mb-6 flex flex-wrap gap-3">
-                            <Link to="/knowledge?template=meeting-minutes" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">查看会议纪要模板</Link>
-                            <Link to="/ruyi-zone?tool=document&scene=meeting-minutes" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">创建空白纪要</Link>
+                            <Link to="/web_client/knowledge?template=meeting-minutes" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">查看会议纪要模板</Link>
+                            <Link to="/web_client/ruyi-zone?tool=document&scene=meeting-minutes" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">创建空白纪要</Link>
                           </div>
                         </>
                       )}
@@ -1257,7 +1258,7 @@ export default function RuYiZone() {
                         <>
                           <p className="mb-4 leading-7">您的使用问题已反馈至系统负责人。</p>
                           <p className="mb-6 leading-7">我已记录您的问题描述，并同步给服务台跟进。您也可以进入服务台补充截图、影响范围或紧急程度。</p>
-                          <Link to="/business?tab=service-desk&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">前往服务台查看处理进度</Link>
+                          <Link to="/web_client/business?tab=service-desk&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">前往服务台查看处理进度</Link>
                         </>
                       )}
 
@@ -1271,7 +1272,7 @@ export default function RuYiZone() {
                             <li>项目立项完成。</li>
                           </ol>
                           <p className="mb-4 leading-7">Web 端不展示 IM 表单卡片，我已将表单能力转换为流程入口。点击后可进入项目立项页面补充项目名称、类型、预计开始日期、预算、负责人和项目概述。</p>
-                          <Link to="/process?type=project-setup&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">发起项目立项申请</Link>
+                          <Link to="/web_client/process?type=project-setup&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">发起项目立项申请</Link>
                         </>
                       )}
 
@@ -1296,11 +1297,11 @@ export default function RuYiZone() {
                             <li><span className="font-semibold">会议：</span>智能办公系统项目会议</li>
                             <li><span className="font-semibold">时间：</span>明天 14:00 - 15:00</li>
                             <li><span className="font-semibold">地点：</span>会议室A</li>
-                            <li><span className="font-semibold">参与人：</span>张飞、关羽、诸葛亮</li>
+                            <li><span className="font-semibold">参与人：</span>{getDemoPerson(2)}、{getDemoPerson(1)}、{getDemoPerson(3)}</li>
                           </ul>
                           <div className="mb-6 flex flex-wrap gap-3">
-                            <Link to="/calendar?action=create&source=ruyi-zone" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">确认创建日程</Link>
-                            <Link to="/calendar?action=edit&source=ruyi-zone" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">修改日程信息</Link>
+                            <Link to="/web_client/calendar?action=create&source=ruyi-zone" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">确认创建日程</Link>
+                            <Link to="/web_client/calendar?action=edit&source=ruyi-zone" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">修改日程信息</Link>
                           </div>
                         </>
                       )}
@@ -1327,7 +1328,7 @@ export default function RuYiZone() {
                             <li>迟到 2 次，早退 0 次。</li>
                             <li>请假 1 天，整体出勤率 95.5%。</li>
                           </ul>
-                          <p className="mb-6 leading-7">整体表现良好。相关制度可查看 <Link to="/knowledge?doc=attendance-policy&source=ruyi-zone" className="font-semibold text-theme-700 underline-offset-4 hover:underline dark:text-theme-300">考勤管理制度 v2.3</Link>。</p>
+                          <p className="mb-6 leading-7">整体表现良好。相关制度可查看 <Link to="/web_client/knowledge?doc=attendance-policy&source=ruyi-zone" className="font-semibold text-theme-700 underline-offset-4 hover:underline dark:text-theme-300">考勤管理制度 v2.3</Link>。</p>
                         </>
                       )}
 
@@ -1392,12 +1393,12 @@ export default function RuYiZone() {
                                 keyResults: [
                                   {
                                     kr: "KR1 完成工作汇报与OKR联动能力",
-                                    owners: ["梁吉利", "肖八"],
-                                    progress: "基于梁吉利本周汇报，看汇报列表、详情弹框、关联KR展示已完成；肖八补充了已读情况和评论流程。",
+                                    owners: [MAIN_USER_NAME, getDemoPerson(5)],
+                                    progress: `基于${MAIN_USER_NAME}本周汇报，看汇报列表、详情弹框、关联KR展示已完成；${getDemoPerson(5)}补充了已读情况和评论流程。`,
                                   },
                                   {
                                     kr: "KR2 完成汇报统计和助手浮层",
-                                    owners: ["肖八", "郑八"],
+                                    owners: [getDemoPerson(5), getDemoPerson(6)],
                                     progress: "汇报统计明细已按日期展示，如意工作参谋师已支持按自定义时间和人员生成总结，剩余是筛选口径细化。",
                                   },
                                 ],
@@ -1407,12 +1408,12 @@ export default function RuYiZone() {
                                 keyResults: [
                                   {
                                     kr: "KR1 完成公文大纲、模板和最终文件流程",
-                                    owners: ["郑八", "沈十六"],
-                                    progress: "郑八的汇报显示模板预览、管理后台字段已连通；沈十六跟进了最终文件生成和参考文件状态。",
+                                    owners: [getDemoPerson(6), getDemoPerson(7)],
+                                    progress: `${getDemoPerson(6)}的汇报显示模板预览、管理后台字段已连通；${getDemoPerson(7)}跟进了最终文件生成和参考文件状态。`,
                                   },
                                   {
                                     kr: "KR2 统一新版、旧版如意助手入口",
-                                    owners: ["梁吉利", "沈十六"],
+                                    owners: [MAIN_USER_NAME, getDemoPerson(7)],
                                     progress: "新版常用助手已整合为如意工作参谋师，旧版已增加IT服务助手入口，交互已可预览。",
                                   },
                                 ],
@@ -1432,7 +1433,7 @@ export default function RuYiZone() {
                               </div>
                             ))}
                           </div>
-                          <Link to="/okr?assistant=assessment&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">打开 OKR 页面继续调整</Link>
+                          <Link to="/web_client/okr?assistant=assessment&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">打开 OKR 页面继续调整</Link>
                         </>
                       )}
 
@@ -1631,16 +1632,16 @@ export default function RuYiZone() {
                 {/* 背景装饰 */}
                 <div className="absolute -top-20 -left-20 w-64 h-64 bg-gradient-to-r from-theme-100 to-theme-50 rounded-full opacity-70"></div>
                 <div className="absolute -bottom-10 right-10 w-40 h-40 bg-gradient-to-r from-blue-100 to-indigo-50 rounded-full opacity-70"></div>
-                
+
                 <div className="mb-8 md:mb-0 relative z-10">
-                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">Hi，梁吉力</h2>
+                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3">Hi，{MAIN_USER_NAME}</h2>
                   <p className="text-lg md:text-xl text-gray-600 dark:text-gray-300">欢迎回到如意空间，有什么可以帮您的吗？</p>
                 </div>
                 <div className="relative z-10">
                   <div className="absolute -top-4 -left-4 w-40 h-40 bg-gradient-to-r from-theme-200 to-theme-100 rounded-full opacity-70 animate-pulse"></div>
-                  <img 
-                    src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd" 
-                    alt="如意助手" 
+                  <img
+                    src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd"
+                    alt="如意助手"
                     className="relative z-10 w-32 md:w-40 h-32 md:h-40 object-cover rounded-full border-4 border-white shadow-xl transition-all duration-300 hover:shadow-2xl transform hover:scale-105"
                   />
                 </div>
@@ -1649,8 +1650,8 @@ export default function RuYiZone() {
               {/* 工具按钮 */}
               <div className="flex flex-wrap gap-4 mb-16">
                 {tools.map((tool) => (
-                  <button 
-                    key={tool.id} 
+                  <button
+                    key={tool.id}
                     className={`inline-flex flex-col items-center gap-2 p-3 rounded-lg transition-all duration-300 group ${activeTool === tool.name ? 'bg-theme-50 dark:bg-theme-900/20 ring-2 ring-theme-200' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'}`}
                     onClick={() => {
                       setActiveTool(activeTool === tool.name ? null : tool.name);
@@ -2083,6 +2084,6 @@ export default function RuYiZone() {
       </div>
       )}
     </>
-    
+
   );
 }

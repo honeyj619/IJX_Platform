@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { User, FileText, Users, Settings, LogOut, Shield, Palette, Moon, Sun } from "lucide-react";
+import { User, FileText, Users, Settings, LogOut, Shield, Palette, Moon, Sun, Download } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useThemeStore } from "../store/themeStore";
 import { Skin } from "../store/themeStore";
+import { MAIN_USER_AVATAR, MAIN_USER_NAME } from "../data/people";
 
 interface MenuItem {
   id: string;
@@ -40,31 +41,37 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
   }, [isOpen]);
 
   const menuItems: MenuItem[] = [
-    { 
-      id: "profile", 
-      label: "个人信息", 
-      icon: <User size={16} />, 
-      path: "/profile" 
+    {
+      id: "profile",
+      label: "个人信息",
+      icon: <User size={16} />,
+      path: "/web_client/profile"
+    },
+    {
+      id: "download",
+      label: "下载应用",
+      icon: <Download size={16} />,
+      path: "/download"
     },
     { id: "divider1", label: "", icon: null, divider: true },
-    { 
-      id: "settings", 
-      label: "系统设置", 
-      icon: <Settings size={16} />, 
-      path: "/settings" 
+    {
+      id: "settings",
+      label: "系统设置",
+      icon: <Settings size={16} />,
+      path: "/web_client/settings"
     },
-    { 
-      id: "admin", 
-      label: "管理后台", 
-      icon: <Shield size={16} />, 
+    {
+      id: "admin",
+      label: "管理后台",
+      icon: <Shield size={16} />,
       path: "/admin"
     },
     { id: "divider2", label: "", icon: null, divider: true },
-    { 
-      id: "logout", 
-      label: "退出", 
-      icon: <LogOut size={16} />, 
-      action: () => console.log("退出登录") 
+    {
+      id: "logout",
+      label: "退出",
+      icon: <LogOut size={16} />,
+      action: () => console.log("退出登录")
     },
   ];
 
@@ -94,11 +101,11 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
         className={`flex items-center rounded-lg hover:bg-white/10 transition-colors ${collapsed ? 'justify-center p-1' : 'gap-2 p-2 w-full'}`}
       >
         <img
-          src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd"
+          src={MAIN_USER_AVATAR}
           alt="用户头像"
           className={`rounded-full border-2 border-white flex-shrink-0 cursor-pointer hover:border-pink-400 transition-all ${collapsed ? 'w-9 h-9' : 'w-10 h-10'}`}
         />
-        {!collapsed && <span className="font-bold text-lg truncate hidden md:block text-white">梁吉力</span>}
+        {!collapsed && <span className="font-bold text-lg truncate hidden md:block text-white">{MAIN_USER_NAME}</span>}
       </button>
 
       {/* 下拉菜单 */}
@@ -111,12 +118,12 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
           <div className="p-4 bg-gradient-to-r from-pink-500 to-purple-600">
             <div className="flex items-center gap-3">
               <img
-                src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd"
+                src={MAIN_USER_AVATAR}
                 alt="用户头像"
                 className="w-12 h-12 rounded-full border-2 border-white"
               />
               <div>
-                <div className="font-bold text-white">梁吉力</div>
+                <div className="font-bold text-white">{MAIN_USER_NAME}</div>
                 <div className="text-xs text-white/80">信息管理部 · 高级工程师</div>
               </div>
             </div>

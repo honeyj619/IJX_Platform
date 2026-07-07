@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import MobileDevicePrompt from "@/components/MobileDevicePrompt";
@@ -17,6 +17,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import Admin from "@/pages/Admin";
 import WorkReport from "@/pages/WorkReport";
 import OkrModule from "@/pages/OkrModule";
+import Download from "@/pages/Download";
 
 function shouldShowMobileView(width: number, height: number): boolean {
   const aspectRatio = width / height;
@@ -100,37 +101,54 @@ export default function App() {
     return null;
   }
 
-  if (isMobile) {
+  const isDownloadPage = window.location.pathname.includes('/download');
+
+  if (isMobile && !isDownloadPage) {
     return <MobileDevicePrompt />;
   }
+
+  const webClientRoutes = (
+    <Layout>
+      <Routes>
+        <Route index element={<Home />} />
+        <Route path="enterprise" element={<Enterprise />} />
+        <Route path="assistant" element={<Assistant />} />
+        <Route path="process" element={<Process />} />
+        <Route path="knowledge" element={<Knowledge />} />
+        <Route path="ekb" element={<EKB />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="agent-square" element={<AgentSquarePage />} />
+        <Route path="ruyi-zone" element={<RuYiZone />} />
+        <Route path="calendar" element={<Calendar />} />
+        <Route path="business" element={<Business />} />
+        <Route path="work-report" element={<WorkReport />} />
+        <Route path="okr" element={<OkrModule />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Routes>
+    </Layout>
+  );
 
   return (
     <Router basename={import.meta.env.BASE_URL}>
       <Routes>
         {/* 管理后台 — 独立页面，不嵌套在 Layout 中 */}
         <Route path="/admin" element={<Admin />} />
-        
-        {/* 其他所有页面 — 在 Layout 框架内展示 */}
-        <Route path="*" element={
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/enterprise" element={<Enterprise />} />
-              <Route path="/assistant" element={<Assistant />} />
-              <Route path="/process" element={<Process />} />
-              <Route path="/knowledge" element={<Knowledge />} />
-              <Route path="/ekb" element={<EKB />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/agent-square" element={<AgentSquarePage />} />
-              <Route path="/ruyi-zone" element={<RuYiZone />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/business" element={<Business />} />
-              <Route path="/work-report" element={<WorkReport />} />
-              <Route path="/okr" element={<OkrModule />} />
-              <Route path="/settings" element={<SettingsPage />} />
-            </Routes>
-          </Layout>
-        } />
+        <Route path="/download" element={<Download />} />
+        <Route path="/" element={<Navigate to="/web_client" replace />} />
+        <Route path="/web_client/*" element={webClientRoutes} />
+        <Route path="/enterprise" element={<Navigate to="/web_client/enterprise" replace />} />
+        <Route path="/assistant" element={<Navigate to="/web_client/assistant" replace />} />
+        <Route path="/process" element={<Navigate to="/web_client/process" replace />} />
+        <Route path="/knowledge" element={<Navigate to="/web_client/knowledge" replace />} />
+        <Route path="/ekb" element={<Navigate to="/web_client/ekb" replace />} />
+        <Route path="/profile" element={<Navigate to="/web_client/profile" replace />} />
+        <Route path="/agent-square" element={<Navigate to="/web_client/agent-square" replace />} />
+        <Route path="/ruyi-zone" element={<Navigate to="/web_client/ruyi-zone" replace />} />
+        <Route path="/calendar" element={<Navigate to="/web_client/calendar" replace />} />
+        <Route path="/business" element={<Navigate to="/web_client/business" replace />} />
+        <Route path="/work-report" element={<Navigate to="/web_client/work-report" replace />} />
+        <Route path="/okr" element={<Navigate to="/web_client/okr" replace />} />
+        <Route path="/settings" element={<Navigate to="/web_client/settings" replace />} />
       </Routes>
     </Router>
   );

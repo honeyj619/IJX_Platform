@@ -1,3 +1,4 @@
+import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson, getInitialsAvatar } from '../data/people';
 import { useState, useEffect } from "react";
 import { User, Lock, Calendar, FileText, Settings, Users, Bell } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
@@ -30,7 +31,7 @@ export default function ProfileContent() {
               <div className="flex items-center gap-4 mb-6">
                 <div className="relative group">
                   <img
-                    src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd"
+                    src={MAIN_USER_AVATAR}
                     alt="用户头像"
                     className="w-24 h-24 rounded-full border-4 border-theme-200 group-hover:border-theme-400 transition-colors"
                   />
@@ -42,13 +43,13 @@ export default function ProfileContent() {
                   </button>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">梁吉力</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">{MAIN_USER_NAME}</h2>
                   <p className="text-gray-500 mt-1">信息管理部 · 高级工程师</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
-                <ProfileItem icon={<User size={18} />} label="姓名" value="梁吉力" />
+                <ProfileItem icon={<User size={18} />} label="姓名" value={MAIN_USER_NAME} />
                 <ProfileItem icon={<Calendar size={18} />} label="部门" value="信息管理部" />
                 <ProfileItem icon={<FileText size={18} />} label="职位" value="高级工程师" />
                 <ProfileItem icon={<Lock size={18} />} label="账号" value="ANC-AL00" />
@@ -111,12 +112,12 @@ export default function ProfileContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <img
-                    src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd"
+                    src={MAIN_USER_AVATAR}
                     alt="当前账号"
                     className="w-12 h-12 rounded-full"
                   />
                   <div>
-                    <div className="font-bold text-gray-900">梁吉力</div>
+                    <div className="font-bold text-gray-900">{MAIN_USER_NAME}</div>
                     <div className="text-sm text-gray-500">当前账号</div>
                   </div>
                 </div>
@@ -128,12 +129,12 @@ export default function ProfileContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <img
-                    src="https://api.dicebear.com/7.x/initials/svg?seed=张三&backgroundColor=ec4899"
+                    src={getInitialsAvatar(getDemoPerson(0), 'ec4899')}
                     alt="账号2"
                     className="w-12 h-12 rounded-full"
                   />
                   <div>
-                    <div className="font-bold text-gray-900">张三</div>
+                    <div className="font-bold text-gray-900">{getDemoPerson(0)}</div>
                     <div className="text-sm text-gray-500">zhangsan@company.com</div>
                   </div>
                 </div>
@@ -147,12 +148,12 @@ export default function ProfileContent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <img
-                    src="https://api.dicebear.com/7.x/initials/svg?seed=李四&backgroundColor=8b5cf6"
+                    src={getInitialsAvatar(getDemoPerson(1), '8b5cf6')}
                     alt="账号3"
                     className="w-12 h-12 rounded-full"
                   />
                   <div>
-                    <div className="font-bold text-gray-900">李四</div>
+                    <div className="font-bold text-gray-900">{getDemoPerson(1)}</div>
                     <div className="text-sm text-gray-500">lisi@company.com</div>
                   </div>
                 </div>

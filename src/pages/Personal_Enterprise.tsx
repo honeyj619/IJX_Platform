@@ -1,9 +1,12 @@
 ﻿import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight, MoreHorizontal, RefreshCw, ExternalLink, Trash2, ClipboardList, Sparkles, Target } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search, Minus, GripVertical } from 'lucide-react';
+import { Ticket, WalletCards, Plane, BadgeCheck, CheckSquare, ListTodo, BarChart3, UserPlus, Link2, Save, CircleDot, CircleCheckBig } from 'lucide-react';
+import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 
 // 定义卡片类型
-type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'officeApps' | 'courses';
+type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'officeApps' | 'duty' | 'courses';
 
 // 卡片配置接口
 interface CardConfig {
@@ -19,28 +22,314 @@ type System = {
   name: string;
   icon: string;
   bgColor?: string;
+  category?: string;
+  source?: string;
+  description?: string;
+};
+
+type StatKey = 'approval' | 'revenue' | 'todo' | 'progress';
+type DialogType = 'approvalConfig' | 'todoSources' | 'newTodo' | 'trackedItems' | 'commonFeatures' | 'cardRequest' | 'featureRequest' | null;
+
+type StatConfig = {
+  key: StatKey;
+  title: string;
+  count?: string;
+  amount?: string;
+  change?: string;
+  color: 'pink' | 'green' | 'amber' | 'blue';
+  summary: string;
+};
+
+type CommonFeature = {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  tone: string;
+  path?: string;
+  destination?: string;
+};
+
+type TodoSource = {
+  id: string;
+  name: string;
+  enabled: boolean;
+};
+
+type TodoItem = {
+  id: string;
+  title: string;
+  source: string;
+  owner: string;
+  due: string;
+  status: string;
+  progress?: number;
+  subtasks?: { name: string; owner: string; progress: number }[];
+};
+
+type TrackedItem = {
+  id: string;
+  title: string;
+  source: 'okr' | 'project';
+  owner: string;
+  progress: number;
+  status: string;
+  tasks: { name: string; owner: string; progress: number }[];
+};
+
+type ApprovalProcess = {
+  id: string;
+  title: string;
+  code: string;
+  creator: string;
+  time: string;
+  location: string;
+  sourceSystem: string;
+};
+
+type DutyItem = {
+  post: string;
+  user: string;
+};
+
+type RequestDraft = {
+  name: string;
+  type: string;
+  domain: string;
+  description: string;
 };
 
 // 初始化卡片配置
 const initialCards: CardConfig[] = [
   { id: 'stats', name: '数据概览', icon: <TrendingUp size={20} />, visible: true, order: 0 },
-  { id: 'process', name: '待批阅流程', icon: <FileText size={20} />, visible: true, order: 1 },
-  { id: 'documents', name: '今日未读文档', icon: <FileText size={20} />, visible: true, order: 2 },
-  { id: 'projects', name: '关注的项目进度', icon: <Layers size={20} />, visible: true, order: 3 },
-  { id: 'calendar', name: '周历', icon: <CalendarIcon size={20} />, visible: true, order: 4 },
-  { id: 'systems', name: '常用系统', icon: <Layout size={20} />, visible: true, order: 5 },
-  { id: 'officeApps', name: '办公应用', icon: <ClipboardList size={20} />, visible: true, order: 6 },
-  { id: 'courses', name: '临期课程', icon: <FileText size={20} />, visible: true, order: 7 },
+  { id: 'documents', name: '今日未读文档', icon: <FileText size={20} />, visible: true, order: 1 },
+  { id: 'calendar', name: '周历', icon: <CalendarIcon size={20} />, visible: true, order: 2 },
+  { id: 'systems', name: '常用系统', icon: <Layout size={20} />, visible: true, order: 3 },
+  { id: 'officeApps', name: '常用功能', icon: <ClipboardList size={20} />, visible: true, order: 4 },
+  { id: 'duty', name: '今日值班', icon: <Bell size={20} />, visible: true, order: 5 },
+  { id: 'courses', name: '临期课程', icon: <FileText size={20} />, visible: true, order: 6 },
 ];
 
-const defaultSystems: System[] = [
-  { id: 'hr', name: '人力资源', icon: '👤', bgColor: 'bg-blue-500' },
-  { id: 'finance', name: '财务系统', icon: '💰', bgColor: 'bg-green-500' },
-  { id: 'oa', name: 'OA办公', icon: '📋', bgColor: 'bg-pink-700' },
-  { id: 'travel', name: '差旅系统', icon: '✈️', bgColor: 'bg-cyan-500' },
-  { id: 'crm', name: 'CRM系统', icon: '👥', bgColor: 'bg-indigo-500' },
-  { id: 'project', name: '项目管理', icon: '📊', bgColor: 'bg-amber-500' },
+const businessSystems: System[] = [
+  { id: 'bip', name: 'BIP系统', icon: '财', bgColor: 'bg-amber-500', category: '财务系统', source: '业务系统', description: '财务综合管理平台' },
+  { id: 'fai', name: '财翼融合智能平台FAI', icon: 'FAI', bgColor: 'bg-amber-500', category: '财务系统', source: '业务系统', description: '财务智能分析平台' },
+  { id: 'expense', name: '费控商旅系统', icon: '费', bgColor: 'bg-orange-500', category: '财务系统', source: '业务系统', description: '费控与商旅管理' },
+  { id: 'contract', name: '合同管理系统', icon: '合', bgColor: 'bg-yellow-500', category: '财务系统', source: '业务系统', description: '合同审批和履约管理' },
+  { id: 'tax', name: '税务管理系统', icon: '税', bgColor: 'bg-amber-600', category: '财务系统', source: '业务系统', description: '税务申报管理' },
+  { id: 'seeyon', name: '致远系统', icon: '致', bgColor: 'bg-orange-600', category: '财务系统', source: '业务系统', description: '协同办公系统' },
+  { id: 'nc', name: 'NC系统', icon: 'NC', bgColor: 'bg-yellow-600', category: '财务系统', source: '业务系统', description: '财务核算系统' },
+  { id: 'ehr', name: '人力资源E-HR系统', icon: '人', bgColor: 'bg-blue-500', category: '人力系统', source: '业务系统', description: '员工信息、考勤、薪资等人力服务' },
+  { id: 'ioffice', name: 'ioffice', icon: '办', bgColor: 'bg-indigo-500', category: '人力系统', source: '业务系统', description: '办公协同入口' },
+  { id: 'school', name: '梧桐云学堂', icon: '学', bgColor: 'bg-violet-500', category: '人力系统', source: '业务系统', description: '企业在线学习平台' },
+  { id: 'performance', name: '绩效系统', icon: '绩', bgColor: 'bg-purple-500', category: '人力系统', source: '业务系统', description: '员工绩效考核管理' },
+  { id: 'performance-nj', name: '绩效系统南京分公司', icon: '南', bgColor: 'bg-pink-500', category: '人力系统', source: '业务系统', description: '南京分公司绩效管理' },
+  { id: 'performance-af', name: '绩效系统航服子公司', icon: '航', bgColor: 'bg-rose-500', category: '人力系统', source: '业务系统', description: '航服子公司绩效管理' },
+  { id: 'assessment', name: '考评系统', icon: '考', bgColor: 'bg-violet-600', category: '人力系统', source: '业务系统', description: '员工考评管理系统' },
+  { id: 'referral', name: '内推系统', icon: '推', bgColor: 'bg-indigo-600', category: '人力系统', source: '业务系统', description: '内部推荐管理系统' },
+  { id: 'hr-digital', name: '人力数字平台管理系统', icon: '数', bgColor: 'bg-blue-600', category: '人力系统', source: '业务系统', description: '人力资源数字化管理平台' },
+  { id: 'oa', name: 'OA', icon: 'OA', bgColor: 'bg-purple-500', category: '综合系统', source: '业务系统', description: '办公自动化系统' },
+  { id: 'knowledge', name: '吉祥知识平台', icon: '知', bgColor: 'bg-violet-500', category: '综合系统', source: '业务系统', description: '企业知识平台' },
+  { id: 'pm', name: '企业项目管理平台', icon: '项', bgColor: 'bg-indigo-500', category: '综合系统', source: '业务系统', description: '项目计划和进度管理' },
+  { id: 'itops', name: '运维管理平台', icon: 'IT', bgColor: 'bg-sky-500', category: '综合系统', source: '业务系统', description: 'IT运维管理平台' },
+  { id: 'data-portal', name: '公司数据门户', icon: '数', bgColor: 'bg-blue-500', category: '综合系统', source: '业务系统', description: '公司数据统一入口' },
+  { id: 'bi', name: '公司BI平台', icon: 'BI', bgColor: 'bg-cyan-500', category: '综合系统', source: '业务系统', description: '经营分析平台' },
+  { id: 'lowcode', name: '低代码平台', icon: '低', bgColor: 'bg-emerald-500', category: '综合系统', source: '业务系统', description: '低代码应用搭建' },
+  { id: 'analysis', name: '综合数据分析平台', icon: '析', bgColor: 'bg-teal-500', category: '综合系统', source: '业务系统', description: '综合数据分析' },
+  { id: 'dap', name: '聚数搭数据分析平台', icon: 'DAP', bgColor: 'bg-cyan-600', category: '综合系统', source: '业务系统', description: '数据分析平台' },
+  { id: 'dw', name: '数据仓库管理系统', icon: 'DW', bgColor: 'bg-slate-600', category: '综合系统', source: '业务系统', description: '数据仓库管理' },
+  { id: 'data-govern', name: '荆棘数据治理平台', icon: '治', bgColor: 'bg-emerald-600', category: '综合系统', source: '业务系统', description: '数据治理平台' },
+  { id: 'logistics-data', name: '物流数据中台', icon: '物', bgColor: 'bg-green-600', category: '综合系统', source: '业务系统', description: '物流数据中台' },
+  { id: 'csa', name: 'CSA系统', icon: 'CSA', bgColor: 'bg-indigo-600', category: '综合系统', source: '业务系统', description: '综合业务支撑' },
+  { id: 'clothing', name: '服装模具管理系统', icon: '服', bgColor: 'bg-pink-600', category: '综合系统', source: '业务系统', description: '服装模具资产管理' },
+  { id: 'vehicle', name: '车辆管理系统', icon: '车', bgColor: 'bg-gray-600', category: '综合系统', source: '业务系统', description: '车辆资产管理' },
+  { id: 'sms', name: 'SMS系统', icon: '短', bgColor: 'bg-emerald-500', category: '运行系统', source: '业务系统', description: '短信服务管理系统' },
+  { id: 'prepare', name: '网上准备', icon: '准', bgColor: 'bg-teal-500', category: '运行系统', source: '业务系统', description: '网上准备工作管理' },
+  { id: 'flight', name: '航班动态', icon: '飞', bgColor: 'bg-cyan-500', category: '运行系统', source: '业务系统', description: '航班实时动态查询' },
+  { id: 'maintenance', name: '机务维修', icon: '修', bgColor: 'bg-green-500', category: '运行系统', source: '业务系统', description: '机务维修管理' },
+  { id: 'fuel', name: '燃油监控系统', icon: '油', bgColor: 'bg-lime-500', category: '运行系统', source: '业务系统', description: '燃油消耗监控' },
+  { id: 'manual', name: '维修手册系统', icon: '册', bgColor: 'bg-emerald-600', category: '运行系统', source: '业务系统', description: '维修手册查阅' },
+  { id: 'self-check', name: '法定自查', icon: '查', bgColor: 'bg-teal-600', category: '运行系统', source: '业务系统', description: '法定自查管理' },
+  { id: 'operation-net', name: '运行网', icon: '网', bgColor: 'bg-green-600', category: '运行系统', source: '业务系统', description: '运行网络管理' },
+  { id: 'eg-admin', name: 'e吉祥管理后台', icon: '管', bgColor: 'bg-cyan-600', category: '运行系统', source: '业务系统', description: '管理后台系统' },
+  { id: 'risk', name: '运行风控系统', icon: '控', bgColor: 'bg-emerald-700', category: '运行系统', source: '业务系统', description: '风险控制管理' },
+  { id: 'plm', name: 'PLM系统', icon: 'PLM', bgColor: 'bg-teal-700', category: '运行系统', source: '业务系统', description: '产品生命周期管理' },
+  { id: 'security', name: '航空安保管理系统', icon: '安', bgColor: 'bg-green-700', category: '运行系统', source: '业务系统', description: '航空安保管理' },
+  { id: 'punctuality', name: '航班正常性管理平台', icon: '正', bgColor: 'bg-sky-600', category: '运行系统', source: '业务系统', description: '航班正常性管理' },
+  { id: 'emergency', name: '应急管理平台', icon: '急', bgColor: 'bg-red-500', category: '运行系统', source: '业务系统', description: '应急管理平台' },
+  { id: 'market-admin', name: '营销服务后台管理系统', icon: '营', bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '营销服务后台' },
+  { id: 'member', name: '会员管理系统', icon: 'VIP', bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '会员管理' },
+  { id: 'air-product', name: '航空业务产品管理平台', icon: '航', bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '航空业务产品管理' },
+  { id: 'nonair-product', name: '非航业务产品管理系统', icon: '非', bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '非航产品管理' },
+  { id: 'precision', name: '精准营销', icon: '准', bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '精准营销触达' },
+  { id: 'domestic-price', name: '国内运价管理系统', icon: '价', bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '国内运价管理' },
+  { id: 'settlement', name: '收入结算系统', icon: '收', bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '收入结算' },
+  { id: 'revenue', name: '收益管理系统', icon: '益', bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '收益管理' },
+  { id: 'report', name: '吉祥报表系统', icon: '报', bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '营销报表' },
+  { id: 'dynamic', name: '吉祥动态运行系统', icon: '动', bgColor: 'bg-rose-700', category: '营销系统', source: '业务系统', description: '动态运行监控' },
+  { id: 'message', name: '统一消息平台', icon: '消', bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '统一消息平台' },
+  { id: 'cn-site', name: '中文网站', icon: '中', bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '中文官网' },
+  { id: 'intl-site', name: '国际网站', icon: 'EN', bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '国际官网' },
+  { id: 'm-site', name: '吉祥航空M网站', icon: 'M', bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '移动官网' },
+  { id: 'mall', name: '吉祥航空生活电商平台', icon: '商', bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '生活电商平台' },
+  { id: 'pipeline', name: '研发流水线', icon: '研', bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '研发流水线' },
+  { id: 'call', name: '呼叫中心系统', icon: '呼', bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '呼叫中心' },
+  { id: 'passenger', name: '旅客服务系统', icon: '旅', bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '旅客服务' },
+  { id: 'transfer', name: '中转管理系统', icon: '转', bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '中转管理' },
+  { id: 'vip-room', name: '智慧贵宾室系统', icon: '贵', bgColor: 'bg-rose-700', category: '营销系统', source: '业务系统', description: '贵宾室管理' },
+  { id: 'baggage', name: '行李全流程跟踪系统', icon: '行', bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '行李全流程跟踪' },
 ];
+
+const defaultSystemIds = [
+  'oa',
+  'bip',
+  'fai',
+  'expense',
+  'flight',
+  'maintenance',
+  'data-portal',
+  'pm',
+  'itops',
+  'bi',
+  'ehr',
+  'ioffice',
+  'school',
+  'revenue',
+  'member',
+  'knowledge',
+];
+const systemCategories = ['财务系统', '人力系统', '综合系统', '运行系统', '营销系统'];
+const selectedSystemsPresetKey = 'selectedSystemsPreset20260703v2';
+const defaultFeaturePresetKey = 'pinnedCommonFeatures20260705v2';
+
+const dashboardStats: StatConfig[] = [
+  { key: 'approval', title: '流程审批', count: '21', color: 'pink', summary: '待批阅流程' },
+  { key: 'revenue', title: '业务收入', amount: '¥12,580,000', change: '+12.5%', color: 'green', summary: '业务收入明细' },
+  { key: 'todo', title: '待办事项', count: '8', color: 'amber', summary: '事项列表' },
+  { key: 'progress', title: '事项进度', count: '12', color: 'blue', summary: '关注事项进度' },
+];
+
+const commonFeatures: CommonFeature[] = [
+  { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', path: '/web_client/business' },
+  { id: 'work-report', name: '工作汇报', icon: <FileText size={17} />, tone: 'bg-pink-50 text-pink-700', path: '/web_client/work-report' },
+  { id: 'okr', name: 'OKR', icon: <Target size={17} />, tone: 'bg-blue-50 text-blue-700', path: '/web_client/okr' },
+  { id: 'discount-ticket', name: '优惠票', icon: <Ticket size={17} />, tone: 'bg-amber-50 text-amber-700', destination: '优惠票' },
+  { id: 'salary', name: '我的薪酬', icon: <WalletCards size={17} />, tone: 'bg-emerald-50 text-emerald-700', destination: '我的薪酬' },
+  { id: 'leave', name: '我的休假', icon: <Plane size={17} />, tone: 'bg-sky-50 text-sky-700', destination: '我的休假' },
+  { id: 'certificate', name: '证明开具', icon: <BadgeCheck size={17} />, tone: 'bg-violet-50 text-violet-700', destination: '证明开具' },
+];
+
+const defaultPinnedFeatureIds = ['flight-status', 'work-report', 'okr', 'discount-ticket', 'salary', 'leave', 'certificate'];
+
+const defaultTodoSources: TodoSource[] = [
+  { id: 'task', name: '任务', enabled: true },
+  { id: 'report', name: '工作汇报', enabled: true },
+  { id: 'okr', name: 'OKR填报', enabled: true },
+  { id: 'project', name: '项目任务', enabled: false },
+];
+
+const todoItems: TodoItem[] = [
+  { id: 'todo-1', title: '完成本周工作汇报', source: '工作汇报', owner: MAIN_USER_NAME, due: '今天 18:00', status: '待提交', progress: 30 },
+  { id: 'todo-2', title: '补充二季度OKR进展', source: 'OKR填报', owner: MAIN_USER_NAME, due: '明天 12:00', status: '进行中', progress: 60 },
+  { id: 'todo-3', title: '处理服务台权限审批', source: '任务', owner: MAIN_USER_NAME, due: '今天 17:30', status: '待处理', progress: 20 },
+  { id: 'todo-4', title: '数据看板需求评审纪要确认', source: '项目任务', owner: MAIN_USER_NAME, due: '周五', status: '待确认', progress: 45 },
+];
+
+const approvalProcesses: ApprovalProcess[] = [
+  { id: 'approval-1', title: '关于开展2026年第二期黄沙活动的预告', code: 'TSP-2026-0073', creator: getDemoPerson(0), time: '2026-05-10 12:42:33', location: '4执行', sourceSystem: 'OA系统' },
+  { id: 'approval-2', title: '关于高乐飞机涂装宣传', code: 'TSP-2026-0074', creator: getDemoPerson(0), time: '2026-05-10 15:11:53', location: '4执行', sourceSystem: 'IT需求提报' },
+  { id: 'approval-3', title: '关于航空安保系统的上传固件申请', code: 'TSP-2026-0075', creator: getDemoPerson(2), time: '2026-05-10 13:36:19', location: '4执行', sourceSystem: 'SMS安全管理系统' },
+  { id: 'approval-4', title: '差旅费用报销审批', code: 'FEE-2026-0311', creator: getDemoPerson(3), time: '2026-05-10 16:22:48', location: '部门负责人审批', sourceSystem: '费控商旅' },
+  { id: 'approval-5', title: '知识库内容发布复核', code: 'KB-2026-0198', creator: getDemoPerson(17), time: '2026-05-11 09:18:02', location: '内容管理员审批', sourceSystem: '吉祥知识平台' },
+];
+
+const dutySchedule: Record<number, { date: string; label: string; items: DutyItem[] }> = {
+  [-1]: {
+    date: '2026年5月20日',
+    label: '昨天',
+    items: [
+      { post: '公司值班领导', user: getDemoPerson(5) },
+      { post: '公司总值班', user: getDemoPerson(6) },
+      { post: '签派带班主任', user: getDemoPerson(7) },
+      { post: '维修技术支持经理', user: getDemoPerson(8) },
+      { post: '飞行技术支持经理', user: getDemoPerson(12) },
+      { post: '服务保障支持经理', user: getDemoPerson(16) },
+      { post: '江苏分公司', user: getDemoPerson(10) },
+      { post: '飞行部', user: getDemoPerson(13) },
+      { post: '工程部', user: getDemoPerson(11) },
+    ],
+  },
+  0: {
+    date: '2026年5月21日',
+    label: '今天',
+    items: [
+      { post: '公司值班领导', user: MAIN_USER_NAME },
+      { post: '公司总值班', user: getDemoPerson(12) },
+      { post: '签派带班主任', user: getDemoPerson(13) },
+      { post: '维修技术支持经理', user: getDemoPerson(14) },
+      { post: '飞行技术支持经理', user: getDemoPerson(16) },
+      { post: '服务保障支持经理', user: getDemoPerson(7) },
+      { post: '江苏分公司', user: getDemoPerson(15) },
+      { post: '飞行部', user: getDemoPerson(8) },
+      { post: '工程部', user: getDemoPerson(11) },
+    ],
+  },
+  1: {
+    date: '2026年5月22日',
+    label: '明天',
+    items: [
+      { post: '公司值班领导', user: getDemoPerson(12) },
+      { post: '公司总值班', user: getDemoPerson(13) },
+      { post: '签派带班主任', user: getDemoPerson(7) },
+      { post: '维修技术支持经理', user: getDemoPerson(11) },
+      { post: '飞行技术支持经理', user: MAIN_USER_NAME },
+      { post: '服务保障支持经理', user: getDemoPerson(10) },
+      { post: '江苏分公司', user: getDemoPerson(6) },
+      { post: '飞行部', user: getDemoPerson(15) },
+      { post: '工程部', user: getDemoPerson(14) },
+    ],
+  },
+};
+
+const revenueDetails = [
+  { name: '客运收入', value: '¥8,920,000', change: '+9.8%', owner: '市场收益中心' },
+  { name: '辅营收入', value: '¥2,140,000', change: '+15.6%', owner: '产品运营中心' },
+  { name: '会员营销收入', value: '¥1,520,000', change: '+18.2%', owner: '会员运营组' },
+];
+
+const defaultTrackedItems: TrackedItem[] = [
+  {
+    id: 'track-1',
+    title: 'O1 客服知识库质检闭环',
+    source: 'okr',
+    owner: getDemoPerson(16),
+    progress: 68,
+    status: '关联OKR',
+    tasks: [
+      { name: '问题样本归类', owner: getDemoPerson(16), progress: 100 },
+      { name: '知识条目补齐', owner: getDemoPerson(17), progress: 70 },
+      { name: '质检回归验证', owner: MAIN_USER_NAME, progress: 35 },
+    ],
+  },
+  {
+    id: 'track-2',
+    title: '项目：数据看板改版验收',
+    source: 'project',
+    owner: MAIN_USER_NAME,
+    progress: 75,
+    status: '项目进展',
+    tasks: [
+      { name: 'KR1 A产品营收8000万元', owner: getDemoPerson(18), progress: 95 },
+      { name: 'KR2 优化营业成本结构', owner: getDemoPerson(19), progress: 50 },
+      { name: 'KR3 规范内部审批制度', owner: getDemoPerson(20), progress: 60 },
+    ],
+  },
+];
+
+const statToneMap = {
+  pink: { border: 'border-pink-200', text: 'text-pink-700', bg: 'bg-pink-50', gradient: 'from-pink-700 to-pink-900', ring: 'ring-pink-100' },
+  green: { border: 'border-green-200', text: 'text-green-700', bg: 'bg-green-50', gradient: 'from-green-600 to-green-800', ring: 'ring-green-100' },
+  amber: { border: 'border-amber-200', text: 'text-amber-700', bg: 'bg-amber-50', gradient: 'from-amber-600 to-amber-800', ring: 'ring-amber-100' },
+  blue: { border: 'border-blue-200', text: 'text-blue-700', bg: 'bg-blue-50', gradient: 'from-blue-600 to-blue-800', ring: 'ring-blue-100' },
+};
 
 export default function Personal_Enterprise() {
   const navigate = useNavigate();
@@ -55,16 +344,106 @@ export default function Personal_Enterprise() {
   
   // 系统选择状态
   const [systems, setSystems] = useState<System[]>(() => {
-    const saved = localStorage.getItem('dashboardSystems');
-    return saved ? JSON.parse(saved) : defaultSystems;
+    return businessSystems;
   });
   
   const [showSettings, setShowSettings] = useState(false);
+  const [showCommonAppsPanel, setShowCommonAppsPanel] = useState(false);
+  const [showAddAppModal, setShowAddAppModal] = useState(false);
+  const [activeStatKey, setActiveStatKey] = useState<StatKey>('approval');
+  const [activeDialog, setActiveDialog] = useState<DialogType>(null);
+  const [layoutCategory, setLayoutCategory] = useState<'data' | 'app'>('data');
+  const [appSearch, setAppSearch] = useState('');
+  const [activeSystemCategory, setActiveSystemCategory] = useState(systemCategories[0]);
+  const layoutContentRef = useRef<HTMLDivElement>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [jumpTip, setJumpTip] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [dutyDayOffset, setDutyDayOffset] = useState<keyof typeof dutySchedule>(0);
+  const [dutyKeyword, setDutyKeyword] = useState('');
+  const [draggingCardId, setDraggingCardId] = useState<CardType | null>(null);
+  const [dragOverCardId, setDragOverCardId] = useState<CardType | null>(null);
+  const [requestDraft, setRequestDraft] = useState<RequestDraft>({
+    name: '',
+    type: '数据卡片',
+    domain: '管理',
+    description: '',
+  });
+  const [approvalDisplayCount, setApprovalDisplayCount] = useState(() => {
+    const saved = Number(localStorage.getItem('approvalDisplayCount'));
+    return Number.isFinite(saved) && saved > 0 ? saved : 3;
+  });
+  const [customTodos, setCustomTodos] = useState<TodoItem[]>(() => {
+    const saved = localStorage.getItem('customDashboardTodos');
+    if (!saved) return [];
+    try {
+      return JSON.parse(saved) as TodoItem[];
+    } catch {
+      return [];
+    }
+  });
+  const [hiddenStatKeys, setHiddenStatKeys] = useState<StatKey[]>(() => {
+    const saved = localStorage.getItem('hiddenDashboardStats');
+    if (!saved) return [];
+    try {
+      return JSON.parse(saved) as StatKey[];
+    } catch {
+      return [];
+    }
+  });
+  const [newTodoDraft, setNewTodoDraft] = useState({
+    title: '手动新增任务',
+    owner: MAIN_USER_NAME,
+    progress: '20',
+    subtasks: [
+      { name: '拆解子任务', owner: '待指派', progress: '0' },
+      { name: '同步任务进展', owner: '协作人', progress: '40' },
+    ],
+  });
+  const [todoSources, setTodoSources] = useState<TodoSource[]>(() => {
+    const saved = localStorage.getItem('dashboardTodoSources');
+    if (!saved) return defaultTodoSources;
+    try {
+      const parsed = JSON.parse(saved) as TodoSource[];
+      return defaultTodoSources.map(source => parsed.find(item => item.id === source.id) || source);
+    } catch {
+      return defaultTodoSources;
+    }
+  });
+  const [trackedItems, setTrackedItems] = useState<TrackedItem[]>(() => {
+    const saved = localStorage.getItem('dashboardTrackedItems');
+    if (!saved) return defaultTrackedItems;
+    try {
+      const parsed = JSON.parse(saved) as TrackedItem[];
+      return parsed.length > 0 ? parsed : defaultTrackedItems;
+    } catch {
+      return defaultTrackedItems;
+    }
+  });
+  const [pinnedFeatureIds, setPinnedFeatureIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('pinnedCommonFeatures');
+    if (!saved) return defaultPinnedFeatureIds;
+    try {
+      const parsed = JSON.parse(saved) as string[];
+      const valid = parsed.filter(id => commonFeatures.some(feature => feature.id === id));
+      if (localStorage.getItem(defaultFeaturePresetKey) === '1') {
+        return valid.length > 0 ? valid : defaultPinnedFeatureIds;
+      }
+      return Array.from(new Set([...valid, ...defaultPinnedFeatureIds]));
+    } catch {
+      return defaultPinnedFeatureIds;
+    }
+  });
   const [selectedSystems, setSelectedSystems] = useState<string[]>(() => {
     const saved = localStorage.getItem('selectedSystems');
-    return saved ? JSON.parse(saved) : ['hr', 'finance', 'oa', 'travel'];
+    if (!saved) return defaultSystemIds;
+    const parsed = JSON.parse(saved) as string[];
+    const valid = parsed.filter(id => businessSystems.some(system => system.id === id));
+    if (localStorage.getItem(selectedSystemsPresetKey) === '1') {
+      return valid.length > 0 ? valid : defaultSystemIds;
+    }
+    const merged = Array.from(new Set([...valid, ...defaultSystemIds]));
+    return merged.length > 0 ? merged : defaultSystemIds;
   });
 
   // 切换菜单显示
@@ -77,6 +456,66 @@ export default function Personal_Enterprise() {
     window.setTimeout(() => setJumpTip(null), 1800);
   }, []);
 
+  const showToast = useCallback((message: string) => {
+    setToastMessage(message);
+    window.setTimeout(() => setToastMessage(null), 1800);
+  }, []);
+
+  const reorderCards = useCallback((sourceId: CardType, targetId: CardType) => {
+    if (sourceId === targetId) return;
+    setCards(prev => {
+      const sorted = [...prev].sort((a, b) => a.order - b.order);
+      const fromIndex = sorted.findIndex(card => card.id === sourceId);
+      const toIndex = sorted.findIndex(card => card.id === targetId);
+      if (fromIndex < 0 || toIndex < 0) return prev;
+      const [moved] = sorted.splice(fromIndex, 1);
+      sorted.splice(toIndex, 0, moved);
+      return sorted.map((card, index) => ({ ...card, order: index }));
+    });
+  }, []);
+
+  const findNearestPortalCardId = useCallback((event: React.DragEvent<HTMLElement>) => {
+    if (!draggingCardId) return null;
+    const cardNodes = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('[data-portal-card-id]'));
+    let nearestId: CardType | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    cardNodes.forEach(node => {
+      const id = node.dataset.portalCardId as CardType | undefined;
+      if (!id || id === draggingCardId) return;
+      const rect = node.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const normalizedX = (event.clientX - centerX) / Math.max(rect.width, 1);
+      const normalizedY = (event.clientY - centerY) / Math.max(rect.height, 1);
+      const distance = Math.hypot(normalizedX, normalizedY);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestId = id;
+      }
+    });
+
+    return nearestId;
+  }, [draggingCardId]);
+
+  const handlePortalGridDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    if (!draggingCardId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const nearestId = findNearestPortalCardId(event);
+    setDragOverCardId(nearestId);
+  }, [draggingCardId, findNearestPortalCardId]);
+
+  const handlePortalGridDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const nearestId = findNearestPortalCardId(event) || dragOverCardId;
+    if (draggingCardId && nearestId) {
+      reorderCards(draggingCardId, nearestId);
+    }
+    setDraggingCardId(null);
+    setDragOverCardId(null);
+  }, [dragOverCardId, draggingCardId, findNearestPortalCardId, reorderCards]);
+
   // 保存卡片配置
   useEffect(() => {
     localStorage.setItem('dashboardCards', JSON.stringify(cards));
@@ -86,7 +525,33 @@ export default function Personal_Enterprise() {
   useEffect(() => {
     localStorage.setItem('dashboardSystems', JSON.stringify(systems));
     localStorage.setItem('selectedSystems', JSON.stringify(selectedSystems));
+    localStorage.setItem(selectedSystemsPresetKey, '1');
   }, [systems, selectedSystems]);
+
+  useEffect(() => {
+    localStorage.setItem('dashboardTodoSources', JSON.stringify(todoSources));
+  }, [todoSources]);
+
+  useEffect(() => {
+    localStorage.setItem('dashboardTrackedItems', JSON.stringify(trackedItems));
+  }, [trackedItems]);
+
+  useEffect(() => {
+    localStorage.setItem('approvalDisplayCount', String(approvalDisplayCount));
+  }, [approvalDisplayCount]);
+
+  useEffect(() => {
+    localStorage.setItem('customDashboardTodos', JSON.stringify(customTodos));
+  }, [customTodos]);
+
+  useEffect(() => {
+    localStorage.setItem('hiddenDashboardStats', JSON.stringify(hiddenStatKeys));
+  }, [hiddenStatKeys]);
+
+  useEffect(() => {
+    localStorage.setItem('pinnedCommonFeatures', JSON.stringify(pinnedFeatureIds));
+    localStorage.setItem(defaultFeaturePresetKey, '1');
+  }, [pinnedFeatureIds]);
 
   // 切换卡片可见性
   const toggleCard = useCallback((id: CardType) => {
@@ -111,12 +576,485 @@ export default function Personal_Enterprise() {
 
   // 过滤显示的系统
   const displayedSystems = systems.filter(sys => selectedSystems.includes(sys.id));
+  const filteredAddSystems = systems.filter(system => {
+    const matchesCategory = system.category === activeSystemCategory;
+    const keyword = appSearch.trim().toLowerCase();
+    const matchesSearch = !keyword || system.name.toLowerCase().includes(keyword) || (system.description ?? '').toLowerCase().includes(keyword);
+    return matchesCategory && matchesSearch;
+  });
 
+  const removeSystem = useCallback((id: string) => {
+    setSelectedSystems(prev => prev.filter(systemId => systemId !== id));
+  }, []);
+
+  const addSystem = useCallback((id: string) => {
+    setSelectedSystems(prev => prev.includes(id) ? prev : [...prev, id]);
+  }, []);
+
+  const visibleStats = dashboardStats.filter(item => !hiddenStatKeys.includes(item.key));
+  const activeStat = visibleStats.find(item => item.key === activeStatKey) || visibleStats[0] || dashboardStats[0];
+  const activeTone = statToneMap[activeStat.color];
+  const enabledTodoSourceNames = todoSources.filter(source => source.enabled).map(source => source.name);
+  const displayedTodoItems = [...todoItems, ...customTodos].filter(item => enabledTodoSourceNames.includes(item.source));
+  const pinnedFeatures = commonFeatures.filter(feature => pinnedFeatureIds.includes(feature.id));
+  const activeDuty = dutySchedule[dutyDayOffset];
+  const displayedDutyItems = activeDuty.items.filter(item => {
+    const keyword = dutyKeyword.trim();
+    return !keyword || item.post.includes(keyword) || item.user.includes(keyword);
+  });
+  const dataLayoutOptions = dashboardStats.map(stat => ({
+    id: stat.key,
+    name: stat.title,
+    description: stat.summary,
+    checked: !hiddenStatKeys.includes(stat.key),
+    onToggle: () => setHiddenStatKeys(prev => prev.includes(stat.key) ? prev.filter(item => item !== stat.key) : [...prev, stat.key]),
+  }));
+  const appLayoutOptions = cards
+    .filter(card => ['documents', 'calendar', 'systems', 'officeApps', 'duty', 'courses'].includes(card.id))
+    .map(card => ({
+      id: card.id,
+      name: card.name,
+      description: card.id === 'officeApps' ? '工作汇报、航班动态等入口' : card.id === 'duty' ? '公司值班岗位与人员' : '门户应用卡片',
+      checked: card.visible,
+      onToggle: () => toggleCard(card.id),
+    }));
+
+  const scrollToLayoutSection = useCallback((category: 'data' | 'app') => {
+    setLayoutCategory(category);
+    const container = layoutContentRef.current;
+    const section = document.getElementById(`layout-section-${category}`);
+    if (!container || !section) return;
+    container.scrollTo({
+      top: section.offsetTop - 16,
+      behavior: 'smooth',
+    });
+  }, []);
+
+  const handleLayoutContentScroll = useCallback(() => {
+    const container = layoutContentRef.current;
+    if (!container) return;
+    const sections = [
+      { key: 'data' as const, element: document.getElementById('layout-section-data') },
+      { key: 'app' as const, element: document.getElementById('layout-section-app') },
+    ];
+    const activeSection = [...sections].reverse().find(section => section.element && section.element.offsetTop <= container.scrollTop + 80);
+    if (activeSection && activeSection.key !== layoutCategory) {
+      setLayoutCategory(activeSection.key);
+    }
+  }, [layoutCategory]);
+
+  const handleStatEdit = useCallback((key: StatKey) => {
+    if (key === 'todo') {
+      setActiveDialog('todoSources');
+      return;
+    }
+    if (key === 'approval') {
+      setActiveDialog('approvalConfig');
+      return;
+    }
+    if (key === 'progress') {
+      setActiveDialog('trackedItems');
+      return;
+    }
+    showJumpTip(key === 'approval' ? '流程审批配置' : '业务收入配置');
+  }, [showJumpTip]);
+
+  const handleFeatureClick = useCallback((feature: CommonFeature) => {
+    if (feature.path) {
+      navigate(feature.path);
+      return;
+    }
+    showJumpTip(feature.destination || feature.name);
+  }, [navigate, showJumpTip]);
+
+  const toggleFeature = useCallback((id: string) => {
+    setPinnedFeatureIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  }, []);
+
+  const addOkrTrackedItem = useCallback(() => {
+    setTrackedItems(prev => {
+      if (prev.some(item => item.id === 'okr-import-1')) return prev;
+      return [
+        ...prev,
+        {
+          id: 'okr-import-1',
+          title: 'O2 核心系统稳定性提升',
+          source: 'okr',
+          owner: MAIN_USER_NAME,
+          progress: 69,
+          status: '关联OKR',
+          tasks: [
+            { name: 'KR1 完成BIP实施验证', owner: getDemoPerson(21), progress: 100 },
+            { name: 'KR2 完成基础及相关配置', owner: getDemoPerson(18), progress: 50 },
+          ],
+        },
+      ];
+    });
+  }, []);
+
+  const addProjectTrackedItem = useCallback(() => {
+    setTrackedItems(prev => {
+      if (prev.some(item => item.id === 'project-import-1')) return prev;
+      return [
+        ...prev,
+        {
+          id: 'project-import-1',
+          title: '项目：业务系统统一入口优化',
+          source: 'project',
+          owner: MAIN_USER_NAME,
+          progress: 58,
+          status: '项目进展',
+          tasks: [
+            { name: '入口清单确认', owner: MAIN_USER_NAME, progress: 100 },
+            { name: '权限范围校验', owner: getDemoPerson(17), progress: 60 },
+            { name: '灰度发布验证', owner: getDemoPerson(16), progress: 20 },
+          ],
+        },
+      ];
+    });
+  }, []);
+
+  const addManualTodo = useCallback(() => {
+    setCustomTodos(prev => [
+      ...prev,
+      {
+        id: `custom-todo-${Date.now()}`,
+        title: newTodoDraft.title.trim() || '手动新增任务',
+        source: '任务',
+        owner: newTodoDraft.owner.trim() || MAIN_USER_NAME,
+        due: '今天',
+        status: '进行中',
+        progress: Number(newTodoDraft.progress) || 0,
+        subtasks: newTodoDraft.subtasks.map(task => ({
+          name: task.name.trim() || '未命名子任务',
+          owner: task.owner.trim() || '待指派',
+          progress: Number(task.progress) || 0,
+        })),
+      },
+    ]);
+    setActiveDialog(null);
+  }, [newTodoDraft]);
+
+  const hideStat = useCallback((key: StatKey) => {
+    setHiddenStatKeys(prev => prev.includes(key) ? prev : [...prev, key]);
+    if (activeStatKey === key) {
+      const next = dashboardStats.find(item => item.key !== key && !hiddenStatKeys.includes(item.key));
+      if (next) setActiveStatKey(next.key);
+    }
+    setMenuId(null);
+  }, [activeStatKey, hiddenStatKeys]);
+
+  const openRequestDialog = useCallback((type: 'cardRequest' | 'featureRequest') => {
+    setRequestDraft({
+      name: '',
+      type: type === 'cardRequest' ? '数据卡片' : '功能入口',
+      domain: '管理',
+      description: '',
+    });
+    setActiveDialog(type);
+  }, []);
+
+  const submitRequest = useCallback(() => {
+    setActiveDialog(null);
+    showToast('已提交申请流程');
+  }, [showToast]);
+  const renderPortalCard = (card: CardConfig) => {
+    if (card.id === 'stats') {
+      return (
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 min-[520px]:grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4">
+            {visibleStats.map(stat => (
+              <StatsCard
+                key={stat.key}
+                stat={stat}
+                active={activeStatKey === stat.key}
+                menuId={menuId}
+                onSelect={setActiveStatKey}
+                onEdit={handleStatEdit}
+                onHide={hideStat}
+                onToggleMenu={toggleMenu}
+              />
+            ))}
+          </div>
+          <StatsDetailPanel
+            activeStat={activeStat}
+            tone={activeTone}
+            approvals={approvalProcesses.slice(0, approvalDisplayCount)}
+            approvalTotal={approvalProcesses.length}
+            todos={displayedTodoItems}
+            trackedItems={trackedItems}
+            revenueDetails={revenueDetails}
+            onEdit={handleStatEdit}
+            onAddTodo={() => setActiveDialog('newTodo')}
+            onNavigate={showJumpTip}
+          />
+        </div>
+      );
+    }
+
+    if (card.id === 'documents') {
+      return (
+        <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center">
+                <FileText size={20} className="text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">今日未读文档</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">5条</span>
+              <button
+                onClick={() => showJumpTip('门户-文档中心')}
+                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                title="更多"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <DocumentItem title="关于明确公司领导分工工作和工作接替顺序的通知" time="2026-05-20 09:25:07" />
+            <DocumentItem title="关于发布浦东-伊宁、浦东-喀什新开航线评估结果的通知" time="2026-05-20 09:20:05" />
+            <DocumentItem title="关于做好2026年上半年工作总结和下半年工作计划的通知" time="2026-05-19 13:10:09" />
+            <DocumentItem title="关于发布《上海吉祥航空股份有限公司安全警示教育长效机制（试行）》的通知" time="2026-05-19 10:12:34" />
+          </div>
+        </div>
+      );
+    }
+
+    if (card.id === 'calendar') {
+      return (
+        <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-pink-600 to-pink-800 rounded-xl flex items-center justify-center">
+                <CalendarIcon size={20} className="text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">2026年5月</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="p-2 hover:bg-pink-50 rounded-xl transition-colors">
+                <Plus size={18} className="text-pink-700" />
+              </button>
+              <CardHeaderActions menuId={menuId} menuKey="calendar" onEdit={(event) => { event.stopPropagation(); showJumpTip('周历配置'); }} onToggleMenu={toggleMenu} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-center mb-6">
+            {['日', '一', '二', '三', '四', '五', '六'].map(day => (
+              <div key={day} className="text-xs font-semibold text-gray-400 py-2">{day}</div>
+            ))}
+            {[17, 18, 19, 20, 21, 22, 23].map(date => (
+              <div key={date} className="flex justify-center py-1.5">
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-all duration-200 ${
+                    date === 20
+                      ? 'bg-gradient-to-br from-pink-700 to-pink-900 text-white font-bold shadow-lg shadow-pink-700/20'
+                      : date === 21
+                        ? 'text-gray-800 font-medium'
+                        : 'text-gray-400'
+                  }`}
+                >
+                  {date}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <span className="text-pink-700">5月20日</span>
+              <span className="text-gray-400">行程</span>
+            </h4>
+            <div className="space-y-2">
+              <CalendarEvent time="全天" title="全天值班" color="bg-gray-100" textColor="text-gray-700" />
+              <CalendarEvent time="10:00-11:00" title="项目周会" color="bg-pink-100" textColor="text-pink-900" />
+              <CalendarEvent time="13:00-13:30" title="日程" color="bg-blue-100" textColor="text-blue-900" />
+              <CalendarEvent time="14:00-15:30" title="工会活动" color="bg-green-100" textColor="text-green-900" />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (card.id === 'duty') {
+      return (
+        <div className="group relative rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-lg">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-700 to-pink-900 text-white">
+                <Bell size={19} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">今日值班</h3>
+                <p className="text-xs text-gray-500">{activeDuty.date} · {activeDuty.label}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => showJumpTip('公司值班页面')}
+              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              title="更多"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+          </div>
+
+          <div className="mb-3 flex items-center gap-2">
+            <button
+              onClick={() => setDutyDayOffset(prev => (prev === -1 ? -1 : ((prev as number) - 1) as keyof typeof dutySchedule))}
+              className="rounded-lg border border-gray-100 p-2 text-gray-500 hover:bg-gray-50"
+              title="昨天"
+            >
+              <ChevronRight size={15} className="rotate-180" />
+            </button>
+            <div className="relative min-w-0 flex-1">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={dutyKeyword}
+                onChange={(event) => setDutyKeyword(event.target.value)}
+                placeholder="搜索岗位或值班人"
+                className="w-full rounded-xl border border-gray-100 bg-gray-50 py-2 pl-9 pr-3 text-sm outline-none transition-colors focus:border-pink-200 focus:bg-white"
+              />
+            </div>
+            <button
+              onClick={() => setDutyDayOffset(prev => (prev === 1 ? 1 : ((prev as number) + 1) as keyof typeof dutySchedule))}
+              className="rounded-lg border border-gray-100 p-2 text-gray-500 hover:bg-gray-50"
+              title="明天"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+
+          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+            {displayedDutyItems.map(item => (
+              <div key={item.post} className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2.5">
+                <span className="min-w-0 truncate text-sm font-medium text-gray-700">{item.post}</span>
+                <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-pink-700 shadow-sm">{item.user}</span>
+              </div>
+            ))}
+            {displayedDutyItems.length === 0 && (
+              <div className="rounded-xl border border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-400">暂无匹配岗位</div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    if (card.id === 'systems') {
+      return (
+        <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-700 rounded-xl flex items-center justify-center">
+                <Layout size={20} className="text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">常用系统</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-amber-50 text-amber-700 text-sm font-medium rounded-full">{displayedSystems.length}个</span>
+              <button
+                onClick={() => setShowCommonAppsPanel(true)}
+                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                title="设置常用应用"
+              >
+                <Settings size={18} className="text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
+            {displayedSystems.map(sys => (
+              <button key={sys.id} className="group flex min-w-0 flex-col items-center gap-2 rounded-xl border border-transparent px-2 py-2.5 transition-all duration-300 hover:border-gray-100 hover:bg-gray-50">
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${sys.bgColor || 'bg-blue-500'} shadow-sm transition-shadow group-hover:shadow-md`}>
+                  <span className="text-xs font-semibold text-white">{sys.icon}</span>
+                </div>
+                <span className="w-full truncate text-center text-[12px] font-medium leading-4 text-gray-700">{sys.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (card.id === 'officeApps') {
+      return (
+        <div className="group relative rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-lg">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-600 to-pink-800 text-white">
+                <ClipboardList size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-800">常用功能</h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-pink-50 px-3 py-1 text-sm font-medium text-pink-700">{pinnedFeatures.length}个</span>
+              <button
+                onClick={() => setActiveDialog('commonFeatures')}
+                className="rounded-xl p-2 transition-colors hover:bg-gray-100"
+                title="设置常用功能"
+              >
+                <Settings size={18} className="text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {pinnedFeatures.map(feature => (
+              <button
+                key={feature.id}
+                onClick={() => handleFeatureClick(feature)}
+                className="group/app flex min-w-0 flex-col items-center gap-2 rounded-xl border border-transparent px-2 py-2.5 transition-all duration-300 hover:border-gray-100 hover:bg-gray-50"
+              >
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${feature.tone}`}>
+                  {feature.icon}
+                </div>
+                <span className="w-full truncate text-center text-[12px] font-medium leading-4 text-gray-700">{feature.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (card.id === 'courses') {
+      return (
+        <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center">
+                <FileText size={20} className="text-white" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800">临期课程</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="text-sm font-medium text-pink-700 hover:text-pink-900 transition-colors">查看全部</button>
+              <CardHeaderActions menuId={menuId} menuKey="courses" onEdit={(event) => { event.stopPropagation(); showJumpTip('临期课程配置'); }} onToggleMenu={toggleMenu} />
+            </div>
+          </div>
+          <div className="space-y-3">
+            <CourseItem title="上海吉祥航空股份有限公司IT质量指标评估标准V6.0" time="5节课 · 10积分" color="blue" />
+            <CourseItem title="民航华东地区2026年行业管理工作报告的通知" time="1节课 · 10积分" color="purple" />
+            <CourseItem title="王金董事长在公司2026年工作会议上的重要讲话" time="1节课 · 10积分" color="pink" />
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  };
   return (
     <div className="bg-gradient-to-br from-gray-50 via-pink-50/50 to-white min-h-screen">
       {jumpTip && (
         <div className="fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-gray-900/90 px-5 py-2.5 text-sm font-medium text-white shadow-xl backdrop-blur">
           将跳转至：{jumpTip}
+        </div>
+      )}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 z-50 -translate-x-1/2 rounded-full bg-pink-700 px-5 py-2.5 text-sm font-medium text-white shadow-xl">
+          {toastMessage}
         </div>
       )}
       {/* 页面头部 */}
@@ -145,593 +1083,584 @@ export default function Personal_Enterprise() {
 
       {/* 主内容区域 */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* 左侧内容 */}
-          <div className="lg:col-span-8 space-y-6">
-            {/* 数据概览卡片 */}
-            {visibleCards.find(c => c.id === 'stats') && (
-              <div className="group relative">
-                <div className="grid grid-cols-1 min-[520px]:grid-cols-2 xl:grid-cols-4 gap-3 lg:gap-4">
-                  <StatsCard title="流程审批" count="21" color="pink" destination="OA" menuId={menuId} onToggleMenu={toggleMenu} onNavigate={showJumpTip} />
-                  <StatsCard title="业务收入" amount="¥12,580,000" change="+12.5%" color="green" destination="数据看板" menuId={menuId} onToggleMenu={toggleMenu} onNavigate={showJumpTip} />
-                  <StatsCard title="待办事项" count="8" color="amber" destination="任务" menuId={menuId} onToggleMenu={toggleMenu} onNavigate={showJumpTip} />
-                  <StatsCard title="项目进度" count="12" color="blue" destination="项目管理平台" menuId={menuId} onToggleMenu={toggleMenu} onNavigate={showJumpTip} />
-                </div>
-              </div>
-            )}
-
-            {/* 待批阅流程 */}
-            {visibleCards.find(c => c.id === 'process') && (
-              <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center">
-                      <FileText size={20} className="text-white" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">待批阅流程</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-full">3条</span>
-                    <div className="relative">
-                      <button 
-                        onClick={() => toggleMenu('process')}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                      >
-                        <MoreHorizontal size={18} className="text-gray-400" />
-                      </button>
-                      {menuId === 'process' && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Eye size={16} className="text-gray-400" />
-                              <span>查看全部</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <RefreshCw size={16} className="text-gray-400" />
-                              <span>刷新列表</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Settings size={16} className="text-gray-400" />
-                              <span>卡片设置</span>
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <ProcessItemFlow 
-                    title="关于开展2026年第二期黄沙活动的预告" 
-                    code="编号：TSP-2026-0073" 
-                    creator="李正刚" 
-                    time="2026-05-10 12:42:33" 
-                    location="4执行"
-                  />
-                  <ProcessItemFlow 
-                    title="关于高乐飞机涂装宣传" 
-                    code="编号：TSP-2026-0074" 
-                    creator="李正刚" 
-                    time="2026-05-10 15:11:53" 
-                    location="4执行"
-                  />
-                  <ProcessItemFlow 
-                    title="关于航空安保系统的上传固件申请" 
-                    code="编号：TSP-2026-0075" 
-                    creator="赵创新" 
-                    time="2026-05-10 13:36:19" 
-                    location="4执行"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 今日未读文档 */}
-            {visibleCards.find(c => c.id === 'documents') && (
-              <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center">
-                      <FileText size={20} className="text-white" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">今日未读文档</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">5条</span>
-                    <div className="relative">
-                      <button 
-                        onClick={() => toggleMenu('documents')}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                      >
-                        <MoreHorizontal size={18} className="text-gray-400" />
-                      </button>
-                      {menuId === 'documents' && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Eye size={16} className="text-gray-400" />
-                              <span>查看全部</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <RefreshCw size={16} className="text-gray-400" />
-                              <span>刷新列表</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Settings size={16} className="text-gray-400" />
-                              <span>卡片设置</span>
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <DocumentItem 
-                    title="关于明确公司领导分工工作和工作接替顺序的通知" 
-                    time="2026-05-20 09:25:07"
-                  />
-                  <DocumentItem 
-                    title="关于发布浦东-伊宁、浦东-喀什新开航线评估结果的通知" 
-                    time="2026-05-20 09:20:05"
-                  />
-                  <DocumentItem 
-                    title="关于做好2026年上半年工作总结和下半年工作计划的通知" 
-                    time="2026-05-19 13:10:09"
-                  />
-                  <DocumentItem 
-                    title="关于发布《上海吉祥航空股份有限公司安全警示教育长效机制（试行）》的通知" 
-                    time="2026-05-19 10:12:34"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* 关注的项目进度 */}
-            {visibleCards.find(c => c.id === 'projects') && (
-              <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-700 rounded-xl flex items-center justify-center">
-                      <Layers size={20} className="text-white" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">关注的项目进度</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-cyan-50 text-cyan-700 text-sm font-medium rounded-full">2个</span>
-                    <div className="relative">
-                      <button 
-                        onClick={() => toggleMenu('projects')}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                      >
-                        <MoreHorizontal size={18} className="text-gray-400" />
-                      </button>
-                      {menuId === 'projects' && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Eye size={16} className="text-gray-400" />
-                              <span>查看全部</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <RefreshCw size={16} className="text-gray-400" />
-                              <span>刷新进度</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Settings size={16} className="text-gray-400" />
-                              <span>卡片设置</span>
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <GanttChart projectName="新一代智能客服系统" progress={65} tasks={[
-                    { name: '需求分析', start: 0, end: 20, completed: true },
-                    { name: '系统设计', start: 15, end: 35, completed: true },
-                    { name: '开发实现', start: 30, end: 70, completed: 60 },
-                    { name: '测试验证', start: 65, end: 85, completed: false },
-                    { name: '上线部署', start: 80, end: 100, completed: false }
-                  ]} />
-                  <GanttChart projectName="企业数据平台" progress={40} tasks={[
-                    { name: '需求分析', start: 0, end: 25, completed: true },
-                    { name: '系统设计', start: 20, end: 45, completed: true },
-                    { name: '开发实现', start: 40, end: 80, completed: 20 },
-                    { name: '测试验证', start: 75, end: 90, completed: false },
-                    { name: '上线部署', start: 85, end: 100, completed: false }
-                  ]} />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 右侧内容 */}
-          <div className="lg:col-span-4 space-y-6">
-            {/* 周历 */}
-            {visibleCards.find(c => c.id === 'calendar') && (
-              <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-pink-600 to-pink-800 rounded-xl flex items-center justify-center">
-                      <CalendarIcon size={20} className="text-white" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">2026年5月</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="p-2 hover:bg-pink-50 rounded-xl transition-colors">
-                      <Plus size={18} className="text-pink-700" />
-                    </button>
-                    <div className="relative">
-                      <button 
-                        onClick={() => toggleMenu('calendar')}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                      >
-                        <MoreHorizontal size={18} className="text-gray-400" />
-                      </button>
-                      {menuId === 'calendar' && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Eye size={16} className="text-gray-400" />
-                              <span>查看全部</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <RefreshCw size={16} className="text-gray-400" />
-                              <span>刷新日历</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Settings size={16} className="text-gray-400" />
-                              <span>卡片设置</span>
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-7 gap-1 text-center mb-6">
-                  {['日', '一', '二', '三', '四', '五', '六'].map(day => (
-                    <div key={day} className="text-xs font-semibold text-gray-400 py-2">{day}</div>
-                  ))}
-                  {[17, 18, 19, 20, 21, 22, 23].map(date => (
-                    <div key={date} className="flex justify-center py-1.5">
-                      <span
-                        className={`flex h-8 w-8 items-center justify-center rounded-full text-sm transition-all duration-200 ${
-                          date === 20
-                            ? 'bg-gradient-to-br from-pink-700 to-pink-900 text-white font-bold shadow-lg shadow-pink-700/20'
-                            : date === 21
-                              ? 'text-gray-800 font-medium'
-                              : 'text-gray-400'
-                        }`}
-                      >
-                        {date}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <span className="text-pink-700">5月20日</span>
-                    <span className="text-gray-400">行程</span>
-                  </h4>
-                  <div className="space-y-2">
-                    <CalendarEvent time="全天" title="全天值班" color="bg-gray-100" textColor="text-gray-700" />
-                    <CalendarEvent time="10:00-11:00" title="项目周会" color="bg-pink-100" textColor="text-pink-900" />
-                    <CalendarEvent time="13:00-13:30" title="日程" color="bg-blue-100" textColor="text-blue-900" />
-                    <CalendarEvent time="14:00-15:30" title="工会活动" color="bg-green-100" textColor="text-green-900" />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 常用系统卡片 */}
-            {visibleCards.find(c => c.id === 'systems') && (
-              <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-700 rounded-xl flex items-center justify-center">
-                      <Layout size={20} className="text-white" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">常用系统</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-amber-50 text-amber-700 text-sm font-medium rounded-full">
-                      {displayedSystems.length}个
-                    </span>
-                    <div className="relative">
-                      <button 
-                        onClick={() => toggleMenu('systems')}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                      >
-                        <MoreHorizontal size={18} className="text-gray-400" />
-                      </button>
-                      {menuId === 'systems' && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Layout size={16} className="text-gray-400" />
-                              <span>管理应用</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Settings size={16} className="text-gray-400" />
-                              <span>卡片设置</span>
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  {displayedSystems.map(sys => (
-                    <button 
-                      key={sys.id}
-                      className="group flex flex-col items-center gap-3 p-4 rounded-xl hover:bg-gray-50 transition-all duration-300 border border-transparent hover:border-gray-100"
-                    >
-                      <div className={`w-12 h-12 ${sys.bgColor || 'bg-blue-500'} rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow`}>
-                        <span className="text-xl text-white">{sys.icon}</span>
-                      </div>
-                      <span className="text-sm font-medium text-gray-700">{sys.name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 办公应用 */}
-            {visibleCards.find(c => c.id === 'officeApps') && (
-              <div className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-lg">
-                <div className="mb-4 flex flex-col gap-3 min-[560px]:flex-row min-[560px]:items-center min-[560px]:justify-between">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-pink-700 text-white shadow-sm shadow-pink-700/20">
-                      <ClipboardList size={19} />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-lg font-bold text-gray-800">办公应用</h3>
-                      <p className="truncate text-xs text-gray-500">汇报填写、OKR拆解与个人工作沉淀</p>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-center min-[560px]:w-48">
-                    <div className="rounded-lg bg-gray-50 px-3 py-2">
-                      <div className="text-base font-bold text-gray-900">2</div>
-                      <div className="text-[11px] text-gray-500">应用</div>
-                    </div>
-                    <div className="rounded-lg bg-pink-50 px-3 py-2">
-                      <div className="text-base font-bold text-pink-700">1</div>
-                      <div className="text-[11px] text-pink-700/70">待提交</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <button
-                    onClick={() => navigate('/work-report')}
-                    className="group/app flex w-full min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-white px-3.5 py-3 text-left transition-all hover:border-pink-200 hover:bg-pink-50/40"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-50 text-pink-700">
-                      <FileText size={18} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <h4 className="font-semibold text-gray-900">工作汇报</h4>
-                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700">
-                          <Sparkles size={11} />
-                          AI辅助
-                        </span>
-                      </div>
-                      <p className="mt-0.5 line-clamp-1 text-xs leading-5 text-gray-500">按OKR填写本周总结和下周计划，支持汇报助手生成。</p>
-                    </div>
-                    <div className="hidden shrink-0 text-right sm:block">
-                      <div className="text-xs font-medium text-gray-700">本周周报</div>
-                      <div className="mt-0.5 text-[11px] text-pink-700">待提交</div>
-                    </div>
-                    <ChevronRight size={17} className="shrink-0 text-gray-300 transition-transform group-hover/app:translate-x-0.5 group-hover/app:text-pink-600" />
-                  </button>
-
-                  <button
-                    onClick={() => navigate('/okr')}
-                    className="group/app flex w-full min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-white px-3.5 py-3 text-left transition-all hover:border-blue-200 hover:bg-blue-50/40"
-                  >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">
-                      <Target size={18} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <h4 className="font-semibold text-gray-900">OKR</h4>
-                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700">拆解</span>
-                      </div>
-                      <p className="mt-0.5 line-clamp-1 text-xs leading-5 text-gray-500">查看目标、关键结果、对齐关系和进度记录。</p>
-                    </div>
-                    <div className="hidden shrink-0 text-right sm:block">
-                      <div className="text-xs font-medium text-gray-700">3项目标</div>
-                      <div className="mt-0.5 text-[11px] text-blue-700">平均73%</div>
-                    </div>
-                    <ChevronRight size={17} className="shrink-0 text-gray-300 transition-transform group-hover/app:translate-x-0.5 group-hover/app:text-blue-600" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* 临期课程 */}
-            {visibleCards.find(c => c.id === 'courses') && (
-              <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center">
-                      <FileText size={20} className="text-white" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-800">临期课程</h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button className="text-sm font-medium text-pink-700 hover:text-pink-900 transition-colors">
-                      查看全部 →
-                    </button>
-                    <div className="relative">
-                      <button 
-                        onClick={() => toggleMenu('courses')}
-                        className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                      >
-                        <MoreHorizontal size={18} className="text-gray-400" />
-                      </button>
-                      {menuId === 'courses' && (
-                        <>
-                          <div className="fixed inset-0 z-10" onClick={() => toggleMenu('')} />
-                          <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Eye size={16} className="text-gray-400" />
-                              <span>查看全部</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <RefreshCw size={16} className="text-gray-400" />
-                              <span>刷新列表</span>
-                            </button>
-                            <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                              <Settings size={16} className="text-gray-400" />
-                              <span>卡片设置</span>
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-3">
-                  <CourseItem 
-                    title="上海吉祥航空股份有限公司IT质量指标评估标准V6.0" 
-                    time="5节课 · 10积分"
-                    color="blue"
-                  />
-                  <CourseItem 
-                    title="民航华东地区2026年行业管理工作报告的通知" 
-                    time="1节课 · 10积分"
-                    color="purple"
-                  />
-                  <CourseItem 
-                    title="王金董事长在公司2026年工作会议上的重要讲话" 
-                    time="1节课 · 10积分"
-                    color="pink"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="grid grid-flow-row-dense grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-12" onDragOver={handlePortalGridDragOver} onDrop={handlePortalGridDrop}>
+          {visibleCards.map(card => (
+            <PortalCardShell
+              key={card.id}
+              card={card}
+              dragging={draggingCardId === card.id}
+              dragOver={dragOverCardId === card.id && draggingCardId !== card.id}
+              onDragStart={(id) => {
+                setDraggingCardId(id);
+                setDragOverCardId(null);
+              }}
+              onDragEnd={() => {
+                setDraggingCardId(null);
+                setDragOverCardId(null);
+              }}
+            >
+              {renderPortalCard(card)}
+            </PortalCardShell>
+          ))}
         </div>
       </div>
+      {/* 常用应用管理侧栏 */}
+      {showCommonAppsPanel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-end">
+          <div className="absolute inset-0 bg-black/25 backdrop-blur-[1px]" onClick={() => setShowCommonAppsPanel(false)} />
+          <aside className="relative flex h-full w-full max-w-[420px] flex-col bg-[#f3f4f8] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
+              <h2 className="text-xl font-semibold text-gray-950">常用应用</h2>
+              <button onClick={() => setShowCommonAppsPanel(false)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+              <div className="rounded-2xl bg-white px-5 py-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {displayedSystems.map(system => (
+                    <div key={system.id} className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-gray-100 px-2.5 py-2">
+                      <button onClick={() => removeSystem(system.id)} className="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white text-blue-500 shadow-sm ring-1 ring-gray-100" title="移除">
+                        <Minus size={14} />
+                      </button>
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs text-white shadow-sm ${system.bgColor ?? 'bg-blue-500'}`}>
+                        <span className="font-semibold">{system.icon}</span>
+                      </div>
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-600">{system.name}</span>
+                      <GripVertical size={13} className="hidden shrink-0 text-gray-300 group-hover:block" />
+                    </div>
+                  ))}
+                  <button onClick={() => setShowAddAppModal(true)} className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 px-2.5 py-2 text-gray-500 hover:border-gray-300 hover:text-gray-900">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-400">
+                      <Plus size={20} />
+                    </span>
+                    <span className="text-xs font-medium">添加</span>
+                  </button>
+                </div>
+              </div>
+
+              <p className="mt-5 px-3 text-xs text-gray-400">拖动应用可调整展示顺序</p>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {/* 添加常用应用弹框 */}
+      {showAddAppModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="border-b border-gray-100 px-6 py-4">
+              <div className="relative">
+                <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input value={appSearch} onChange={(event) => setAppSearch(event.target.value)} placeholder="搜索" className="h-12 w-full rounded-lg bg-gray-100 pl-12 pr-4 text-base text-gray-900 outline-none focus:bg-white focus:ring-2 focus:ring-pink-700/20" />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-gray-200 px-6">
+              <div className="flex gap-8 overflow-x-auto">
+                {systemCategories.map(category => (
+                  <button key={category} onClick={() => setActiveSystemCategory(category)} className={`relative whitespace-nowrap py-4 text-base font-medium ${activeSystemCategory === category ? 'text-gray-950' : 'text-gray-500 hover:text-gray-800'}`}>
+                    {category}
+                    {activeSystemCategory === category && <span className="absolute bottom-0 left-0 h-1 w-full rounded-full bg-gray-950" />}
+                  </button>
+                ))}
+              </div>
+              <button onClick={() => setShowAddAppModal(false)} className="ml-4 rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={22} />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+              <h3 className="mb-4 text-2xl font-bold text-gray-950">{activeSystemCategory}</h3>
+              <div className="divide-y divide-gray-100">
+                {filteredAddSystems.map(system => {
+                  const added = selectedSystems.includes(system.id);
+                  return (
+                    <div key={system.id} className="flex items-center justify-between gap-6 py-4">
+                      <div className="flex min-w-0 items-center gap-5">
+                        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${system.bgColor ?? 'bg-blue-500'}`}>
+                          <span className="font-semibold">{system.icon}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate text-xl font-semibold text-gray-950">{system.name}</div>
+                          <div className="mt-1 truncate text-sm text-gray-400">来源于{system.source}</div>
+                        </div>
+                      </div>
+                      <button onClick={() => addSystem(system.id)} disabled={added} className={`h-10 rounded-lg border px-8 text-base transition-colors ${added ? 'cursor-default border-gray-200 bg-gray-50 text-gray-400' : 'border-gray-200 bg-white text-gray-950 hover:border-pink-300 hover:text-pink-700'}`}>
+                        {added ? '已添加' : '添加'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-gray-100 bg-white px-6 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="shrink-0 text-base text-gray-950">已添加({displayedSystems.length}):</span>
+                <div className="flex min-w-0 gap-2 overflow-hidden">
+                  {displayedSystems.slice(0, 8).map(system => (
+                    <div key={system.id} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white ${system.bgColor ?? 'bg-blue-500'}`}>
+                      {system.icon}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button onClick={() => setShowAddAppModal(false)} className="ml-4 h-10 rounded-lg bg-pink-700 px-7 text-sm font-semibold text-white hover:bg-pink-800">
+                完成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 常用功能配置 */}
+      {activeDialog === 'commonFeatures' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">常用功能</h2>
+                <p className="mt-1 text-sm text-gray-500">选择固定在工作门户里的功能入口</p>
+              </div>
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid gap-3 overflow-y-auto p-6 sm:grid-cols-2 lg:grid-cols-3">
+              {commonFeatures.map(feature => {
+                const selected = pinnedFeatureIds.includes(feature.id);
+                return (
+                  <button
+                    key={feature.id}
+                    onClick={() => toggleFeature(feature.id)}
+                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
+                      selected ? 'border-pink-200 bg-pink-50/60' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${feature.tone}`}>
+                      {feature.icon}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-gray-900">{feature.name}</span>
+                      <span className="mt-1 block text-xs text-gray-500">{selected ? '已固定在门户' : '点击固定到门户'}</span>
+                    </span>
+                    <CheckCircle2 size={16} className={selected ? 'text-pink-700' : 'text-gray-200'} />
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <span className="text-xs text-gray-500">已固定 {pinnedFeatureIds.length} 个</span>
+              <div className="flex items-center gap-3">
+                <button onClick={() => openRequestDialog('featureRequest')} className="text-sm font-medium text-pink-700 hover:text-pink-900">
+                  没有我想要的功能入口
+                </button>
+                <button onClick={() => setActiveDialog(null)} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
+                  完成
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 流程审批展示配置 */}
+      {activeDialog === 'approvalConfig' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">编辑流程审批</h2>
+                <p className="mt-1 text-sm text-gray-500">选择详情卡片最多展示的流程数量</p>
+              </div>
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <label className="text-sm font-medium text-gray-700">最多展示</label>
+              <select
+                value={approvalDisplayCount}
+                onChange={(event) => setApprovalDisplayCount(Number(event.target.value))}
+                className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-pink-400"
+              >
+                {[1, 2, 3, 4, 5].map(count => (
+                  <option key={count} value={count}>{count} 条</option>
+                ))}
+              </select>
+              <p className="mt-3 text-xs text-gray-500">当前共有 {approvalProcesses.length} 条待批阅流程，详情区会按配置数量截取展示。</p>
+            </div>
+            <div className="flex justify-end border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 待办来源配置 */}
+      {activeDialog === 'todoSources' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">编辑待办来源</h2>
+                <p className="mt-1 text-sm text-gray-500">选择进入“待办事项”列表的数据来源</p>
+              </div>
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="space-y-3 p-6">
+              {todoSources.map(source => (
+                <button
+                  key={source.id}
+                  onClick={() => setTodoSources(prev => prev.map(item => item.id === source.id ? { ...item, enabled: !item.enabled } : item))}
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${
+                    source.enabled ? 'border-amber-200 bg-amber-50/60' : 'border-gray-100 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm">
+                      <ListTodo size={17} />
+                    </span>
+                    <span className="font-semibold text-gray-800">{source.name}</span>
+                  </span>
+                  <CheckCircle2 size={17} className={source.enabled ? 'text-amber-700' : 'text-gray-200'} />
+                </button>
+              ))}
+            </div>
+            <div className="flex justify-end border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 新增待办任务 */}
+      {activeDialog === 'newTodo' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">新增任务</h2>
+                <p className="mt-1 text-sm text-gray-500">手动新增事项可录入子任务及进度，并模拟指派给协作人</p>
+              </div>
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-2">
+              <label className="sm:col-span-2">
+                <span className="text-sm font-medium text-gray-700">工作标题</span>
+                <input
+                  value={newTodoDraft.title}
+                  onChange={(event) => setNewTodoDraft(prev => ({ ...prev, title: event.target.value }))}
+                  className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+                />
+              </label>
+              <label>
+                <span className="text-sm font-medium text-gray-700">负责人</span>
+                <input
+                  value={newTodoDraft.owner}
+                  onChange={(event) => setNewTodoDraft(prev => ({ ...prev, owner: event.target.value }))}
+                  className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+                />
+              </label>
+              <label>
+                <span className="text-sm font-medium text-gray-700">当前进度</span>
+                <input
+                  value={newTodoDraft.progress}
+                  onChange={(event) => setNewTodoDraft(prev => ({ ...prev, progress: event.target.value.replace(/[^\d]/g, '').slice(0, 3) }))}
+                  className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+                />
+              </label>
+              <div className="sm:col-span-2 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-800">子任务</span>
+                  <span className="text-xs text-gray-500">通过任务功能指派，协作人完成后更新进展</span>
+                </div>
+                {newTodoDraft.subtasks.map((task, index) => (
+                  <div key={index} className="mb-2 grid gap-2 sm:grid-cols-[1fr_120px_88px]">
+                    <input
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-pink-400"
+                      value={task.name}
+                      onChange={(event) => setNewTodoDraft(prev => ({
+                        ...prev,
+                        subtasks: prev.subtasks.map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item),
+                      }))}
+                    />
+                    <input
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-pink-400"
+                      value={task.owner}
+                      onChange={(event) => setNewTodoDraft(prev => ({
+                        ...prev,
+                        subtasks: prev.subtasks.map((item, itemIndex) => itemIndex === index ? { ...item, owner: event.target.value } : item),
+                      }))}
+                    />
+                    <input
+                      className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-pink-400"
+                      value={task.progress}
+                      onChange={(event) => setNewTodoDraft(prev => ({
+                        ...prev,
+                        subtasks: prev.subtasks.map((item, itemIndex) => itemIndex === index ? { ...item, progress: event.target.value.replace(/[^\d]/g, '').slice(0, 3) } : item),
+                      }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg border border-gray-200 bg-white px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                取消
+              </button>
+              <button onClick={addManualTodo} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
+                添加
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 关注事项配置 */}
+      {activeDialog === 'trackedItems' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">编辑关注事项</h2>
+                <p className="mt-1 text-sm text-gray-500">关注事项仅支持从 OKR 或项目进展中选择</p>
+              </div>
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              <div className="mb-5 grid gap-3 sm:grid-cols-2">
+                <button onClick={addOkrTrackedItem} className="flex items-center gap-3 rounded-xl border border-pink-100 bg-pink-50/50 px-4 py-4 text-left hover:border-pink-200">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-pink-700 shadow-sm">
+                    <Link2 size={18} />
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-gray-900">从 OKR 关联</span>
+                    <span className="mt-1 block text-xs text-gray-500">进度与选择的 OKR 保持一致</span>
+                  </span>
+                </button>
+                <button onClick={addProjectTrackedItem} className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-4 text-left hover:border-blue-200">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm">
+                    <Layers size={18} />
+                  </span>
+                  <span>
+                    <span className="block font-semibold text-gray-900">从项目进展选择</span>
+                    <span className="mt-1 block text-xs text-gray-500">进度来自项目任务同步</span>
+                  </span>
+                </button>
+              </div>
+              <div className="mb-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500">
+                运维管理平台：暂无数据，不支持选中
+              </div>
+              <div className="space-y-3">
+                {trackedItems.map(item => (
+                  <TrackedItemCard key={item.id} item={item} editable />
+                ))}
+              </div>
+            </div>
+            <div className="flex justify-end border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => setActiveDialog(null)} className="inline-flex items-center gap-2 rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
+                <Save size={16} />
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 设置面板 */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end">
-          <div 
-            className="absolute inset-0 bg-black/20 backdrop-blur-sm" 
-            onClick={() => setShowSettings(false)}
-          />
-          <div className="relative bg-white w-full max-w-md h-full shadow-2xl border-l border-gray-100 overflow-hidden animate-slide-in">
-            {/* 面板头部 */}
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-6 z-10">
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-bold text-gray-800">编辑布局</h2>
-                <button 
-                  onClick={() => setShowSettings(false)}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <X size={20} className="text-gray-500" />
-                </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 px-4 py-6 backdrop-blur-[1px]">
+          <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">编辑布局</h2>
+                <p className="mt-1 text-sm text-gray-500">按分类选择个人门户展示的卡片，内容区支持锚点滚动</p>
               </div>
-              <p className="text-sm text-gray-500">选择要在工作台显示的卡片</p>
+              <button onClick={() => setShowSettings(false)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={20} />
+              </button>
             </div>
 
-            {/* 面板内容 */}
-            <div className="p-6 space-y-8 overflow-y-auto h-[calc(100%-120px)]">
-              {/* 卡片选择 */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">功能卡片</h3>
-                <div className="space-y-2">
-                  {cards.map(card => (
-                    <button
-                      key={card.id}
-                      onClick={() => toggleCard(card.id)}
-                      className={`w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all duration-300 ${
-                        card.visible 
-                          ? 'border-pink-200 bg-pink-50/50 hover:border-pink-300' 
-                          : 'border-gray-100 bg-gray-50 hover:border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                          card.visible 
-                            ? 'bg-gradient-to-br from-pink-700 to-pink-900 text-white' 
-                            : 'bg-gray-200 text-gray-400'
-                        }`}>
-                          {card.icon}
-                        </div>
-                        <span className={`font-medium ${card.visible ? 'text-gray-800' : 'text-gray-400'}`}>
-                          {card.name}
-                        </span>
-                      </div>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all duration-300 ${
-                        card.visible 
-                          ? 'bg-gradient-to-br from-pink-700 to-pink-900' 
-                          : 'bg-gray-200'
-                      }`}>
-                        {card.visible && <CheckCircle2 size={14} className="text-white" />}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+            <div className="border-b border-gray-100 px-6 pb-3 pt-4">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {[
+                  { key: 'data' as const, label: '数据卡片', count: dataLayoutOptions.length, color: 'from-pink-700 to-pink-500' },
+                  { key: 'app' as const, label: '应用卡片', count: appLayoutOptions.length, color: 'from-amber-500 to-orange-400' },
+                ].map(item => (
+                  <button
+                    key={item.key}
+                    onClick={() => scrollToLayoutSection(item.key)}
+                    className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-all ${
+                      layoutCategory === item.key
+                        ? `bg-gradient-to-r ${item.color} text-white shadow-lg shadow-pink-900/10`
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${layoutCategory === item.key ? 'bg-white/80' : 'bg-gray-400'}`} />
+                    <span>{item.label}</span>
+                    <span className={`rounded-full px-1.5 py-0.5 text-xs ${layoutCategory === item.key ? 'bg-white/20' : 'bg-white text-gray-500'}`}>{item.count}</span>
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* 常用系统选择 */}
-              <div>
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">常用系统</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {systems.map(sys => (
+            <div ref={layoutContentRef} onScroll={handleLayoutContentScroll} className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
+              <section id="layout-section-data" className="mb-8 scroll-mt-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-700 to-pink-500 text-white shadow-lg shadow-pink-900/10">
+                    <TrendingUp size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">数据卡片</h3>
+                    <p className="text-sm text-gray-500">统计与明细列表等数据类组件</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {dataLayoutOptions.map(item => (
                     <button
-                      key={sys.id}
-                      onClick={() => toggleSystem(sys.id)}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all duration-300 ${
-                        selectedSystems.includes(sys.id)
-                          ? 'border-pink-200 bg-pink-50/50'
-                          : 'border-gray-100 bg-gray-50'
+                      key={item.id}
+                      onClick={item.onToggle}
+                      className={`group flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
+                        item.checked ? 'border-pink-200 bg-pink-50/70 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                        selectedSystems.includes(sys.id)
-                          ? sys.bgColor || 'bg-blue-500'
-                          : 'bg-gray-200'
+                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        item.checked ? 'bg-pink-700 text-white' : 'bg-gray-100 text-gray-400 group-hover:text-gray-500'
                       }`}>
-                        <span className={`text-lg ${selectedSystems.includes(sys.id) ? 'text-white' : 'text-gray-400'}`}>
-                          {sys.icon}
-                        </span>
-                      </div>
-                      <span className={`text-sm font-medium ${selectedSystems.includes(sys.id) ? 'text-gray-700' : 'text-gray-400'}`}>
-                        {sys.name}
+                        {item.checked ? <CheckCircle2 size={18} /> : <Layout size={18} />}
                       </span>
-                      {selectedSystems.includes(sys.id) && (
-                        <CheckCircle2 size={14} className="text-pink-700" />
-                      )}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-gray-900">{item.name}</span>
+                        <span className="mt-1 block truncate text-xs text-gray-500">{item.description}</span>
+                      </span>
+                      <span className={`h-5 w-5 rounded-full border ${item.checked ? 'border-pink-700 bg-pink-700' : 'border-gray-200 bg-white'}`} />
                     </button>
                   ))}
                 </div>
-              </div>
+              </section>
+
+              <section id="layout-section-app" className="scroll-mt-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-400 text-white shadow-lg shadow-amber-900/10">
+                    <ClipboardList size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">应用卡片</h3>
+                    <p className="text-sm text-gray-500">常用系统、常用功能、公司值班、文档和课程等入口</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {appLayoutOptions.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={item.onToggle}
+                      className={`group flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
+                        item.checked ? 'border-amber-200 bg-amber-50/70 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                        item.checked ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:text-gray-500'
+                      }`}>
+                        {item.checked ? <CheckCircle2 size={18} /> : <Layout size={18} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-gray-900">{item.name}</span>
+                        <span className="mt-1 block truncate text-xs text-gray-500">{item.description}</span>
+                      </span>
+                      <span className={`h-5 w-5 rounded-full border ${item.checked ? 'border-amber-500 bg-amber-500' : 'border-gray-200 bg-white'}`} />
+                    </button>
+                  ))}
+                </div>
+              </section>
             </div>
 
-            {/* 面板底部 */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-6">
-              <button 
-                onClick={() => setShowSettings(false)}
-                className="w-full py-3 bg-gradient-to-r from-pink-700 to-pink-900 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-pink-700/25 transition-all duration-300"
-              >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => openRequestDialog('cardRequest')} className="text-sm font-medium text-pink-700 hover:text-pink-900">
+                没有我的想要的卡片
+              </button>
+              <button onClick={() => setShowSettings(false)} className="rounded-lg bg-pink-700 px-6 py-2 text-sm font-semibold text-white hover:bg-pink-800">
                 完成
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {(activeDialog === 'cardRequest' || activeDialog === 'featureRequest') && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">{activeDialog === 'cardRequest' ? '申请卡片' : '申请功能入口'}</h2>
+                <p className="mt-1 text-sm text-gray-500">提交后将发起需求申请流程</p>
+              </div>
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-2">
+              <label className="sm:col-span-2">
+                <span className="text-sm font-medium text-gray-700">卡片名称</span>
+                <input
+                  value={requestDraft.name}
+                  onChange={(event) => setRequestDraft(prev => ({ ...prev, name: event.target.value }))}
+                  placeholder={activeDialog === 'cardRequest' ? '请输入需要的卡片名称' : '请输入需要的功能入口名称'}
+                  className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+                />
+              </label>
+              <label>
+                <span className="text-sm font-medium text-gray-700">卡片类型</span>
+                <select
+                  value={requestDraft.type}
+                  onChange={(event) => setRequestDraft(prev => ({ ...prev, type: event.target.value }))}
+                  className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-pink-400"
+                >
+                  <option>数据卡片</option>
+                  <option>应用卡片</option>
+                  <option>功能入口</option>
+                </select>
+              </label>
+              <label>
+                <span className="text-sm font-medium text-gray-700">所属领域</span>
+                <select
+                  value={requestDraft.domain}
+                  onChange={(event) => setRequestDraft(prev => ({ ...prev, domain: event.target.value }))}
+                  className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-pink-400"
+                >
+                  <option>运行</option>
+                  <option>营销</option>
+                  <option>管理</option>
+                  <option>数据</option>
+                </select>
+              </label>
+              <label className="sm:col-span-2">
+                <span className="text-sm font-medium text-gray-700">卡片信息描述</span>
+                <textarea
+                  value={requestDraft.description}
+                  onChange={(event) => setRequestDraft(prev => ({ ...prev, description: event.target.value }))}
+                  placeholder="请描述希望展示的信息、来源系统或使用场景"
+                  className="mt-2 min-h-28 w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg border border-gray-200 bg-white px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                取消
+              </button>
+              <button onClick={submitRequest} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
+                提交
               </button>
             </div>
           </div>
@@ -757,86 +1686,324 @@ export default function Personal_Enterprise() {
   );
 }
 
-// 统一的数据统计卡片组件
-function StatsCard({ title, count, amount, change, color, destination, menuId, onToggleMenu, onNavigate }: { 
-  title: string; 
-  count?: string; 
-  amount?: string;
-  change?: string;
-  color: string;
-  destination: string;
-  menuId: string | null;
-  onToggleMenu: (id: string) => void;
-  onNavigate: (destination: string) => void;
+function PortalCardShell({ card, dragging, dragOver, onDragStart, onDragEnd, children }: {
+  card: CardConfig;
+  dragging: boolean;
+  dragOver: boolean;
+  onDragStart: (id: CardType) => void;
+  onDragEnd: () => void;
+  children: React.ReactNode;
 }) {
-  const colorMap = {
-    pink: { bg: 'bg-pink-100', icon: 'text-pink-700', border: 'border-pink-200', gradient: 'from-pink-700 to-pink-900' },
-    green: { bg: 'bg-green-100', icon: 'text-green-700', border: 'border-green-200', gradient: 'from-green-600 to-green-800' },
-    amber: { bg: 'bg-amber-100', icon: 'text-amber-700', border: 'border-amber-200', gradient: 'from-amber-600 to-amber-800' },
-    blue: { bg: 'bg-blue-100', icon: 'text-blue-700', border: 'border-blue-200', gradient: 'from-blue-600 to-blue-800' },
-  };
-  const c = colorMap[color as keyof typeof colorMap];
-  
+  const spanClass = card.id === 'stats' || card.id === 'documents'
+    ? 'md:col-span-2 xl:col-span-8'
+    : 'md:col-span-1 xl:col-span-4';
+
+  return (
+    <div
+      data-portal-card-id={card.id}
+      className={`${spanClass} group/card relative transition-all duration-200 ${dragging ? 'opacity-50' : ''} ${dragOver ? 'rounded-3xl ring-2 ring-pink-300 ring-offset-4 ring-offset-pink-50' : ''}`}
+    >
+      <div
+        draggable
+        onDragStart={(event: React.DragEvent<HTMLDivElement>) => {
+          event.dataTransfer.effectAllowed = 'move';
+          event.dataTransfer.setData('text/plain', card.id);
+          onDragStart(card.id);
+        }}
+        onDragEnd={onDragEnd}
+        title="拖动调整卡片位置"
+        className="absolute left-1/2 top-0 z-30 hidden -translate-x-1/2 -translate-y-1/2 cursor-grab items-center gap-1 rounded-full border border-pink-100 bg-white px-3 py-1 text-xs font-medium text-pink-700 shadow-lg shadow-pink-900/5 transition active:cursor-grabbing group-hover/card:flex"
+      >
+        <GripVertical size={13} />
+        <span>拖动</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+// 统一的数据统计卡片组件
+function StatsCard({ stat, active, menuId, onSelect, onEdit, onHide, onToggleMenu }: {
+  stat: StatConfig;
+  active: boolean;
+  menuId: string | null;
+  onSelect: (key: StatKey) => void;
+  onEdit: (key: StatKey) => void;
+  onHide: (key: StatKey) => void;
+  onToggleMenu: (id: string) => void;
+}) {
+  const tone = statToneMap[stat.color];
+  const menuIdValue = `stats-${stat.key}`;
+
+
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onNavigate(destination)}
+      onClick={() => onSelect(stat.key)}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
-          onNavigate(destination);
+          onSelect(stat.key);
         }
       }}
-      className={`group relative bg-white rounded-2xl shadow-sm border-2 ${c.border} p-4 sm:p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden cursor-pointer min-w-0`}
+      className={`group relative min-w-0 cursor-pointer overflow-hidden rounded-2xl border-2 bg-white p-4 shadow-sm transition-all duration-300 ${
+        active ? `${tone.border} shadow-lg ${tone.ring} ring-4` : 'border-gray-100 hover:border-gray-200 hover:shadow-md'
+      }`}
     >
-      <div className={`absolute -top-10 -right-10 w-24 sm:w-32 h-24 sm:h-32 bg-gradient-to-br ${c.gradient} opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity`} />
-      <div className="flex flex-col relative z-10">
-        <div className="flex justify-between items-start mb-2 sm:mb-3">
-          <p className="text-gray-500 text-xs sm:text-sm font-medium">{title}</p>
-          <div className="relative">
-            <button 
+      <div className={`absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gradient-to-br ${tone.gradient} opacity-5 blur-3xl transition-opacity group-hover:opacity-10`} />
+      <div className="relative z-10">
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div>
+            <p className={`text-sm font-semibold ${active ? tone.text : 'text-gray-600'}`}>{stat.title}</p>
+            <p className="mt-1 text-xs text-gray-400">{stat.summary}</p>
+          </div>
+          <div className="relative shrink-0">
+            <button
               onClick={(event) => {
                 event.stopPropagation();
-                onToggleMenu(`stats-${color}`);
+                onToggleMenu(menuIdValue);
               }}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              title="设置"
             >
-              <MoreHorizontal size={16} className="text-gray-400" />
+              <Settings size={15} />
             </button>
-            {menuId === `stats-${color}` && (
+            {menuId === menuIdValue && (
               <>
                 <div className="fixed inset-0 z-10" onClick={() => onToggleMenu('')} />
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                    <ExternalLink size={16} className="text-gray-400" />
-                    <span>查看详情</span>
+                <div className="absolute right-0 top-full z-20 mt-1 w-36 rounded-xl border border-gray-100 bg-white py-2 shadow-xl">
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onEdit(stat.key);
+                      onToggleMenu('');
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <Edit3 size={15} className="text-gray-400" />
+                    <span>编辑</span>
                   </button>
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                    <RefreshCw size={16} className="text-gray-400" />
-                    <span>刷新数据</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-                    <Settings size={16} className="text-gray-400" />
-                    <span>卡片设置</span>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onHide(stat.key);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <EyeOff size={15} className="text-gray-400" />
+                    <span>不再展示</span>
                   </button>
                 </div>
               </>
             )}
           </div>
         </div>
-        <div className="flex justify-between items-end">
-          <div className="space-y-1 min-w-0">
-            {count && <p className="text-2xl sm:text-3xl font-bold text-gray-800 truncate">{count}</p>}
-            {amount && <p className="text-[clamp(1.05rem,2.1vw,1.75rem)] font-bold text-gray-800 truncate leading-tight">{amount}</p>}
-            {change && (
-              <p className="text-green-600 text-xs sm:text-sm flex items-center font-medium">
-                <TrendingUp size={14} className="mr-1 flex-shrink-0" />
-                <span className="truncate">{change} <span className="text-gray-400 sm:inline">较上月</span></span>
-              </p>
-            )}
+        <div className="min-w-0">
+          {stat.count && <p className="truncate text-3xl font-bold text-gray-900">{stat.count}</p>}
+          {stat.amount && <p className="truncate text-[clamp(1.05rem,2vw,1.65rem)] font-bold leading-tight text-gray-900">{stat.amount}</p>}
+          {stat.change && (
+            <p className="mt-2 flex items-center text-sm font-medium text-green-600">
+              <TrendingUp size={14} className="mr-1 shrink-0" />
+              <span className="truncate">{stat.change} 较上月</span>
+            </p>
+          )}
+        </div>
+      </div>
+      {active && <div className={`absolute inset-x-4 bottom-0 h-1 rounded-t-full bg-gradient-to-r ${tone.gradient}`} />}
+    </div>
+  );
+}
+
+function CardHeaderActions({ menuId, menuKey, onEdit, onToggleMenu }: {
+  menuId: string | null;
+  menuKey: string;
+  onEdit: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onToggleMenu: (id: string) => void;
+}) {
+
+  return (
+    <div className="relative flex shrink-0 items-center gap-1">
+      <button
+        onClick={onEdit}
+        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-pink-50 hover:text-pink-700"
+        title="编辑"
+      >
+        <Edit3 size={15} />
+      </button>
+      <button
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleMenu(menuKey);
+        }}
+        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+        title="更多"
+      >
+        <MoreHorizontal size={16} />
+      </button>
+      {menuId === menuKey && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => onToggleMenu('')} />
+          <div className="absolute right-0 top-full z-20 mt-1 w-44 rounded-xl border border-gray-100 bg-white py-2 shadow-xl">
+            <button className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50">
+              <ExternalLink size={16} className="text-gray-400" />
+              <span>查看全部</span>
+            </button>
+            <button className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50">
+              <RefreshCw size={16} className="text-gray-400" />
+              <span>刷新数据</span>
+            </button>
+            <button className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50">
+              <EyeOff size={16} className="text-gray-400" />
+              <span>隐藏卡片</span>
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function StatsDetailPanel({ activeStat, tone, approvals, approvalTotal, todos, trackedItems, revenueDetails, onEdit, onAddTodo, onNavigate }: {
+  activeStat: StatConfig;
+  tone: typeof statToneMap[keyof typeof statToneMap];
+  approvals: ApprovalProcess[];
+  approvalTotal: number;
+  todos: TodoItem[];
+  trackedItems: TrackedItem[];
+  revenueDetails: { name: string; value: string; change: string; owner: string }[];
+  onEdit: (key: StatKey) => void;
+  onAddTodo: () => void;
+  onNavigate: (destination: string) => void;
+}) {
+  const renderHeaderAction = () => {
+    if (activeStat.key === 'revenue') {
+      return (
+        <button
+          onClick={() => onNavigate('数据看板')}
+          className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
+        >
+          <MoreHorizontal size={16} />
+          更多
+        </button>
+      );
+    }
+
+    if (activeStat.key === 'todo') {
+      return (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onAddTodo}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
+          >
+            <Plus size={15} />
+            新增任务
+          </button>
+          <button
+            onClick={() => onEdit(activeStat.key)}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
+          >
+            <Edit3 size={15} />
+            编辑来源
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => onEdit(activeStat.key)}
+        className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
+      >
+        <Edit3 size={15} />
+        编辑
+      </button>
+    );
+  };
+
+
+  return (
+    <div className={`rounded-2xl border bg-white shadow-sm ${tone.border}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-3 rounded-t-2xl border-b border-gray-100 px-5 py-4 ${tone.bg}`}>
+        <div className="flex items-center gap-3">
+          <span className={`h-9 w-1.5 rounded-full bg-gradient-to-b ${tone.gradient}`} />
+          <div>
+            <h3 className="text-base font-bold text-gray-900">{activeStat.summary}</h3>
+            <p className="text-xs text-gray-500">由上方“{activeStat.title}”卡片展开</p>
           </div>
         </div>
+        {renderHeaderAction()}
+      </div>
+
+      <div className="p-5">
+        {activeStat.key === 'approval' && (
+          <div>
+            <div className="mb-3 flex items-center justify-between text-xs text-gray-500">
+              <span>当前展示 {approvals.length} 条，共 {approvalTotal} 条</span>
+              <span>来源系统包含 OA、IT需求、EHR、SMS、费控等</span>
+            </div>
+            <div className="space-y-2.5">
+              {approvals.map(item => (
+                <ProcessItemFlow key={item.id} {...item} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {activeStat.key === 'revenue' && (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {revenueDetails.map(item => (
+              <button key={item.name} onClick={() => onNavigate('数据看板')} className="rounded-xl border border-gray-100 bg-white p-4 text-left transition-all hover:border-green-100 hover:bg-green-50/30">
+                <p className="text-sm font-semibold text-gray-700">{item.name}</p>
+                <p className="mt-2 text-xl font-bold text-gray-900">{item.value}</p>
+                <div className="mt-3 flex items-center justify-between text-xs">
+                  <span className="text-gray-400">{item.owner}</span>
+                  <span className="font-semibold text-green-600">{item.change}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {activeStat.key === 'todo' && (
+          <div className="space-y-3">
+            {todos.map(item => (
+              <div key={item.id} className="rounded-xl border border-gray-100 px-4 py-3 hover:bg-amber-50/30">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
+                    <CheckSquare size={17} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="truncate text-sm font-semibold text-gray-900">{item.title}</h4>
+                    <p className="mt-1 text-xs text-gray-500">{item.source} · {item.owner} · {item.due}</p>
+                  </div>
+                  <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">{item.status}</span>
+                  {typeof item.progress === 'number' && <span className="text-xs font-semibold text-amber-700">{item.progress}%</span>}
+                </div>
+                {item.subtasks && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {item.subtasks.map(task => (
+                      <div key={task.name} className="rounded-lg bg-gray-50 px-3 py-2 text-xs">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate font-medium text-gray-700">{task.name}</span>
+                          <span className="font-semibold text-gray-600">{task.progress}%</span>
+                        </div>
+                        <p className="mt-1 text-gray-400">指派：{task.owner}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeStat.key === 'progress' && (
+          <div className="space-y-3">
+            {trackedItems.map(item => (
+              <TrackedItemCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -844,17 +2011,22 @@ function StatsCard({ title, count, amount, change, color, destination, menuId, o
 
 // 其他组件保持不变
 
-function ProcessItemFlow({ title, code, creator, time, location }: { title: string; code: string; creator: string; time: string; location: string }) {
+function ProcessItemFlow({ title, code, creator, time, location, sourceSystem }: ApprovalProcess) {
+
   return (
-    <div className="group p-4 border border-gray-100 rounded-xl hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-pink-50/50 hover:border-blue-100 transition-all duration-300 cursor-pointer">
-      <div className="flex items-start gap-3 mb-2">
-        <span className="text-blue-500 text-lg">📋</span>
-        <h4 className="font-semibold text-gray-800 flex-1 group-hover:text-blue-900 transition-colors">{title}</h4>
+    <div className="group rounded-xl border border-gray-100 px-3.5 py-3 transition-all duration-300 hover:border-pink-100 hover:bg-pink-50/40">
+      <div className="mb-2 flex items-start gap-2.5">
+        <FileText size={15} className="mt-0.5 shrink-0 text-pink-700" />
+        <div className="min-w-0 flex-1">
+          <h4 className="truncate text-sm font-semibold text-gray-800 transition-colors group-hover:text-pink-900">{title}</h4>
+          <p className="mt-1 text-[11px] text-gray-400">{time}</p>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2 text-xs text-gray-500 ml-7">
-        <span className="px-2 py-0.5 bg-gray-100 rounded">{code}</span>
-        <span className="px-2 py-0.5 bg-gray-100 rounded">创建者：{creator}</span>
-        <span className="px-2 py-0.5 bg-gray-100 rounded">{location}</span>
+      <div className="ml-6 flex flex-wrap gap-1.5 text-[11px] text-gray-500">
+        <span className="rounded bg-pink-50 px-2 py-0.5 text-pink-700">来源：{sourceSystem}</span>
+        <span className="rounded bg-gray-100 px-2 py-0.5">编号：{code}</span>
+        <span className="rounded bg-gray-100 px-2 py-0.5">创建者：{creator}</span>
+        <span className="rounded bg-gray-100 px-2 py-0.5">{location}</span>
       </div>
     </div>
   );
@@ -905,6 +2077,56 @@ function GanttChart({ projectName, progress, tasks }: { projectName: string; pro
   );
 }
 
+function TrackedItemCard({ item, editable = false }: { item: TrackedItem; editable?: boolean }) {
+  const isOkr = item.source === 'okr';
+
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-4 transition-all hover:border-blue-100 hover:bg-blue-50/20">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${isOkr ? 'bg-pink-50 text-pink-700' : 'bg-blue-50 text-blue-700'}`}>
+              {isOkr ? <Target size={16} /> : <CircleDot size={16} />}
+            </span>
+            <h4 className="min-w-0 truncate text-sm font-bold text-gray-900">{item.title}</h4>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">{item.owner} · {item.status}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-xl font-bold text-gray-900">{item.progress}%</p>
+          <p className="text-xs text-gray-400">当前进度</p>
+        </div>
+      </div>
+      <div className="mb-3 h-2 overflow-hidden rounded-full bg-gray-100">
+        <div className={`h-full rounded-full ${isOkr ? 'bg-pink-600' : 'bg-blue-600'}`} style={{ width: `${item.progress}%` }} />
+      </div>
+      <div className="space-y-2">
+        {item.tasks.map(task => (
+          <div key={task.name} className="flex items-center gap-3 rounded-lg bg-gray-50 px-3 py-2">
+            <CircleCheckBig size={15} className={task.progress === 100 ? 'text-green-600' : 'text-gray-300'} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-gray-700">{task.name}</p>
+              <p className="mt-0.5 text-[11px] text-gray-400">{task.owner}</p>
+            </div>
+            <span className="text-xs font-semibold text-gray-600">{task.progress}%</span>
+          </div>
+        ))}
+      </div>
+      {editable && !isOkr && (
+        <div className="mt-3 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-700">
+          项目进展事项来自项目任务同步，当前仅支持选择已有项目数据。
+        </div>
+      )}
+      {editable && isOkr && (
+        <div className="mt-3 rounded-lg bg-pink-50 px-3 py-2 text-xs text-pink-700">
+          OKR关联事项进度与所选 OKR 保持一致。
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CalendarEvent({ time, title, color, textColor }: { time: string; title: string; color: string; textColor: string }) {
   return (
     <div className={`group flex items-center gap-3 p-3 ${color} rounded-xl hover:shadow-md transition-all duration-300 cursor-pointer`}>
@@ -936,4 +2158,20 @@ function CourseItem({ title, time, color }: { title: string; time: string; color
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
