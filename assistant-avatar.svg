@@ -1,0 +1,44 @@
+<svg width="300" height="300" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fce7f3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fbcfe8;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="hairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#06b6d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <circle cx="150" cy="150" r="120" fill="url(#bgGrad)" />
+
+  <ellipse cx="150" cy="165" rx="65" ry="70" fill="#fce7f3" />
+
+  <path d="M95,140 Q95,95 150,85 Q205,95 205,140 L200,130 Q200,100 150,95 Q100,100 100,130 Z" fill="#f5f5f4" stroke="#d6d3d1" stroke-width="3"/>
+
+  <circle cx="150" cy="130" r="45" fill="#fef9c3" stroke="#fde047" stroke-width="2"/>
+
+  <path d="M105,115 Q105,150 150,155 Q195,150 195,115 L190,110 Q190,145 150,150 Q110,145 110,110 Z" fill="url(#hairGrad)" />
+
+  <path d="M110,120 Q115,110 125,125" stroke="#0e7490" stroke-width="8" stroke-linecap="round" fill="none"/>
+  <path d="M190,120 Q185,110 175,125" stroke="#0e7490" stroke-width="8" stroke-linecap="round" fill="none"/>
+
+  <ellipse cx="125" cy="135" rx="12" ry="10" fill="#fef9c3" />
+  <ellipse cx="175" cy="135" rx="12" ry="10" fill="#fef9c3" />
+
+  <circle cx="125" cy="135" r="7" fill="#1e293b" />
+  <circle cx="175" cy="135" r="7" fill="#1e293b" />
+  <circle cx="123" cy="132" r="2" fill="#ffffff" />
+  <circle cx="173" cy="132" r="2" fill="#ffffff" />
+
+  <path d="M118,140 Q125,148 132,140" stroke="#f97373" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <path d="M168,140 Q175,148 182,140" stroke="#f97373" stroke-width="3" stroke-linecap="round" fill="none"/>
+
+  <path d="M135,155 Q150,168 165,155" stroke="#ec4899" stroke-width="4" stroke-linecap="round" fill="none"/>
+
+  <ellipse cx="115" cy="145" rx="10" ry="7" fill="#fbcfe8" opacity="0.7"/>
+  <ellipse cx="185" cy="145" rx="10" ry="7" fill="#fbcfe8" opacity="0.7"/>
+
+  <circle cx="90" cy="140" r="12" fill="#f5f5f4" stroke="#d6d3d1" stroke-width="2"/>
+  <circle cx="210" cy="140" r="12" fill="#f5f5f4" stroke="#d6d3d1" stroke-width="2"/>
+</svg>

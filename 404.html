@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found</title>
+  <script>
+    // SPA 404 处理：保存当前路径到 sessionStorage，然后重定向到根路径
+    const path = window.location.pathname + window.location.search + window.location.hash;
+    sessionStorage.setItem('redirectPath', path);
+    location.replace('/IJX_Platform/');
+  </script>
+</head>
+<body>
+  <noscript>
+    <meta http-equiv="refresh" content="0; url=/IJX_Platform/">
+  </noscript>
+</body>
+</html>

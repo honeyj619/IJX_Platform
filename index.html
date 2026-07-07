@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- 劼字 Logo - SVG格式（支持高清屏） -->
+    <link rel="icon" type="image/svg+xml" href="/IJX_Platform/favicon.svg" />
+    <!-- 备选 PNG 格式（16x16 和 32x32） -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <!-- Apple Touch Icon -->
+    <link rel="apple-touch-icon" href="/IJX_Platform/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>honey's IJX</title>
+    <script>
+      // SPA 404 重定向恢复：从 sessionStorage 恢复原始路径
+      (function() {
+        const redirectPath = sessionStorage.getItem('redirectPath');
+        if (redirectPath) {
+          sessionStorage.removeItem('redirectPath');
+          // 避免重复处理根路径
+          if (redirectPath !== '/IJX_Platform/' && redirectPath !== '/IJX_Platform') {
+            history.replaceState(null, '', redirectPath);
+          }
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/IJX_Platform/assets/index-km_tt_bB.js"></script>
+    <link rel="stylesheet" crossorigin href="/IJX_Platform/assets/index-DCSZADx6.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
