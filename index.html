@@ -11,6 +11,19 @@
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>honey's IJX</title>
+    <script>
+      // SPA 404 重定向恢复：从 sessionStorage 恢复原始路径
+      (function() {
+        const redirectPath = sessionStorage.getItem('redirectPath');
+        if (redirectPath) {
+          sessionStorage.removeItem('redirectPath');
+          // 避免重复处理根路径
+          if (redirectPath !== '/IJX_Platform/' && redirectPath !== '/IJX_Platform') {
+            history.replaceState(null, '', redirectPath);
+          }
+        }
+      })();
+    </script>
     <script type="module">
       if (import.meta.hot?.on) {
         import.meta.hot.on('vite:error', (error) => {

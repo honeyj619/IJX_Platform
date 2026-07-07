@@ -5,13 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Page Not Found</title>
   <script>
-    const redirectPath = sessionStorage.getItem('redirectPath');
-    if (redirectPath) {
-      sessionStorage.removeItem('redirectPath');
-      location.replace(redirectPath);
-    } else {
-      location.replace('/IJX_Platform/');
-    }
+    // SPA 404 处理：保存当前路径到 sessionStorage，然后重定向到根路径
+    const path = window.location.pathname + window.location.search + window.location.hash;
+    sessionStorage.setItem('redirectPath', path);
+    location.replace('/IJX_Platform/');
   </script>
 </head>
 <body>
