@@ -1,17 +1,17 @@
-﻿import { Search, MessageSquare, Smartphone, BarChart3, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X, Mail, Monitor, MoreHorizontal } from 'lucide-react';
+﻿import { Search, MessageSquare, Smartphone, BarChart3, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X, Mail, Monitor, MoreHorizontal, Users, DollarSign, Headphones, FileCheck, ShoppingCart, Plane, UserCircle, Kanban } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
 
 // 常用系统数据 - 与导航栏业务系统保持一致
 const ALL_SYSTEMS = [
-  { id: 'hr', name: '人力资源', icon: '👤', bgColor: 'bg-blue-500', category: '效率办公' },
-  { id: 'finance', name: '财务系统', icon: '💰', bgColor: 'bg-green-500', category: '业务管理' },
-  { id: 'it', name: 'IT服务台', icon: '💻', bgColor: 'bg-purple-500', category: '效率办公' },
-  { id: 'oa', name: 'OA办公', icon: '📋', bgColor: 'bg-pink-500', category: '效率办公' },
-  { id: 'procurement', name: '采购管理', icon: '🛒', bgColor: 'bg-orange-500', category: '业务管理' },
-  { id: 'travel', name: '差旅系统', icon: '✈️', bgColor: 'bg-cyan-500', category: '效率办公' },
-  { id: 'crm', name: 'CRM系统', icon: '👥', bgColor: 'bg-indigo-500', category: '业务管理' },
-  { id: 'project', name: '项目管理', icon: '📊', bgColor: 'bg-amber-500', category: '业务管理' },
+  { id: 'hr', name: '人力资源', icon: <Users size={16} />, bgColor: 'bg-blue-500', category: '效率办公' },
+  { id: 'finance', name: '财务系统', icon: <DollarSign size={16} />, bgColor: 'bg-green-500', category: '业务管理' },
+  { id: 'it', name: 'IT服务台', icon: <Headphones size={16} />, bgColor: 'bg-purple-500', category: '效率办公' },
+  { id: 'oa', name: 'OA办公', icon: <FileCheck size={16} />, bgColor: 'bg-pink-500', category: '效率办公' },
+  { id: 'procurement', name: '采购管理', icon: <ShoppingCart size={16} />, bgColor: 'bg-orange-500', category: '业务管理' },
+  { id: 'travel', name: '差旅系统', icon: <Plane size={16} />, bgColor: 'bg-cyan-500', category: '效率办公' },
+  { id: 'crm', name: 'CRM系统', icon: <UserCircle size={16} />, bgColor: 'bg-indigo-500', category: '业务管理' },
+  { id: 'project', name: '项目管理', icon: <Kanban size={16} />, bgColor: 'bg-amber-500', category: '业务管理' },
 ];
 
 const SYSTEM_CATEGORIES = ['效率办公', '业务管理'];
@@ -469,7 +469,7 @@ export default function Enterprise() {
                         >
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 ${sys.bgColor || 'bg-blue-500'} rounded-lg flex items-center justify-center`}>
-                              <span className="text-lg text-white">{sys.icon}</span>
+                              <span className="text-white">{sys.icon}</span>
                             </div>
                             <div>
                               <p className="text-sm font-medium text-gray-800 dark:text-white">{sys.name}</p>

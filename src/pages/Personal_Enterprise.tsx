@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Minus, GripVertical } from 'lucide-react';
 import { Ticket, WalletCards, Plane, BadgeCheck, CheckSquare, ListTodo, BarChart3, UserPlus, Link2, Save, CircleDot, CircleCheckBig } from 'lucide-react';
+import { Landmark, Brain, Receipt, FileSignature, Calculator, Workflow, Users, LayoutDashboard, GraduationCap, Award, ClipboardCheck, Database, FileCheck, FolderKanban, Server, LineChart, Blocks, PieChart, Gauge, HardDrive, ShieldCheck, Truck, Hexagon, Shirt, Car, MessageSquare, Wrench, Fuel, BookMarked, Network, AlertTriangle, IterationCw, Shield, Clock, Zap, Volume2, Crown, Package, PackagePlus, Tag, Wallet, BarChart2, Activity, Globe, Smartphone, ShoppingBag, GitBranch, Phone, UserCheck, Repeat, Star, Briefcase, Sun, BookOpen } from 'lucide-react';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 
 // 定义卡片类型
@@ -20,7 +21,7 @@ interface CardConfig {
 type System = {
   id: string;
   name: string;
-  icon: string;
+  icon: React.ReactNode;
   bgColor?: string;
   category?: string;
   source?: string;
@@ -110,72 +111,72 @@ const initialCards: CardConfig[] = [
 ];
 
 const businessSystems: System[] = [
-  { id: 'bip', name: 'BIP系统', icon: '财', bgColor: 'bg-amber-500', category: '财务系统', source: '业务系统', description: '财务综合管理平台' },
-  { id: 'fai', name: '财翼融合智能平台FAI', icon: 'FAI', bgColor: 'bg-amber-500', category: '财务系统', source: '业务系统', description: '财务智能分析平台' },
-  { id: 'expense', name: '费控商旅系统', icon: '费', bgColor: 'bg-orange-500', category: '财务系统', source: '业务系统', description: '费控与商旅管理' },
-  { id: 'contract', name: '合同管理系统', icon: '合', bgColor: 'bg-yellow-500', category: '财务系统', source: '业务系统', description: '合同审批和履约管理' },
-  { id: 'tax', name: '税务管理系统', icon: '税', bgColor: 'bg-amber-600', category: '财务系统', source: '业务系统', description: '税务申报管理' },
-  { id: 'seeyon', name: '致远系统', icon: '致', bgColor: 'bg-orange-600', category: '财务系统', source: '业务系统', description: '协同办公系统' },
-  { id: 'nc', name: 'NC系统', icon: 'NC', bgColor: 'bg-yellow-600', category: '财务系统', source: '业务系统', description: '财务核算系统' },
-  { id: 'ehr', name: '人力资源E-HR系统', icon: '人', bgColor: 'bg-blue-500', category: '人力系统', source: '业务系统', description: '员工信息、考勤、薪资等人力服务' },
-  { id: 'ioffice', name: 'ioffice', icon: '办', bgColor: 'bg-indigo-500', category: '人力系统', source: '业务系统', description: '办公协同入口' },
-  { id: 'school', name: '梧桐云学堂', icon: '学', bgColor: 'bg-violet-500', category: '人力系统', source: '业务系统', description: '企业在线学习平台' },
-  { id: 'performance', name: '绩效系统', icon: '绩', bgColor: 'bg-purple-500', category: '人力系统', source: '业务系统', description: '员工绩效考核管理' },
-  { id: 'performance-nj', name: '绩效系统南京分公司', icon: '南', bgColor: 'bg-pink-500', category: '人力系统', source: '业务系统', description: '南京分公司绩效管理' },
-  { id: 'performance-af', name: '绩效系统航服子公司', icon: '航', bgColor: 'bg-rose-500', category: '人力系统', source: '业务系统', description: '航服子公司绩效管理' },
-  { id: 'assessment', name: '考评系统', icon: '考', bgColor: 'bg-violet-600', category: '人力系统', source: '业务系统', description: '员工考评管理系统' },
-  { id: 'referral', name: '内推系统', icon: '推', bgColor: 'bg-indigo-600', category: '人力系统', source: '业务系统', description: '内部推荐管理系统' },
-  { id: 'hr-digital', name: '人力数字平台管理系统', icon: '数', bgColor: 'bg-blue-600', category: '人力系统', source: '业务系统', description: '人力资源数字化管理平台' },
-  { id: 'oa', name: 'OA', icon: 'OA', bgColor: 'bg-purple-500', category: '综合系统', source: '业务系统', description: '办公自动化系统' },
-  { id: 'knowledge', name: '吉祥知识平台', icon: '知', bgColor: 'bg-violet-500', category: '综合系统', source: '业务系统', description: '企业知识平台' },
-  { id: 'pm', name: '企业项目管理平台', icon: '项', bgColor: 'bg-indigo-500', category: '综合系统', source: '业务系统', description: '项目计划和进度管理' },
-  { id: 'itops', name: '运维管理平台', icon: 'IT', bgColor: 'bg-sky-500', category: '综合系统', source: '业务系统', description: 'IT运维管理平台' },
-  { id: 'data-portal', name: '公司数据门户', icon: '数', bgColor: 'bg-blue-500', category: '综合系统', source: '业务系统', description: '公司数据统一入口' },
-  { id: 'bi', name: '公司BI平台', icon: 'BI', bgColor: 'bg-cyan-500', category: '综合系统', source: '业务系统', description: '经营分析平台' },
-  { id: 'lowcode', name: '低代码平台', icon: '低', bgColor: 'bg-emerald-500', category: '综合系统', source: '业务系统', description: '低代码应用搭建' },
-  { id: 'analysis', name: '综合数据分析平台', icon: '析', bgColor: 'bg-teal-500', category: '综合系统', source: '业务系统', description: '综合数据分析' },
-  { id: 'dap', name: '聚数搭数据分析平台', icon: 'DAP', bgColor: 'bg-cyan-600', category: '综合系统', source: '业务系统', description: '数据分析平台' },
-  { id: 'dw', name: '数据仓库管理系统', icon: 'DW', bgColor: 'bg-slate-600', category: '综合系统', source: '业务系统', description: '数据仓库管理' },
-  { id: 'data-govern', name: '荆棘数据治理平台', icon: '治', bgColor: 'bg-emerald-600', category: '综合系统', source: '业务系统', description: '数据治理平台' },
-  { id: 'logistics-data', name: '物流数据中台', icon: '物', bgColor: 'bg-green-600', category: '综合系统', source: '业务系统', description: '物流数据中台' },
-  { id: 'csa', name: 'CSA系统', icon: 'CSA', bgColor: 'bg-indigo-600', category: '综合系统', source: '业务系统', description: '综合业务支撑' },
-  { id: 'clothing', name: '服装模具管理系统', icon: '服', bgColor: 'bg-pink-600', category: '综合系统', source: '业务系统', description: '服装模具资产管理' },
-  { id: 'vehicle', name: '车辆管理系统', icon: '车', bgColor: 'bg-gray-600', category: '综合系统', source: '业务系统', description: '车辆资产管理' },
-  { id: 'sms', name: 'SMS系统', icon: '短', bgColor: 'bg-emerald-500', category: '运行系统', source: '业务系统', description: '短信服务管理系统' },
-  { id: 'prepare', name: '网上准备', icon: '准', bgColor: 'bg-teal-500', category: '运行系统', source: '业务系统', description: '网上准备工作管理' },
-  { id: 'flight', name: '航班动态', icon: '飞', bgColor: 'bg-cyan-500', category: '运行系统', source: '业务系统', description: '航班实时动态查询' },
-  { id: 'maintenance', name: '机务维修', icon: '修', bgColor: 'bg-green-500', category: '运行系统', source: '业务系统', description: '机务维修管理' },
-  { id: 'fuel', name: '燃油监控系统', icon: '油', bgColor: 'bg-lime-500', category: '运行系统', source: '业务系统', description: '燃油消耗监控' },
-  { id: 'manual', name: '维修手册系统', icon: '册', bgColor: 'bg-emerald-600', category: '运行系统', source: '业务系统', description: '维修手册查阅' },
-  { id: 'self-check', name: '法定自查', icon: '查', bgColor: 'bg-teal-600', category: '运行系统', source: '业务系统', description: '法定自查管理' },
-  { id: 'operation-net', name: '运行网', icon: '网', bgColor: 'bg-green-600', category: '运行系统', source: '业务系统', description: '运行网络管理' },
-  { id: 'eg-admin', name: 'e吉祥管理后台', icon: '管', bgColor: 'bg-cyan-600', category: '运行系统', source: '业务系统', description: '管理后台系统' },
-  { id: 'risk', name: '运行风控系统', icon: '控', bgColor: 'bg-emerald-700', category: '运行系统', source: '业务系统', description: '风险控制管理' },
-  { id: 'plm', name: 'PLM系统', icon: 'PLM', bgColor: 'bg-teal-700', category: '运行系统', source: '业务系统', description: '产品生命周期管理' },
-  { id: 'security', name: '航空安保管理系统', icon: '安', bgColor: 'bg-green-700', category: '运行系统', source: '业务系统', description: '航空安保管理' },
-  { id: 'punctuality', name: '航班正常性管理平台', icon: '正', bgColor: 'bg-sky-600', category: '运行系统', source: '业务系统', description: '航班正常性管理' },
-  { id: 'emergency', name: '应急管理平台', icon: '急', bgColor: 'bg-red-500', category: '运行系统', source: '业务系统', description: '应急管理平台' },
-  { id: 'market-admin', name: '营销服务后台管理系统', icon: '营', bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '营销服务后台' },
-  { id: 'member', name: '会员管理系统', icon: 'VIP', bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '会员管理' },
-  { id: 'air-product', name: '航空业务产品管理平台', icon: '航', bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '航空业务产品管理' },
-  { id: 'nonair-product', name: '非航业务产品管理系统', icon: '非', bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '非航产品管理' },
-  { id: 'precision', name: '精准营销', icon: '准', bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '精准营销触达' },
-  { id: 'domestic-price', name: '国内运价管理系统', icon: '价', bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '国内运价管理' },
-  { id: 'settlement', name: '收入结算系统', icon: '收', bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '收入结算' },
-  { id: 'revenue', name: '收益管理系统', icon: '益', bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '收益管理' },
-  { id: 'report', name: '吉祥报表系统', icon: '报', bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '营销报表' },
-  { id: 'dynamic', name: '吉祥动态运行系统', icon: '动', bgColor: 'bg-rose-700', category: '营销系统', source: '业务系统', description: '动态运行监控' },
-  { id: 'message', name: '统一消息平台', icon: '消', bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '统一消息平台' },
-  { id: 'cn-site', name: '中文网站', icon: '中', bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '中文官网' },
-  { id: 'intl-site', name: '国际网站', icon: 'EN', bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '国际官网' },
-  { id: 'm-site', name: '吉祥航空M网站', icon: 'M', bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '移动官网' },
-  { id: 'mall', name: '吉祥航空生活电商平台', icon: '商', bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '生活电商平台' },
-  { id: 'pipeline', name: '研发流水线', icon: '研', bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '研发流水线' },
-  { id: 'call', name: '呼叫中心系统', icon: '呼', bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '呼叫中心' },
-  { id: 'passenger', name: '旅客服务系统', icon: '旅', bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '旅客服务' },
-  { id: 'transfer', name: '中转管理系统', icon: '转', bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '中转管理' },
-  { id: 'vip-room', name: '智慧贵宾室系统', icon: '贵', bgColor: 'bg-rose-700', category: '营销系统', source: '业务系统', description: '贵宾室管理' },
-  { id: 'baggage', name: '行李全流程跟踪系统', icon: '行', bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '行李全流程跟踪' },
+  { id: 'bip', name: 'BIP系统', icon: <Landmark size={16} />, bgColor: 'bg-amber-500', category: '财务系统', source: '业务系统', description: '财务综合管理平台' },
+  { id: 'fai', name: '财翼融合智能平台FAI', icon: <Brain size={16} />, bgColor: 'bg-amber-500', category: '财务系统', source: '业务系统', description: '财务智能分析平台' },
+  { id: 'expense', name: '费控商旅系统', icon: <Receipt size={16} />, bgColor: 'bg-orange-500', category: '财务系统', source: '业务系统', description: '费控与商旅管理' },
+  { id: 'contract', name: '合同管理系统', icon: <FileSignature size={16} />, bgColor: 'bg-yellow-500', category: '财务系统', source: '业务系统', description: '合同审批和履约管理' },
+  { id: 'tax', name: '税务管理系统', icon: <Calculator size={16} />, bgColor: 'bg-amber-600', category: '财务系统', source: '业务系统', description: '税务申报管理' },
+  { id: 'seeyon', name: '致远系统', icon: <Workflow size={16} />, bgColor: 'bg-orange-600', category: '财务系统', source: '业务系统', description: '协同办公系统' },
+  { id: 'nc', name: 'NC系统', icon: <BookOpen size={16} />, bgColor: 'bg-yellow-600', category: '财务系统', source: '业务系统', description: '财务核算系统' },
+  { id: 'ehr', name: '人力资源E-HR系统', icon: <Users size={16} />, bgColor: 'bg-blue-500', category: '人力系统', source: '业务系统', description: '员工信息、考勤、薪资等人力服务' },
+  { id: 'ioffice', name: 'ioffice', icon: <LayoutDashboard size={16} />, bgColor: 'bg-indigo-500', category: '人力系统', source: '业务系统', description: '办公协同入口' },
+  { id: 'school', name: '梧桐云学堂', icon: <GraduationCap size={16} />, bgColor: 'bg-violet-500', category: '人力系统', source: '业务系统', description: '企业在线学习平台' },
+  { id: 'performance', name: '绩效系统', icon: <Award size={16} />, bgColor: 'bg-purple-500', category: '人力系统', source: '业务系统', description: '员工绩效考核管理' },
+  { id: 'performance-nj', name: '绩效系统南京分公司', icon: <Award size={16} />, bgColor: 'bg-pink-500', category: '人力系统', source: '业务系统', description: '南京分公司绩效管理' },
+  { id: 'performance-af', name: '绩效系统航服子公司', icon: <Award size={16} />, bgColor: 'bg-rose-500', category: '人力系统', source: '业务系统', description: '航服子公司绩效管理' },
+  { id: 'assessment', name: '考评系统', icon: <ClipboardCheck size={16} />, bgColor: 'bg-violet-600', category: '人力系统', source: '业务系统', description: '员工考评管理系统' },
+  { id: 'referral', name: '内推系统', icon: <UserPlus size={16} />, bgColor: 'bg-indigo-600', category: '人力系统', source: '业务系统', description: '内部推荐管理系统' },
+  { id: 'hr-digital', name: '人力数字平台管理系统', icon: <Database size={16} />, bgColor: 'bg-blue-600', category: '人力系统', source: '业务系统', description: '人力资源数字化管理平台' },
+  { id: 'oa', name: 'OA', icon: <FileCheck size={16} />, bgColor: 'bg-purple-500', category: '综合系统', source: '业务系统', description: '办公自动化系统' },
+  { id: 'knowledge', name: '吉祥知识平台', icon: <BookOpen size={16} />, bgColor: 'bg-violet-500', category: '综合系统', source: '业务系统', description: '企业知识平台' },
+  { id: 'pm', name: '企业项目管理平台', icon: <FolderKanban size={16} />, bgColor: 'bg-indigo-500', category: '综合系统', source: '业务系统', description: '项目计划和进度管理' },
+  { id: 'itops', name: '运维管理平台', icon: <Server size={16} />, bgColor: 'bg-sky-500', category: '综合系统', source: '业务系统', description: 'IT运维管理平台' },
+  { id: 'data-portal', name: '公司数据门户', icon: <BarChart3 size={16} />, bgColor: 'bg-blue-500', category: '综合系统', source: '业务系统', description: '公司数据统一入口' },
+  { id: 'bi', name: '公司BI平台', icon: <LineChart size={16} />, bgColor: 'bg-cyan-500', category: '综合系统', source: '业务系统', description: '经营分析平台' },
+  { id: 'lowcode', name: '低代码平台', icon: <Blocks size={16} />, bgColor: 'bg-emerald-500', category: '综合系统', source: '业务系统', description: '低代码应用搭建' },
+  { id: 'analysis', name: '综合数据分析平台', icon: <PieChart size={16} />, bgColor: 'bg-teal-500', category: '综合系统', source: '业务系统', description: '综合数据分析' },
+  { id: 'dap', name: '聚数搭数据分析平台', icon: <Gauge size={16} />, bgColor: 'bg-cyan-600', category: '综合系统', source: '业务系统', description: '数据分析平台' },
+  { id: 'dw', name: '数据仓库管理系统', icon: <HardDrive size={16} />, bgColor: 'bg-slate-600', category: '综合系统', source: '业务系统', description: '数据仓库管理' },
+  { id: 'data-govern', name: '荆棘数据治理平台', icon: <ShieldCheck size={16} />, bgColor: 'bg-emerald-600', category: '综合系统', source: '业务系统', description: '数据治理平台' },
+  { id: 'logistics-data', name: '物流数据中台', icon: <Truck size={16} />, bgColor: 'bg-green-600', category: '综合系统', source: '业务系统', description: '物流数据中台' },
+  { id: 'csa', name: 'CSA系统', icon: <Hexagon size={16} />, bgColor: 'bg-indigo-600', category: '综合系统', source: '业务系统', description: '综合业务支撑' },
+  { id: 'clothing', name: '服装模具管理系统', icon: <Shirt size={16} />, bgColor: 'bg-pink-600', category: '综合系统', source: '业务系统', description: '服装模具资产管理' },
+  { id: 'vehicle', name: '车辆管理系统', icon: <Car size={16} />, bgColor: 'bg-gray-600', category: '综合系统', source: '业务系统', description: '车辆资产管理' },
+  { id: 'sms', name: 'SMS系统', icon: <MessageSquare size={16} />, bgColor: 'bg-emerald-500', category: '运行系统', source: '业务系统', description: '短信服务管理系统' },
+  { id: 'prepare', name: '网上准备', icon: <ClipboardList size={16} />, bgColor: 'bg-teal-500', category: '运行系统', source: '业务系统', description: '网上准备工作管理' },
+  { id: 'flight', name: '航班动态', icon: <Plane size={16} />, bgColor: 'bg-cyan-500', category: '运行系统', source: '业务系统', description: '航班实时动态查询' },
+  { id: 'maintenance', name: '机务维修', icon: <Wrench size={16} />, bgColor: 'bg-green-500', category: '运行系统', source: '业务系统', description: '机务维修管理' },
+  { id: 'fuel', name: '燃油监控系统', icon: <Fuel size={16} />, bgColor: 'bg-lime-500', category: '运行系统', source: '业务系统', description: '燃油消耗监控' },
+  { id: 'manual', name: '维修手册系统', icon: <BookMarked size={16} />, bgColor: 'bg-emerald-600', category: '运行系统', source: '业务系统', description: '维修手册查阅' },
+  { id: 'self-check', name: '法定自查', icon: <Search size={16} />, bgColor: 'bg-teal-600', category: '运行系统', source: '业务系统', description: '法定自查管理' },
+  { id: 'operation-net', name: '运行网', icon: <Network size={16} />, bgColor: 'bg-green-600', category: '运行系统', source: '业务系统', description: '运行网络管理' },
+  { id: 'eg-admin', name: 'e吉祥管理后台', icon: <Settings size={16} />, bgColor: 'bg-cyan-600', category: '运行系统', source: '业务系统', description: '管理后台系统' },
+  { id: 'risk', name: '运行风控系统', icon: <AlertTriangle size={16} />, bgColor: 'bg-emerald-700', category: '运行系统', source: '业务系统', description: '风险控制管理' },
+  { id: 'plm', name: 'PLM系统', icon: <IterationCw size={16} />, bgColor: 'bg-teal-700', category: '运行系统', source: '业务系统', description: '产品生命周期管理' },
+  { id: 'security', name: '航空安保管理系统', icon: <Shield size={16} />, bgColor: 'bg-green-700', category: '运行系统', source: '业务系统', description: '航空安保管理' },
+  { id: 'punctuality', name: '航班正常性管理平台', icon: <Clock size={16} />, bgColor: 'bg-sky-600', category: '运行系统', source: '业务系统', description: '航班正常性管理' },
+  { id: 'emergency', name: '应急管理平台', icon: <Zap size={16} />, bgColor: 'bg-red-500', category: '运行系统', source: '业务系统', description: '应急管理平台' },
+  { id: 'market-admin', name: '营销服务后台管理系统', icon: <Volume2 size={16} />, bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '营销服务后台' },
+  { id: 'member', name: '会员管理系统', icon: <Crown size={16} />, bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '会员管理' },
+  { id: 'air-product', name: '航空业务产品管理平台', icon: <Package size={16} />, bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '航空业务产品管理' },
+  { id: 'nonair-product', name: '非航业务产品管理系统', icon: <PackagePlus size={16} />, bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '非航产品管理' },
+  { id: 'precision', name: '精准营销', icon: <Target size={16} />, bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '精准营销触达' },
+  { id: 'domestic-price', name: '国内运价管理系统', icon: <Tag size={16} />, bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '国内运价管理' },
+  { id: 'settlement', name: '收入结算系统', icon: <Wallet size={16} />, bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '收入结算' },
+  { id: 'revenue', name: '收益管理系统', icon: <TrendingUp size={16} />, bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '收益管理' },
+  { id: 'report', name: '吉祥报表系统', icon: <BarChart2 size={16} />, bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '营销报表' },
+  { id: 'dynamic', name: '吉祥动态运行系统', icon: <Activity size={16} />, bgColor: 'bg-rose-700', category: '营销系统', source: '业务系统', description: '动态运行监控' },
+  { id: 'message', name: '统一消息平台', icon: <Bell size={16} />, bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '统一消息平台' },
+  { id: 'cn-site', name: '中文网站', icon: <Globe size={16} />, bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '中文官网' },
+  { id: 'intl-site', name: '国际网站', icon: <Globe size={16} />, bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '国际官网' },
+  { id: 'm-site', name: '吉祥航空M网站', icon: <Smartphone size={16} />, bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '移动官网' },
+  { id: 'mall', name: '吉祥航空生活电商平台', icon: <ShoppingBag size={16} />, bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '生活电商平台' },
+  { id: 'pipeline', name: '研发流水线', icon: <GitBranch size={16} />, bgColor: 'bg-rose-500', category: '营销系统', source: '业务系统', description: '研发流水线' },
+  { id: 'call', name: '呼叫中心系统', icon: <Phone size={16} />, bgColor: 'bg-pink-500', category: '营销系统', source: '业务系统', description: '呼叫中心' },
+  { id: 'passenger', name: '旅客服务系统', icon: <UserCheck size={16} />, bgColor: 'bg-rose-600', category: '营销系统', source: '业务系统', description: '旅客服务' },
+  { id: 'transfer', name: '中转管理系统', icon: <Repeat size={16} />, bgColor: 'bg-pink-600', category: '营销系统', source: '业务系统', description: '中转管理' },
+  { id: 'vip-room', name: '智慧贵宾室系统', icon: <Star size={16} />, bgColor: 'bg-rose-700', category: '营销系统', source: '业务系统', description: '贵宾室管理' },
+  { id: 'baggage', name: '行李全流程跟踪系统', icon: <Briefcase size={16} />, bgColor: 'bg-pink-700', category: '营销系统', source: '业务系统', description: '行李全流程跟踪' },
 ];
 
 const defaultSystemIds = [
@@ -213,7 +214,7 @@ const commonFeatures: CommonFeature[] = [
   { id: 'okr', name: 'OKR', icon: <Target size={17} />, tone: 'bg-blue-50 text-blue-700', path: '/web_client/okr' },
   { id: 'discount-ticket', name: '优惠票', icon: <Ticket size={17} />, tone: 'bg-amber-50 text-amber-700', destination: '优惠票' },
   { id: 'salary', name: '我的薪酬', icon: <WalletCards size={17} />, tone: 'bg-emerald-50 text-emerald-700', destination: '我的薪酬' },
-  { id: 'leave', name: '我的休假', icon: <Plane size={17} />, tone: 'bg-sky-50 text-sky-700', destination: '我的休假' },
+  { id: 'leave', name: '我的休假', icon: <Sun size={17} />, tone: 'bg-sky-50 text-sky-700', destination: '我的休假' },
   { id: 'certificate', name: '证明开具', icon: <BadgeCheck size={17} />, tone: 'bg-violet-50 text-violet-700', destination: '证明开具' },
 ];
 
@@ -966,8 +967,8 @@ export default function Personal_Enterprise() {
           <div className="grid grid-cols-4 gap-2">
             {displayedSystems.map(sys => (
               <button key={sys.id} className="group flex min-w-0 flex-col items-center gap-2 rounded-xl border border-transparent px-2 py-2.5 transition-all duration-300 hover:border-gray-100 hover:bg-gray-50">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${sys.bgColor || 'bg-blue-500'} shadow-sm transition-shadow group-hover:shadow-md`}>
-                  <span className="text-xs font-semibold text-white">{sys.icon}</span>
+                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${sys.bgColor || 'bg-blue-500'} text-white shadow-sm transition-shadow group-hover:shadow-md`}>
+                  {sys.icon}
                 </div>
                 <span className="w-full truncate text-center text-[12px] font-medium leading-4 text-gray-700">{sys.name}</span>
               </button>
@@ -1124,8 +1125,8 @@ export default function Personal_Enterprise() {
                       <button onClick={() => removeSystem(system.id)} className="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white text-blue-500 shadow-sm ring-1 ring-gray-100" title="移除">
                         <Minus size={14} />
                       </button>
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs text-white shadow-sm ${system.bgColor ?? 'bg-blue-500'}`}>
-                        <span className="font-semibold">{system.icon}</span>
+                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ${system.bgColor ?? 'bg-blue-500'}`}>
+                        {system.icon}
                       </div>
                       <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-600">{system.name}</span>
                       <GripVertical size={13} className="hidden shrink-0 text-gray-300 group-hover:block" />
@@ -1180,7 +1181,7 @@ export default function Personal_Enterprise() {
                     <div key={system.id} className="flex items-center justify-between gap-6 py-4">
                       <div className="flex min-w-0 items-center gap-5">
                         <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${system.bgColor ?? 'bg-blue-500'}`}>
-                          <span className="font-semibold">{system.icon}</span>
+                          {system.icon}
                         </div>
                         <div className="min-w-0">
                           <div className="truncate text-xl font-semibold text-gray-950">{system.name}</div>
@@ -1201,7 +1202,7 @@ export default function Personal_Enterprise() {
                 <span className="shrink-0 text-base text-gray-950">已添加({displayedSystems.length}):</span>
                 <div className="flex min-w-0 gap-2 overflow-hidden">
                   {displayedSystems.slice(0, 8).map(system => (
-                    <div key={system.id} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-xs font-semibold text-white ${system.bgColor ?? 'bg-blue-500'}`}>
+                    <div key={system.id} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ${system.bgColor ?? 'bg-blue-500'}`}>
                       {system.icon}
                     </div>
                   ))}
@@ -2148,7 +2149,7 @@ function CourseItem({ title, time, color }: { title: string; time: string; color
   return (
     <div className={`group flex gap-3 p-4 border border-gray-100 rounded-xl hover:${c.border} hover:bg-gray-50 transition-all duration-300 cursor-pointer`}>
       <div className={`w-14 h-14 ${c.bg} rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow`}>
-        <span className="text-xl">📚</span>
+        <BookOpen size={20} className="text-white" />
       </div>
       <div className="flex-1 min-w-0">
         <h4 className="font-semibold text-gray-800 truncate leading-tight">{title}</h4>
