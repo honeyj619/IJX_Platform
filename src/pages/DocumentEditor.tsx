@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { 
   ArrowLeft, 
@@ -25,13 +25,77 @@ import {
   Paperclip,
   Search
 } from "lucide-react";
+import {
+  documentValidationIssues as defaultValidationIssues,
+  documentValidationRules,
+  validationSampleContent,
+  type DocumentMode,
+  type DocumentValidationIssue,
+} from "../data/documentValidation";
 
+type ValidationTextToken =
+  | { type: "text"; value: string }
+  | { type: "issue"; value: string; issue: DocumentValidationIssue };
+
+const getValidationIssueRangeInExcerpt = (issue: DocumentValidationIssue) => {
+  const typoMatch = issue.suggestion.match(/将“([^”]+)”修改/);
+  if (typoMatch) {
+    const start = issue.excerpt.indexOf(typoMatch[1]);
+    if (start >= 0) return { start, end: start + typoMatch[1].length };
+  }
+
+  if (issue.suggestion.includes("英文逗号")) {
+    const start = issue.excerpt.indexOf(",");
+    if (start >= 0) return { start, end: start + 1 };
+  }
+
+  const deleteDunhaoMatch = issue.suggestion.match(/删除“([^”]+)”后的顿号/);
+  if (deleteDunhaoMatch) {
+    const anchorStart = issue.excerpt.indexOf(deleteDunhaoMatch[1]);
+    const start = issue.excerpt.indexOf("、", anchorStart + deleteDunhaoMatch[1].length);
+    if (start >= 0) return { start, end: start + 1 };
+  }
+
+  return { start: 0, end: issue.excerpt.length };
+};
+
+const createValidationTextTokens = (text: string, issues: DocumentValidationIssue[]): ValidationTextToken[] => {
+  const ranges = issues
+    .map((issue) => {
+      const excerptStart = text.indexOf(issue.excerpt);
+      if (excerptStart < 0) return null;
+      const range = getValidationIssueRangeInExcerpt(issue);
+      return {
+        start: excerptStart + range.start,
+        end: excerptStart + range.end,
+        issue,
+      };
+    })
+    .filter((range): range is { start: number; end: number; issue: DocumentValidationIssue } => Boolean(range))
+    .sort((a, b) => a.start - b.start);
+
+  const tokens: ValidationTextToken[] = [];
+  let cursor = 0;
+
+  ranges.forEach((range) => {
+    if (range.start < cursor) return;
+    if (range.start > cursor) tokens.push({ type: "text", value: text.slice(cursor, range.start) });
+    tokens.push({ type: "issue", value: text.slice(range.start, range.end), issue: range.issue });
+    cursor = range.end;
+  });
+
+  if (cursor < text.length) tokens.push({ type: "text", value: text.slice(cursor) });
+  return tokens.length > 0 ? tokens : [{ type: "text", value: text }];
+};
 interface DocumentEditorProps {
   docType: string;
   docTitle: string;
   docLength: string;
   docContent: string;
   attachments?: string[];
+  documentMode?: DocumentMode;
+  validationFileName?: string;
+  validationIssues?: DocumentValidationIssue[];
   startInRequirements?: boolean;
   startInOutline?: boolean;
   embedded?: boolean;
@@ -131,6 +195,9 @@ const initialSavedDocuments = [
     words: '1280',
     updatedAt: '今天 14:20',
     hasFinalFile: true,
+    source: 'writing',
+    validationStatus: undefined,
+    validationIssueCount: undefined,
     content: sampleContent,
     outline: formatOutlineText(defaultOutline),
   },
@@ -141,6 +208,9 @@ const initialSavedDocuments = [
     words: '960',
     updatedAt: '昨天 16:10',
     hasFinalFile: false,
+    source: 'writing',
+    validationStatus: undefined,
+    validationIssueCount: undefined,
     content: `会议时间：2026年6月15日 14:00\n会议地点：总部会议室A\n参会人员：项目组、业务代表、技术支持团队\n\n一、会议议题\n围绕项目当前推进情况、关键节点风险和后续协同事项进行讨论。\n\n二、会议结论\n项目整体进度可控，需重点跟进接口联调、上线验证和用户培训安排。\n\n三、待办事项\n1. 技术团队于本周内完成联调问题清单闭环。\n2. 业务团队补充试点部门反馈意见。\n3. 项目经理同步更新项目计划并提交评审。`,
     outline: `一、会议基本信息\n记录会议时间、地点、参会人员和会议背景。\n\n二、项目推进情况\n概述当前进度、已完成事项和主要风险。\n\n三、会议结论与待办\n明确结论、责任人和完成时间。`,
   },
@@ -151,14 +221,30 @@ const initialSavedDocuments = [
     words: '1520',
     updatedAt: '6月12日',
     hasFinalFile: true,
+    source: 'writing',
+    validationStatus: undefined,
+    validationIssueCount: undefined,
     content: `为进一步强化理论学习成效，提升党群活动组织质量，拟开展主题学习活动。\n\n一、活动主题\n围绕理论学习、岗位实践和团队交流，组织专题学习与分享。\n\n二、活动安排\n活动分为集中学习、交流研讨和成果总结三个环节。\n\n三、工作要求\n各相关部门应高度重视，做好组织发动和材料准备，确保活动取得实效。`,
     outline: `一、活动背景\n说明开展学习活动的意义和目标。\n\n二、活动安排\n明确活动时间、对象、形式和主要环节。\n\n三、工作要求\n提出组织保障、材料归档和成果总结要求。`,
   },
+  {
+    id: 'validated-upload-notice',
+    title: '如意空间智能办公建设通知-校验稿',
+    type: '通知',
+    words: '420',
+    updatedAt: '刚刚',
+    hasFinalFile: false,
+    source: 'validation',
+    validationStatus: '已校验',
+    validationIssueCount: defaultValidationIssues.length,
+    content: validationSampleContent,
+    outline: formatOutlineText(defaultOutline),
+  },
 ];
 
-export default function DocumentEditor({ docType, docTitle, docLength, docContent, attachments = [], startInRequirements = false, startInOutline = false, embedded = false, onRemoveAttachment, onBack }: DocumentEditorProps) {
-  const [content, setContent] = useState(startInRequirements || startInOutline ? '' : sampleContent);
-  const [requirementTitle, setRequirementTitle] = useState(docTitle || '未命名文档');
+export default function DocumentEditor({ docType, docTitle, docLength, docContent, attachments = [], documentMode = "writing", validationFileName = "", validationIssues = defaultValidationIssues, startInRequirements = false, startInOutline = false, embedded = false, onRemoveAttachment, onBack }: DocumentEditorProps) {
+  const [content, setContent] = useState(documentMode === "validation" ? validationSampleContent : startInRequirements || startInOutline ? '' : sampleContent);
+  const [requirementTitle, setRequirementTitle] = useState(docTitle || (documentMode === "validation" ? validationFileName.replace(/\.[^.]+$/, "") : '未命名文档'));
   const [requirementType, setRequirementType] = useState(templateCategories.includes(docType) ? docType : templateCategories[0]);
   const [requirementLength, setRequirementLength] = useState(docLength);
   const [requirementContent, setRequirementContent] = useState(docContent || (startInRequirements ? '' : '暂无补充要求'));
@@ -168,7 +254,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [activeTemplateCategory, setActiveTemplateCategory] = useState(templateCategories[0]);
   const [activeTemplateFilter, setActiveTemplateFilter] = useState('全部');
-  const [requirementsEditable, setRequirementsEditable] = useState(startInRequirements);
+  const [requirementsEditable, setRequirementsEditable] = useState(documentMode === "validation" ? false : startInRequirements);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [outlineEditing, setOutlineEditing] = useState(startInOutline);
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
@@ -196,6 +282,10 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     contentRef: false,
   });
   const [isSaved, setIsSaved] = useState(true);
+  const effectiveValidationIssues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
+  const validationTypoCount = effectiveValidationIssues.filter((item) => item.type === "typo").length;
+  const validationPunctuationCount = effectiveValidationIssues.filter((item) => item.type === "punctuation").length;
+  const validationMarkedContent = createValidationTextTokens(content, effectiveValidationIssues);
 
   const toggleSection = (section: 'outline' | 'structure' | 'contentRef') => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -218,6 +308,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       words: `${content.length}`,
       updatedAt: '刚刚',
       hasFinalFile: finalFileReady,
+      source: documentMode === "validation" ? 'validation' : 'writing',
+      validationStatus: documentMode === "validation" ? '已修订' : undefined,
+      validationIssueCount: documentMode === "validation" ? effectiveValidationIssues.length : undefined,
       content,
       outline: outlineText,
     };
@@ -480,6 +573,83 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setIsSaved(false);
   };
 
+  const handleRunValidation = () => {
+    setIsSaved(false);
+  };
+
+  const validationCurrentPanel = (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-theme-100 bg-white p-3 shadow-sm">
+        <div className="mb-3 text-sm font-medium text-gray-800">校验流程</div>
+        <div className="grid grid-cols-2 gap-2 text-center text-xs">
+          <div className="rounded-lg bg-theme-50 px-2 py-2 font-semibold text-theme-700">上传公文</div>
+          <div className="rounded-lg bg-theme-600 px-2 py-2 font-semibold text-white">校验修订</div>
+        </div>
+        <p className="mt-3 text-xs leading-5 text-gray-500">
+          已完成错别字和标点使用校验，可在左侧正文中查看标注结果，保存后进入我的公文。
+        </p>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-sm font-medium text-gray-700">待校验文件</div>
+          <span className="rounded bg-theme-50 px-2 py-0.5 text-xs text-theme-700">已上传</span>
+        </div>
+        <div className="flex min-w-0 items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
+          <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
+          <span className="truncate">{validationFileName || editorAttachments[0] || `${requirementTitle || '未命名公文'}.docx`}</span>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-3">
+        <div className="mb-3 text-sm font-medium text-gray-700">校验规则</div>
+        <div className="space-y-2">
+          {documentValidationRules.map((rule) => (
+            <div key={rule.id} className="rounded-lg bg-gray-50 p-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <CheckSquare size={14} className="text-theme-600" />
+                {rule.title}
+              </div>
+              <p className="mt-1 text-xs leading-5 text-gray-500">{rule.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-gray-200 bg-white p-3">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-sm font-medium text-gray-700">校验结果</div>
+          <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">{effectiveValidationIssues.length} 处问题</span>
+        </div>
+        <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
+          <div className="rounded-lg bg-theme-50 px-3 py-2 text-theme-700">
+            <div className="font-semibold">{validationTypoCount} 处</div>
+            <div className="mt-0.5 text-theme-500">错别字</div>
+          </div>
+          <div className="rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
+            <div className="font-semibold">{validationPunctuationCount} 处</div>
+            <div className="mt-0.5 text-amber-600">标点使用不正确</div>
+          </div>
+        </div>
+        <div className="scrollbar-hover max-h-72 space-y-2 overflow-y-auto pr-1">
+          {effectiveValidationIssues.map((issue) => (
+            <button
+              key={issue.id}
+              type="button"
+              onClick={() => setContent((current) => current)}
+              className="w-full rounded-lg border border-gray-100 bg-gray-50 p-3 text-left transition-colors hover:border-theme-100 hover:bg-theme-50/50"
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="rounded bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600">{issue.label}</span>
+              </div>
+              <div className="text-xs leading-5 text-gray-500">原文：{issue.excerpt}</div>
+              <div className="mt-1 text-xs leading-5 text-theme-700">建议：{issue.suggestion}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
   return (
     <div className={`flex ${embedded ? 'h-full' : 'h-screen'} bg-gray-50`}>
       {/* 左侧编辑区 */}
@@ -536,15 +706,31 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
             <h1 className={`mb-8 text-center font-bold text-gray-950 ${selectedTemplateMeta.category === '会议纪要' ? 'text-xl' : 'text-2xl'}`}>
               {requirementTitle || '文档标题'}
             </h1>
-            <textarea
-              value={content}
-              onChange={(event) => {
-                setContent(event.target.value);
-                setIsSaved(false);
-              }}
-              className="scrollbar-hover min-h-[520px] w-full resize-none border-none bg-transparent text-[15px] leading-8 text-gray-700 outline-none"
-              placeholder="正文内容将在这里生成，也可以直接编辑..."
-            />
+            {documentMode === "validation" ? (
+              <div className="min-h-[520px] w-full whitespace-pre-wrap text-[15px] leading-8 text-gray-700 outline-none">
+                {validationMarkedContent.map((token, index) => token.type === "issue" ? (
+                  <mark
+                    key={`${token.issue.id}-${index}`}
+                    title={`${token.issue.label}：${token.issue.suggestion}`}
+                    className="rounded bg-red-100 px-1 py-0.5 text-red-700 ring-1 ring-red-200"
+                  >
+                    {token.value}
+                  </mark>
+                ) : (
+                  <span key={`text-${index}`}>{token.value}</span>
+                ))}
+              </div>
+            ) : (
+              <textarea
+                value={content}
+                onChange={(event) => {
+                  setContent(event.target.value);
+                  setIsSaved(false);
+                }}
+                className="scrollbar-hover min-h-[520px] w-full resize-none border-none bg-transparent text-[15px] leading-8 text-gray-700 outline-none"
+                placeholder="正文内容将在这里生成，也可以直接编辑..."
+              />
+            )}
             <div className="mt-8 border-t border-gray-100 pt-3 text-center text-[11px] text-gray-400">
               第 1 页
             </div>
@@ -688,6 +874,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.type}</span>
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.words} 字</span>
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.updatedAt}</span>
+                            {item.source === 'validation' && (
+                              <span className="rounded bg-theme-50 px-2 py-0.5 text-xs text-theme-700">校验 {item.validationIssueCount ?? 0} 处</span>
+                            )}
 
                           </div>
                         </div>
@@ -727,6 +916,8 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   )}
                 </div>
               </div>
+            ) : documentMode === "validation" ? (
+              validationCurrentPanel
             ) : (
             <>
             <div className="rounded-lg border border-theme-100 bg-white p-3 shadow-sm">
@@ -971,6 +1162,23 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
             >
               返回当前公文
             </button>
+          ) : documentMode === "validation" ? (
+            <div className="space-y-2">
+              <button
+                onClick={handleRunValidation}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-theme-700"
+              >
+                <CheckSquare size={15} />
+                重新校验
+              </button>
+              <button
+                onClick={handleSave}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <Save size={15} />
+                保存修订稿
+              </button>
+            </div>
           ) : isGeneratingOutline ? (
             <button
               disabled

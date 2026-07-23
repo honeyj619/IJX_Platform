@@ -5,6 +5,7 @@ import { Search, Minus, GripVertical } from 'lucide-react';
 import { Ticket, WalletCards, Plane, BadgeCheck, CheckSquare, ListTodo, BarChart3, UserPlus, Link2, Save, CircleDot, CircleCheckBig } from 'lucide-react';
 import { Landmark, Brain, Receipt, FileSignature, Calculator, Workflow, Users, LayoutDashboard, GraduationCap, Award, ClipboardCheck, Database, FileCheck, FolderKanban, Server, LineChart, Blocks, PieChart, Gauge, HardDrive, ShieldCheck, Truck, Hexagon, Shirt, Car, MessageSquare, Wrench, Fuel, BookMarked, Network, AlertTriangle, IterationCw, Shield, Clock, Zap, Volume2, Crown, Package, PackagePlus, Tag, Wallet, BarChart2, Activity, Globe, Smartphone, ShoppingBag, GitBranch, Phone, UserCheck, Repeat, Star, Briefcase, Sun, BookOpen } from 'lucide-react';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
+import { workItemPortalTodos, workItemTrackedItems } from '../data/workItems';
 
 // 定义卡片类型
 type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'officeApps' | 'duty' | 'courses';
@@ -204,27 +205,29 @@ const defaultFeaturePresetKey = 'pinnedCommonFeatures20260705v2';
 const dashboardStats: StatConfig[] = [
   { key: 'approval', title: '流程审批', count: '21', color: 'pink', summary: '待批阅流程' },
   { key: 'revenue', title: '业务收入', amount: '¥12,580,000', change: '+12.5%', color: 'green', summary: '业务收入明细' },
-  { key: 'todo', title: '待办事项', count: '8', color: 'amber', summary: '事项列表' },
-  { key: 'progress', title: '事项进度', count: '12', color: 'blue', summary: '关注事项进度' },
+  { key: 'todo', title: '待办事项', count: '10', color: 'amber', summary: '事项列表' },
+  { key: 'progress', title: '事项进度', count: '15', color: 'blue', summary: '关注事项进度' },
 ];
 
 const commonFeatures: CommonFeature[] = [
   { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', path: '/web_client/business' },
   { id: 'work-report', name: '工作汇报', icon: <FileText size={17} />, tone: 'bg-pink-50 text-pink-700', path: '/web_client/work-report' },
   { id: 'okr', name: 'OKR', icon: <Target size={17} />, tone: 'bg-blue-50 text-blue-700', path: '/web_client/okr' },
+  { id: 'work-items', name: '事项协同', icon: <ClipboardList size={17} />, tone: 'bg-rose-50 text-rose-700', path: '/web_client/enterprise?tab=work-items' },
   { id: 'discount-ticket', name: '优惠票', icon: <Ticket size={17} />, tone: 'bg-amber-50 text-amber-700', destination: '优惠票' },
   { id: 'salary', name: '我的薪酬', icon: <WalletCards size={17} />, tone: 'bg-emerald-50 text-emerald-700', destination: '我的薪酬' },
   { id: 'leave', name: '我的休假', icon: <Sun size={17} />, tone: 'bg-sky-50 text-sky-700', destination: '我的休假' },
   { id: 'certificate', name: '证明开具', icon: <BadgeCheck size={17} />, tone: 'bg-violet-50 text-violet-700', destination: '证明开具' },
 ];
 
-const defaultPinnedFeatureIds = ['flight-status', 'work-report', 'okr', 'discount-ticket', 'salary', 'leave', 'certificate'];
+const defaultPinnedFeatureIds = ['flight-status', 'work-items', 'work-report', 'okr', 'discount-ticket', 'salary', 'leave', 'certificate'];
 
 const defaultTodoSources: TodoSource[] = [
   { id: 'task', name: '任务', enabled: true },
   { id: 'report', name: '工作汇报', enabled: true },
   { id: 'okr', name: 'OKR填报', enabled: true },
   { id: 'project', name: '项目任务', enabled: false },
+  { id: 'workItem', name: '事项协同', enabled: true },
 ];
 
 const todoItems: TodoItem[] = [
@@ -232,6 +235,7 @@ const todoItems: TodoItem[] = [
   { id: 'todo-2', title: '补充二季度OKR进展', source: 'OKR填报', owner: MAIN_USER_NAME, due: '明天 12:00', status: '进行中', progress: 60 },
   { id: 'todo-3', title: '处理服务台权限审批', source: '任务', owner: MAIN_USER_NAME, due: '今天 17:30', status: '待处理', progress: 20 },
   { id: 'todo-4', title: '数据看板需求评审纪要确认', source: '项目任务', owner: MAIN_USER_NAME, due: '周五', status: '待确认', progress: 45 },
+  ...workItemPortalTodos,
 ];
 
 const approvalProcesses: ApprovalProcess[] = [
@@ -297,6 +301,7 @@ const revenueDetails = [
 ];
 
 const defaultTrackedItems: TrackedItem[] = [
+  ...workItemTrackedItems,
   {
     id: 'track-1',
     title: 'O1 客服知识库质检闭环',
@@ -657,7 +662,7 @@ export default function Personal_Enterprise() {
       setActiveDialog('trackedItems');
       return;
     }
-    showJumpTip(key === 'approval' ? '流程审批配置' : '业务收入配置');
+    showJumpTip('业务收入配置');
   }, [showJumpTip]);
 
   const handleFeatureClick = useCallback((feature: CommonFeature) => {

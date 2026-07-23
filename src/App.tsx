@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+﻿import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import MobileDevicePrompt from "@/components/MobileDevicePrompt";
@@ -119,9 +119,11 @@ export default function App() {
         <Route path="profile" element={<Profile />} />
         <Route path="agent-square" element={<AgentSquarePage />} />
         <Route path="ruyi-zone" element={<RuYiZone />} />
+        <Route path="presentation" element={<Navigate to="/web_client/ruyi-zone" replace />} />
         <Route path="calendar" element={<Calendar />} />
         <Route path="business" element={<Business />} />
         <Route path="work-report" element={<WorkReport />} />
+        <Route path="work-items" element={<Navigate to="/web_client/enterprise?tab=work-items" replace />} />
         <Route path="okr" element={<OkrModule />} />
         <Route path="settings" element={<SettingsPage />} />
       </Routes>
@@ -144,9 +146,11 @@ export default function App() {
         <Route path="/profile" element={<Navigate to="/web_client/profile" replace />} />
         <Route path="/agent-square" element={<Navigate to="/web_client/agent-square" replace />} />
         <Route path="/ruyi-zone" element={<Navigate to="/web_client/ruyi-zone" replace />} />
+        <Route path="/presentation" element={<Navigate to="/web_client/ruyi-zone" replace />} />
         <Route path="/calendar" element={<Navigate to="/web_client/calendar" replace />} />
         <Route path="/business" element={<Navigate to="/web_client/business" replace />} />
         <Route path="/work-report" element={<Navigate to="/web_client/work-report" replace />} />
+        <Route path="/work-items" element={<Navigate to="/web_client/enterprise?tab=work-items" replace />} />
         <Route path="/okr" element={<Navigate to="/web_client/okr" replace />} />
         <Route path="/settings" element={<Navigate to="/web_client/settings" replace />} />
       </Routes>

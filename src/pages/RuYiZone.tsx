@@ -2,7 +2,16 @@ import { useState, useEffect } from "react";
 import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, Target, Copy, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
 import DocumentEditor from "./DocumentEditor";
+import PresentationEditor from "./PresentationEditor";
+import { documentValidationIssues, documentValidationRules, documentValidationSummary, type DocumentMode } from "../data/documentValidation";
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from "../data/people";
+import {
+  presentationModes,
+  presentationOutline,
+  presentationParamOptions,
+  presentationSlides,
+  type PresentationModeId,
+} from "../data/presentation";
 
 interface Assistant {
   id: number;
@@ -45,13 +54,16 @@ type ConversationKind =
   | "attendance"
   | "closing"
   | "documentDraft"
+  | "documentValidation"
+  | "presentationDraft"
   | "goalAssistant";
 
 const defaultAssistants: Assistant[] = [
   { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
   { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
   { id: 3, name: "如意公文创作", isActive: false, icon: <FileTextIcon size={18} /> },
-  { id: 4, name: "如意工作参谋师", isActive: false, icon: <Target size={18} /> },
+  { id: 4, name: "如意PPT创作", isActive: false, icon: <PresentationIcon size={18} /> },
+  { id: 5, name: "如意工作参谋师", isActive: false, icon: <Target size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -269,6 +281,24 @@ export default function RuYiZone() {
   const [docLength, setDocLength] = useState("600-1200");
   const [docContent, setDocContent] = useState("");
   const [docAttachments, setDocAttachments] = useState<string[]>([]);
+  const [documentMode, setDocumentMode] = useState<DocumentMode>("writing");
+  const [validationFileName, setValidationFileName] = useState("");
+  const [validationError, setValidationError] = useState("");
+  const [validationReady, setValidationReady] = useState(false);
+  const [pptMode, setPptMode] = useState<PresentationModeId>("ai");
+  const [pptPageCount, setPptPageCount] = useState("10-15页");
+  const [pptAudience, setPptAudience] = useState("大众");
+  const [pptScene, setPptScene] = useState("通用");
+  const [pptTone, setPptTone] = useState("专业");
+  const [pptLanguage, setPptLanguage] = useState("简体中文");
+  const [pptTextStyle, setPptTextStyle] = useState("简洁");
+  const [pptAttachments, setPptAttachments] = useState<string[]>([]);
+  const [presentationReady, setPresentationReady] = useState(false);
+  const [presentationPrompt, setPresentationPrompt] = useState("");
+  const [presentationTitle, setPresentationTitle] = useState("");
+  const [presentationConfirmMessage, setPresentationConfirmMessage] = useState("");
+  const [presentationAdjustments, setPresentationAdjustments] = useState<string[]>([]);
+  const [showPresentationEditor, setShowPresentationEditor] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(documentTemplates[0].id);
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [activeTemplateCategory, setActiveTemplateCategory] = useState(templateCategories[0]);
@@ -301,6 +331,20 @@ export default function RuYiZone() {
   };
 
   const handleUploadAttachment = () => {
+    if (activeTool === "PPT") {
+      setPptAttachments((current) => [
+        ...current,
+        `PPT参考资料${current.length + 1}.pdf`,
+      ]);
+      return;
+    }
+    if (activeTool === "公文" && documentMode === "validation") {
+      const nextFile = `待校验公文${docAttachments.length + 1}.docx`;
+      setValidationFileName(nextFile);
+      setDocAttachments([nextFile]);
+      setValidationError("");
+      return;
+    }
     setDocAttachments((current) => [
       ...current,
       `公文参考附件${current.length + 1}.pdf`,
@@ -309,9 +353,54 @@ export default function RuYiZone() {
 
   const handleRemoveAttachment = (attachment: string) => {
     setDocAttachments((current) => current.filter((item) => item !== attachment));
+    if (validationFileName === attachment) {
+      setValidationFileName("");
+      setValidationReady(false);
+    }
+  };
+
+  const handleRemovePptAttachment = (attachment: string) => {
+    setPptAttachments((current) => current.filter((item) => item !== attachment));
   };
 
   const handleSend = () => {
+    if (activeTool === 'PPT' && conversationKind === "presentationDraft") {
+      const message = input.trim();
+      if (!message) return;
+      if (/确认|可以|没问题|生成|就这样|通过/.test(message)) {
+        setPresentationConfirmMessage(message);
+        setPresentationReady(true);
+      } else {
+        setPresentationReady(false);
+        setPresentationAdjustments((current) => [...current, message]);
+      }
+      setInput("");
+      return;
+    }
+
+    if (activeTool === 'PPT') {
+      const question = input.trim() || "AI赋能：企业效率革新与未来";
+      const title = question.replace(/^(请|帮我|生成|做一份|制作|撰写)/, "").slice(0, 32) || "AI赋能企业效率革新";
+      setSentQuestion(question);
+      setPresentationPrompt(question);
+      setPresentationTitle(title);
+      setPresentationConfirmMessage("");
+      setConversationKind("presentationDraft");
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setPresentationReady(false);
+      setPresentationAdjustments([]);
+      setInput("");
+      return;
+    }
+    if (activeTool === '公文' && conversationKind === "documentValidation") {
+      const fileName = validationFileName || docAttachments[0] || docTitle || "当前公文";
+      setSentQuestion(`按已配置校验规则重新校验《${fileName.replace(/\.[^.]+$/, "")}》`);
+      setValidationReady(true);
+      setInput("");
+      return;
+    }
+
     if (activeTool === '公文' && conversationKind === "documentDraft") {
       const message = input.trim();
       if (!message) return;
@@ -322,6 +411,24 @@ export default function RuYiZone() {
         setDocumentReady(false);
         setOutlineAdjustments(prev => [...prev, message]);
       }
+      setInput("");
+      return;
+    }
+
+    if (activeTool === '公文' && documentMode === "validation") {
+      const fileName = validationFileName || docAttachments[0];
+      if (!fileName) {
+        setValidationError("请先上传待校验公文");
+        return;
+      }
+      const question = `请校验《${fileName}》中的错别字和标点使用问题`;
+      setSentQuestion(question);
+      setConversationKind("documentValidation");
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setDocTitle(fileName.replace(/\.[^.]+$/, ""));
+      setDocContent(question);
+      setValidationReady(true);
       setInput("");
       return;
     }
@@ -356,12 +463,14 @@ export default function RuYiZone() {
   const handleBackFromEditor = () => {
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
+    setShowPresentationEditor(false);
   };
 
   const getHistoryAssistantName = (kind: ConversationKind) => {
     if (kind === "feedback") return "IT服务助手";
     if (kind === "knowledge" || kind === "operations") return "企业知识专家";
-    if (kind === "documentDraft") return "如意公文创作";
+    if (kind === "documentDraft" || kind === "documentValidation") return "如意公文创作";
+    if (kind === "presentationDraft") return "如意PPT创作";
     if (kind === "goalAssistant") return "如意工作参谋师";
     return "";
   };
@@ -369,6 +478,7 @@ export default function RuYiZone() {
   const handleNewConversation = () => {
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
+    setShowPresentationEditor(false);
     setHasConversation(false);
     setSentQuestion("");
     setInput("");
@@ -378,8 +488,15 @@ export default function RuYiZone() {
     setAssistants(defaultAssistants);
     setConversationKind("pending");
     setDocumentReady(false);
+    setDocumentMode("writing");
+    setValidationFileName("");
+    setValidationError("");
+    setValidationReady(false);
     setDocumentConfirmMessage("");
     setOutlineAdjustments([]);
+    setPresentationReady(false);
+    setPresentationConfirmMessage("");
+    setPresentationAdjustments([]);
     setLegacyEditorStartsInRequirements(false);
     setLegacyEditorStartsInOutline(false);
     setShowReportSubmitTargets(false);
@@ -390,6 +507,7 @@ export default function RuYiZone() {
   const openLegacyDocumentAssistant = () => {
     const documentAssistant = defaultAssistants.find((assistant) => assistant.name === "如意公文创作") || null;
     setActiveTool("公文");
+    setDocumentMode("writing");
     setConversationKind("documentDraft");
     setSelectedHistoryId(null);
     setSelectedAssistant(documentAssistant);
@@ -409,6 +527,27 @@ export default function RuYiZone() {
     setShowEditor(true);
   };
 
+  const openLegacyPresentationAssistant = () => {
+    const presentationAssistant = defaultAssistants.find((assistant) => assistant.name === "如意PPT创作") || null;
+    setActiveTool("PPT");
+    setConversationKind("presentationDraft");
+    setSelectedHistoryId(null);
+    setSelectedAssistant(presentationAssistant);
+    setAssistants(defaultAssistants.map((assistant) => ({
+      ...assistant,
+      isActive: assistant.name === "如意PPT创作",
+    })));
+    setPresentationReady(false);
+    setPresentationConfirmMessage("");
+    setPresentationAdjustments([]);
+    setPresentationPrompt("");
+    setPresentationTitle("");
+    setInput("");
+    setHasConversation(false);
+    setShowEditor(false);
+    setEmbedEditorInRuyiZone(false);
+    setShowPresentationEditor(false);
+  };
 
   const openLegacyItAssistant = () => {
     const itAssistant = defaultAssistants.find((assistant) => assistant.name === "IT服务助手") || null;
@@ -425,6 +564,7 @@ export default function RuYiZone() {
     setHasConversation(true);
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
+    setShowPresentationEditor(false);
   };
 
 
@@ -451,6 +591,7 @@ export default function RuYiZone() {
     setActiveTool(null);
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
+    setShowPresentationEditor(false);
     setConversationKind("feedback");
     setSentQuestion(message);
     setHasConversation(true);
@@ -501,6 +642,7 @@ export default function RuYiZone() {
     setActiveTool(null);
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
+    setShowPresentationEditor(false);
   };
 
   const handleHistorySelect = (item: HistoryItem) => {
@@ -514,6 +656,7 @@ export default function RuYiZone() {
     setInput("");
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
+    setShowPresentationEditor(false);
     if (isMobile) {
       setMobileMenuOpen(false);
     }
@@ -548,7 +691,221 @@ export default function RuYiZone() {
     setDocType(template.category);
   };
 
+  const handleDocumentModeChange = (mode: DocumentMode) => {
+    setDocumentMode(mode);
+    setValidationError("");
+    setInput("");
+    if (mode === "writing") {
+      setValidationReady(false);
+    }
+  };
+
+  const renderDocumentModeSwitch = () => (
+    <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-theme-100 bg-theme-50/80 p-0.5 shadow-sm dark:border-theme-900/40 dark:bg-theme-900/20">
+      {([
+        { id: "writing", label: "公文创作" },
+        { id: "validation", label: "公文校验" },
+      ] as Array<{ id: DocumentMode; label: string }>).map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          onClick={() => handleDocumentModeChange(item.id)}
+          className={`rounded-md px-2 py-1 text-xs font-semibold transition-colors ${documentMode === item.id ? 'bg-white text-theme-700 shadow-sm dark:bg-gray-800 dark:text-theme-300' : 'text-gray-500 hover:bg-white/70 hover:text-theme-700 dark:text-gray-300 dark:hover:bg-gray-800/80'}`}
+        >
+          {item.label}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() => {
+          setActiveTool(null);
+          setValidationError("");
+        }}
+        className="ml-0.5 flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-white hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        title="关闭公文插件"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
+
+  const renderDocumentValidationSettings = () => (
+    <div className="space-y-3 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-gray-900 dark:text-white">上传待校验公文</div>
+          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">当前仅校验错别字、标点使用不正确</div>
+        </div>
+        <button
+          type="button"
+          onClick={handleUploadAttachment}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2 text-xs font-semibold text-theme-700 hover:bg-theme-100 dark:border-theme-900/50 dark:bg-theme-900/20 dark:text-theme-300"
+        >
+          <Paperclip size={14} />
+          上传文件
+        </button>
+      </div>
+      {validationError && <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{validationError}</div>}
+      {docAttachments.length > 0 ? (
+        <div className="space-y-1.5">
+          {docAttachments.map((attachment) => (
+            <div key={attachment} className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-gray-700/60 dark:text-gray-200">
+              <FileTextIcon size={15} className="flex-shrink-0 text-theme-500" />
+              <span className="truncate">{attachment}</span>
+              <button
+                type="button"
+                onClick={() => handleRemoveAttachment(attachment)}
+                className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 dark:hover:bg-gray-600"
+                title="删除附件"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-6 text-center text-xs text-gray-400 dark:border-gray-700 dark:bg-gray-700/40">
+          请上传 Word/PDF 公文文件后开始校验
+        </div>
+      )}
+      <div className="text-xs leading-6 text-gray-500 dark:text-gray-400">
+        <span className="font-medium text-gray-700 dark:text-gray-200">校验条件：</span>
+        {documentValidationRules.map((rule, index) => (
+          <span key={rule.id}>
+            {index > 0 ? '、' : ''}{rule.title}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+  const handlePresentationModeChange = (mode: PresentationModeId) => {
+    setPptMode(mode);
+    if (mode === "single") {
+      setPptPageCount("单页");
+    } else if (pptPageCount === "单页") {
+      setPptPageCount("10-15页");
+    }
+  };
+
+  const renderPresentationParamSelect = (
+    key: keyof typeof presentationParamOptions,
+    value: string,
+    onChange: (value: string) => void,
+    disabled = false,
+  ) => {
+    const option = presentationParamOptions[key];
+    return (
+      <label className="block min-w-0">
+        <span className="mb-1 block text-xs text-gray-500 dark:text-gray-400">{option.label}</span>
+        <select
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-800 outline-none transition-colors focus:border-theme-200 focus:ring-2 focus:ring-theme-100 disabled:bg-gray-50 disabled:text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+        >
+          {option.options.map((item) => (
+            <option key={item} value={item}>{item}</option>
+          ))}
+        </select>
+      </label>
+    );
+  };
+
+  const renderPresentationSettings = () => (
+    <div className="mt-4 space-y-4 rounded-2xl border border-theme-100/80 bg-white/85 p-4 shadow-[0_12px_32px_rgba(148,76,126,0.08)] backdrop-blur dark:border-gray-700 dark:bg-gray-800/80">
+      <div>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-950 dark:text-white">使用AI创建PPT</h3>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">选择创建方式，补充主题或参考文档，先生成执行方案再确认生成草稿。</p>
+          </div>
+          <span className="hidden rounded-full bg-theme-50 px-3 py-1 text-xs font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300 sm:inline-flex">PPT插件</span>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {presentationModes.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              onClick={() => handlePresentationModeChange(mode.id)}
+              className={`rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${pptMode === mode.id ? 'border-theme-300 bg-theme-50/70 ring-2 ring-theme-100 dark:border-theme-500 dark:bg-theme-900/20' : 'border-gray-200 bg-white hover:border-theme-100 dark:border-gray-700 dark:bg-gray-800'}`}
+            >
+              <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-theme-500 to-theme-600 text-white shadow-sm">
+                <PresentationIcon size={17} />
+              </div>
+              <div className="text-sm font-semibold text-gray-950 dark:text-white">{mode.name}</div>
+              <div className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{mode.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {pptAttachments.length > 0 && (
+        <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
+          <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">已上传参考文档</div>
+          <div className="space-y-1.5">
+            {pptAttachments.map((attachment) => (
+              <div key={attachment} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
+                <span className="truncate">{attachment}</span>
+                <button
+                  onClick={() => handleRemovePptAttachment(attachment)}
+                  className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 dark:hover:bg-gray-600"
+                  title="删除参考文档"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {renderPresentationParamSelect("pageCount", pptMode === "single" ? "单页" : pptPageCount, setPptPageCount, pptMode === "single")}
+        {renderPresentationParamSelect("audience", pptAudience, setPptAudience)}
+        {renderPresentationParamSelect("scene", pptScene, setPptScene)}
+        {renderPresentationParamSelect("tone", pptTone, setPptTone)}
+        {renderPresentationParamSelect("language", pptLanguage, setPptLanguage)}
+        {renderPresentationParamSelect("textStyle", pptTextStyle, setPptTextStyle)}
+      </div>
+    </div>
+  );
   const handleLegacySend = () => {
+    if (activeTool === "PPT") {
+      const question = input.trim() || "AI赋能：企业效率革新与未来";
+      const title = question.replace(/^(请|帮我|生成|做一份|制作|撰写)/, "").slice(0, 32) || "AI赋能企业效率革新";
+      setSentQuestion(question);
+      setPresentationPrompt(question);
+      setPresentationTitle(title);
+      setPresentationConfirmMessage("");
+      setConversationKind("presentationDraft");
+      setSelectedHistoryId(null);
+      setHasConversation(false);
+      setPresentationReady(true);
+      setPresentationAdjustments([]);
+      setInput("");
+      setShowEditor(false);
+      setEmbedEditorInRuyiZone(false);
+      setShowPresentationEditor(true);
+      return;
+    }
+    if (activeTool === "公文" && documentMode === "validation") {
+      const fileName = validationFileName || docAttachments[0];
+      if (!fileName) {
+        setValidationError("请先上传待校验公文");
+        return;
+      }
+      setSentQuestion(`请校验《${fileName}》中的错别字和标点使用问题`);
+      setConversationKind("documentValidation");
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setDocTitle(fileName.replace(/\.[^.]+$/, ""));
+      setDocContent(`校验文件：${fileName}`);
+      setValidationReady(true);
+      setInput("");
+      setShowEditor(false);
+      return;
+    }
     if (activeTool === "公文") {
       const question = input.trim() || "帮我生成一篇关于推进如意空间智能办公建设的通知";
       const title = docTitle.trim() || question.replace(/^(请|帮我|生成|写一篇|撰写)/, "").slice(0, 32) || "如意空间智能办公建设通知";
@@ -574,7 +931,8 @@ export default function RuYiZone() {
 
   const renderLegacyDocumentSettings = () => (
     <div className="mx-auto mt-4 w-full max-w-[980px] rounded-xl border border-[#ece8f0] bg-white px-5 py-4 shadow-[0_10px_28px_rgba(23,23,43,0.05)]">
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+      {documentMode === "validation" && renderDocumentValidationSettings()}
+      <div className={`${documentMode === "writing" ? "grid" : "hidden"} grid-cols-1 gap-3 lg:grid-cols-2`}>
         <label className="block">
           <span className="mb-1 block text-sm text-gray-500">公文类型</span>
           <select
@@ -614,7 +972,7 @@ export default function RuYiZone() {
           />
         </label>
       </div>
-      {docAttachments.length > 0 && (
+      {documentMode === "writing" && docAttachments.length > 0 && (
         <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
           <div className="mb-2 text-xs text-gray-500">已上传附件</div>
           <div className="space-y-1.5">
@@ -634,7 +992,7 @@ export default function RuYiZone() {
           </div>
         </div>
       )}
-      <div className="mt-4">
+      <div className={documentMode === "writing" ? "mt-4" : "hidden"}>
         <div className="mb-2 text-sm text-gray-500">选择公文模板</div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {filteredDocumentTemplates.map((template) => (
@@ -881,6 +1239,17 @@ export default function RuYiZone() {
               如意公文创作
             </button>
             <button
+              onClick={openLegacyPresentationAssistant}
+              className={`mb-7 flex h-10 items-center gap-3 text-[15px] font-medium transition-colors ${
+                selectedAssistant?.name === "如意PPT创作" || activeTool === "PPT" ? 'text-[#a20b67]' : 'text-gray-900 hover:text-[#a20b67]'
+              }`}
+            >
+              <span className="flex h-5 w-5 items-center justify-center rounded bg-[#7c3aed] text-xs text-white">
+                <PresentationIcon size={13} />
+              </span>
+              如意PPT创作
+            </button>
+            <button
               onClick={openLegacyItAssistant}
               className={`mb-7 flex h-10 items-center gap-3 text-[15px] font-medium transition-colors ${
                 selectedAssistant?.name === "IT服务助手" ? 'text-[#a20b67]' : 'text-gray-900 hover:text-[#a20b67]'
@@ -904,14 +1273,31 @@ export default function RuYiZone() {
         </aside>
 
         <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-          {showEditor ? (
-            <DocumentEditor
+          {showPresentationEditor ? (
+            <PresentationEditor
+              mode={pptMode}
+              title={presentationTitle}
+              prompt={presentationPrompt}
+              pageCount={pptPageCount}
+              audience={pptAudience}
+              scene={pptScene}
+              tone={pptTone}
+              language={pptLanguage}
+              textStyle={pptTextStyle}
+              attachments={pptAttachments}
+              embedded
+              onBack={() => setShowPresentationEditor(false)}
+            />
+          ) : showEditor ? (            <DocumentEditor
               key={`legacy-editor-${editorSessionId}`}
               docType={docType}
               docTitle={docTitle}
               docLength={docLength}
               docContent={docContent}
               attachments={docAttachments}
+              documentMode={documentMode}
+              validationFileName={validationFileName || docAttachments[0]}
+              validationIssues={documentValidationIssues}
               startInRequirements={legacyEditorStartsInRequirements}
               startInOutline={legacyEditorStartsInOutline}
               embedded
@@ -955,6 +1341,7 @@ export default function RuYiZone() {
               <button
                 onClick={() => {
                   setActiveTool(activeTool === "公文" ? null : "公文");
+                  setSelectedAssistant(defaultAssistants.find((assistant) => assistant.name === "如意公文创作") || null);
                   setInput("");
                 }}
                 className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
@@ -966,22 +1353,55 @@ export default function RuYiZone() {
                 <FileTextIcon size={16} />
                 公文
               </button>
+              <button
+                onClick={() => {
+                  setActiveTool(activeTool === "PPT" ? null : "PPT");
+                  setSelectedAssistant(defaultAssistants.find((assistant) => assistant.name === "如意PPT创作") || null);
+                  setInput("");
+                }}
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                  activeTool === "PPT"
+                    ? "border-theme-200 bg-theme-50 text-theme-700 shadow-sm"
+                    : "border-gray-200 bg-white text-gray-600 hover:border-theme-200 hover:text-theme-700"
+                }`}
+              >
+                <PresentationIcon size={16} />
+                PPT
+              </button>
             </div>
 
             <div className={`relative w-full max-w-[980px] rounded-xl border bg-white px-6 py-5 shadow-sm transition-all ${
-              activeTool === "公文" ? "border-theme-200 ring-1 ring-theme-100" : "border-[#dddce6]"
+              activeTool === "公文" || activeTool === "PPT" ? "border-theme-200 ring-1 ring-theme-100" : "border-[#dddce6]"
             }`}>
               {activeTool === "公文" ? (
-                <div className="flex items-center gap-3 pr-24">
-                  <div className="flex items-center gap-2 rounded-full bg-gradient-to-r from-theme-500 to-theme-600 px-3 py-1.5 text-sm font-medium text-white">
-                    <Sparkles size={14} />
-                    AI写作
+                <div className="pr-24">
+                  <div className="mb-3 flex items-center">
+                    {renderDocumentModeSwitch()}
                   </div>
-                  <input
+                  {documentMode === "validation" ? (
+                    <div className="h-20 w-full rounded-lg bg-gray-50 px-3 py-3 text-sm leading-6 text-gray-500">
+                      系统将按已配置规则校验：错别字、标点使用不正确。请上传文件后点击发送开始校验。
+                    </div>
+                  ) : (
+                    <textarea
+                      value={input}
+                      onChange={(event) => setInput(event.target.value)}
+                      placeholder="请输入写作主题或需求..."
+                      className="h-20 w-full resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder:text-gray-400"
+                    />
+                  )}
+                </div>
+              ) : activeTool === "PPT" ? (
+                <div className="flex items-start gap-3 pr-24">
+                  <div className="flex items-center gap-2 rounded-full bg-theme-50 px-3 py-1.5 text-sm font-medium text-theme-700">
+                    <PresentationIcon size={14} />
+                    AI演示
+                  </div>
+                  <textarea
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="请输入写作主题或需求..."
-                    className="h-24 min-w-0 flex-1 border-none bg-transparent text-base text-gray-900 outline-none placeholder:text-gray-400"
+                    placeholder="请输入PPT主题或创作要求..."
+                    className="h-24 flex-1 resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder:text-gray-400"
                   />
                 </div>
               ) : (
@@ -1009,9 +1429,14 @@ export default function RuYiZone() {
             </div>
 
             {activeTool === "公文" && renderLegacyDocumentSettings()}
+            {activeTool === "PPT" && (
+              <div className="mx-auto w-full max-w-[980px]">
+                {renderPresentationSettings()}
+              </div>
+            )}
             {previewTemplateId && renderLegacyTemplatePreview()}
 
-            {activeTool !== "公文" && (
+            {activeTool !== "公文" && activeTool !== "PPT" && (
               <div className="mt-6 grid w-full max-w-[980px] gap-5 md:grid-cols-3">
                 {legacySuggestions.map((item) => (
                   <button key={item} className="flex h-[70px] items-center gap-4 rounded-xl border border-[#dfe4f5] bg-white px-6 text-left text-lg font-semibold shadow-sm transition-all hover:-translate-y-0.5 hover:border-[#d5b086] hover:shadow-md">
@@ -1039,6 +1464,9 @@ export default function RuYiZone() {
           docLength={docLength}
           docContent={docContent}
           attachments={docAttachments}
+          documentMode={documentMode}
+          validationFileName={validationFileName || docAttachments[0]}
+          validationIssues={documentValidationIssues}
           startInOutline={legacyEditorStartsInOutline}
           onRemoveAttachment={handleRemoveAttachment}
           onBack={handleBackFromEditor}
@@ -1174,7 +1602,22 @@ export default function RuYiZone() {
 
         {/* 第三列：如意空间内容区域 */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
-          {showEditor && embedEditorInRuyiZone ? (
+          {showPresentationEditor ? (
+            <PresentationEditor
+              mode={pptMode}
+              title={presentationTitle}
+              prompt={presentationPrompt}
+              pageCount={pptPageCount}
+              audience={pptAudience}
+              scene={pptScene}
+              tone={pptTone}
+              language={pptLanguage}
+              textStyle={pptTextStyle}
+              attachments={pptAttachments}
+              embedded
+              onBack={() => setShowPresentationEditor(false)}
+            />
+          ) : showEditor && embedEditorInRuyiZone ? (
             <DocumentEditor
               key={`ruyi-editor-${editorSessionId}`}
               docType={docType}
@@ -1182,6 +1625,9 @@ export default function RuYiZone() {
               docLength={docLength}
               docContent={docContent}
               attachments={docAttachments}
+              documentMode={documentMode}
+              validationFileName={validationFileName || docAttachments[0]}
+              validationIssues={documentValidationIssues}
               startInRequirements={legacyEditorStartsInRequirements}
               startInOutline={legacyEditorStartsInOutline}
               embedded
@@ -1437,6 +1883,74 @@ export default function RuYiZone() {
                         </>
                       )}
 
+                      {conversationKind === "presentationDraft" && (
+                        <>
+                          <p className="mb-4 leading-7">
+                            好的，我先根据您的主题生成PPT执行方案。请确认方案是否合适，也可以直接告诉我需要怎么调整。
+                          </p>
+                          <div className="mb-5 border-b border-gray-200 pb-2 dark:border-gray-700">
+                            <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-950 dark:text-white">
+                              <PresentationIcon size={24} className="text-theme-500" />
+                              PPT执行方案
+                            </h3>
+                          </div>
+
+                          <div className="mb-4 rounded-xl border border-theme-100 bg-theme-50/60 p-4 text-sm leading-6 text-gray-700 dark:border-theme-900/30 dark:bg-theme-900/20 dark:text-gray-200">
+                            <div className="font-semibold text-gray-950 dark:text-white">{presentationTitle || 'AI赋能企业效率革新'}</div>
+                            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                              <span>创建方式：{presentationModes.find((mode) => mode.id === pptMode)?.name}</span>
+                              <span>页数：{pptMode === 'single' ? '单页' : pptPageCount}</span>
+                              <span>受众：{pptAudience}</span>
+                              <span>场景：{pptScene}</span>
+                              <span>语气：{pptTone}</span>
+                              <span>语言：{pptLanguage}</span>
+                            </div>
+                          </div>
+
+                          <ol className="mb-6 list-decimal space-y-2 pl-6 leading-7">
+                            {presentationOutline.map((item) => (
+                              <li key={item}>{item}</li>
+                            ))}
+                          </ol>
+
+                          {pptAttachments.length > 0 && (
+                            <div className="mb-6 rounded-xl border border-gray-100 bg-white/80 p-4 text-sm leading-6 shadow-sm dark:border-gray-700 dark:bg-gray-800/80">
+                              <div className="mb-2 font-semibold text-gray-950 dark:text-white">参考文档</div>
+                              <ul className="list-disc space-y-1 pl-5 text-gray-600 dark:text-gray-300">
+                                {pptAttachments.map((attachment) => (
+                                  <li key={attachment}>{attachment}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {presentationAdjustments.length > 0 && !presentationReady && (
+                            <div className="mb-6 rounded-xl border border-amber-100 bg-amber-50/70 p-4 text-sm leading-6 text-amber-900 dark:border-amber-900/30 dark:bg-amber-900/20 dark:text-amber-100">
+                              <div className="mb-2 font-semibold">已收到您的调整意见：</div>
+                              <ul className="list-disc space-y-1 pl-5">
+                                {presentationAdjustments.map((item, index) => (
+                                  <li key={`${item}-${index}`}>{item}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {!presentationReady && (
+                            <div className="mb-6 flex flex-wrap gap-3">
+                              <button
+                                onClick={() => {
+                                  setPresentationConfirmMessage("确认方案，生成PPT草稿");
+                                  setPresentationReady(true);
+                                }}
+                                className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-theme-700"
+                              >
+                                确认方案，生成PPT草稿
+                              </button>
+                              <span className="self-center text-sm text-gray-500 dark:text-gray-400">也可以在下方对话框输入调整意见。</span>
+                            </div>
+                          )}
+                        </>
+                      )}
                       {conversationKind === "documentDraft" && (
                         <>
                           <p className="mb-4 leading-7">
@@ -1492,6 +2006,60 @@ export default function RuYiZone() {
                         </>
                       )}
 
+                      {conversationKind === "documentValidation" && (
+                        <>
+                          <p className="mb-4 leading-7">
+                            已完成公文校验，本次按“错别字”和“标点使用不正确”两项规则检查。
+                          </p>
+                          <div className="mb-5 border-b border-gray-200 pb-2 dark:border-gray-700">
+                            <h3 className="flex items-center gap-2 text-2xl font-bold text-gray-950 dark:text-white">
+                              <FileTextIcon size={24} className="text-theme-500" />
+                              {documentValidationSummary.title}
+                            </h3>
+                          </div>
+                          <div className="mb-4 grid gap-3 sm:grid-cols-3">
+                            <div className="rounded-xl border border-gray-100 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                              <div className="text-2xl font-bold text-gray-950 dark:text-white">{documentValidationSummary.total}</div>
+                              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">发现问题</div>
+                            </div>
+                            <div className="rounded-xl border border-gray-100 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                              <div className="text-2xl font-bold text-theme-700 dark:text-theme-300">{documentValidationSummary.typoCount}</div>
+                              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">错别字</div>
+                            </div>
+                            <div className="rounded-xl border border-gray-100 bg-white/80 p-4 dark:border-gray-700 dark:bg-gray-800/80">
+                              <div className="text-2xl font-bold text-amber-600">{documentValidationSummary.punctuationCount}</div>
+                              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">标点问题</div>
+                            </div>
+                          </div>
+                          <div className="mb-5 space-y-3">
+                            {documentValidationIssues.map((issue) => (
+                              <div key={issue.id} className="rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/80">
+                                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                  <span className="rounded bg-theme-50 px-2 py-0.5 text-xs font-semibold text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">{issue.label}</span>
+                                  <span className="text-xs text-gray-400">{issue.position}</span>
+                                </div>
+                                <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">原文：{issue.excerpt}</p>
+                                <p className="mt-1 text-sm leading-6 text-theme-700 dark:text-theme-300">建议：{issue.suggestion}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <p className="mb-4 leading-7">{documentValidationSummary.conclusion}</p>
+                          <button
+                            onClick={() => {
+                              setDocumentMode("validation");
+                              setEmbedEditorInRuyiZone(true);
+                              setLegacyEditorStartsInRequirements(false);
+                              setLegacyEditorStartsInOutline(false);
+                              setEditorSessionId((current) => current + 1);
+                              setShowEditor(true);
+                            }}
+                            className="mb-6 inline-flex items-center gap-2 rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-theme-700"
+                          >
+                            <FileTextIcon size={16} />
+                            进入校验工作台
+                          </button>
+                        </>
+                      )}
                       <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400 dark:text-gray-500">
                         <button className="inline-flex items-center gap-1 hover:text-theme-500">
                           <Copy size={16} />
@@ -1577,6 +2145,46 @@ export default function RuYiZone() {
                     </>
                   )}
 
+                  {conversationKind === "presentationDraft" && presentationReady && (
+                    <>
+                      <div className="flex justify-end">
+                        <div className="max-w-2xl rounded-2xl bg-theme-50 px-5 py-4 text-gray-900 shadow-sm dark:bg-theme-900/20 dark:text-white">
+                          {presentationConfirmMessage || "确认方案，生成PPT草稿"}
+                        </div>
+                      </div>
+                      <div className="flex gap-4">
+                        <img
+                          src="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd"
+                          alt="如意助手"
+                          className="mt-1 h-10 w-10 flex-shrink-0 rounded-full object-cover"
+                        />
+                        <div className="max-w-3xl flex-1 text-gray-900 dark:text-gray-100">
+                          <p className="mb-4 leading-7">已根据您确认的执行方案生成PPT草稿，您可以点击下方入口进入编辑预览页面继续调整。</p>
+                          <button
+                            onClick={() => {
+                              setShowPresentationEditor(true);
+                            }}
+                            className="mb-6 flex w-full max-w-2xl items-stretch overflow-hidden rounded-xl border border-theme-100 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-theme-200 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800"
+                          >
+                            <div className="flex w-24 flex-shrink-0 items-center justify-center bg-gradient-to-br from-theme-500 to-theme-700 text-white">
+                              <PresentationIcon size={34} />
+                            </div>
+                            <div className="flex-1 p-5">
+                              <div className="mb-2 flex items-center gap-2">
+                                <span className="rounded bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">PPT草稿</span>
+                                <span className="text-xs text-gray-400">{pptMode === 'single' ? '单页' : pptPageCount} · {pptAudience}</span>
+                              </div>
+                              <h4 className="text-lg font-bold text-gray-950 dark:text-white">{presentationTitle || "AI赋能企业效率革新"}</h4>
+                              <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">已生成 {pptMode === 'single' ? 1 : presentationSlides.length} 页演示结构和页面预览，点击进入PPT编辑预览继续完善。</p>
+                              <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-theme-700 dark:text-theme-300">
+                                进入编辑预览
+                              </div>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {conversationKind === "documentDraft" && documentReady && (
                     <>
                       <div className="flex justify-end">
@@ -1671,21 +2279,41 @@ export default function RuYiZone() {
               <div className="mb-16 relative">
                 <div className={`relative min-h-[168px] border-2 rounded-2xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300 ${activeTool ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
                   {activeTool === '公文' && (
+                    <div className="pr-24">
+                      <div className="mb-3 flex items-center">
+                        {renderDocumentModeSwitch()}
+                      </div>
+                      {documentMode === "validation" ? (
+                        <div className="min-h-[86px] w-full rounded-lg bg-gray-50 px-3 py-3 text-sm leading-6 text-gray-500 dark:bg-gray-700/50 dark:text-gray-300">
+                          系统将按已配置规则校验：错别字、标点使用不正确。请上传文件后点击发送开始校验。
+                        </div>
+                      ) : (
+                        <textarea
+                          value={input}
+                          onChange={(e) => setInput(e.target.value)}
+                          placeholder="请输入写作主题或需求..."
+                          className="min-h-[86px] w-full resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {activeTool === 'PPT' && (
                     <div className="flex items-start gap-3 pr-24">
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-theme-500 to-theme-600 text-white rounded-full text-sm font-medium">
-                        <Sparkles size={14} />
-                        AI写作
+                      <div className="flex items-center gap-2 rounded-full bg-theme-50 px-3 py-1.5 text-sm font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">
+                        <PresentationIcon size={14} />
+                        AI演示
                       </div>
                       <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="请输入写作主题或需求..."
+                        placeholder="请输入PPT主题或创作要求..."
                         className="min-h-[110px] flex-1 resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
                       />
                     </div>
                   )}
 
-                  {activeTool && activeTool !== '公文' && (
+                  {activeTool && activeTool !== '公文' && activeTool !== 'PPT' && (
                     <div className="flex items-start gap-3 pr-24">
                       <div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">
                         {tools.find((tool) => tool.name === activeTool)?.icon}
@@ -1728,7 +2356,8 @@ export default function RuYiZone() {
 
                 {activeTool === '公文' && (
                   <div className="mt-4 space-y-4 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
-                    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                    {documentMode === "validation" && renderDocumentValidationSettings()}
+                    <div className={`${documentMode === "writing" ? "grid" : "hidden"} grid-cols-1 gap-3 lg:grid-cols-2`}>
                       <label className="block">
                         <span className="mb-1 block text-sm text-gray-500 dark:text-gray-400">公文类型</span>
                         <select
@@ -1770,7 +2399,7 @@ export default function RuYiZone() {
                       </label>
                     </div>
 
-                    {docAttachments.length > 0 && (
+                    {documentMode === "writing" && docAttachments.length > 0 && (
                       <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
                         <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">已上传附件</div>
                         <div className="space-y-1.5">
@@ -1791,7 +2420,7 @@ export default function RuYiZone() {
                       </div>
                     )}
 
-                    <div>
+                    <div className={documentMode === "writing" ? "" : "hidden"}>
                       <div className="mb-2 text-sm text-gray-500 dark:text-gray-400">选择公文模板</div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {filteredDocumentTemplates.map((template) => (
@@ -1844,6 +2473,8 @@ export default function RuYiZone() {
                     </div>
                   </div>
                 )}
+
+                {activeTool === 'PPT' && renderPresentationSettings()}
 
                 {!activeTool && (
                   <div className="mt-4 overflow-hidden rounded-2xl border border-theme-100/70 bg-white/75 shadow-[0_14px_36px_rgba(148,76,126,0.08)] backdrop-blur dark:border-theme-900/40 dark:bg-gray-800/75">
@@ -1995,28 +2626,49 @@ export default function RuYiZone() {
           {hasConversation && (
           <div className="flex-shrink-0 border-t border-gray-100 bg-white/95 px-6 py-4 shadow-[0_-8px_24px_rgba(15,23,42,0.04)] backdrop-blur dark:border-gray-700 dark:bg-gray-900/95 md:px-8">
             <div className="mx-auto max-w-4xl">
-              <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 transition-all duration-300 ${activeTool === '公文' && conversationKind !== "documentDraft" ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
+              <div className={`relative border-2 rounded-xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 transition-all duration-300 ${(activeTool === '公文' && conversationKind !== "documentDraft") || (activeTool === 'PPT' && conversationKind !== "presentationDraft") ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
                 {activeTool === '公文' && conversationKind !== "documentDraft" && (
-                  <div className="flex items-center gap-3 flex-wrap pr-24">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-theme-500 to-theme-600 text-white rounded-full text-sm font-medium">
-                      <Sparkles size={14} />
-                      AI写作
+                  <div className="pr-24">
+                    <div className="mb-2 flex items-center">
+                      {renderDocumentModeSwitch()}
                     </div>
-                    <input
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder="请输入写作主题或需求..."
-                      className="flex-1 min-w-[200px] border-none outline-none text-base bg-transparent text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                    />
+                    {documentMode === "validation" ? (
+                      <div className="min-h-10 w-full rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-500 dark:bg-gray-700/50 dark:text-gray-300">
+                        按已配置规则校验：错别字、标点使用不正确。点击发送执行校验。
+                      </div>
+                    ) : (
+                      <textarea
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="请输入写作主题或需求..."
+                        className="min-h-10 max-h-24 w-full resize-none border-none bg-transparent text-base leading-6 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
+                      />
+                    )}
                   </div>
                 )}
 
                 {conversationKind === "documentDraft" && (
+                  <div className="pr-24">
+                    <div className="mb-2 flex items-center">
+                      <div className="flex shrink-0 items-center gap-2 rounded-lg bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                        <FileTextIcon size={13} />
+                        AI公文
+                      </div>
+                    </div>
+                    <textarea
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="继续向如意助手提问..."
+                      className="min-h-10 max-h-24 w-full resize-none border-none bg-transparent text-base leading-6 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
+                    />
+                  </div>
+                )}
+
+                {conversationKind === "presentationDraft" && (
                   <div className="flex items-center gap-3 flex-wrap pr-24">
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-600 rounded-full text-sm font-medium dark:bg-gray-700 dark:text-gray-300">
-                      <FileTextIcon size={14} />
-                      AI公文
+                      <PresentationIcon size={14} />
+                      AI演示
                     </div>
                     <input
                       type="text"
@@ -2027,8 +2679,7 @@ export default function RuYiZone() {
                     />
                   </div>
                 )}
-
-                {!activeTool && conversationKind !== "documentDraft" && (
+                {!activeTool && conversationKind !== "documentDraft" && conversationKind !== "presentationDraft" && (
                   <input
                     type="text"
                     value={input}
@@ -2055,7 +2706,7 @@ export default function RuYiZone() {
                 </div>
               </div>
 
-              {activeTool === '公文' && conversationKind !== "documentDraft" && (
+              {activeTool === '公文' && conversationKind !== "documentDraft" && documentMode === "writing" && (
                 <div className="mt-3 flex items-center gap-4 flex-wrap">
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">字数选择</span>

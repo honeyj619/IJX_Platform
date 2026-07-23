@@ -1,6 +1,9 @@
 ﻿import { Search, MessageSquare, Smartphone, BarChart3, ChevronLeft, ChevronRight, Plus, Settings, Edit3, X, Mail, Monitor, MoreHorizontal, Users, DollarSign, Headphones, FileCheck, ShoppingCart, Plane, UserCircle, Kanban } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
+import WorkItems from './WorkItems';
+import { getDemoPerson } from '../data/people';
 
 // 常用系统数据 - 与导航栏业务系统保持一致
 const ALL_SYSTEMS = [
@@ -39,14 +42,36 @@ const FILE_ITEMS = [
   { title: '关于发布《上海吉祥航空股份有限公司旅客遗失物品管理办法(R3)》的通知', isNew: true, date: '2026-05-21 14:45:35' },
 ];
 
+type PortalType = 'personal' | 'workItems' | 'enterprise';
+
+function getPortalTypeFromSearch(search: string): PortalType {
+  const tab = new URLSearchParams(search).get('tab');
+  if (tab === 'work-items') return 'workItems';
+  if (tab === 'enterprise') return 'enterprise';
+  return 'personal';
+}
+
 export default function Enterprise() {
-  const [portalType, setPortalType] = useState<'personal' | 'enterprise'>('personal');
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [portalType, setPortalType] = useState<PortalType>(() => getPortalTypeFromSearch(window.location.search));
   const [showSettings, setShowSettings] = useState(false);
   const [selectedSystems, setSelectedSystems] = useState<string[]>(() => {
     const saved = localStorage.getItem('selectedSystems');
     return saved ? JSON.parse(saved) : ['hr', 'finance', 'it', 'oa'];
   });
 
+  useEffect(() => {
+    setPortalType(getPortalTypeFromSearch(location.search));
+  }, [location.search]);
+
+  const switchPortalType = (nextType: PortalType) => {
+    setPortalType(nextType);
+    let nextPath = '/web_client/enterprise';
+    if (nextType === 'workItems') nextPath = '/web_client/enterprise?tab=work-items';
+    if (nextType === 'enterprise') nextPath = '/web_client/enterprise?tab=enterprise';
+    navigate(nextPath, { replace: false });
+  };
 
   useEffect(() => {
     localStorage.setItem('selectedSystems', JSON.stringify(selectedSystems));
@@ -68,7 +93,7 @@ export default function Enterprise() {
       <div className="flex items-center justify-between px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-700/60 shrink-0">
         <div className="flex items-center bg-gray-100/80 dark:bg-gray-700/80 rounded-lg p-0.5">
           <button
-            onClick={() => setPortalType('personal')}
+            onClick={() => switchPortalType('personal')}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               portalType === 'personal'
                 ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
@@ -78,7 +103,17 @@ export default function Enterprise() {
             个人门户
           </button>
           <button
-            onClick={() => setPortalType('enterprise')}
+            onClick={() => switchPortalType('workItems')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              portalType === 'workItems'
+                ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            事项协同
+          </button>
+          <button
+            onClick={() => switchPortalType('enterprise')}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               portalType === 'enterprise'
                 ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
@@ -98,6 +133,10 @@ export default function Enterprise() {
       {portalType === 'personal' ? (
         <div className="relative">
           <Personal_Enterprise />
+        </div>
+      ) : portalType === 'workItems' ? (
+        <div className="relative">
+          <WorkItems embedded />
         </div>
       ) : (
         <div className="relative">
