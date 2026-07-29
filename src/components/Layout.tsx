@@ -81,7 +81,7 @@ export default function Layout({ children }: LayoutProps) {
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR.EXPANDED_WIDTH);
+  const [sidebarWidth, setSidebarWidth] = useState<number>(SIDEBAR.EXPANDED_WIDTH);
   const [isDragging, setIsDragging] = useState(false);
   const [isManuallyCollapsed, setIsManuallyCollapsed] = useState(false);
   const [showAddLinkPopup, setShowAddLinkPopup] = useState(false);

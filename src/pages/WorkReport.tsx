@@ -183,6 +183,13 @@ type OkrReportContent = {
   nextWeek: string;
 };
 
+type NonOkrWorkItem = {
+  id: number;
+  title: string;
+  thisWeek: string;
+  nextWeek: string;
+};
+
 const krReportKey = (objectiveId: string, krIndex: number) => `${objectiveId}-kr${krIndex + 1}`;
 
 const initialOkrReports: Record<string, OkrReportContent> = {
@@ -1498,6 +1505,5 @@ function MetricRing({ label, value, progress }: { label?: string; value: string;
     </div>
   );
 }
-
 
 

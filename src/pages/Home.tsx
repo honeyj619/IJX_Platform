@@ -165,6 +165,7 @@ interface Message {
   message: string;
   time: string;
   unread?: number;
+  count?: number;
   icon?: React.ReactNode;
   type: 'normal' | 'process' | 'assistant' | 'system' | 'card';
   cardContent?: CardContent;

@@ -72,6 +72,7 @@ const baseObjectives: Objective[] = [
     recordCount: 0,
     date: '06-22',
     note: '填写备注，让大家更了解你的 OKR',
+    alignments: [],
     keyResults: [
       {
         id: 'o1-kr1',
@@ -101,6 +102,7 @@ const baseObjectives: Objective[] = [
     recordCount: 0,
     date: '06-22',
     note: '填写备注，让大家更了解你的 OKR',
+    alignments: [],
     keyResults: [
       {
         id: 'o2-kr1',
@@ -205,6 +207,7 @@ export default function OkrModule() {
       recordCount: 0,
       date: '06-23',
       note: '填写备注，让大家更了解你的 OKR',
+      alignments: [],
       keyResults: [{ id: `${activePerson}-o${now}-kr1`, title: '添加 Key Result：请填写可衡量的关键结果', progress: 0, weight: '100%', score: '0.0', latestReport: '' }],
     };
     setObjectives(current => [...current, nextObjective]);
@@ -923,4 +926,3 @@ function MetricWeight({ editable, value, onChange }: { editable: boolean; value:
   }
   return <div className="text-center text-sm text-gray-600">{value}</div>;
 }
-

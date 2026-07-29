@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "dev:react": "vite --config vite.react.config.mjs --host 127.0.0.1 --port 5173 --configLoader runner",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",

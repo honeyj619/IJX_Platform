@@ -1,5 +1,6 @@
 node_modules
 .vite
+.vite-react-cache
 dist
 .DS_Store
 *.log

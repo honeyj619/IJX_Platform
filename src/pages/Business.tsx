@@ -383,7 +383,7 @@ export default function Business() {
                         <span className="text-xs text-slate-400 dark:text-slate-500 font-medium hidden sm:inline">点击访问</span>
                         <div className="flex items-center gap-1 text-slate-400 dark:text-slate-500 group-hover:text-theme-500 transition-colors ml-auto">
                           <span className="text-xs font-medium">进入</span>
-                          <ArrowRight size={12} sm:size={14} className="group-hover:translate-x-1 transition-transform" />
+                          <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
                         </div>
                       </div>
                     </div>
@@ -396,7 +396,7 @@ export default function Business() {
           {filteredSystems.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 sm:py-20 lg:py-24">
               <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 rounded-full bg-slate-100 dark:bg-gray-700 flex items-center justify-center mb-4 sm:mb-6">
-                <Search size={28} sm:size={32} lg:size={36} className="text-slate-300 dark:text-slate-500" />
+                <Search size={32} className="text-slate-300 dark:text-slate-500" />
               </div>
               <p className="text-base sm:text-lg text-slate-600 dark:text-slate-300 font-medium">未找到匹配的系统</p>
               <button
@@ -416,7 +416,7 @@ export default function Business() {
               <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-gray-700 flex-shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 sm:w-10 sm:h-10 bg-slate-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
-                    <Hexagon size={18} sm:size={20} className="text-slate-600 dark:text-slate-300" />
+                    <Hexagon size={20} className="text-slate-600 dark:text-slate-300" />
                   </div>
                   <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">新增业务系统</h2>
                 </div>
@@ -450,13 +450,13 @@ export default function Business() {
                           onClick={(e) => { e.stopPropagation(); handleRemoveIcon(); }}
                           className="absolute -top-2 -right-2 w-5 h-5 sm:w-6 sm:h-6 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-lg"
                         >
-                          <X size={12} sm:size={14} />
+                          <X size={14} />
                         </button>
                       </div>
                     ) : (
                       <>
                         <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-100 dark:bg-gray-700 rounded-xl sm:rounded-2xl flex items-center justify-center mx-auto mb-2 sm:mb-3">
-                          <Upload size={24} sm:size={28} className="text-slate-400 dark:text-slate-500" />
+                          <Upload size={28} className="text-slate-400 dark:text-slate-500" />
                         </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">点击上传图标</p>
                         <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">支持 PNG、JPG，最大 2MB</p>
@@ -530,7 +530,7 @@ export default function Business() {
                       {formData.ownerName ? (
                         <div className="flex items-center gap-3">
                           <div className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                            <User size={14} sm:size={16} className="text-slate-600 dark:text-slate-300" />
+                            <User size={16} className="text-slate-600 dark:text-slate-300" />
                           </div>
                           <span className="text-slate-700 dark:text-slate-200 font-medium text-sm sm:text-base">{formData.ownerName}</span>
                         </div>
@@ -549,7 +549,7 @@ export default function Business() {
                           >
                             <div className="flex items-center gap-2 sm:gap-3">
                               <div className="w-8 h-8 sm:w-9 sm:h-9 bg-slate-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                                <User size={14} sm:size={16} className="text-slate-500 dark:text-slate-400" />
+                                <User size={16} className="text-slate-500 dark:text-slate-400" />
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-slate-900 dark:text-white">{contact.name}</p>
@@ -567,7 +567,7 @@ export default function Business() {
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">申请人</label>
                   <div className="flex items-center gap-2 sm:gap-3 px-4 py-2.5 sm:py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl">
                     <div className="w-7 h-7 sm:w-8 sm:h-8 bg-slate-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
-                      <User size={14} sm:size={16} className="text-slate-600 dark:text-slate-300" />
+                      <User size={16} className="text-slate-600 dark:text-slate-300" />
                     </div>
                     <span className="text-slate-700 dark:text-slate-200 font-medium text-sm sm:text-base">{formData.applicant}</span>
                   </div>
@@ -596,6 +596,5 @@ export default function Business() {
     
   );
 }
-
 
 
