@@ -731,19 +731,9 @@ export default function RuYiZone() {
 
   const renderDocumentValidationSettings = () => (
     <div className="space-y-3 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold text-gray-900 dark:text-white">上传待校验公文</div>
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">当前仅校验错别字、标点使用不正确</div>
-        </div>
-        <button
-          type="button"
-          onClick={handleUploadAttachment}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2 text-xs font-semibold text-theme-700 hover:bg-theme-100 dark:border-theme-900/50 dark:bg-theme-900/20 dark:text-theme-300"
-        >
-          <Paperclip size={14} />
-          上传文件
-        </button>
+      <div>
+        <div className="text-sm font-semibold text-gray-900 dark:text-white">上传待校验公文</div>
+        <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">当前仅校验错别字、标点使用不正确</div>
       </div>
       {validationError && <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{validationError}</div>}
       {docAttachments.length > 0 ? (
