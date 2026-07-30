@@ -87,6 +87,28 @@ const createValidationTextTokens = (text: string, issues: DocumentValidationIssu
   if (cursor < text.length) tokens.push({ type: "text", value: text.slice(cursor) });
   return tokens.length > 0 ? tokens : [{ type: "text", value: text }];
 };
+
+const getValidationReplacement = (issue: DocumentValidationIssue) => {
+  const replaceMatch = issue.suggestion.match(/将“([^”]+)”修改为“([^”]+)”/);
+  if (replaceMatch) return replaceMatch[2];
+  if (issue.suggestion.includes("英文逗号")) return "，";
+  if (issue.suggestion.includes("删除") && issue.suggestion.includes("顿号")) return "";
+  return null;
+};
+
+const applyValidationIssueToText = (text: string, issue: DocumentValidationIssue) => {
+  const excerptStart = text.indexOf(issue.excerpt);
+  if (excerptStart < 0) return text;
+
+  const replacement = getValidationReplacement(issue);
+  if (replacement === null) return text;
+
+  const range = getValidationIssueRangeInExcerpt(issue);
+  const start = excerptStart + range.start;
+  const end = excerptStart + range.end;
+  return `${text.slice(0, start)}${replacement}${text.slice(end)}`;
+};
+
 interface DocumentEditorProps {
   docType: string;
   docTitle: string;
@@ -282,11 +304,13 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     contentRef: false,
   });
   const [isSaved, setIsSaved] = useState(true);
+  const [appliedValidationIssueIds, setAppliedValidationIssueIds] = useState<string[]>([]);
   const effectiveValidationIssues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
+  const pendingValidationIssues = effectiveValidationIssues.filter((issue) => !appliedValidationIssueIds.includes(issue.id));
   const getValidationRuleIssueCount = (ruleId: string) => (
-    effectiveValidationIssues.filter((item) => item.type === ruleId).length
+    pendingValidationIssues.filter((item) => item.type === ruleId).length
   );
-  const validationMarkedContent = createValidationTextTokens(content, effectiveValidationIssues);
+  const validationMarkedContent = createValidationTextTokens(content, pendingValidationIssues);
 
   const toggleSection = (section: 'outline' | 'structure' | 'contentRef') => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -311,7 +335,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       hasFinalFile: finalFileReady,
       source: documentMode === "validation" ? 'validation' : 'writing',
       validationStatus: documentMode === "validation" ? '已修订' : undefined,
-      validationIssueCount: documentMode === "validation" ? effectiveValidationIssues.length : undefined,
+      validationIssueCount: documentMode === "validation" ? pendingValidationIssues.length : undefined,
       content,
       outline: outlineText,
     };
@@ -575,6 +599,22 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   };
 
   const handleRunValidation = () => {
+    setAppliedValidationIssueIds([]);
+    setIsSaved(false);
+  };
+
+  const handleApplyValidationIssue = (issue: DocumentValidationIssue) => {
+    setContent((current) => applyValidationIssueToText(current, issue));
+    setAppliedValidationIssueIds((current) => current.includes(issue.id) ? current : [...current, issue.id]);
+    setIsSaved(false);
+  };
+
+  const handleApplyAllValidationIssues = () => {
+    setContent((current) => pendingValidationIssues.reduce(
+      (nextContent, issue) => applyValidationIssueToText(nextContent, issue),
+      current,
+    ));
+    setAppliedValidationIssueIds(effectiveValidationIssues.map((issue) => issue.id));
     setIsSaved(false);
   };
 
@@ -611,20 +651,30 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       <div className="rounded-lg border border-gray-200 bg-white p-3">
         <div className="mb-3 text-sm font-medium text-gray-700">校验结果</div>
         <div className="scrollbar-hover max-h-72 space-y-2 overflow-y-auto pr-1">
-          {effectiveValidationIssues.map((issue) => (
-            <button
+          {pendingValidationIssues.map((issue) => (
+            <div
               key={issue.id}
-              type="button"
-              onClick={() => setContent((current) => current)}
-              className="w-full rounded-lg border border-gray-100 bg-gray-50 p-3 text-left transition-colors hover:border-theme-100 hover:bg-theme-50/50"
+              className="rounded-lg border border-gray-100 bg-gray-50 p-3 transition-colors hover:border-theme-100 hover:bg-theme-50/50"
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="rounded bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600">{issue.label}</span>
+                <button
+                  type="button"
+                  onClick={() => handleApplyValidationIssue(issue)}
+                  className="rounded-full bg-theme-50 px-2.5 py-1 text-xs font-semibold text-theme-700 transition-colors hover:bg-theme-100"
+                >
+                  应用
+                </button>
               </div>
               <div className="text-xs leading-5 text-gray-500">原文：{issue.excerpt}</div>
               <div className="mt-1 text-xs leading-5 text-theme-700">建议：{issue.suggestion}</div>
-            </button>
+            </div>
           ))}
+          {pendingValidationIssues.length === 0 && (
+            <div className="rounded-lg bg-gray-50 px-3 py-5 text-center text-xs text-gray-400">
+              已应用全部校验结果
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1144,8 +1194,16 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
           ) : documentMode === "validation" ? (
             <div className="space-y-2">
               <button
+                onClick={handleApplyAllValidationIssues}
+                disabled={pendingValidationIssues.length === 0}
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <CheckCircle2 size={15} />
+                应用所有校验结果
+              </button>
+              <button
                 onClick={handleRunValidation}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-theme-700"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 shadow-sm hover:bg-theme-100"
               >
                 <CheckSquare size={15} />
                 重新校验
