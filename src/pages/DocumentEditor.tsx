@@ -283,8 +283,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   });
   const [isSaved, setIsSaved] = useState(true);
   const effectiveValidationIssues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
-  const validationTypoCount = effectiveValidationIssues.filter((item) => item.type === "typo").length;
-  const validationPunctuationCount = effectiveValidationIssues.filter((item) => item.type === "punctuation").length;
+  const getValidationRuleIssueCount = (ruleId: string) => (
+    effectiveValidationIssues.filter((item) => item.type === ruleId).length
+  );
   const validationMarkedContent = createValidationTextTokens(content, effectiveValidationIssues);
 
   const toggleSection = (section: 'outline' | 'structure' | 'contentRef') => {
@@ -579,22 +580,8 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
 
   const validationCurrentPanel = (
     <div className="space-y-4">
-      <div className="rounded-lg border border-theme-100 bg-white p-3 shadow-sm">
-        <div className="mb-3 text-sm font-medium text-gray-800">校验流程</div>
-        <div className="grid grid-cols-2 gap-2 text-center text-xs">
-          <div className="rounded-lg bg-theme-50 px-2 py-2 font-semibold text-theme-700">上传公文</div>
-          <div className="rounded-lg bg-theme-600 px-2 py-2 font-semibold text-white">校验修订</div>
-        </div>
-        <p className="mt-3 text-xs leading-5 text-gray-500">
-          已完成错别字和标点使用校验，可在左侧正文中查看标注结果，保存后进入我的公文。
-        </p>
-      </div>
-
       <div className="rounded-lg border border-gray-200 bg-white p-3">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-sm font-medium text-gray-700">待校验文件</div>
-          <span className="rounded bg-theme-50 px-2 py-0.5 text-xs text-theme-700">已上传</span>
-        </div>
+        <div className="mb-3 text-sm font-medium text-gray-700">需校验</div>
         <div className="flex min-w-0 items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700">
           <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
           <span className="truncate">{validationFileName || editorAttachments[0] || `${requirementTitle || '未命名公文'}.docx`}</span>
@@ -606,9 +593,14 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         <div className="space-y-2">
           {documentValidationRules.map((rule) => (
             <div key={rule.id} className="rounded-lg bg-gray-50 p-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                <CheckSquare size={14} className="text-theme-600" />
-                {rule.title}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                  <CheckSquare size={14} className="text-theme-600" />
+                  {rule.title}
+                </div>
+                <span className="rounded-full bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700">
+                  {getValidationRuleIssueCount(rule.id)} 处
+                </span>
               </div>
               <p className="mt-1 text-xs leading-5 text-gray-500">{rule.desc}</p>
             </div>
@@ -617,20 +609,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       </div>
 
       <div className="rounded-lg border border-gray-200 bg-white p-3">
-        <div className="mb-3 flex items-center justify-between">
-          <div className="text-sm font-medium text-gray-700">校验结果</div>
-          <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600">{effectiveValidationIssues.length} 处问题</span>
-        </div>
-        <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
-          <div className="rounded-lg bg-theme-50 px-3 py-2 text-theme-700">
-            <div className="font-semibold">{validationTypoCount} 处</div>
-            <div className="mt-0.5 text-theme-500">错别字</div>
-          </div>
-          <div className="rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
-            <div className="font-semibold">{validationPunctuationCount} 处</div>
-            <div className="mt-0.5 text-amber-600">标点使用不正确</div>
-          </div>
-        </div>
+        <div className="mb-3 text-sm font-medium text-gray-700">校验结果</div>
         <div className="scrollbar-hover max-h-72 space-y-2 overflow-y-auto pr-1">
           {effectiveValidationIssues.map((issue) => (
             <button
