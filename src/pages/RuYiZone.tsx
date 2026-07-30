@@ -729,35 +729,57 @@ export default function RuYiZone() {
     </div>
   );
 
+  const getAttachmentMeta = (attachment: string) => {
+    const extension = attachment.split('.').pop()?.toUpperCase() || 'DOC';
+    const size = extension === 'PDF' ? '216.8 KB' : extension === 'XLSX' ? '12.48 KB' : '18.6 KB';
+    return `${extension}  ${size}`;
+  };
+
+  const renderValidationFileCard = (attachment: string) => (
+    <div
+      key={attachment}
+      className="relative flex min-w-0 max-w-[225px] items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2 pr-8 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+    >
+      <FileTextIcon size={34} className="flex-shrink-0 text-blue-500" strokeWidth={1.8} />
+      <div className="min-w-0">
+        <div className="truncate text-sm font-semibold leading-5 text-gray-900 dark:text-white">{attachment}</div>
+        <div className="text-xs leading-5 text-gray-500 dark:text-gray-400">{getAttachmentMeta(attachment)}</div>
+      </div>
+      <button
+        type="button"
+        onClick={() => handleRemoveAttachment(attachment)}
+        className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+        title="删除附件"
+      >
+        <X size={14} />
+      </button>
+    </div>
+  );
+
+  const renderDocumentValidationInputPanel = (compact = false) => (
+    <div className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+      {docAttachments.length > 0 && (
+        <div className="flex flex-wrap gap-2 border-b border-gray-100 px-3 py-3 dark:border-gray-700">
+          {docAttachments.map(renderValidationFileCard)}
+        </div>
+      )}
+      <div className={`${compact ? 'min-h-10 px-3 py-2' : 'min-h-[86px] px-3 py-4'} text-sm leading-6 text-gray-500 dark:text-gray-300`}>
+        {validationError ? (
+          <span className="text-red-500">{validationError}</span>
+        ) : (
+          <span>{docAttachments.length > 0 ? '请问您想要问什么呢？' : '请上传 Word/PDF 公文文件后开始校验'}</span>
+        )}
+      </div>
+    </div>
+  );
+
   const renderDocumentValidationSettings = () => (
     <div className="space-y-3 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
       <div>
-        <div className="text-sm font-semibold text-gray-900 dark:text-white">上传待校验公文</div>
+        <div className="text-sm font-semibold text-gray-900 dark:text-white">校验规则</div>
         <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">当前仅校验错别字、标点使用不正确</div>
       </div>
       {validationError && <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{validationError}</div>}
-      {docAttachments.length > 0 ? (
-        <div className="space-y-1.5">
-          {docAttachments.map((attachment) => (
-            <div key={attachment} className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:bg-gray-700/60 dark:text-gray-200">
-              <FileTextIcon size={15} className="flex-shrink-0 text-theme-500" />
-              <span className="truncate">{attachment}</span>
-              <button
-                type="button"
-                onClick={() => handleRemoveAttachment(attachment)}
-                className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 dark:hover:bg-gray-600"
-                title="删除附件"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-6 text-center text-xs text-gray-400 dark:border-gray-700 dark:bg-gray-700/40">
-          请上传 Word/PDF 公文文件后开始校验
-        </div>
-      )}
       <div className="text-xs leading-6 text-gray-500 dark:text-gray-400">
         <span className="font-medium text-gray-700 dark:text-gray-200">校验条件：</span>
         {documentValidationRules.map((rule, index) => (
@@ -1369,9 +1391,7 @@ export default function RuYiZone() {
                     {renderDocumentModeSwitch()}
                   </div>
                   {documentMode === "validation" ? (
-                    <div className="h-20 w-full rounded-lg bg-gray-50 px-3 py-3 text-sm leading-6 text-gray-500">
-                      系统将按已配置规则校验：错别字、标点使用不正确。请上传文件后点击发送开始校验。
-                    </div>
+                    renderDocumentValidationInputPanel()
                   ) : (
                     <textarea
                       value={input}
@@ -2274,9 +2294,7 @@ export default function RuYiZone() {
                         {renderDocumentModeSwitch()}
                       </div>
                       {documentMode === "validation" ? (
-                        <div className="min-h-[86px] w-full rounded-lg bg-gray-50 px-3 py-3 text-sm leading-6 text-gray-500 dark:bg-gray-700/50 dark:text-gray-300">
-                          系统将按已配置规则校验：错别字、标点使用不正确。请上传文件后点击发送开始校验。
-                        </div>
+                        renderDocumentValidationInputPanel()
                       ) : (
                         <textarea
                           value={input}
@@ -2623,9 +2641,7 @@ export default function RuYiZone() {
                       {renderDocumentModeSwitch()}
                     </div>
                     {documentMode === "validation" ? (
-                      <div className="min-h-10 w-full rounded-lg bg-gray-50 px-3 py-2 text-sm leading-6 text-gray-500 dark:bg-gray-700/50 dark:text-gray-300">
-                        按已配置规则校验：错别字、标点使用不正确。点击发送执行校验。
-                      </div>
+                      renderDocumentValidationInputPanel(true)
                     ) : (
                       <textarea
                         value={input}
