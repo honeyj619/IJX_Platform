@@ -123,7 +123,7 @@ export default function App() {
         <Route path="calendar" element={<Calendar />} />
         <Route path="business" element={<Business />} />
         <Route path="work-report" element={<WorkReport />} />
-        <Route path="work-items" element={<Navigate to="/web_client/enterprise?tab=work-items" replace />} />
+        <Route path="work-items" element={<Navigate to="/web_client/enterprise" replace />} />
         <Route path="okr" element={<OkrModule />} />
         <Route path="settings" element={<SettingsPage />} />
       </Routes>
@@ -150,7 +150,7 @@ export default function App() {
         <Route path="/calendar" element={<Navigate to="/web_client/calendar" replace />} />
         <Route path="/business" element={<Navigate to="/web_client/business" replace />} />
         <Route path="/work-report" element={<Navigate to="/web_client/work-report" replace />} />
-        <Route path="/work-items" element={<Navigate to="/web_client/enterprise?tab=work-items" replace />} />
+        <Route path="/work-items" element={<Navigate to="/web_client/enterprise" replace />} />
         <Route path="/okr" element={<Navigate to="/web_client/okr" replace />} />
         <Route path="/settings" element={<Navigate to="/web_client/settings" replace />} />
       </Routes>

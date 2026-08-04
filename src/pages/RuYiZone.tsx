@@ -915,7 +915,13 @@ export default function RuYiZone() {
       setDocContent(`校验文件：${fileName}`);
       setValidationReady(true);
       setInput("");
-      setShowEditor(false);
+      setHasConversation(false);
+      setDocumentReady(false);
+      setLegacyEditorStartsInRequirements(false);
+      setLegacyEditorStartsInOutline(false);
+      setEditorSessionId((current) => current + 1);
+      setEmbedEditorInRuyiZone(true);
+      setShowEditor(true);
       return;
     }
     if (activeTool === "公文") {

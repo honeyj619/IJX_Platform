@@ -2,7 +2,6 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
-import WorkItems from './WorkItems';
 import { getDemoPerson } from '../data/people';
 
 // 常用系统数据 - 与导航栏业务系统保持一致
@@ -42,11 +41,10 @@ const FILE_ITEMS = [
   { title: '关于发布《上海吉祥航空股份有限公司旅客遗失物品管理办法(R3)》的通知', isNew: true, date: '2026-05-21 14:45:35' },
 ];
 
-type PortalType = 'personal' | 'workItems' | 'enterprise';
+type PortalType = 'personal' | 'enterprise';
 
 function getPortalTypeFromSearch(search: string): PortalType {
   const tab = new URLSearchParams(search).get('tab');
-  if (tab === 'work-items') return 'workItems';
   if (tab === 'enterprise') return 'enterprise';
   return 'personal';
 }
@@ -68,7 +66,6 @@ export default function Enterprise() {
   const switchPortalType = (nextType: PortalType) => {
     setPortalType(nextType);
     let nextPath = '/web_client/enterprise';
-    if (nextType === 'workItems') nextPath = '/web_client/enterprise?tab=work-items';
     if (nextType === 'enterprise') nextPath = '/web_client/enterprise?tab=enterprise';
     navigate(nextPath, { replace: false });
   };
@@ -103,16 +100,6 @@ export default function Enterprise() {
             个人门户
           </button>
           <button
-            onClick={() => switchPortalType('workItems')}
-            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
-              portalType === 'workItems'
-                ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            事项协同
-          </button>
-          <button
             onClick={() => switchPortalType('enterprise')}
             className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
               portalType === 'enterprise'
@@ -133,10 +120,6 @@ export default function Enterprise() {
       {portalType === 'personal' ? (
         <div className="relative">
           <Personal_Enterprise />
-        </div>
-      ) : portalType === 'workItems' ? (
-        <div className="relative">
-          <WorkItems embedded />
         </div>
       ) : (
         <div className="relative">
@@ -550,6 +533,5 @@ function CalendarIcon() {
     </svg>
   );
 }
-
 
 

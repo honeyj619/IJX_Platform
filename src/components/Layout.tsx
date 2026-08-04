@@ -57,7 +57,7 @@ const pageTitles: Record<string, string> = {
   '/ekb': '知识库',
   '/business': '业务系统',
   '/work-report': '工作汇报',
-  '/work-items': '事项协同',
+  '/work-items': '工作门户',
   '/okr': 'OKR',
   '/ruyi-zone': '如意空间',
   '/agent-square': '智能体广场',

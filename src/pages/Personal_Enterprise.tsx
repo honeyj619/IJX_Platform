@@ -3,9 +3,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Minus, GripVertical } from 'lucide-react';
 import { Ticket, WalletCards, Plane, BadgeCheck, CheckSquare, ListTodo, BarChart3, UserPlus, Link2, Save, CircleDot, CircleCheckBig } from 'lucide-react';
-import { Landmark, Brain, Receipt, FileSignature, Calculator, Workflow, Users, LayoutDashboard, GraduationCap, Award, ClipboardCheck, Database, FileCheck, FolderKanban, Server, LineChart, Blocks, PieChart, Gauge, HardDrive, ShieldCheck, Truck, Hexagon, Shirt, Car, MessageSquare, Wrench, Fuel, BookMarked, Network, AlertTriangle, IterationCw, Shield, Clock, Zap, Volume2, Crown, Package, PackagePlus, Tag, Wallet, BarChart2, Activity, Globe, Smartphone, ShoppingBag, GitBranch, Phone, UserCheck, Repeat, Star, Briefcase, Sun, BookOpen } from 'lucide-react';
+import { Landmark, Brain, Receipt, FileSignature, Calculator, Workflow, Users, LayoutDashboard, GraduationCap, Award, ClipboardCheck, Database, FileCheck, FolderKanban, Server, LineChart, Blocks, PieChart, Gauge, HardDrive, ShieldCheck, Truck, Hexagon, Shirt, Car, MessageSquare, Wrench, Fuel, BookMarked, Network, AlertTriangle, IterationCw, Shield, Clock, Zap, Volume2, Crown, Package, PackagePlus, Tag, Wallet, BarChart2, Activity, Globe, Smartphone, ShoppingBag, GitBranch, Phone, UserCheck, Repeat, Star, Briefcase, Sun, BookOpen, Paperclip, Send, Smile, AtSign, ImageIcon } from 'lucide-react';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
-import { workItemPortalTodos, workItemTrackedItems } from '../data/workItems';
+import { workItems, WorkItem, WorkItemTask, WorkItemType } from '../data/workItems';
 
 // 定义卡片类型
 type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'officeApps' | 'duty' | 'courses';
@@ -30,7 +30,9 @@ type System = {
 };
 
 type StatKey = 'approval' | 'revenue' | 'todo' | 'progress';
-type DialogType = 'approvalConfig' | 'todoSources' | 'newTodo' | 'trackedItems' | 'commonFeatures' | 'cardRequest' | 'featureRequest' | null;
+type DialogType = 'approvalConfig' | 'todoSources' | 'newTodo' | 'createWorkItem' | 'commonFeatures' | 'cardRequest' | 'featureRequest' | null;
+type PersonalView = 'dashboard' | 'todo' | 'workItemBoard' | 'itemDetail' | 'taskCreate' | 'reportSubmit' | 'evaluationSubmit';
+type WorkItemReturnView = 'todo' | 'workItemBoard' | 'itemDetail';
 
 type StatConfig = {
   key: StatKey;
@@ -76,6 +78,53 @@ type TrackedItem = {
   progress: number;
   status: string;
   tasks: { name: string; owner: string; progress: number }[];
+};
+
+type MyTodoAction = {
+  id: string;
+  itemId: string;
+  title: string;
+  itemTitle: string;
+  source: string;
+  due: string;
+  status: string;
+  progress: number;
+  actionLabel: string;
+  kind: 'report' | 'task' | 'evaluation';
+  taskId?: string;
+};
+
+type TodoQueueEntry = {
+  id: string;
+  title: string;
+  source: string;
+  due: string;
+  status: string;
+  actionLabel: string;
+  group: string;
+  relation: string;
+  kind: 'report' | 'task' | 'evaluation' | 'external';
+  progress?: number;
+  itemId?: string;
+  taskId?: string;
+};
+
+type ProgressFilter = '全部' | '我负责' | '我参与' | '风险' | '待填报' | '已完成';
+type ProgressSort = '风险优先' | '截止时间' | '进度最低' | '最近更新';
+type DetailContext = {
+  returnView: 'todo' | 'workItemBoard';
+  focusTaskId?: string;
+  focusActionId?: string;
+};
+
+type WorkItemActivity = {
+  id: string;
+  type: '事项汇报' | '团队评价' | '任务' | '子任务' | '执行记录' | '数据来源' | '动态';
+  title: string;
+  actor: string;
+  time: string;
+  tone: string;
+  order: number;
 };
 
 type ApprovalProcess = {
@@ -213,21 +262,19 @@ const commonFeatures: CommonFeature[] = [
   { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', path: '/web_client/business' },
   { id: 'work-report', name: '工作汇报', icon: <FileText size={17} />, tone: 'bg-pink-50 text-pink-700', path: '/web_client/work-report' },
   { id: 'okr', name: 'OKR', icon: <Target size={17} />, tone: 'bg-blue-50 text-blue-700', path: '/web_client/okr' },
-  { id: 'work-items', name: '事项协同', icon: <ClipboardList size={17} />, tone: 'bg-rose-50 text-rose-700', path: '/web_client/enterprise?tab=work-items' },
   { id: 'discount-ticket', name: '优惠票', icon: <Ticket size={17} />, tone: 'bg-amber-50 text-amber-700', destination: '优惠票' },
   { id: 'salary', name: '我的薪酬', icon: <WalletCards size={17} />, tone: 'bg-emerald-50 text-emerald-700', destination: '我的薪酬' },
   { id: 'leave', name: '我的休假', icon: <Sun size={17} />, tone: 'bg-sky-50 text-sky-700', destination: '我的休假' },
   { id: 'certificate', name: '证明开具', icon: <BadgeCheck size={17} />, tone: 'bg-violet-50 text-violet-700', destination: '证明开具' },
 ];
 
-const defaultPinnedFeatureIds = ['flight-status', 'work-items', 'work-report', 'okr', 'discount-ticket', 'salary', 'leave', 'certificate'];
+const defaultPinnedFeatureIds = ['flight-status', 'work-report', 'okr', 'discount-ticket', 'salary', 'leave', 'certificate'];
 
 const defaultTodoSources: TodoSource[] = [
   { id: 'task', name: '任务', enabled: true },
   { id: 'report', name: '工作汇报', enabled: true },
   { id: 'okr', name: 'OKR填报', enabled: true },
   { id: 'project', name: '项目任务', enabled: false },
-  { id: 'workItem', name: '事项协同', enabled: true },
 ];
 
 const todoItems: TodoItem[] = [
@@ -235,7 +282,6 @@ const todoItems: TodoItem[] = [
   { id: 'todo-2', title: '补充二季度OKR进展', source: 'OKR填报', owner: MAIN_USER_NAME, due: '明天 12:00', status: '进行中', progress: 60 },
   { id: 'todo-3', title: '处理服务台权限审批', source: '任务', owner: MAIN_USER_NAME, due: '今天 17:30', status: '待处理', progress: 20 },
   { id: 'todo-4', title: '数据看板需求评审纪要确认', source: '项目任务', owner: MAIN_USER_NAME, due: '周五', status: '待确认', progress: 45 },
-  ...workItemPortalTodos,
 ];
 
 const approvalProcesses: ApprovalProcess[] = [
@@ -301,7 +347,6 @@ const revenueDetails = [
 ];
 
 const defaultTrackedItems: TrackedItem[] = [
-  ...workItemTrackedItems,
   {
     id: 'track-1',
     title: 'O1 客服知识库质检闭环',
@@ -337,6 +382,166 @@ const statToneMap = {
   blue: { border: 'border-blue-200', text: 'text-blue-700', bg: 'bg-blue-50', gradient: 'from-blue-600 to-blue-800', ring: 'ring-blue-100' },
 };
 
+function deriveMyTodoActions(items: WorkItem[]): MyTodoAction[] {
+  const actions: MyTodoAction[] = [];
+
+  items.forEach(item => {
+    if (item.members.includes(MAIN_USER_NAME) && item.status === '待填报') {
+      actions.push({
+        id: `report-${item.id}`,
+        itemId: item.id,
+        title: `提交“${item.title}”事项汇报`,
+        itemTitle: item.title,
+        source: '事项',
+        due: item.deadline,
+        status: '待填报',
+        progress: item.progress,
+        actionLabel: '提交事项汇报',
+        kind: 'report',
+      });
+    }
+
+    item.tasks
+      .filter(task => task.assignee === MAIN_USER_NAME && task.status !== '已完成')
+      .forEach(task => {
+        actions.push({
+          id: `task-${task.id}`,
+          itemId: item.id,
+          taskId: task.id,
+          title: task.title,
+          itemTitle: item.title,
+          source: '事项',
+          due: task.due,
+          status: task.status,
+          progress: task.progress,
+          actionLabel: task.status === '延期' ? '处理延期' : '去处理',
+          kind: 'task',
+        });
+      });
+
+    if (
+      item.members.includes(MAIN_USER_NAME) &&
+      !item.comments.some(comment => comment.author === MAIN_USER_NAME && comment.targetType === '事项' && comment.targetId === item.id)
+    ) {
+      actions.push({
+        id: `eval-${item.id}`,
+        itemId: item.id,
+        title: `评价“${item.title}”本期推进`,
+        itemTitle: item.title,
+        source: '事项',
+        due: item.reportCycle,
+        status: '待评价',
+        progress: item.progress,
+        actionLabel: '写评价',
+        kind: 'evaluation',
+      });
+    }
+  });
+
+  return actions.sort((a, b) => {
+    const score = (action: MyTodoAction) => (action.status.includes('延期') ? 0 : action.due.includes('今天') ? 1 : 2);
+    return score(a) - score(b);
+  });
+}
+
+function deriveMyTrackedWorkItems(items: WorkItem[]) {
+  return items
+    .filter(item => item.owner === MAIN_USER_NAME || item.members.includes(MAIN_USER_NAME))
+    .sort((a, b) => {
+      const riskScore = { 风险: 0, 关注: 1, 正常: 2 } as Record<WorkItem['riskLevel'], number>;
+      return riskScore[a.riskLevel] - riskScore[b.riskLevel] || b.progress - a.progress;
+    });
+}
+
+function getRiskTone(riskLevel: WorkItem['riskLevel']) {
+  if (riskLevel === '风险') return 'bg-red-50 text-red-700 border-red-100';
+  if (riskLevel === '关注') return 'bg-amber-50 text-amber-700 border-amber-100';
+  return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+}
+
+function getMyWorkItemRole(item: WorkItem) {
+  if (item.owner === MAIN_USER_NAME) return '负责';
+  if (item.members.includes(MAIN_USER_NAME)) return '参与';
+  return '关注';
+}
+
+function getWorkItemActivities(item: WorkItem): WorkItemActivity[] {
+  const taskById = new Map(item.tasks.map(task => [task.id, task.title]));
+  const reportActivities = item.reports.map((report, index) => ({
+    id: report.id,
+    type: '事项汇报' as const,
+    title: `${report.source}：${report.thisPeriod}`,
+    actor: report.member,
+    time: report.submittedAt,
+    tone: 'bg-pink-50 text-pink-700',
+    order: 500 - index,
+  }));
+  const commentActivities = item.comments.map((comment, index) => ({
+    id: comment.id,
+    type: '团队评价' as const,
+    title: `${comment.attitude}：${comment.content}`,
+    actor: comment.author,
+    time: comment.createdAt,
+    tone: 'bg-blue-50 text-blue-700',
+    order: 600 - index,
+  }));
+  const executionActivities = item.tasks.flatMap((task, taskIndex) => task.executionReports.map((report, reportIndex) => ({
+    id: report.id,
+    type: '执行记录' as const,
+    title: `${task.title}：${report.summary}`,
+    actor: report.reporter,
+    time: report.submittedAt,
+    tone: report.risk && report.risk !== '暂无' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700',
+    order: 700 - taskIndex * 10 - reportIndex,
+  })));
+  const taskActivities = item.tasks.map((task, index) => ({
+    id: task.id,
+    type: task.parentId ? '子任务' as const : '任务' as const,
+    title: task.parentId ? `${taskById.get(task.parentId) || '父任务'} / ${task.title}` : task.title,
+    actor: task.owner,
+    time: task.due,
+    tone: task.parentId ? 'bg-violet-50 text-violet-700' : 'bg-amber-50 text-amber-700',
+    order: 200 - index,
+  }));
+  const timelineActivities = item.timeline.map((time, index) => ({
+    id: time.id,
+    type: '动态' as const,
+    title: time.action,
+    actor: time.actor,
+    time: time.time,
+    tone: 'bg-gray-100 text-gray-700',
+    order: 400 - index,
+  }));
+  const sourceActivities = item.sourceRefs.map((source, index) => ({
+    id: source.id,
+    type: '数据来源' as const,
+    title: `${source.type}：${source.title}`,
+    actor: source.status,
+    time: item.reportCycle,
+    tone: source.status === '已接入' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700',
+    order: 100 - index,
+  }));
+
+  return [...executionActivities, ...commentActivities, ...reportActivities, ...timelineActivities, ...taskActivities, ...sourceActivities]
+    .sort((a, b) => b.order - a.order);
+}
+
+function getWorkItemCollaborationStats(item: WorkItem) {
+  return {
+    tasks: item.tasks.filter(task => !task.parentId).length,
+    subtasks: item.tasks.filter(task => task.parentId).length,
+    reports: item.reports.length,
+    comments: item.comments.length,
+    unfinished: item.tasks.filter(task => task.status !== '已完成').length,
+    sources: item.sourceRefs.length,
+    executionReports: item.tasks.reduce((sum, task) => sum + task.executionReports.length, 0),
+  };
+}
+
+function getLatestWorkItemActivity(item: WorkItem) {
+  return getWorkItemActivities(item)[0]?.title || item.latestReport;
+}
+
 export default function Personal_Enterprise() {
   const navigate = useNavigate();
   // 卡片配置状态
@@ -358,6 +563,11 @@ export default function Personal_Enterprise() {
   const [showAddAppModal, setShowAddAppModal] = useState(false);
   const [activeStatKey, setActiveStatKey] = useState<StatKey>('approval');
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
+  const [personalView, setPersonalView] = useState<PersonalView>('dashboard');
+  const [workItemList, setWorkItemList] = useState<WorkItem[]>(workItems);
+  const [selectedWorkItemId, setSelectedWorkItemId] = useState(workItems[0]?.id ?? '');
+  const [detailContext, setDetailContext] = useState<DetailContext>({ returnView: 'workItemBoard' });
+  const [workItemFlowReturnView, setWorkItemFlowReturnView] = useState<WorkItemReturnView>('workItemBoard');
   const [layoutCategory, setLayoutCategory] = useState<'data' | 'app'>('data');
   const [appSearch, setAppSearch] = useState('');
   const [activeSystemCategory, setActiveSystemCategory] = useState(systemCategories[0]);
@@ -406,6 +616,26 @@ export default function Personal_Enterprise() {
       { name: '同步任务进展', owner: '协作人', progress: '40' },
     ],
   });
+  const [workItemCreateDraft, setWorkItemCreateDraft] = useState({
+    title: '',
+    description: '',
+    type: '专项推进' as WorkItemType,
+    deadline: '2026-08-15',
+  });
+  const [workItemReportDraft, setWorkItemReportDraft] = useState({
+    thisPeriod: '',
+    nextPlan: '',
+    risk: '',
+    progress: 70,
+  });
+  const [workItemReportTaskId, setWorkItemReportTaskId] = useState<string | undefined>(undefined);
+  const [workItemTaskDraft, setWorkItemTaskDraft] = useState({
+    title: '',
+    owner: MAIN_USER_NAME,
+    due: '',
+  });
+  const [workItemCommentDraft, setWorkItemCommentDraft] = useState('');
+  const [workItemTaskParentId, setWorkItemTaskParentId] = useState<string | undefined>(undefined);
   const [todoSources, setTodoSources] = useState<TodoSource[]>(() => {
     const saved = localStorage.getItem('dashboardTodoSources');
     if (!saved) return defaultTodoSources;
@@ -597,11 +827,20 @@ export default function Personal_Enterprise() {
     setSelectedSystems(prev => prev.includes(id) ? prev : [...prev, id]);
   }, []);
 
-  const visibleStats = dashboardStats.filter(item => !hiddenStatKeys.includes(item.key));
-  const activeStat = visibleStats.find(item => item.key === activeStatKey) || visibleStats[0] || dashboardStats[0];
-  const activeTone = statToneMap[activeStat.color];
   const enabledTodoSourceNames = todoSources.filter(source => source.enabled).map(source => source.name);
   const displayedTodoItems = [...todoItems, ...customTodos].filter(item => enabledTodoSourceNames.includes(item.source));
+  const myTodoActions = deriveMyTodoActions(workItemList);
+  const myTrackedWorkItems = deriveMyTrackedWorkItems(workItemList);
+  const selectedWorkItem = workItemList.find(item => item.id === selectedWorkItemId) || myTrackedWorkItems[0] || workItemList[0];
+  const visibleStats = dashboardStats
+    .map(stat => {
+      if (stat.key === 'todo') return { ...stat, count: String(displayedTodoItems.length + myTodoActions.length), summary: '我的待办' };
+      if (stat.key === 'progress') return { ...stat, count: String(myTrackedWorkItems.length), summary: '事项协同看板' };
+      return stat;
+    })
+    .filter(item => !hiddenStatKeys.includes(item.key));
+  const activeStat = visibleStats.find(item => item.key === activeStatKey) || visibleStats[0] || dashboardStats[0];
+  const activeTone = statToneMap[activeStat.color];
   const pinnedFeatures = commonFeatures.filter(feature => pinnedFeatureIds.includes(feature.id));
   const activeDuty = dutySchedule[dutyDayOffset];
   const displayedDutyItems = activeDuty.items.filter(item => {
@@ -659,11 +898,32 @@ export default function Personal_Enterprise() {
       return;
     }
     if (key === 'progress') {
-      setActiveDialog('trackedItems');
+      setPersonalView('workItemBoard');
       return;
     }
     showJumpTip('业务收入配置');
   }, [showJumpTip]);
+
+  const handleStatSelect = useCallback((key: StatKey) => {
+    setMenuId(null);
+    if (key === 'todo') {
+      setActiveStatKey(key);
+      setPersonalView('todo');
+      return;
+    }
+    if (key === 'progress') {
+      setActiveStatKey(key);
+      setPersonalView('workItemBoard');
+      return;
+    }
+    setActiveStatKey(key);
+    setPersonalView('dashboard');
+  }, []);
+
+  const backToDashboard = useCallback(() => {
+    setPersonalView('dashboard');
+    setActiveStatKey(current => current === 'todo' || current === 'progress' ? 'approval' : current);
+  }, []);
 
   const handleFeatureClick = useCallback((feature: CommonFeature) => {
     if (feature.path) {
@@ -741,6 +1001,217 @@ export default function Personal_Enterprise() {
     setActiveDialog(null);
   }, [newTodoDraft]);
 
+  const openWorkItemDetail = useCallback((itemId: string, context: DetailContext = { returnView: 'workItemBoard' }) => {
+    setSelectedWorkItemId(itemId);
+    setDetailContext(context);
+    setPersonalView('itemDetail');
+  }, []);
+
+  const openWorkItemReport = useCallback((itemId: string, returnView: WorkItemReturnView = 'workItemBoard', taskId?: string) => {
+    const item = workItemList.find(candidate => candidate.id === itemId);
+    if (!item) return;
+    setSelectedWorkItemId(itemId);
+    setWorkItemFlowReturnView(returnView);
+    setWorkItemReportTaskId(taskId);
+    setWorkItemReportDraft({
+      thisPeriod: '',
+      nextPlan: '',
+      risk: '',
+      progress: Math.min(100, Math.max(item.progress, 70)),
+    });
+    setPersonalView('reportSubmit');
+  }, [workItemList]);
+
+  const openWorkItemTask = useCallback((itemId: string, parentTaskId?: string, returnView: WorkItemReturnView = 'workItemBoard') => {
+    const item = workItemList.find(candidate => candidate.id === itemId);
+    const parentTask = parentTaskId ? item?.tasks.find(task => task.id === parentTaskId) : undefined;
+    const rootParentTaskId = parentTask?.parentId || parentTaskId;
+    setSelectedWorkItemId(itemId);
+    setWorkItemFlowReturnView(returnView);
+    setWorkItemTaskParentId(rootParentTaskId);
+    setWorkItemTaskDraft({ title: '', owner: MAIN_USER_NAME, due: '' });
+    setPersonalView('taskCreate');
+  }, [workItemList]);
+
+  const openWorkItemComment = useCallback((itemId: string, returnView: WorkItemReturnView = 'workItemBoard') => {
+    setSelectedWorkItemId(itemId);
+    setWorkItemFlowReturnView(returnView);
+    setWorkItemCommentDraft('');
+    setPersonalView('evaluationSubmit');
+  }, []);
+
+  const handleCreateWorkItem = useCallback(() => {
+    const title = workItemCreateDraft.title.trim();
+    if (!title) {
+      showToast('请填写事项名称');
+      return;
+    }
+
+    const nextItem: WorkItem = {
+      id: `wi-personal-${Date.now()}`,
+      title,
+      type: workItemCreateDraft.type,
+      status: '推进中',
+      owner: MAIN_USER_NAME,
+      assistant: MAIN_USER_NAME,
+      members: [MAIN_USER_NAME],
+      teamType: '项目组',
+      teamName: '我关注的项目组',
+      reportCycle: '本周',
+      deadline: workItemCreateDraft.deadline || '待确认',
+      progress: 10,
+      riskLevel: '正常',
+      description: workItemCreateDraft.description.trim() || '由个人门户创建的跟进事项。',
+      okrLinks: [],
+      sourceRefs: [
+        { id: `src-${Date.now()}`, type: '事项填报', title: '事项门户创建', status: '已接入' },
+      ],
+      latestReport: '事项已创建，等待补充首阶段进展。',
+      tasks: [],
+      reports: [],
+      comments: [],
+      timeline: [
+        { id: `time-${Date.now()}`, actor: MAIN_USER_NAME, action: '创建事项', time: '刚刚' },
+      ],
+    };
+    setWorkItemList(prev => [nextItem, ...prev]);
+    setSelectedWorkItemId(nextItem.id);
+    setPersonalView('itemDetail');
+    setWorkItemCreateDraft({ title: '', description: '', type: '专项推进', deadline: '2026-08-15' });
+    setActiveDialog(null);
+    showToast('事项已创建');
+  }, [showToast, workItemCreateDraft]);
+
+  const handleSubmitWorkItemReport = useCallback(() => {
+    if (!selectedWorkItem) return;
+    const thisPeriod = workItemReportDraft.thisPeriod.trim();
+    if (!thisPeriod) {
+      showToast('请填写本阶段完成事项');
+      return;
+    }
+    const riskText = workItemReportDraft.risk.trim();
+    const hasRisk = Boolean(riskText && riskText !== '暂无');
+    const now = '刚刚';
+    const relatedTaskIds = workItemReportTaskId
+      ? [workItemReportTaskId]
+      : selectedWorkItem.tasks.filter(task => task.assignee === MAIN_USER_NAME && task.status !== '已完成').map(task => task.id).slice(0, 2);
+    setWorkItemList(prev => prev.map(item => item.id === selectedWorkItem.id ? {
+      ...item,
+      progress: workItemReportDraft.progress,
+      status: hasRisk ? '风险中' : workItemReportDraft.progress >= 100 ? '已完成' : '推进中',
+      riskLevel: hasRisk ? '关注' : item.riskLevel === '风险' ? '关注' : '正常',
+      latestReport: thisPeriod,
+      tasks: item.tasks.map(task => relatedTaskIds.includes(task.id) ? {
+        ...task,
+        progress: workItemReportDraft.progress,
+        status: workItemReportDraft.progress >= 100 ? '已完成' : hasRisk ? '延期' : '进行中',
+        executionReports: [
+          {
+            id: `exec-${Date.now()}-${task.id}`,
+            reporter: MAIN_USER_NAME,
+            submittedAt: now,
+            progress: workItemReportDraft.progress,
+            summary: thisPeriod,
+            risk: riskText || '暂无',
+          },
+          ...task.executionReports,
+        ],
+      } : task),
+      reports: [
+        {
+          id: `report-${Date.now()}`,
+          source: '事项填报',
+          teamName: item.teamName,
+          cycle: item.reportCycle,
+          relatedTaskIds,
+          member: MAIN_USER_NAME,
+          submittedAt: now,
+          thisPeriod,
+          nextPlan: workItemReportDraft.nextPlan.trim() || '继续推进事项闭环。',
+          risk: riskText || '暂无',
+        },
+        ...item.reports,
+      ],
+      timeline: [
+        { id: `time-report-${Date.now()}`, actor: MAIN_USER_NAME, action: `提交事项汇报，进度至 ${workItemReportDraft.progress}%`, time: now },
+        ...item.timeline,
+      ],
+    } : item));
+    setWorkItemReportTaskId(undefined);
+    setPersonalView(workItemFlowReturnView);
+    showToast('事项汇报已提交');
+  }, [selectedWorkItem, showToast, workItemFlowReturnView, workItemReportDraft, workItemReportTaskId]);
+
+  const handleCreateWorkItemTask = useCallback(() => {
+    if (!selectedWorkItem) return;
+    const title = workItemTaskDraft.title.trim();
+    if (!title) {
+      showToast('请填写任务名称');
+      return;
+    }
+    const parentTask = workItemTaskParentId ? selectedWorkItem.tasks.find(task => task.id === workItemTaskParentId) : undefined;
+    const rootParentTaskId = parentTask?.parentId || workItemTaskParentId;
+    const nextTask: WorkItemTask = {
+      id: `task-${Date.now()}`,
+      parentId: rootParentTaskId,
+      title,
+      assigner: MAIN_USER_NAME,
+      assignee: workItemTaskDraft.owner.trim() || MAIN_USER_NAME,
+      owner: workItemTaskDraft.owner.trim() || MAIN_USER_NAME,
+      due: workItemTaskDraft.due.trim() || '待确认',
+      status: '未开始',
+      progress: 0,
+      executionReports: [],
+    };
+    setWorkItemList(prev => prev.map(item => item.id === selectedWorkItem.id ? {
+      ...item,
+      tasks: [nextTask, ...item.tasks],
+      timeline: [
+        { id: `time-task-${Date.now()}`, actor: MAIN_USER_NAME, action: `${rootParentTaskId ? '创建子任务' : '指派任务'}：${nextTask.title}`, time: '刚刚' },
+        ...item.timeline,
+      ],
+    } : item));
+    setWorkItemTaskParentId(undefined);
+    setPersonalView(workItemFlowReturnView);
+    showToast(rootParentTaskId ? '子任务已创建' : '任务已指派');
+  }, [selectedWorkItem, showToast, workItemFlowReturnView, workItemTaskDraft, workItemTaskParentId]);
+
+  const handleCreateWorkItemComment = useCallback(() => {
+    if (!selectedWorkItem) return;
+    const content = workItemCommentDraft.trim();
+    if (!content) {
+      showToast('请填写评价内容');
+      return;
+    }
+    const now = '刚刚';
+    setWorkItemList(prev => prev.map(item => item.id === selectedWorkItem.id ? {
+      ...item,
+      comments: [
+        { id: `comment-${Date.now()}`, author: MAIN_USER_NAME, targetType: '事项', targetId: item.id, attitude: '建议', content, createdAt: now },
+        ...item.comments,
+      ],
+      timeline: [
+        { id: `time-comment-${Date.now()}`, actor: MAIN_USER_NAME, action: '提交团队评价', time: now },
+        ...item.timeline,
+      ],
+    } : item));
+    setWorkItemCommentDraft('');
+    setPersonalView(workItemFlowReturnView);
+    showToast('评价已提交');
+  }, [selectedWorkItem, showToast, workItemCommentDraft, workItemFlowReturnView]);
+
+  const handleCompleteWorkItemTask = useCallback((itemId: string, taskId: string) => {
+    setWorkItemList(prev => prev.map(item => item.id === itemId ? {
+      ...item,
+      tasks: item.tasks.map(task => task.id === taskId ? { ...task, status: '已完成', progress: 100 } : task),
+      timeline: [
+        { id: `time-done-${Date.now()}`, actor: MAIN_USER_NAME, action: '标记任务完成', time: '刚刚' },
+        ...item.timeline,
+      ],
+    } : item));
+    showToast('已标记完成');
+  }, [showToast]);
+
   const hideStat = useCallback((key: StatKey) => {
     setHiddenStatKeys(prev => prev.includes(key) ? prev : [...prev, key]);
     if (activeStatKey === key) {
@@ -775,7 +1246,7 @@ export default function Personal_Enterprise() {
                 stat={stat}
                 active={activeStatKey === stat.key}
                 menuId={menuId}
-                onSelect={setActiveStatKey}
+                onSelect={handleStatSelect}
                 onEdit={handleStatEdit}
                 onHide={hideStat}
                 onToggleMenu={toggleMenu}
@@ -1089,26 +1560,98 @@ export default function Personal_Enterprise() {
 
       {/* 主内容区域 */}
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-flow-row-dense grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-12" onDragOver={handlePortalGridDragOver} onDrop={handlePortalGridDrop}>
-          {visibleCards.map(card => (
-            <PortalCardShell
-              key={card.id}
-              card={card}
-              dragging={draggingCardId === card.id}
-              dragOver={dragOverCardId === card.id && draggingCardId !== card.id}
-              onDragStart={(id) => {
-                setDraggingCardId(id);
-                setDragOverCardId(null);
-              }}
-              onDragEnd={() => {
-                setDraggingCardId(null);
-                setDragOverCardId(null);
-              }}
-            >
-              {renderPortalCard(card)}
-            </PortalCardShell>
-          ))}
-        </div>
+        {personalView === 'dashboard' && (
+          <div className="grid grid-flow-row-dense grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-12" onDragOver={handlePortalGridDragOver} onDrop={handlePortalGridDrop}>
+            {visibleCards.map(card => (
+              <PortalCardShell
+                key={card.id}
+                card={card}
+                dragging={draggingCardId === card.id}
+                dragOver={dragOverCardId === card.id && draggingCardId !== card.id}
+                onDragStart={(id) => {
+                  setDraggingCardId(id);
+                  setDragOverCardId(null);
+                }}
+                onDragEnd={() => {
+                  setDraggingCardId(null);
+                  setDragOverCardId(null);
+                }}
+              >
+                {renderPortalCard(card)}
+              </PortalCardShell>
+            ))}
+          </div>
+        )}
+        {personalView === 'todo' && (
+          <MyTodoView
+            actions={myTodoActions}
+            otherTodos={displayedTodoItems}
+            onBack={backToDashboard}
+            onCreateItem={() => setActiveDialog('createWorkItem')}
+            onOpenItem={(itemId, context) => openWorkItemDetail(itemId, context)}
+            onSubmitReport={(itemId, taskId) => openWorkItemReport(itemId, 'todo', taskId)}
+            onAssignTask={(itemId) => openWorkItemTask(itemId, undefined, 'todo')}
+            onEvaluate={(itemId) => openWorkItemComment(itemId, 'todo')}
+            onCompleteTask={handleCompleteWorkItemTask}
+            onOpenExternal={showJumpTip}
+          />
+        )}
+        {personalView === 'workItemBoard' && (
+          <WorkItemBoardView
+            items={myTrackedWorkItems}
+            onBack={backToDashboard}
+            onCreateItem={() => setActiveDialog('createWorkItem')}
+            onOpenItem={(itemId) => openWorkItemDetail(itemId, { returnView: 'workItemBoard' })}
+            onSubmitReport={(itemId) => openWorkItemReport(itemId, 'workItemBoard')}
+            onAssignTask={(itemId) => openWorkItemTask(itemId, undefined, 'workItemBoard')}
+            onCreateSubtask={(itemId, taskId) => openWorkItemTask(itemId, taskId, 'workItemBoard')}
+            onComment={(itemId) => openWorkItemComment(itemId, 'workItemBoard')}
+            onWeeklyReport={() => navigate('/web_client/work-report')}
+          />
+        )}
+        {personalView === 'itemDetail' && selectedWorkItem && (
+          <MyItemDetailView
+            item={selectedWorkItem}
+            onBack={() => setPersonalView(detailContext.returnView)}
+            focusTaskId={detailContext.focusTaskId}
+            focusActionId={detailContext.focusActionId}
+            onSubmitReport={() => openWorkItemReport(selectedWorkItem.id, 'itemDetail')}
+            onAssignTask={() => openWorkItemTask(selectedWorkItem.id, undefined, 'itemDetail')}
+            onComment={() => openWorkItemComment(selectedWorkItem.id, 'itemDetail')}
+            onCreateSubtask={(taskId) => openWorkItemTask(selectedWorkItem.id, taskId, 'itemDetail')}
+            onCompleteTask={(taskId) => handleCompleteWorkItemTask(selectedWorkItem.id, taskId)}
+          />
+        )}
+        {personalView === 'taskCreate' && selectedWorkItem && (
+          <WorkItemTaskCreateView
+            item={selectedWorkItem}
+            parentTaskId={workItemTaskParentId}
+            draft={workItemTaskDraft}
+            onBack={() => setPersonalView(workItemFlowReturnView)}
+            onDraftChange={setWorkItemTaskDraft}
+            onSubmit={handleCreateWorkItemTask}
+          />
+        )}
+        {personalView === 'reportSubmit' && selectedWorkItem && (
+          <WorkItemReportSubmitView
+            item={selectedWorkItem}
+            taskId={workItemReportTaskId}
+            draft={workItemReportDraft}
+            onBack={() => setPersonalView(workItemFlowReturnView)}
+            onDraftChange={setWorkItemReportDraft}
+            onWeeklyReport={() => navigate('/web_client/work-report')}
+            onSubmit={handleSubmitWorkItemReport}
+          />
+        )}
+        {personalView === 'evaluationSubmit' && selectedWorkItem && (
+          <WorkItemEvaluationSubmitView
+            item={selectedWorkItem}
+            value={workItemCommentDraft}
+            onBack={() => setPersonalView(workItemFlowReturnView)}
+            onChange={setWorkItemCommentDraft}
+            onSubmit={handleCreateWorkItemComment}
+          />
+        )}
       </div>
       {/* 常用应用管理侧栏 */}
       {showCommonAppsPanel && (
@@ -1433,53 +1976,47 @@ export default function Personal_Enterprise() {
         </div>
       )}
 
-      {/* 关注事项配置 */}
-      {activeDialog === 'trackedItems' && (
+      {/* 新建事项 */}
+      {activeDialog === 'createWorkItem' && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
-          <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">编辑关注事项</h2>
-                <p className="mt-1 text-sm text-gray-500">关注事项仅支持从 OKR 或项目进展中选择</p>
+                <h2 className="text-lg font-bold text-gray-900">新建事项</h2>
+                <p className="mt-1 text-sm text-gray-500">在个人门户内创建需要持续跟进的事项</p>
               </div>
               <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
                 <X size={20} />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
-              <div className="mb-5 grid gap-3 sm:grid-cols-2">
-                <button onClick={addOkrTrackedItem} className="flex items-center gap-3 rounded-xl border border-pink-100 bg-pink-50/50 px-4 py-4 text-left hover:border-pink-200">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-pink-700 shadow-sm">
-                    <Link2 size={18} />
-                  </span>
-                  <span>
-                    <span className="block font-semibold text-gray-900">从 OKR 关联</span>
-                    <span className="mt-1 block text-xs text-gray-500">进度与选择的 OKR 保持一致</span>
-                  </span>
-                </button>
-                <button onClick={addProjectTrackedItem} className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50/50 px-4 py-4 text-left hover:border-blue-200">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-blue-700 shadow-sm">
-                    <Layers size={18} />
-                  </span>
-                  <span>
-                    <span className="block font-semibold text-gray-900">从项目进展选择</span>
-                    <span className="mt-1 block text-xs text-gray-500">进度来自项目任务同步</span>
-                  </span>
-                </button>
-              </div>
-              <div className="mb-5 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500">
-                运维管理平台：暂无数据，不支持选中
-              </div>
-              <div className="space-y-3">
-                {trackedItems.map(item => (
-                  <TrackedItemCard key={item.id} item={item} editable />
-                ))}
-              </div>
+            <div className="grid gap-4 p-6 sm:grid-cols-2">
+              <label className="sm:col-span-2">
+                <span className="text-sm font-medium text-gray-700">事项名称</span>
+                <input value={workItemCreateDraft.title} onChange={(event) => setWorkItemCreateDraft(prev => ({ ...prev, title: event.target.value }))} className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400" placeholder="请输入事项名称" />
+              </label>
+              <label>
+                <span className="text-sm font-medium text-gray-700">事项类型</span>
+                <select value={workItemCreateDraft.type} onChange={(event) => setWorkItemCreateDraft(prev => ({ ...prev, type: event.target.value as WorkItemType }))} className="mt-2 h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-pink-400">
+                  {(['领导交办', '专项推进', '跨部门协同', '项目事项'] as WorkItemType[]).map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span className="text-sm font-medium text-gray-700">截止时间</span>
+                <input value={workItemCreateDraft.deadline} onChange={(event) => setWorkItemCreateDraft(prev => ({ ...prev, deadline: event.target.value }))} className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400" />
+              </label>
+              <label className="sm:col-span-2">
+                <span className="text-sm font-medium text-gray-700">事项说明</span>
+                <textarea value={workItemCreateDraft.description} onChange={(event) => setWorkItemCreateDraft(prev => ({ ...prev, description: event.target.value }))} className="mt-2 min-h-28 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400" placeholder="补充背景、目标和协作要求" />
+              </label>
             </div>
-            <div className="flex justify-end border-t border-gray-100 bg-gray-50 px-6 py-4">
-              <button onClick={() => setActiveDialog(null)} className="inline-flex items-center gap-2 rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
-                <Save size={16} />
-                保存
+            <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg border border-gray-200 bg-white px-5 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                取消
+              </button>
+              <button onClick={handleCreateWorkItem} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
+                创建
               </button>
             </div>
           </div>
@@ -1689,6 +2226,1087 @@ export default function Personal_Enterprise() {
         }
       `}</style>
     </div>
+  );
+}
+
+function PersonalViewHeader({ title, subtitle, onBack, action }: {
+  title: string;
+  subtitle: string;
+  onBack: () => void;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm hover:border-pink-200 hover:text-pink-700" title="返回">
+          <ChevronRight size={18} className="rotate-180" />
+        </button>
+        <div>
+          <h2 className="text-2xl font-bold text-gray-950">{title}</h2>
+          <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function MyTodoView({ actions, otherTodos, onBack, onCreateItem, onOpenItem, onSubmitReport, onAssignTask, onEvaluate, onCompleteTask, onOpenExternal }: {
+  actions: MyTodoAction[];
+  otherTodos: TodoItem[];
+  onBack: () => void;
+  onCreateItem: () => void;
+  onOpenItem: (itemId: string, context?: DetailContext) => void;
+  onSubmitReport: (itemId: string, taskId?: string) => void;
+  onAssignTask: (itemId: string) => void;
+  onEvaluate: (itemId: string) => void;
+  onCompleteTask: (itemId: string, taskId: string) => void;
+  onOpenExternal: (destination: string) => void;
+}) {
+  const queue: TodoQueueEntry[] = [
+    ...actions.map(action => ({
+      id: action.id,
+      title: action.title,
+      source: action.source,
+      due: action.due,
+      status: action.status,
+      actionLabel: action.actionLabel,
+      group: action.status.includes('延期') ? '延期优先' : action.due.includes('今天') ? '今日到期' : action.kind === 'report' ? '待填报' : action.kind === 'evaluation' ? '待评价' : '待处理',
+      relation: action.itemTitle,
+      kind: action.kind,
+      progress: action.progress,
+      itemId: action.itemId,
+      taskId: action.taskId,
+    } as TodoQueueEntry)),
+    ...otherTodos.map(item => ({
+      id: item.id,
+      title: item.title,
+      source: item.source,
+      due: item.due,
+      status: item.status,
+      actionLabel: item.status.includes('待确认') ? '去确认' : '去处理',
+      group: item.status.includes('待确认') ? '待确认' : '其它来源',
+      relation: item.source,
+      kind: 'external' as const,
+      progress: item.progress,
+    })),
+  ].sort((a, b) => {
+    const order = ['延期优先', '今日到期', '待填报', '待评价', '待确认', '待处理', '其它来源'];
+    return order.indexOf(a.group) - order.indexOf(b.group);
+  });
+  const [selectedTodoId, setSelectedTodoId] = useState(queue[0]?.id ?? '');
+  const selected = queue.find(item => item.id === selectedTodoId) || queue[0];
+  const stats = [
+    { label: '今日到期', value: queue.filter(item => item.due.includes('今天')).length, tone: 'text-amber-700 bg-amber-50' },
+    { label: '延期', value: queue.filter(item => item.status.includes('延期')).length, tone: 'text-red-700 bg-red-50' },
+    { label: '待填报', value: queue.filter(item => item.kind === 'report').length, tone: 'text-pink-700 bg-pink-50' },
+    { label: '其它来源', value: queue.filter(item => item.kind === 'external').length, tone: 'text-gray-700 bg-gray-100' },
+  ];
+
+  return (
+    <section>
+      <PersonalViewHeader
+        title="我的待办"
+        subtitle="收件箱式处理台，先判断轻重缓急，再在右侧完成处理。"
+        onBack={onBack}
+        action={
+          <button onClick={onCreateItem} className="inline-flex items-center gap-2 rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pink-800">
+            <Plus size={16} />
+            新建事项
+          </button>
+        }
+      />
+      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+        {stats.map(stat => (
+          <div key={stat.label} className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+            <p className="text-xs text-gray-500">{stat.label}</p>
+            <p className={`mt-2 inline-flex rounded-lg px-2.5 py-1 text-lg font-bold ${stat.tone}`}>{stat.value}</p>
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+          <div className="grid grid-cols-[96px_minmax(0,1fr)_92px_90px_86px] gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-500">
+            <span>动作</span>
+            <span>待办事项</span>
+            <span>来源</span>
+            <span>截止</span>
+            <span>状态</span>
+          </div>
+          <div className="max-h-[560px] overflow-y-auto">
+            {queue.length === 0 ? (
+              <div className="p-8 text-center text-sm text-gray-500">当前没有需要处理的待办。</div>
+            ) : queue.map(item => {
+              const selectedRow = selected?.id === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setSelectedTodoId(item.id)}
+                  className={`grid w-full grid-cols-[96px_minmax(0,1fr)_92px_90px_86px] items-center gap-3 border-b border-gray-50 px-4 py-3 text-left transition last:border-b-0 ${
+                    selectedRow ? 'bg-pink-50/70 ring-1 ring-inset ring-pink-100' : 'hover:bg-gray-50'
+                  }`}
+                >
+                  <span className={`rounded-lg px-2 py-1 text-center text-xs font-semibold ${item.group === '延期优先' ? 'bg-red-50 text-red-700' : item.kind === 'report' ? 'bg-pink-50 text-pink-700' : 'bg-amber-50 text-amber-700'}`}>{item.actionLabel}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-gray-900">{item.title}</span>
+                    <span className="mt-1 block truncate text-xs text-gray-400">{item.relation}</span>
+                  </span>
+                  <span className="truncate text-sm text-gray-600">{item.source}</span>
+                  <span className="truncate text-sm text-gray-600">{item.due}</span>
+                  <span className="truncate text-xs font-medium text-gray-500">{item.status}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <aside className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          {selected ? (
+            <div>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-pink-700">{selected.group}</p>
+                  <h3 className="mt-1 text-lg font-bold text-gray-950">{selected.title}</h3>
+                  <p className="mt-1 text-sm text-gray-500">{selected.source} · {selected.due}</p>
+                </div>
+                <span className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">{selected.status}</span>
+              </div>
+              <div className="space-y-3 rounded-xl bg-gray-50 p-4 text-sm">
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">关联</span>
+                  <span className="text-right font-medium text-gray-800">{selected.relation}</span>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-gray-500">处理动作</span>
+                  <span className="font-medium text-gray-800">{selected.actionLabel}</span>
+                </div>
+                {typeof selected.progress === 'number' && (
+                  <div>
+                    <div className="mb-2 flex justify-between text-xs">
+                      <span className="text-gray-500">当前进度</span>
+                      <span className="font-semibold text-gray-800">{selected.progress}%</span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-white">
+                      <div className="h-full rounded-full bg-pink-600" style={{ width: `${selected.progress}%` }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+              {selected.kind === 'report' && selected.itemId && (
+                <div className="mt-5 space-y-3">
+                  <textarea readOnly value="请补充本阶段完成事项、下阶段计划和风险说明。" className="min-h-24 w-full resize-none rounded-xl border border-pink-100 bg-pink-50/50 px-3 py-3 text-sm text-pink-900 outline-none" />
+                  <button onClick={() => onSubmitReport(selected.itemId!, selected.taskId)} className="w-full rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-pink-800">提交事项汇报</button>
+                </div>
+              )}
+              {selected.kind === 'task' && selected.itemId && selected.taskId && (
+                <div className="mt-5 grid gap-2">
+                  <button onClick={() => onSubmitReport(selected.itemId!, selected.taskId)} className="w-full rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-pink-800">提交执行进度</button>
+                  <button onClick={() => onCompleteTask(selected.itemId!, selected.taskId!)} className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">标记完成</button>
+                  <button onClick={() => onOpenItem(selected.itemId!, { returnView: 'todo', focusTaskId: selected.taskId, focusActionId: selected.id })} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-pink-200 hover:text-pink-700">查看详情</button>
+                  <button onClick={() => onAssignTask(selected.itemId!)} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-pink-200 hover:text-pink-700">指派任务</button>
+                </div>
+              )}
+              {selected.kind === 'evaluation' && selected.itemId && (
+                <div className="mt-5 grid gap-2">
+                  <button onClick={() => onEvaluate(selected.itemId!)} className="w-full rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-800">写评价</button>
+                  <button onClick={() => onOpenItem(selected.itemId!, { returnView: 'todo', focusActionId: selected.id })} className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-pink-200 hover:text-pink-700">查看详情</button>
+                </div>
+              )}
+              {selected.kind === 'external' && (
+                <div className="mt-5">
+                  <button onClick={() => onOpenExternal(selected.source)} className="w-full rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800">去处理</button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-sm text-gray-500">选择一条待办查看处理方式。</div>
+          )}
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitReport, onAssignTask, onCreateSubtask, onComment, onWeeklyReport }: {
+  items: WorkItem[];
+  onBack: () => void;
+  onCreateItem: () => void;
+  onOpenItem: (itemId: string) => void;
+  onSubmitReport: (itemId: string) => void;
+  onAssignTask: (itemId: string) => void;
+  onCreateSubtask: (itemId: string, taskId: string) => void;
+  onComment: (itemId: string) => void;
+  onWeeklyReport: () => void;
+}) {
+  const [filter, setFilter] = useState<ProgressFilter>('全部');
+  const [sort, setSort] = useState<ProgressSort>('风险优先');
+  const [teamTypeFilter, setTeamTypeFilter] = useState('全部维度');
+  const [teamFilter, setTeamFilter] = useState('全部团队');
+  const [selectedId, setSelectedId] = useState(items[0]?.id ?? '');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const teamTypeOptions = ['全部维度', ...Array.from(new Set(items.map(item => item.teamType)))];
+  const teamOptions = ['全部团队', ...Array.from(new Set(items
+    .filter(item => teamTypeFilter === '全部维度' || item.teamType === teamTypeFilter)
+    .map(item => item.teamName)))];
+  const riskCount = items.filter(item => item.riskLevel !== '正常').length;
+  const reportCount = items.filter(item => item.status === '待填报').length;
+  const averageProgress = items.length ? Math.round(items.reduce((sum, item) => sum + item.progress, 0) / items.length) : 0;
+  const filteredItems = items
+    .filter(item => {
+      if (teamTypeFilter !== '全部维度' && item.teamType !== teamTypeFilter) return false;
+      if (teamFilter !== '全部团队' && item.teamName !== teamFilter) return false;
+      if (filter === '我负责') return item.owner === MAIN_USER_NAME;
+      if (filter === '我参与') return item.members.includes(MAIN_USER_NAME) && item.owner !== MAIN_USER_NAME;
+      if (filter === '风险') return item.riskLevel !== '正常';
+      if (filter === '待填报') return item.status === '待填报';
+      if (filter === '已完成') return item.status === '已完成';
+      return true;
+    })
+    .sort((a, b) => {
+      if (sort === '截止时间') return a.deadline.localeCompare(b.deadline);
+      if (sort === '进度最低') return a.progress - b.progress;
+      if (sort === '最近更新') return (getWorkItemActivities(b)[0]?.order ?? 0) - (getWorkItemActivities(a)[0]?.order ?? 0);
+      const riskScore = { 风险: 0, 关注: 1, 正常: 2 } as Record<WorkItem['riskLevel'], number>;
+      return riskScore[a.riskLevel] - riskScore[b.riskLevel] || a.progress - b.progress;
+    });
+  const selected = filteredItems.find(item => item.id === selectedId) || filteredItems[0] || items[0];
+  const selectedStats = selected ? getWorkItemCollaborationStats(selected) : null;
+  const selectedActivities = selected ? getWorkItemActivities(selected) : [];
+  const selectedReport = selected?.reports[0];
+  const selectedOpenTasks = selected ? selected.tasks.filter(task => task.status !== '已完成') : [];
+  const selectedParentTasks = selected ? selected.tasks.filter(task => !task.parentId) : [];
+  const selectedFinishedTaskCount = selected ? selected.tasks.filter(task => task.status === '已完成').length : 0;
+  const getSelectedSubtasks = (taskId: string) => selected ? selected.tasks.filter(task => task.parentId === taskId) : [];
+
+  return (
+    <section>
+      <PersonalViewHeader
+        title="事项协同看板"
+        subtitle="按团队和周期汇聚任务分派、执行进度、事项汇报、团队评价与外部数据来源。"
+        onBack={onBack}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <button onClick={onWeeklyReport} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100">
+              <Sparkles size={16} />
+              生成周报
+            </button>
+            <button onClick={onCreateItem} className="inline-flex items-center gap-2 rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pink-800">
+              <Plus size={16} />
+              新建事项
+            </button>
+          </div>
+        }
+      />
+      <div className="mb-4 grid gap-3 sm:grid-cols-4">
+        <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+          <p className="text-sm text-gray-500">看板事项</p>
+          <p className="mt-2 text-2xl font-bold text-gray-950">{items.length} 项</p>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+          <p className="text-sm text-gray-500">平均进度</p>
+          <p className="mt-2 text-2xl font-bold text-gray-950">{averageProgress}%</p>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+          <p className="text-sm text-gray-500">风险事项</p>
+          <p className="mt-2 text-2xl font-bold text-red-600">{riskCount} 项</p>
+        </div>
+        <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
+          <p className="text-sm text-gray-500">待事项汇报</p>
+          <p className="mt-2 text-2xl font-bold text-pink-700">{reportCount} 项</p>
+        </div>
+      </div>
+      <div className="mb-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)]">
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-gray-950">团队筛选</h3>
+              <p className="mt-1 text-xs text-gray-500">先选汇报维度，再选具体团队。</p>
+            </div>
+            <span className="rounded-full bg-pink-50 px-2.5 py-1 text-xs font-semibold text-pink-700">{teamFilter}</span>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+            <div className="flex flex-wrap gap-2">
+              {teamTypeOptions.map(item => (
+                <button
+                  key={item}
+                  onClick={() => {
+                    setTeamTypeFilter(item);
+                    setTeamFilter('全部团队');
+                  }}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${teamTypeFilter === item ? 'bg-pink-700 text-white' : 'bg-gray-100 text-gray-600 hover:bg-pink-50 hover:text-pink-700'}`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+            <select
+              value={teamFilter}
+              onChange={(event) => setTeamFilter(event.target.value)}
+              className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none focus:border-pink-300"
+            >
+              {teamOptions.map(item => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-gray-950">事项筛选</h3>
+              <p className="mt-1 text-xs text-gray-500">当前筛选结果 {filteredItems.length} 项。</p>
+            </div>
+            <select value={sort} onChange={(event) => setSort(event.target.value as ProgressSort)} className="h-9 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-700 outline-none focus:border-pink-300">
+              {(['风险优先', '截止时间', '进度最低', '最近更新'] as ProgressSort[]).map(item => (
+                <option key={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(['全部', '我负责', '我参与', '风险', '待填报', '已完成'] as ProgressFilter[]).map(item => (
+              <button key={item} onClick={() => setFilter(item)} className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${filter === item ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-pink-50 hover:text-pink-700'}`}>
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4 py-3">
+          <div>
+            <h3 className="text-sm font-bold text-gray-950">事项列表</h3>
+            <p className="mt-1 text-xs text-gray-500">点击事项打开右侧详情，列表保留最关键的推进字段。</p>
+          </div>
+          <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-600">{filteredItems.length} 项</span>
+        </div>
+        <div className="max-h-[620px] overflow-y-auto">
+          {filteredItems.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-500">当前筛选下暂无事项。</div>
+          ) : filteredItems.map(item => {
+            const selectedRow = selected?.id === item.id;
+            const stats = getWorkItemCollaborationStats(item);
+            const latestActivity = getLatestWorkItemActivity(item);
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setSelectedId(item.id);
+                  setDetailOpen(true);
+                }}
+                className={`w-full border-b border-gray-50 px-4 py-3 text-left transition last:border-b-0 ${
+                  selectedRow ? 'bg-blue-50/70 ring-1 ring-inset ring-blue-100' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="truncate text-sm font-bold text-gray-950">{item.title}</h4>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                      <span>{item.teamType} · {item.teamName}</span>
+                      <span>{item.reportCycle}</span>
+                      <span>负责人 {item.owner}</span>
+                      <span>截止 {item.deadline}</span>
+                    </div>
+                  </div>
+                  <div className="w-full sm:w-40">
+                    <div className="mb-1 flex justify-between text-xs">
+                      <span className="text-gray-400">进度</span>
+                      <span className="font-bold text-blue-700">{item.progress}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+                      <span className="block h-full rounded-full bg-blue-600" style={{ width: `${item.progress}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_260px]">
+                  <p className="truncate text-sm text-gray-600">{latestActivity}</p>
+                  <div className="flex flex-wrap gap-1.5 text-[11px] font-semibold">
+                    <span>汇报 {stats.reports}</span>
+                    <span>任务 {stats.unfinished}/{stats.tasks}</span>
+                    <span>评价 {stats.comments}</span>
+                    <span>来源 {stats.sources}</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {detailOpen && selected && (
+        <div className="fixed inset-0 z-[70] flex justify-end bg-black/20">
+          <button className="absolute inset-0 cursor-default" onClick={() => setDetailOpen(false)} aria-label="关闭事项详情" />
+          <aside className="relative flex h-full w-full max-w-[560px] flex-col bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <h3 className="text-lg font-bold text-gray-950">事项详情</h3>
+              <div className="flex items-center gap-2">
+                <button className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100">
+                  <Star size={16} />
+                  关注
+                </button>
+                <button onClick={() => setDetailOpen(false)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800" title="关闭">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <div className="px-6 py-5">
+                <div className="mb-5">
+                  <h2 className="text-2xl font-bold text-gray-950">{selected.title}</h2>
+                </div>
+
+                <div className="space-y-5 text-sm">
+                  <div className="flex items-center gap-4">
+                    <Users size={20} className="text-gray-400" />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-gray-500">负责人</span>
+                      <span className="font-semibold text-gray-950">{selected.owner}</span>
+                      <span className="text-xs text-gray-500">助理 {selected.assistant}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <CalendarIcon size={20} className="text-gray-400" />
+                    <div className="font-semibold text-red-500">{selected.reportCycle} - {selected.deadline}</div>
+                  </div>
+                  <button onClick={() => onSubmitReport(selected.id)} className="flex w-full items-center gap-4 text-left text-gray-500 hover:text-pink-700">
+                    <FileText size={20} className="text-gray-400" />
+                    <span>提交事项汇报</span>
+                  </button>
+                  <div className="flex gap-4">
+                    <MessageSquare size={20} className="mt-0.5 shrink-0 text-gray-400" />
+                    <p className="leading-6 text-gray-600">{selected.description}</p>
+                  </div>
+                  <button onClick={() => onAssignTask(selected.id)} className="flex w-full items-center gap-4 text-left text-gray-500 hover:text-pink-700">
+                    <GitBranch size={20} className="text-gray-400" />
+                    <span>指派主任务</span>
+                  </button>
+                  <div className="flex gap-4">
+                    <ListTodo size={20} className="mt-1 shrink-0 text-gray-400" />
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-gray-950">主任务与子任务</p>
+                          <p className="mt-1 text-xs text-gray-500">主任务按事项推进阶段组织，子任务缩进展示归属。</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <span className="font-semibold text-gray-900">{selectedFinishedTaskCount}/{selected.tasks.length}</span>
+                          <span className="h-1.5 w-16 overflow-hidden rounded-full bg-gray-100">
+                            <span className="block h-full rounded-full bg-blue-600" style={{ width: `${selected.tasks.length ? (selectedFinishedTaskCount / selected.tasks.length) * 100 : 0}%` }} />
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        {selectedParentTasks.map(task => {
+                          const subtasks = getSelectedSubtasks(task.id);
+                          const finishedSubtasks = subtasks.filter(subtask => subtask.status === '已完成').length;
+                          return (
+                            <div key={task.id} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
+                              <div className="flex items-start gap-2">
+                                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${task.status === '已完成' ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 bg-white'}`}>
+                                  {task.status === '已完成' && <CheckCircle2 size={13} />}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="truncate font-semibold text-gray-950">{task.title}</p>
+                                    <span className="text-xs text-gray-500">主任务</span>
+                                    {subtasks.length > 0 && <span className="text-xs text-blue-700">子任务 {finishedSubtasks}/{subtasks.length}</span>}
+                                    <button onClick={() => onCreateSubtask(selected.id, task.id)} className="text-xs font-semibold text-pink-700 hover:text-pink-800">+ 子任务</button>
+                                  </div>
+                                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                                    <span>{task.assignee}</span>
+                                    <span>{task.due}</span>
+                                    <span>{task.status}</span>
+                                  </div>
+                                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white">
+                                    <span className="block h-full rounded-full bg-blue-600" style={{ width: `${task.progress}%` }} />
+                                  </div>
+                                  {subtasks.length > 0 && (
+                                    <div className="mt-3 space-y-2 border-l-2 border-blue-100 pl-3">
+                                      {subtasks.map(subtask => (
+                                        <div key={subtask.id} className="flex items-start justify-between gap-3 rounded-lg bg-white px-3 py-2">
+                                          <div className="flex min-w-0 items-start gap-2">
+                                            <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border ${subtask.status === '已完成' ? 'border-blue-600 bg-blue-600' : 'border-gray-300 bg-white'}`} />
+                                            <div className="min-w-0">
+                                              <p className="truncate text-sm font-medium text-gray-800">{subtask.title}</p>
+                                              <p className="mt-1 text-xs text-gray-500">{subtask.assignee} · {subtask.due}</p>
+                                            </div>
+                                          </div>
+                                          <span className="shrink-0 text-xs font-semibold text-violet-700">子任务 {subtask.progress}%</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button onClick={() => onAssignTask(selected.id)} className="mt-3 text-sm font-medium text-gray-500 hover:text-pink-700">+ 指派主任务</button>
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <Paperclip size={20} className="mt-0.5 shrink-0 text-gray-400" />
+                    <div className="flex flex-wrap gap-1.5">
+                      {selected.sourceRefs.map(source => (
+                        <span key={source.id} className={`text-xs font-medium ${source.status === '已接入' ? 'text-green-700' : 'text-gray-500'}`}>
+                          {source.type} · {source.status}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-7 border-t border-gray-100 pt-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h4 className="text-base font-bold text-gray-950">协作记录</h4>
+                    <div className="flex gap-2 text-xs font-medium text-gray-500">
+                      <span>汇报 {selectedStats?.reports ?? 0}</span>
+                      <span>任务 {selectedStats?.unfinished ?? 0}/{selectedStats?.tasks ?? 0}</span>
+                      <span>评价 {selectedStats?.comments ?? 0}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {selectedActivities.slice(0, 8).map(activity => (
+                      <div key={activity.id} className="flex gap-3">
+                        <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-gray-300" />
+                        <div>
+                          <p className="text-sm text-gray-800">
+                            <span className="font-semibold text-blue-700">{activity.actor}</span>
+                            <span className="ml-1">{activity.title}</span>
+                          </p>
+                          <p className="mt-1 text-xs text-gray-500">{activity.type} · {activity.time}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-gray-100 bg-white px-6 py-4">
+              <div className="mb-3 grid grid-cols-4 gap-2">
+                <button onClick={() => onSubmitReport(selected.id)} className="rounded-lg bg-pink-700 px-2 py-2 text-xs font-semibold text-white hover:bg-pink-800">汇报</button>
+                <button onClick={() => onAssignTask(selected.id)} className="rounded-lg border border-pink-100 bg-pink-50 px-2 py-2 text-xs font-semibold text-pink-700 hover:bg-pink-100">任务</button>
+                <button onClick={() => onComment(selected.id)} className="rounded-lg border border-blue-100 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100">评价</button>
+                <button onClick={() => onOpenItem(selected.id)} className="rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs font-semibold text-gray-700 hover:border-pink-200 hover:text-pink-700">详情页</button>
+              </div>
+              <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2">
+                <input className="min-w-0 flex-1 text-sm outline-none" placeholder="输入评价" />
+                <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" title="文字样式"><span className="text-sm font-semibold">Aa</span></button>
+                <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" title="表情"><Smile size={18} /></button>
+                <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" title="提及"><AtSign size={18} /></button>
+                <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" title="图片"><ImageIcon size={18} /></button>
+                <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" title="附件"><Paperclip size={18} /></button>
+                <button onClick={() => onComment(selected.id)} className="rounded-md p-1.5 text-pink-700 hover:bg-pink-50" title="发送"><Send size={18} /></button>
+              </div>
+              <div className="mt-3 flex items-center gap-2 text-sm text-gray-600">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-orange-500 text-xs font-bold text-white">助</span>
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">{selected.members.length}</span>
+                <span>{selected.members.length} 名成员</span>
+                <button className="ml-1 rounded-lg p-1 text-gray-500 hover:bg-gray-100" title="添加成员"><Plus size={18} /></button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WorkItemTaskCreateView({ item, parentTaskId, draft, onBack, onDraftChange, onSubmit }: {
+  item: WorkItem;
+  parentTaskId?: string;
+  draft: { title: string; owner: string; due: string };
+  onBack: () => void;
+  onDraftChange: React.Dispatch<React.SetStateAction<{ title: string; owner: string; due: string }>>;
+  onSubmit: () => void;
+}) {
+  const parentTask = parentTaskId ? item.tasks.find(task => task.id === parentTaskId) : undefined;
+  return (
+    <section>
+      <PersonalViewHeader
+        title={parentTask ? '创建子任务' : '创建任务'}
+        subtitle="由负责人或助理发起任务分派，执行人后续通过事项汇报提交进度。"
+        onBack={onBack}
+        action={
+          <button onClick={onSubmit} className="inline-flex items-center gap-2 rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pink-800">
+            <Save size={16} />
+            {parentTask ? '创建子任务' : '创建任务'}
+          </button>
+        }
+      />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-sm font-semibold text-gray-900">任务信息</p>
+            <p className="mt-1 text-sm text-gray-500">任务会进入执行人的待办，并汇入当前事项的协作看板。</p>
+          </div>
+          <div className="grid gap-4">
+            {parentTask && (
+              <div className="rounded-xl border border-violet-100 bg-violet-50 px-4 py-3 text-sm text-violet-800">
+                父任务：{parentTask.title}
+              </div>
+            )}
+            <label>
+              <span className="text-sm font-medium text-gray-700">任务名称</span>
+              <input
+                value={draft.title}
+                onChange={(event) => onDraftChange(prev => ({ ...prev, title: event.target.value }))}
+                className="mt-2 h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-pink-400"
+                placeholder="请输入需要执行人完成的具体任务"
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label>
+                <span className="text-sm font-medium text-gray-700">执行人</span>
+                <input
+                  value={draft.owner}
+                  onChange={(event) => onDraftChange(prev => ({ ...prev, owner: event.target.value }))}
+                  className="mt-2 h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-pink-400"
+                  placeholder="请输入执行人"
+                />
+              </label>
+              <label>
+                <span className="text-sm font-medium text-gray-700">截止时间</span>
+                <input
+                  value={draft.due}
+                  onChange={(event) => onDraftChange(prev => ({ ...prev, due: event.target.value }))}
+                  className="mt-2 h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-pink-400"
+                  placeholder="如 2026-08-12"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
+        <aside className="space-y-4">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold text-pink-700">关联事项</p>
+            <h3 className="mt-1 text-lg font-bold text-gray-950">{item.title}</h3>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-xs text-gray-400">团队</p>
+                <p className="mt-1 font-semibold text-gray-900">{item.teamName}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-xs text-gray-400">周期</p>
+                <p className="mt-1 font-semibold text-gray-900">{item.reportCycle}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-xs text-gray-400">指派人</p>
+                <p className="mt-1 font-semibold text-gray-900">{MAIN_USER_NAME}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-xs text-gray-400">现有任务</p>
+                <p className="mt-1 font-semibold text-gray-900">{item.tasks.length} 项</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-950">最近任务</h3>
+            <div className="mt-3 space-y-2">
+              {item.tasks.slice(0, 4).map(task => (
+                <div key={task.id} className="rounded-xl bg-gray-50 px-3 py-2">
+                  <p className="truncate text-sm font-medium text-gray-800">{task.title}</p>
+                  <p className="mt-1 text-xs text-gray-500">{task.assigner} 指派给 {task.assignee} · {task.due}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function WorkItemReportSubmitView({ item, taskId, draft, onBack, onDraftChange, onWeeklyReport, onSubmit }: {
+  item: WorkItem;
+  taskId?: string;
+  draft: { thisPeriod: string; nextPlan: string; risk: string; progress: number };
+  onBack: () => void;
+  onDraftChange: React.Dispatch<React.SetStateAction<{ thisPeriod: string; nextPlan: string; risk: string; progress: number }>>;
+  onWeeklyReport: () => void;
+  onSubmit: () => void;
+}) {
+  const relatedTask = taskId ? item.tasks.find(task => task.id === taskId) : undefined;
+  return (
+    <section>
+      <PersonalViewHeader
+        title="提交事项汇报"
+        subtitle="事项填报、工作汇报、任务执行记录统一沉淀到事项汇报，支撑看板、详情和周报总结。"
+        onBack={onBack}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <button onClick={onWeeklyReport} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100">
+              <Sparkles size={16} />
+              AI周报总结
+            </button>
+            <button onClick={onSubmit} className="inline-flex items-center gap-2 rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pink-800">
+              <Save size={16} />
+              提交事项汇报
+            </button>
+          </div>
+        }
+      />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-sm font-semibold text-gray-900">汇报内容</p>
+            <p className="mt-1 text-sm text-gray-500">执行人提交后会同步更新事项进度、关联任务执行记录和协作动态。</p>
+          </div>
+          <div className="grid gap-4">
+            {relatedTask && (
+              <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                关联任务：{relatedTask.title}，当前进度 {relatedTask.progress}%
+              </div>
+            )}
+            <label>
+              <span className="text-sm font-medium text-gray-700">本阶段完成</span>
+              <textarea
+                value={draft.thisPeriod}
+                onChange={(event) => onDraftChange(prev => ({ ...prev, thisPeriod: event.target.value }))}
+                className="mt-2 min-h-32 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+                placeholder="说明本周期围绕事项完成了什么、对应哪些任务"
+              />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">下阶段计划</span>
+              <textarea
+                value={draft.nextPlan}
+                onChange={(event) => onDraftChange(prev => ({ ...prev, nextPlan: event.target.value }))}
+                className="mt-2 min-h-24 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+                placeholder="说明下一步计划和需要谁配合"
+              />
+            </label>
+            <label>
+              <span className="text-sm font-medium text-gray-700">风险和需协调事项</span>
+              <textarea
+                value={draft.risk}
+                onChange={(event) => onDraftChange(prev => ({ ...prev, risk: event.target.value }))}
+                className="mt-2 min-h-20 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+                placeholder="没有风险可填写“暂无”"
+              />
+            </label>
+            <label className="grid gap-2 text-sm text-gray-600">
+              <span className="font-medium text-gray-700">当前进度：{draft.progress}%</span>
+              <input type="range" min={0} max={100} value={draft.progress} onChange={(event) => onDraftChange(prev => ({ ...prev, progress: Number(event.target.value) }))} />
+            </label>
+          </div>
+        </div>
+        <aside className="space-y-4">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold text-pink-700">汇报口径</p>
+            <h3 className="mt-1 text-lg font-bold text-gray-950">{item.title}</h3>
+            <div className="mt-4 space-y-2 text-sm text-gray-600">
+              <p>团队：{item.teamType} · {item.teamName}</p>
+              <p>周期：{item.reportCycle}</p>
+              <p>负责人：{item.owner}，助理：{item.assistant}</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-950">已有事项汇报</h3>
+            <div className="mt-3 space-y-2">
+              {item.reports.slice(0, 3).map(report => (
+                <div key={report.id} className="rounded-xl bg-gray-50 px-3 py-3">
+                  <div className="flex justify-between gap-3 text-xs text-gray-500">
+                    <span>{report.source}</span>
+                    <span>{report.submittedAt}</span>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-sm text-gray-700">{report.thisPeriod}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-950">可汇聚来源</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {['事项填报', '工作汇报', '任务执行记录', '团队评价', '未来OKR', '会议纪要'].map(source => (
+                <span key={source} className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">{source}</span>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function WorkItemEvaluationSubmitView({ item, value, onBack, onChange, onSubmit }: {
+  item: WorkItem;
+  value: string;
+  onBack: () => void;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+}) {
+  return (
+    <section>
+      <PersonalViewHeader
+        title="写评价"
+        subtitle="团队成员围绕事项推进质量、协作效果和风险感知写评价，统一进入事项汇报口径。"
+        onBack={onBack}
+        action={
+          <button onClick={onSubmit} className="inline-flex items-center gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-800">
+            <Save size={16} />
+            提交评价
+          </button>
+        }
+      />
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+          <div className="mb-5">
+            <p className="text-sm font-semibold text-gray-900">评价内容</p>
+            <p className="mt-1 text-sm text-gray-500">评价会进入事项详情和协作动态，用于团队复盘和周报素材汇聚。</p>
+          </div>
+          <textarea
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            className="min-h-56 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-blue-400"
+            placeholder="请评价当前事项推进效果、协作情况、风险提醒或改进建议"
+          />
+        </div>
+        <aside className="space-y-4">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold text-blue-700">评价对象</p>
+            <h3 className="mt-1 text-lg font-bold text-gray-950">{item.title}</h3>
+            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-xs text-gray-400">团队</p>
+                <p className="mt-1 font-semibold text-gray-900">{item.teamName}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-xs text-gray-400">周期</p>
+                <p className="mt-1 font-semibold text-gray-900">{item.reportCycle}</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-xs text-gray-400">进度</p>
+                <p className="mt-1 font-semibold text-gray-900">{item.progress}%</p>
+              </div>
+              <div className="rounded-xl bg-gray-50 px-3 py-3">
+                <p className="text-xs text-gray-400">风险</p>
+                <p className="mt-1 font-semibold text-gray-900">{item.riskLevel}</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-gray-950">已有团队评价</h3>
+            <div className="mt-3 space-y-2">
+              {item.comments.length === 0 ? (
+                <div className="rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">暂无评价</div>
+              ) : item.comments.slice(0, 4).map(comment => (
+                <div key={comment.id} className="rounded-xl bg-gray-50 px-3 py-3">
+                  <div className="flex justify-between gap-3 text-xs text-gray-500">
+                    <span>{comment.author} · {comment.attitude}</span>
+                    <span>{comment.createdAt}</span>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-sm text-gray-700">{comment.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function MyItemDetailView({ item, onBack, focusTaskId, focusActionId, onSubmitReport, onAssignTask, onComment, onCreateSubtask, onCompleteTask }: {
+  item: WorkItem;
+  onBack: () => void;
+  focusTaskId?: string;
+  focusActionId?: string;
+  onSubmitReport: () => void;
+  onAssignTask: () => void;
+  onComment: () => void;
+  onCreateSubtask: (taskId: string) => void;
+  onCompleteTask: (taskId: string) => void;
+}) {
+  const focusedTask = item.tasks.find(task => task.id === focusTaskId);
+  const crumbSource = focusActionId ? '我的待办' : '事项协同看板';
+  const focusHint = focusActionId
+    ? focusedTask ? `当前聚焦：${focusedTask.title}` : '当前聚焦：待处理动作'
+    : '当前查看：进度与风险状态';
+  const parentTasks = item.tasks.filter(task => !task.parentId);
+  const getSubtasks = (taskId: string) => item.tasks.filter(task => task.parentId === taskId);
+  const collaborationStats = getWorkItemCollaborationStats(item);
+  const activities = getWorkItemActivities(item);
+  return (
+    <section>
+      <div className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <button onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 shadow-sm hover:border-pink-200 hover:text-pink-700" title="返回">
+              <ChevronRight size={18} className="rotate-180" />
+            </button>
+            <div>
+              <div className="text-xs font-medium text-gray-400">我的工作台 / {crumbSource} / 事项详情</div>
+              <h2 className="mt-1 text-2xl font-bold text-gray-950">{item.title}</h2>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={onSubmitReport} className="rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-pink-800">提交事项汇报</button>
+            <button onClick={onComment} className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-blue-200 hover:text-blue-700">写评价</button>
+            <button onClick={onAssignTask} className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-pink-200 hover:text-pink-700">指派任务</button>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-medium text-gray-700">{item.type}</span>
+          <span className="rounded-lg bg-blue-50 px-2.5 py-1 font-medium text-blue-700">{item.teamType} · {item.teamName}</span>
+          <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-medium text-gray-700">{item.reportCycle}</span>
+          <span className="rounded-lg bg-pink-50 px-2.5 py-1 font-medium text-pink-700">{getMyWorkItemRole(item)}</span>
+          <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-medium text-gray-700">{item.status}</span>
+          <span className={`rounded-lg border px-2.5 py-1 font-medium ${getRiskTone(item.riskLevel)}`}>{item.riskLevel}</span>
+          <span className="rounded-lg bg-gray-100 px-2.5 py-1 font-medium text-gray-700">截止 {item.deadline}</span>
+          <span className="rounded-lg bg-blue-50 px-2.5 py-1 font-bold text-blue-700">进度 {item.progress}%</span>
+        </div>
+        <div className={`mt-4 rounded-xl px-4 py-3 text-sm ${focusActionId ? 'bg-amber-50 text-amber-800' : 'bg-blue-50 text-blue-800'}`}>
+          {focusHint}
+        </div>
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${getRiskTone(item.riskLevel)}`}>{item.riskLevel}</span>
+                <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600">{item.status}</span>
+                {item.okrLink && <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{item.okrLink}</span>}
+                {focusActionId && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">来自待办</span>}
+              </div>
+              <span className="text-xl font-bold text-pink-700">{item.progress}%</span>
+            </div>
+            {focusedTask && (
+              <div className="mb-4 rounded-xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+                当前聚焦任务：{focusedTask.title}
+              </div>
+            )}
+            <p className="text-sm leading-6 text-gray-600">{item.description}</p>
+            <div className="mt-5">
+              <div className="mb-2 flex justify-between text-sm">
+                <span className="text-gray-500">当前进度</span>
+                <span className="font-semibold text-gray-900">{item.progress}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+                <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-pink-500" style={{ width: `${item.progress}%` }} />
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-base font-bold text-gray-950">任务清单</h3>
+            <div className="space-y-3">
+              {parentTasks.map(task => {
+                const subtasks = getSubtasks(task.id);
+                return (
+                  <div key={task.id} className={`rounded-xl px-4 py-3 ${task.id === focusTaskId ? 'border border-amber-200 bg-amber-50/70' : 'bg-gray-50'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <h4 className="truncate text-sm font-semibold text-gray-900">{task.title}</h4>
+                        <p className="mt-1 text-xs text-gray-500">{task.assigner} 指派给 {task.assignee} · {task.due}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-600">{task.status}</span>
+                        <button onClick={() => onCreateSubtask(task.id)} className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-violet-200 hover:text-violet-700">新建子任务</button>
+                        {task.status !== '已完成' && <button onClick={() => onCompleteTask(task.id)} className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:border-emerald-200 hover:text-emerald-700">标记完成</button>}
+                      </div>
+                    </div>
+                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white">
+                      <div className="h-full rounded-full bg-amber-500" style={{ width: `${task.progress}%` }} />
+                    </div>
+                    {subtasks.length > 0 && (
+                      <div className="mt-3 space-y-2 border-l-2 border-violet-100 pl-3">
+                        {subtasks.map(subtask => (
+                          <div key={subtask.id} className={`rounded-lg bg-white px-3 py-2 ${subtask.id === focusTaskId ? 'ring-1 ring-amber-200' : ''}`}>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-medium text-gray-800">{subtask.title}</p>
+                                <p className="mt-1 text-xs text-gray-500">{subtask.assigner} 指派给 {subtask.assignee} · {subtask.due}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">子任务</span>
+                                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">{subtask.status}</span>
+                                {subtask.status !== '已完成' && <button onClick={() => onCompleteTask(subtask.id)} className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-700 hover:border-emerald-200 hover:text-emerald-700">标记完成</button>}
+                              </div>
+                            </div>
+                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                              <div className="h-full rounded-full bg-violet-500" style={{ width: `${subtask.progress}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        <aside className="space-y-5">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-base font-bold text-gray-950">协作构成</h3>
+            <div className="grid grid-cols-5 gap-2">
+              {[
+                { label: '任务', value: collaborationStats.tasks },
+                { label: '子任务', value: collaborationStats.subtasks },
+                { label: '事项汇报', value: collaborationStats.reports },
+                { label: '评价', value: collaborationStats.comments },
+                { label: '未完成', value: collaborationStats.unfinished },
+              ].map(stat => (
+                <div key={stat.label} className="rounded-xl bg-gray-50 px-2 py-2 text-center">
+                  <p className="text-base font-bold text-gray-950">{stat.value}</p>
+                  <p className="mt-1 text-[11px] text-gray-500">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-base font-bold text-gray-950">事项汇报</h3>
+              <button onClick={onSubmitReport} className="rounded-lg bg-pink-50 px-2.5 py-1.5 text-xs font-semibold text-pink-700 hover:bg-pink-100">提交事项汇报</button>
+            </div>
+            <div className="space-y-3">
+              {item.reports.map(report => (
+                <div key={report.id} className="rounded-xl bg-gray-50 px-4 py-3">
+                  <div className="mb-2 flex justify-between gap-3 text-xs text-gray-500">
+                    <span>{report.member}</span>
+                    <span>{report.submittedAt}</span>
+                  </div>
+                  <span className="mb-2 inline-flex rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-semibold text-pink-700">{report.source}</span>
+                  <p className="text-sm text-gray-700">{report.thisPeriod}</p>
+                  <p className="mt-2 text-xs text-gray-500">下步：{report.nextPlan}</p>
+                  <p className="mt-2 text-xs text-gray-500">风险：{report.risk}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="text-base font-bold text-gray-950">团队评价</h3>
+              <button onClick={onComment} className="rounded-lg bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">写评价</button>
+            </div>
+            <div className="space-y-3">
+              {item.comments.length === 0 ? (
+                <div className="rounded-xl bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">暂无评价</div>
+              ) : item.comments.map(comment => (
+                <div key={comment.id} className="rounded-xl bg-gray-50 px-4 py-3">
+                  <div className="mb-2 flex justify-between gap-3 text-xs text-gray-500">
+                    <span>{comment.author} · {comment.attitude}</span>
+                    <span>{comment.createdAt}</span>
+                  </div>
+                  <p className="text-sm leading-6 text-gray-700">{comment.content}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+            <h3 className="mb-4 text-base font-bold text-gray-950">动态记录</h3>
+            <div className="space-y-3">
+              {activities.map(activity => (
+                <div key={activity.id} className="border-l-2 border-pink-100 pl-3">
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${activity.tone}`}>{activity.type}</span>
+                  <p className="mt-1 text-sm font-semibold text-gray-800">{activity.title}</p>
+                  <p className="mt-1 text-xs text-gray-500">{activity.actor} · {activity.time}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
   );
 }
 

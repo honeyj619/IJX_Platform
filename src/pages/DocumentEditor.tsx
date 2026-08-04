@@ -37,6 +37,13 @@ type ValidationTextToken =
   | { type: "text"; value: string }
   | { type: "issue"; value: string; issue: DocumentValidationIssue };
 
+type ValidationIssuePosition = {
+  start: number;
+  end: number;
+  excerptStart: number;
+  issue: DocumentValidationIssue;
+};
+
 const getValidationIssueRangeInExcerpt = (issue: DocumentValidationIssue) => {
   const typoMatch = issue.suggestion.match(/将“([^”]+)”修改/);
   if (typoMatch) {
@@ -59,8 +66,8 @@ const getValidationIssueRangeInExcerpt = (issue: DocumentValidationIssue) => {
   return { start: 0, end: issue.excerpt.length };
 };
 
-const createValidationTextTokens = (text: string, issues: DocumentValidationIssue[]): ValidationTextToken[] => {
-  const ranges = issues
+const getValidationIssuePositions = (text: string, issues: DocumentValidationIssue[]): ValidationIssuePosition[] => (
+  issues
     .map((issue) => {
       const excerptStart = text.indexOf(issue.excerpt);
       if (excerptStart < 0) return null;
@@ -68,11 +75,16 @@ const createValidationTextTokens = (text: string, issues: DocumentValidationIssu
       return {
         start: excerptStart + range.start,
         end: excerptStart + range.end,
+        excerptStart,
         issue,
       };
     })
-    .filter((range): range is { start: number; end: number; issue: DocumentValidationIssue } => Boolean(range))
-    .sort((a, b) => a.start - b.start);
+    .filter((range): range is ValidationIssuePosition => Boolean(range))
+    .sort((a, b) => a.excerptStart - b.excerptStart || a.start - b.start)
+);
+
+const createValidationTextTokens = (text: string, issues: DocumentValidationIssue[]): ValidationTextToken[] => {
+  const ranges = getValidationIssuePositions(text, issues);
 
   const tokens: ValidationTextToken[] = [];
   let cursor = 0;
@@ -96,17 +108,19 @@ const getValidationReplacement = (issue: DocumentValidationIssue) => {
   return null;
 };
 
-const applyValidationIssueToText = (text: string, issue: DocumentValidationIssue) => {
+const getValidationCorrectedExcerpt = (issue: DocumentValidationIssue) => {
+  const replacement = getValidationReplacement(issue);
+  if (replacement === null) return issue.excerpt;
+
+  const range = getValidationIssueRangeInExcerpt(issue);
+  return `${issue.excerpt.slice(0, range.start)}${replacement}${issue.excerpt.slice(range.end)}`;
+};
+
+const applyValidationIssueToText = (text: string, issue: DocumentValidationIssue, correctedExcerpt = getValidationCorrectedExcerpt(issue)) => {
   const excerptStart = text.indexOf(issue.excerpt);
   if (excerptStart < 0) return text;
 
-  const replacement = getValidationReplacement(issue);
-  if (replacement === null) return text;
-
-  const range = getValidationIssueRangeInExcerpt(issue);
-  const start = excerptStart + range.start;
-  const end = excerptStart + range.end;
-  return `${text.slice(0, start)}${replacement}${text.slice(end)}`;
+  return `${text.slice(0, excerptStart)}${correctedExcerpt}${text.slice(excerptStart + issue.excerpt.length)}`;
 };
 
 interface DocumentEditorProps {
@@ -297,6 +311,11 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [documentEndDate, setDocumentEndDate] = useState('');
   const [editorAttachments, setEditorAttachments] = useState(attachments);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [activeValidationIssueId, setActiveValidationIssueId] = useState('');
+  const [validationSuggestionDrafts, setValidationSuggestionDrafts] = useState<Record<string, string>>(() => {
+    const issues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
+    return Object.fromEntries(issues.map((issue) => [issue.id, getValidationCorrectedExcerpt(issue)]));
+  });
   const [activeCategory, setActiveCategory] = useState('business');
   const [expandedSections, setExpandedSections] = useState({
     outline: false,
@@ -305,8 +324,14 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   });
   const [isSaved, setIsSaved] = useState(true);
   const [appliedValidationIssueIds, setAppliedValidationIssueIds] = useState<string[]>([]);
+  const [ignoredValidationIssueIds, setIgnoredValidationIssueIds] = useState<string[]>([]);
   const effectiveValidationIssues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
-  const pendingValidationIssues = effectiveValidationIssues.filter((issue) => !appliedValidationIssueIds.includes(issue.id));
+  const unresolvedValidationIssues = effectiveValidationIssues.filter((issue) => (
+    !appliedValidationIssueIds.includes(issue.id) && !ignoredValidationIssueIds.includes(issue.id)
+  ));
+  const pendingValidationIssuePositions = getValidationIssuePositions(content, unresolvedValidationIssues);
+  const pendingValidationIssues = pendingValidationIssuePositions.map((position) => position.issue);
+  const activeValidationIssue = pendingValidationIssues.find((issue) => issue.id === activeValidationIssueId) || pendingValidationIssues[0] || null;
   const getValidationRuleIssueCount = (ruleId: string) => (
     pendingValidationIssues.filter((item) => item.type === ruleId).length
   );
@@ -600,22 +625,60 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
 
   const handleRunValidation = () => {
     setAppliedValidationIssueIds([]);
+    setIgnoredValidationIssueIds([]);
+    setActiveValidationIssueId('');
+    setValidationSuggestionDrafts(Object.fromEntries(effectiveValidationIssues.map((issue) => [issue.id, getValidationCorrectedExcerpt(issue)])));
+    setFinalFileReady(false);
     setIsSaved(false);
   };
 
   const handleApplyValidationIssue = (issue: DocumentValidationIssue) => {
-    setContent((current) => applyValidationIssueToText(current, issue));
+    setContent((current) => applyValidationIssueToText(current, issue, validationSuggestionDrafts[issue.id] || getValidationCorrectedExcerpt(issue)));
     setAppliedValidationIssueIds((current) => current.includes(issue.id) ? current : [...current, issue.id]);
+    setActiveValidationIssueId((current) => current === issue.id ? pendingValidationIssues.find((item) => item.id !== issue.id)?.id || '' : current);
+    setIsSaved(false);
+  };
+
+  const handleIgnoreValidationIssue = (issue: DocumentValidationIssue) => {
+    setIgnoredValidationIssueIds((current) => current.includes(issue.id) ? current : [...current, issue.id]);
+    setActiveValidationIssueId((current) => current === issue.id ? pendingValidationIssues.find((item) => item.id !== issue.id)?.id || '' : current);
     setIsSaved(false);
   };
 
   const handleApplyAllValidationIssues = () => {
     setContent((current) => pendingValidationIssues.reduce(
-      (nextContent, issue) => applyValidationIssueToText(nextContent, issue),
+      (nextContent, issue) => applyValidationIssueToText(nextContent, issue, validationSuggestionDrafts[issue.id] || getValidationCorrectedExcerpt(issue)),
       current,
     ));
     setAppliedValidationIssueIds(effectiveValidationIssues.map((issue) => issue.id));
+    setActiveValidationIssueId('');
     setIsSaved(false);
+  };
+
+  const handleExportValidatedDocument = () => {
+    const trimmedTitle = requirementTitle.trim() || '未命名文档';
+    const nextDocument = {
+      id: selectedSavedDocumentId || `saved-${Date.now()}`,
+      title: trimmedTitle,
+      type: requirementType,
+      words: `${content.length}`,
+      updatedAt: '刚刚',
+      hasFinalFile: true,
+      source: 'validation',
+      validationStatus: '已完成',
+      validationIssueCount: 0,
+      content,
+      outline: outlineText,
+    };
+    setSavedDocuments((current) => {
+      const exists = current.some((item) => item.id === nextDocument.id);
+      return exists
+        ? current.map((item) => (item.id === nextDocument.id ? nextDocument : item))
+        : [nextDocument, ...current];
+    });
+    setSelectedSavedDocumentId(nextDocument.id);
+    setFinalFileReady(true);
+    setIsSaved(true);
   };
 
   const validationCurrentPanel = (
@@ -654,25 +717,65 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
           {pendingValidationIssues.map((issue) => (
             <div
               key={issue.id}
-              className="rounded-lg border border-gray-100 bg-gray-50 p-3 transition-colors hover:border-theme-100 hover:bg-theme-50/50"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveValidationIssueId(issue.id)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  setActiveValidationIssueId(issue.id);
+                }
+              }}
+              className={`rounded-lg border p-3 text-left transition-colors ${
+                activeValidationIssue?.id === issue.id
+                  ? 'border-blue-200 bg-blue-50/70 ring-2 ring-blue-100'
+                  : 'border-red-100 bg-red-50/40 hover:border-theme-100 hover:bg-theme-50/50'
+              }`}
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span className="rounded bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600">{issue.label}</span>
-                <button
-                  type="button"
-                  onClick={() => handleApplyValidationIssue(issue)}
-                  className="rounded-full bg-theme-50 px-2.5 py-1 text-xs font-semibold text-theme-700 transition-colors hover:bg-theme-100"
-                >
-                  应用
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleApplyValidationIssue(issue);
+                    }}
+                    className="rounded-full bg-theme-50 px-2.5 py-1 text-xs font-semibold text-theme-700 transition-colors hover:bg-theme-100"
+                  >
+                    应用
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleIgnoreValidationIssue(issue);
+                    }}
+                    className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-200 hover:text-gray-800"
+                  >
+                    忽略
+                  </button>
+                </div>
               </div>
               <div className="text-xs leading-5 text-gray-500">原文：{issue.excerpt}</div>
-              <div className="mt-1 text-xs leading-5 text-theme-700">建议：{issue.suggestion}</div>
+              <label className="mt-2 block">
+                <span className="mb-1 block text-xs font-medium text-gray-500">建议正确版</span>
+                <textarea
+                  value={validationSuggestionDrafts[issue.id] || getValidationCorrectedExcerpt(issue)}
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    setValidationSuggestionDrafts((current) => ({ ...current, [issue.id]: nextValue }));
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                  className="min-h-16 w-full resize-none rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-xs leading-5 text-gray-700 outline-none focus:border-theme-200 focus:ring-2 focus:ring-theme-100"
+                />
+              </label>
             </div>
           ))}
           {pendingValidationIssues.length === 0 && (
-            <div className="rounded-lg bg-gray-50 px-3 py-5 text-center text-xs text-gray-400">
-              已应用全部校验结果
+            <div className="rounded-lg border border-green-100 bg-green-50 px-3 py-5 text-center">
+              <div className="text-sm font-semibold text-green-800">所有校验结果已处理</div>
+              <div className="mt-1 text-xs text-green-700">可在底部操作区导出修订后的公文。</div>
             </div>
           )}
         </div>
@@ -700,14 +803,18 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
 
         {/* 编辑工具栏 */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50/50">
-          <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200">
-            <Undo size={16} className="text-gray-600" />
-            撤回
-          </button>
-          <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200">
-            <Redo size={16} className="text-gray-600" />
-            重做
-          </button>
+          {documentMode !== "validation" && (
+            <>
+              <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200">
+                <Undo size={16} className="text-gray-600" />
+                撤回
+              </button>
+              <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200">
+                <Redo size={16} className="text-gray-600" />
+                重做
+              </button>
+            </>
+          )}
           <button 
             onClick={handleCopyFullText}
             className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200"
@@ -720,7 +827,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         {/* 编辑区域 */}
         <div className="scrollbar-hover flex-1 overflow-y-auto px-8 py-6">
           <div className="mb-3 text-center text-xs leading-5 text-gray-400">
-            仅支持编辑内容，版式调整请前往编辑模板。
+            {documentMode === "validation" ? '校验模式下公文内容不可直接编辑，点击右侧问题可定位查看。' : '仅支持编辑内容，版式调整请前往编辑模板。'}
           </div>
           <div className={`mx-auto max-w-3xl rounded-sm bg-white px-10 py-9 shadow-sm ring-1 ring-gray-100 ${templateShellClass}`}>
             <div className="mb-6 flex items-center justify-between border-b border-gray-100 pb-3 text-[11px] text-gray-400">
@@ -741,7 +848,11 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   <mark
                     key={`${token.issue.id}-${index}`}
                     title={`${token.issue.label}：${token.issue.suggestion}`}
-                    className="rounded bg-red-100 px-1 py-0.5 text-red-700 ring-1 ring-red-200"
+                    className={`rounded px-1 py-0.5 ring-1 transition-colors ${
+                      token.issue.id === activeValidationIssue?.id
+                        ? 'bg-blue-100 text-blue-800 ring-blue-300'
+                        : 'bg-red-100 text-red-700 ring-red-200'
+                    }`}
                   >
                     {token.value}
                   </mark>
@@ -900,11 +1011,18 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-gray-900">{item.title}</div>
                           <div className="mt-2 flex flex-wrap gap-1.5">
-                            <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.type}</span>
+                            <span className={`rounded px-2 py-0.5 text-xs font-medium ${
+                              item.source === 'validation' ? 'bg-blue-50 text-blue-700' : 'bg-theme-50 text-theme-700'
+                            }`}>
+                              辅助类型：{item.source === 'validation' ? '校验' : '创作'}
+                            </span>
+                            {item.source === 'writing' && (
+                              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.type}</span>
+                            )}
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.words} 字</span>
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.updatedAt}</span>
                             {item.source === 'validation' && (
-                              <span className="rounded bg-theme-50 px-2 py-0.5 text-xs text-theme-700">校验 {item.validationIssueCount ?? 0} 处</span>
+                              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{item.validationStatus || '已校验'} · {item.validationIssueCount ?? 0} 处</span>
                             )}
 
                           </div>
@@ -1193,14 +1311,23 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
             </button>
           ) : documentMode === "validation" ? (
             <div className="space-y-2">
-              <button
-                onClick={handleApplyAllValidationIssues}
-                disabled={pendingValidationIssues.length === 0}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <CheckCircle2 size={15} />
-                应用所有校验结果
-              </button>
+              {pendingValidationIssues.length === 0 ? (
+                <button
+                  onClick={handleExportValidatedDocument}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700"
+                >
+                  <Download size={15} />
+                  导出文档
+                </button>
+              ) : (
+                <button
+                  onClick={handleApplyAllValidationIssues}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-theme-700"
+                >
+                  <CheckCircle2 size={15} />
+                  应用所有校验结果
+                </button>
+              )}
               <button
                 onClick={handleRunValidation}
                 className="flex w-full items-center justify-center gap-2 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 shadow-sm hover:bg-theme-100"
