@@ -230,6 +230,7 @@ const initialSavedDocuments = [
     type: '通知',
     words: '1280',
     updatedAt: '今天 14:20',
+    updatedDate: '2026-08-04',
     hasFinalFile: true,
     source: 'writing',
     validationStatus: undefined,
@@ -243,6 +244,7 @@ const initialSavedDocuments = [
     type: '会议纪要',
     words: '960',
     updatedAt: '昨天 16:10',
+    updatedDate: '2026-08-03',
     hasFinalFile: false,
     source: 'writing',
     validationStatus: undefined,
@@ -256,6 +258,7 @@ const initialSavedDocuments = [
     type: '党群',
     words: '1520',
     updatedAt: '6月12日',
+    updatedDate: '2026-06-12',
     hasFinalFile: true,
     source: 'writing',
     validationStatus: undefined,
@@ -269,9 +272,10 @@ const initialSavedDocuments = [
     type: '通知',
     words: '420',
     updatedAt: '刚刚',
+    updatedDate: '2026-08-04',
     hasFinalFile: false,
     source: 'validation',
-    validationStatus: '已校验',
+    validationStatus: '待修复',
     validationIssueCount: defaultValidationIssues.length,
     content: validationSampleContent,
     outline: formatOutlineText(defaultOutline),
@@ -279,6 +283,7 @@ const initialSavedDocuments = [
 ];
 
 export default function DocumentEditor({ docType, docTitle, docLength, docContent, attachments = [], documentMode = "writing", validationFileName = "", validationIssues = defaultValidationIssues, startInRequirements = false, startInOutline = false, embedded = false, onRemoveAttachment, onBack }: DocumentEditorProps) {
+  const [currentDocumentMode, setCurrentDocumentMode] = useState<DocumentMode>(documentMode);
   const [content, setContent] = useState(documentMode === "validation" ? validationSampleContent : startInRequirements || startInOutline ? '' : sampleContent);
   const [requirementTitle, setRequirementTitle] = useState(docTitle || (documentMode === "validation" ? validationFileName.replace(/\.[^.]+$/, "") : '未命名文档'));
   const [requirementType, setRequirementType] = useState(templateCategories.includes(docType) ? docType : templateCategories[0]);
@@ -306,7 +311,8 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [savedDocuments, setSavedDocuments] = useState(initialSavedDocuments);
   const [documentPendingDelete, setDocumentPendingDelete] = useState<typeof initialSavedDocuments[number] | null>(null);
   const [documentSearch, setDocumentSearch] = useState('');
-  const [documentCategoryFilter, setDocumentCategoryFilter] = useState('全部');
+  const [documentSourceFilter, setDocumentSourceFilter] = useState('全部');
+  const [documentTypeFilter, setDocumentTypeFilter] = useState('全部');
   const [documentStartDate, setDocumentStartDate] = useState('');
   const [documentEndDate, setDocumentEndDate] = useState('');
   const [editorAttachments, setEditorAttachments] = useState(attachments);
@@ -325,6 +331,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [isSaved, setIsSaved] = useState(true);
   const [appliedValidationIssueIds, setAppliedValidationIssueIds] = useState<string[]>([]);
   const [ignoredValidationIssueIds, setIgnoredValidationIssueIds] = useState<string[]>([]);
+  const [userRuleToast, setUserRuleToast] = useState('');
   const effectiveValidationIssues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
   const unresolvedValidationIssues = effectiveValidationIssues.filter((issue) => (
     !appliedValidationIssueIds.includes(issue.id) && !ignoredValidationIssueIds.includes(issue.id)
@@ -341,12 +348,21 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
-  const savedDocumentCategories = ['全部', ...Array.from(new Set(savedDocuments.map((document) => document.type)))];
+  const getSavedDocumentSourceLabel = (source: typeof initialSavedDocuments[number]['source']) => (
+    source === 'validation' ? '校验' : '创作'
+  );
+  const savedDocumentSourceOptions = ['全部', '创作', '校验'];
+  const savedDocumentTypeOptions = ['全部', ...Array.from(new Set(
+    savedDocuments.filter((document) => document.source === 'writing').map((document) => document.type)
+  ))];
   const filteredSavedDocuments = savedDocuments.filter((document) => {
     const keyword = documentSearch.trim().toLowerCase();
     const matchesName = !keyword || document.title.toLowerCase().includes(keyword);
-    const matchesCategory = documentCategoryFilter === '全部' || document.type === documentCategoryFilter;
-    return matchesName && matchesCategory;
+    const matchesSource = documentSourceFilter === '全部' || getSavedDocumentSourceLabel(document.source) === documentSourceFilter;
+    const matchesType = documentTypeFilter === '全部' || (document.source === 'writing' && document.type === documentTypeFilter);
+    const matchesStartDate = !documentStartDate || document.updatedDate >= documentStartDate;
+    const matchesEndDate = !documentEndDate || document.updatedDate <= documentEndDate;
+    return matchesName && matchesSource && matchesType && matchesStartDate && matchesEndDate;
   });
 
   const handleSave = () => {
@@ -357,10 +373,11 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       type: requirementType,
       words: `${content.length}`,
       updatedAt: '刚刚',
-      hasFinalFile: finalFileReady,
-      source: documentMode === "validation" ? 'validation' : 'writing',
-      validationStatus: documentMode === "validation" ? '已修订' : undefined,
-      validationIssueCount: documentMode === "validation" ? pendingValidationIssues.length : undefined,
+      updatedDate: new Date().toISOString().slice(0, 10),
+      hasFinalFile: currentDocumentMode === "validation" ? pendingValidationIssues.length === 0 : finalFileReady,
+      source: currentDocumentMode === "validation" ? 'validation' : 'writing',
+      validationStatus: currentDocumentMode === "validation" ? (pendingValidationIssues.length === 0 ? '已完成' : '待修复') : undefined,
+      validationIssueCount: currentDocumentMode === "validation" ? pendingValidationIssues.length : undefined,
       content,
       outline: outlineText,
     };
@@ -461,7 +478,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   };
 
   const handleOpenSavedDocument = (document: typeof savedDocuments[number]) => {
+    const nextMode: DocumentMode = document.source === 'validation' ? 'validation' : 'writing';
     setSelectedSavedDocumentId(document.id);
+    setCurrentDocumentMode(nextMode);
     setRequirementTitle(document.title);
     setRequirementType(document.type);
     setRequirementLength(document.words);
@@ -475,6 +494,17 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setFinalFileReady(document.hasFinalFile);
     setOutlineDirty(false);
     setIsSaved(true);
+    if (nextMode === 'validation') {
+      const hasPendingIssues = (document.validationIssueCount ?? 0) > 0;
+      setAppliedValidationIssueIds(hasPendingIssues ? [] : effectiveValidationIssues.map((issue) => issue.id));
+      setIgnoredValidationIssueIds([]);
+      setActiveValidationIssueId('');
+      setValidationSuggestionDrafts(Object.fromEntries(effectiveValidationIssues.map((issue) => [issue.id, getValidationCorrectedExcerpt(issue)])));
+    } else {
+      setAppliedValidationIssueIds([]);
+      setIgnoredValidationIssueIds([]);
+      setActiveValidationIssueId('');
+    }
   };
 
   const handleConfirmDeleteDocument = () => {
@@ -494,7 +524,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       setFinalFileReady(true);
       if (selectedSavedDocumentId) {
         setSavedDocuments((current) => current.map((item) => (
-          item.id === selectedSavedDocumentId ? { ...item, hasFinalFile: true, updatedAt: '刚刚' } : item
+          item.id === selectedSavedDocumentId
+            ? { ...item, hasFinalFile: true, updatedAt: '刚刚', updatedDate: new Date().toISOString().slice(0, 10) }
+            : item
         )));
       }
     }, 900);
@@ -663,6 +695,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       type: requirementType,
       words: `${content.length}`,
       updatedAt: '刚刚',
+      updatedDate: new Date().toISOString().slice(0, 10),
       hasFinalFile: true,
       source: 'validation',
       validationStatus: '已完成',
@@ -679,6 +712,11 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setSelectedSavedDocumentId(nextDocument.id);
     setFinalFileReady(true);
     setIsSaved(true);
+  };
+
+  const handleOpenUserValidationRules = () => {
+    setUserRuleToast('将跳转到用户校验规则在线文档');
+    window.setTimeout(() => setUserRuleToast(''), 1800);
   };
 
   const validationCurrentPanel = (
@@ -699,7 +737,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
                   <CheckSquare size={14} className="text-theme-600" />
-                  {rule.title}
+                  AI{rule.title}
                 </div>
                 <span className="rounded-full bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700">
                   {getValidationRuleIssueCount(rule.id)} 处
@@ -708,6 +746,24 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
               <p className="mt-1 text-xs leading-5 text-gray-500">{rule.desc}</p>
             </div>
           ))}
+          <div className="rounded-lg bg-gray-50 p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
+                <CheckSquare size={14} className="text-theme-600" />
+                用户规则
+              </div>
+              <span className="rounded-full bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700">
+                0 处
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenUserValidationRules}
+              className="mt-1 text-xs font-semibold text-theme-700 underline underline-offset-4 hover:text-theme-800"
+            >
+              查看规则
+            </button>
+          </div>
         </div>
       </div>
 
@@ -783,6 +839,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     </div>
   );
   return (
+    <>
     <div className={`flex ${embedded ? 'h-full' : 'h-screen'} bg-gray-50`}>
       {/* 左侧编辑区 */}
       <div className="flex-1 flex flex-col border-r border-gray-200 bg-white">
@@ -803,7 +860,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
 
         {/* 编辑工具栏 */}
         <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50/50">
-          {documentMode !== "validation" && (
+          {currentDocumentMode !== "validation" && (
             <>
               <button className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-200">
                 <Undo size={16} className="text-gray-600" />
@@ -827,7 +884,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         {/* 编辑区域 */}
         <div className="scrollbar-hover flex-1 overflow-y-auto px-8 py-6">
           <div className="mb-3 text-center text-xs leading-5 text-gray-400">
-            {documentMode === "validation" ? '校验模式下公文内容不可直接编辑，点击右侧问题可定位查看。' : '仅支持编辑内容，版式调整请前往编辑模板。'}
+            {currentDocumentMode === "validation" ? '校验模式下公文内容不可直接编辑，点击右侧问题可定位查看。' : '仅支持编辑内容，版式调整请前往编辑模板。'}
           </div>
           <div className={`mx-auto max-w-3xl rounded-sm bg-white px-10 py-9 shadow-sm ring-1 ring-gray-100 ${templateShellClass}`}>
             <div className="mb-6 flex items-center justify-between border-b border-gray-100 pb-3 text-[11px] text-gray-400">
@@ -842,7 +899,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
             <h1 className={`mb-8 text-center font-bold text-gray-950 ${selectedTemplateMeta.category === '会议纪要' ? 'text-xl' : 'text-2xl'}`}>
               {requirementTitle || '文档标题'}
             </h1>
-            {documentMode === "validation" ? (
+            {currentDocumentMode === "validation" ? (
               <div className="min-h-[520px] w-full whitespace-pre-wrap text-[15px] leading-8 text-gray-700 outline-none">
                 {validationMarkedContent.map((token, index) => token.type === "issue" ? (
                   <mark
@@ -946,35 +1003,56 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <label className="block">
-                      <span className="mb-1 block text-[11px] font-medium text-gray-400">类别</span>
+                      <span className="mb-1 block text-[11px] font-medium text-gray-400">辅助类型</span>
                       <select
-                        value={documentCategoryFilter}
-                        onChange={(event) => setDocumentCategoryFilter(event.target.value)}
+                        value={documentSourceFilter}
+                        onChange={(event) => {
+                          const nextSource = event.target.value;
+                          setDocumentSourceFilter(nextSource);
+                          if (nextSource === '校验') {
+                            setDocumentTypeFilter('全部');
+                          }
+                        }}
                         className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
                       >
-                        {savedDocumentCategories.map((category) => (
-                          <option key={category} value={category}>{category}</option>
+                        {savedDocumentSourceOptions.map((source) => (
+                          <option key={source} value={source}>{source}</option>
                         ))}
                       </select>
                     </label>
-                    <div>
-                      <span className="mb-1 block text-[11px] font-medium text-gray-400">时间段</span>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <input
-                          type="date"
-                          value={documentStartDate}
-                          onChange={(event) => setDocumentStartDate(event.target.value)}
-                          className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-1.5 text-[11px] text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
-                          title="开始日期"
-                        />
-                        <input
-                          type="date"
-                          value={documentEndDate}
-                          onChange={(event) => setDocumentEndDate(event.target.value)}
-                          className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-1.5 text-[11px] text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
-                          title="结束日期"
-                        />
-                      </div>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-medium text-gray-400">文章类型</span>
+                      <select
+                        value={documentTypeFilter}
+                        onChange={(event) => setDocumentTypeFilter(event.target.value)}
+                        disabled={documentSourceFilter === '校验'}
+                        className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100 disabled:cursor-not-allowed disabled:text-gray-400"
+                      >
+                        {documentSourceFilter === '校验' ? (
+                          <option value="全部">不适用</option>
+                        ) : savedDocumentTypeOptions.map((type) => (
+                          <option key={type} value={type}>{type}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="mt-3">
+                    <span className="mb-1 block text-[11px] font-medium text-gray-400">时间段</span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="date"
+                        value={documentStartDate}
+                        onChange={(event) => setDocumentStartDate(event.target.value)}
+                        className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px] text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
+                        title="开始日期"
+                      />
+                      <input
+                        type="date"
+                        value={documentEndDate}
+                        onChange={(event) => setDocumentEndDate(event.target.value)}
+                        className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px] text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
+                        title="结束日期"
+                      />
                     </div>
                   </div>
                 </div>
@@ -988,7 +1066,10 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {filteredSavedDocuments.map((item) => (
+                  {filteredSavedDocuments.map((item) => {
+                    const validationResolved = item.source === 'validation' && (item.validationIssueCount ?? 0) === 0;
+                    const canDownloadDocument = item.source === 'validation' ? validationResolved : item.hasFinalFile;
+                    return (
                     <div
                       key={item.id}
                       role="button"
@@ -1014,7 +1095,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                             <span className={`rounded px-2 py-0.5 text-xs font-medium ${
                               item.source === 'validation' ? 'bg-blue-50 text-blue-700' : 'bg-theme-50 text-theme-700'
                             }`}>
-                              辅助类型：{item.source === 'validation' ? '校验' : '创作'}
+                              {item.source === 'validation' ? '校验' : '创作'}
                             </span>
                             {item.source === 'writing' && (
                               <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.type}</span>
@@ -1022,14 +1103,14 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.words} 字</span>
                             <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.updatedAt}</span>
                             {item.source === 'validation' && (
-                              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{item.validationStatus || '已校验'} · {item.validationIssueCount ?? 0} 处</span>
+                              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs text-blue-700">{item.validationStatus || '待修复'} · {item.validationIssueCount ?? 0} 处</span>
                             )}
 
                           </div>
                         </div>
                       </div>
                       <div className="mt-3 grid grid-cols-2 gap-2">
-                        {item.hasFinalFile ? (
+                        {canDownloadDocument ? (
                           <button
                             onClick={(event) => event.stopPropagation()}
                             className="flex items-center justify-center gap-1.5 rounded-lg border border-theme-100 bg-theme-50 px-2 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-100"
@@ -1040,7 +1121,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                         ) : (
                           <div className="flex items-center justify-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-2 py-1.5 text-xs font-medium text-gray-400">
                             <FileText size={13} />
-                            待生成
+                            {item.source === 'validation' ? '待修复' : '待生成'}
                           </div>
                         )}
                         <button
@@ -1055,7 +1136,8 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                         </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   {filteredSavedDocuments.length === 0 && (
                     <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-8 text-center text-sm text-gray-400">
                       未找到匹配的公文
@@ -1063,7 +1145,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   )}
                 </div>
               </div>
-            ) : documentMode === "validation" ? (
+            ) : currentDocumentMode === "validation" ? (
               validationCurrentPanel
             ) : (
             <>
@@ -1309,7 +1391,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
             >
               返回当前公文
             </button>
-          ) : documentMode === "validation" ? (
+          ) : currentDocumentMode === "validation" ? (
             <div className="space-y-2">
               {pendingValidationIssues.length === 0 ? (
                 <button
@@ -1335,13 +1417,15 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                 <CheckSquare size={15} />
                 重新校验
               </button>
-              <button
-                onClick={handleSave}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <Save size={15} />
-                保存修订稿
-              </button>
+              {pendingValidationIssues.length > 0 && (
+                <button
+                  onClick={handleSave}
+                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Save size={15} />
+                  保存修订稿
+                </button>
+              )}
             </div>
           ) : isGeneratingOutline ? (
             <button
@@ -1610,6 +1694,12 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         </div>
       )}
     </div>
+    {userRuleToast && (
+      <div className="fixed bottom-6 right-6 z-[90] rounded-xl bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
+        {userRuleToast}
+      </div>
+    )}
+    </>
   );
 }
 

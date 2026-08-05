@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Minus, GripVertical } from 'lucide-react';
 import { Ticket, WalletCards, Plane, BadgeCheck, CheckSquare, ListTodo, BarChart3, UserPlus, Link2, Save, CircleDot, CircleCheckBig } from 'lucide-react';
 import { Landmark, Brain, Receipt, FileSignature, Calculator, Workflow, Users, LayoutDashboard, GraduationCap, Award, ClipboardCheck, Database, FileCheck, FolderKanban, Server, LineChart, Blocks, PieChart, Gauge, HardDrive, ShieldCheck, Truck, Hexagon, Shirt, Car, MessageSquare, Wrench, Fuel, BookMarked, Network, AlertTriangle, IterationCw, Shield, Clock, Zap, Volume2, Crown, Package, PackagePlus, Tag, Wallet, BarChart2, Activity, Globe, Smartphone, ShoppingBag, GitBranch, Phone, UserCheck, Repeat, Star, Briefcase, Sun, BookOpen, Paperclip, Send, Smile, AtSign, ImageIcon } from 'lucide-react';
-import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
+import { MAIN_USER_NAME, getDemoPerson, getInitialsAvatar } from '../data/people';
 import { workItems, WorkItem, WorkItemTask, WorkItemType } from '../data/workItems';
 
 // 定义卡片类型
@@ -2426,6 +2426,75 @@ function MyTodoView({ actions, otherTodos, onBack, onCreateItem, onOpenItem, onS
   );
 }
 
+function parseWorkItemDeadline(deadline: string) {
+  const match = deadline.match(/\d{4}-\d{2}-\d{2}/);
+  if (!match) return null;
+  const [year, month, day] = match[0].split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function getWorkItemDeadlineTone(deadline: string) {
+  const deadlineDate = parseWorkItemDeadline(deadline);
+  if (!deadlineDate) return 'text-gray-950';
+  const today = new Date();
+  const currentDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const dueDay = new Date(deadlineDate.getFullYear(), deadlineDate.getMonth(), deadlineDate.getDate());
+  const daysLeft = Math.ceil((dueDay.getTime() - currentDay.getTime()) / 86400000);
+  if (daysLeft <= 0) return 'text-pink-700';
+  if (daysLeft <= 3) return 'text-amber-600';
+  return 'text-gray-950';
+}
+
+function PersonNameButton({ name, onClick, muted = false }: { name: string; onClick: (name: string) => void; muted?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(name)}
+      className={`rounded-md px-1.5 py-0.5 text-sm font-semibold transition hover:bg-pink-50 hover:text-pink-700 ${
+        muted ? 'text-gray-700' : 'text-gray-950'
+      }`}
+    >
+      {name}
+    </button>
+  );
+}
+
+function PersonProfileCard({ name, onClose }: { name: string; onClose: () => void }) {
+  const departments = ['信息管理部', 'IT服务处', '项目管理办公室', '客服中心'];
+  const roles = ['负责人', '项目助理', '执行成员', '协作成员'];
+  const seed = Array.from(name).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return (
+    <div className="ml-9 rounded-xl border border-pink-100 bg-white p-3 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <img src={getInitialsAvatar(name, 'ec4899')} alt={name} className="h-10 w-10 rounded-full border border-pink-100" />
+          <div className="min-w-0">
+            <div className="truncate text-sm font-bold text-gray-950">{name}</div>
+            <div className="mt-1 text-xs text-gray-500">{departments[seed % departments.length]} · {roles[seed % roles.length]}</div>
+          </div>
+        </div>
+        <button type="button" onClick={onClose} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="关闭名片">
+          <X size={14} />
+        </button>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+          <div className="font-bold text-gray-950">{(seed % 5) + 2}</div>
+          <div className="mt-0.5 text-gray-500">参与事项</div>
+        </div>
+        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+          <div className="font-bold text-gray-950">{(seed % 7) + 4}</div>
+          <div className="mt-0.5 text-gray-500">任务</div>
+        </div>
+        <div className="rounded-lg bg-gray-50 px-2 py-1.5">
+          <div className="font-bold text-pink-700">{(seed % 4) + 1}</div>
+          <div className="mt-0.5 text-gray-500">评价</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitReport, onAssignTask, onCreateSubtask, onComment, onWeeklyReport }: {
   items: WorkItem[];
   onBack: () => void;
@@ -2443,6 +2512,7 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitRe
   const [teamFilter, setTeamFilter] = useState('全部团队');
   const [selectedId, setSelectedId] = useState(items[0]?.id ?? '');
   const [detailOpen, setDetailOpen] = useState(false);
+  const [selectedPersonName, setSelectedPersonName] = useState<string | null>(null);
   const teamTypeOptions = ['全部维度', ...Array.from(new Set(items.map(item => item.teamType)))];
   const teamOptions = ['全部团队', ...Array.from(new Set(items
     .filter(item => teamTypeFilter === '全部维度' || item.teamType === teamTypeFilter)
@@ -2473,9 +2543,16 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitRe
   const selectedActivities = selected ? getWorkItemActivities(selected) : [];
   const selectedReport = selected?.reports[0];
   const selectedOpenTasks = selected ? selected.tasks.filter(task => task.status !== '已完成') : [];
-  const selectedParentTasks = selected ? selected.tasks.filter(task => !task.parentId) : [];
+  const hasSelectedChildTasks = (taskId: string) => selected ? selected.tasks.some(task => task.parentId === taskId) : false;
+  const getSelectedParentTask = (task: WorkItemTask) => selected ? selected.tasks.find(candidate => candidate.id === task.parentId) : undefined;
+  const shouldPromoteSelectedTask = (task: WorkItemTask) => {
+    const parentTask = getSelectedParentTask(task);
+    return Boolean(task.parentId && (parentTask?.parentId || hasSelectedChildTasks(task.id)));
+  };
+  const selectedParentTasks = selected ? selected.tasks.filter(task => !task.parentId || shouldPromoteSelectedTask(task)) : [];
   const selectedFinishedTaskCount = selected ? selected.tasks.filter(task => task.status === '已完成').length : 0;
-  const getSelectedSubtasks = (taskId: string) => selected ? selected.tasks.filter(task => task.parentId === taskId) : [];
+  const getSelectedSubtasks = (taskId: string) => selected ? selected.tasks.filter(task => task.parentId === taskId && !shouldPromoteSelectedTask(task)) : [];
+  const selectedDeadlineTone = selected ? getWorkItemDeadlineTone(selected.deadline) : 'text-gray-950';
 
   return (
     <section>
@@ -2637,9 +2714,8 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitRe
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <h3 className="text-lg font-bold text-gray-950">事项详情</h3>
               <div className="flex items-center gap-2">
-                <button className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-100">
+                <button className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" title="关注" aria-label="关注">
                   <Star size={16} />
-                  关注
                 </button>
                 <button onClick={() => setDetailOpen(false)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800" title="关闭">
                   <X size={20} />
@@ -2657,26 +2733,31 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitRe
                     <Users size={20} className="text-gray-400" />
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs text-gray-500">负责人</span>
-                      <span className="font-semibold text-gray-950">{selected.owner}</span>
-                      <span className="text-xs text-gray-500">助理 {selected.assistant}</span>
+                      <PersonNameButton name={selected.owner} onClick={setSelectedPersonName} />
+                      <span className="text-xs text-gray-500">助理</span>
+                      <PersonNameButton name={selected.assistant} onClick={setSelectedPersonName} />
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <CalendarIcon size={20} className="text-gray-400" />
-                    <div className="font-semibold text-red-500">{selected.reportCycle} - {selected.deadline}</div>
+                    <UserPlus size={20} className="text-gray-400" />
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <span className="text-xs text-gray-500">项目团队成员</span>
+                      {selected.members.map(member => (
+                        <PersonNameButton key={member} name={member} onClick={setSelectedPersonName} muted />
+                      ))}
+                    </div>
                   </div>
-                  <button onClick={() => onSubmitReport(selected.id)} className="flex w-full items-center gap-4 text-left text-gray-500 hover:text-pink-700">
-                    <FileText size={20} className="text-gray-400" />
-                    <span>提交事项汇报</span>
-                  </button>
+                  {selectedPersonName && (
+                    <PersonProfileCard name={selectedPersonName} onClose={() => setSelectedPersonName(null)} />
+                  )}
+                  <div className="flex items-center gap-4">
+                    <CalendarIcon size={20} className="text-gray-400" />
+                    <div className={`font-semibold ${selectedDeadlineTone}`}>截止时间 {selected.deadline}</div>
+                  </div>
                   <div className="flex gap-4">
                     <MessageSquare size={20} className="mt-0.5 shrink-0 text-gray-400" />
                     <p className="leading-6 text-gray-600">{selected.description}</p>
                   </div>
-                  <button onClick={() => onAssignTask(selected.id)} className="flex w-full items-center gap-4 text-left text-gray-500 hover:text-pink-700">
-                    <GitBranch size={20} className="text-gray-400" />
-                    <span>指派主任务</span>
-                  </button>
                   <div className="flex gap-4">
                     <ListTodo size={20} className="mt-1 shrink-0 text-gray-400" />
                     <div className="min-w-0 flex-1">
@@ -2696,6 +2777,7 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitRe
                         {selectedParentTasks.map(task => {
                           const subtasks = getSelectedSubtasks(task.id);
                           const finishedSubtasks = subtasks.filter(subtask => subtask.status === '已完成').length;
+                          const taskIsSubtask = Boolean(task.parentId);
                           return (
                             <div key={task.id} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
                               <div className="flex items-start gap-2">
@@ -2705,9 +2787,12 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitRe
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <p className="truncate font-semibold text-gray-950">{task.title}</p>
-                                    <span className="text-xs text-gray-500">主任务</span>
+                                    <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                      <GitBranch size={12} />
+                                      {taskIsSubtask ? '子任务' : '主任务'}
+                                    </span>
                                     {subtasks.length > 0 && <span className="text-xs text-blue-700">子任务 {finishedSubtasks}/{subtasks.length}</span>}
-                                    <button onClick={() => onCreateSubtask(selected.id, task.id)} className="text-xs font-semibold text-pink-700 hover:text-pink-800">+ 子任务</button>
+                                    {!taskIsSubtask && <button onClick={() => onCreateSubtask(selected.id, task.id)} className="text-xs font-semibold text-pink-700 hover:text-pink-800">+ 分派子任务</button>}
                                   </div>
                                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
                                     <span>{task.assignee}</span>
@@ -2739,15 +2824,16 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitRe
                           );
                         })}
                       </div>
-                      <button onClick={() => onAssignTask(selected.id)} className="mt-3 text-sm font-medium text-gray-500 hover:text-pink-700">+ 指派主任务</button>
+                      <button onClick={() => onAssignTask(selected.id)} className="mt-3 text-sm font-medium text-gray-500 hover:text-pink-700">+ 分派任务</button>
                     </div>
                   </div>
                   <div className="flex gap-4">
                     <Paperclip size={20} className="mt-0.5 shrink-0 text-gray-400" />
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex min-w-0 flex-wrap gap-1.5">
+                      <span className="text-xs text-gray-500">附件</span>
                       {selected.sourceRefs.map(source => (
-                        <span key={source.id} className={`text-xs font-medium ${source.status === '已接入' ? 'text-green-700' : 'text-gray-500'}`}>
-                          {source.type} · {source.status}
+                        <span key={source.id} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                          {source.title}
                         </span>
                       ))}
                     </div>
@@ -2781,12 +2867,6 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onSubmitRe
               </div>
             </div>
             <div className="border-t border-gray-100 bg-white px-6 py-4">
-              <div className="mb-3 grid grid-cols-4 gap-2">
-                <button onClick={() => onSubmitReport(selected.id)} className="rounded-lg bg-pink-700 px-2 py-2 text-xs font-semibold text-white hover:bg-pink-800">汇报</button>
-                <button onClick={() => onAssignTask(selected.id)} className="rounded-lg border border-pink-100 bg-pink-50 px-2 py-2 text-xs font-semibold text-pink-700 hover:bg-pink-100">任务</button>
-                <button onClick={() => onComment(selected.id)} className="rounded-lg border border-blue-100 bg-blue-50 px-2 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-100">评价</button>
-                <button onClick={() => onOpenItem(selected.id)} className="rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs font-semibold text-gray-700 hover:border-pink-200 hover:text-pink-700">详情页</button>
-              </div>
               <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2">
                 <input className="min-w-0 flex-1 text-sm outline-none" placeholder="输入评价" />
                 <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100" title="文字样式"><span className="text-sm font-semibold">Aa</span></button>
