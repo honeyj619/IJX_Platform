@@ -339,6 +339,8 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const pendingValidationIssuePositions = getValidationIssuePositions(content, unresolvedValidationIssues);
   const pendingValidationIssues = pendingValidationIssuePositions.map((position) => position.issue);
   const activeValidationIssue = pendingValidationIssues.find((issue) => issue.id === activeValidationIssueId) || pendingValidationIssues[0] || null;
+  const hasValidationResolutionChanges = appliedValidationIssueIds.length > 0 || ignoredValidationIssueIds.length > 0;
+  const canSaveValidationDraft = currentDocumentMode === "validation" && pendingValidationIssues.length > 0 && hasValidationResolutionChanges && !isSaved;
   const getValidationRuleIssueCount = (ruleId: string) => (
     pendingValidationIssues.filter((item) => item.type === ruleId).length
   );
@@ -366,6 +368,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   });
 
   const handleSave = () => {
+    if (currentDocumentMode === "validation" && pendingValidationIssues.length > 0 && !hasValidationResolutionChanges) {
+      return;
+    }
     const trimmedTitle = requirementTitle.trim() || '未命名文档';
     const nextDocument = {
       id: selectedSavedDocumentId || `saved-${Date.now()}`,
@@ -1420,7 +1425,12 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
               {pendingValidationIssues.length > 0 && (
                 <button
                   onClick={handleSave}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  disabled={!canSaveValidationDraft}
+                  className={`flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium ${
+                    canSaveValidationDraft
+                      ? 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
+                      : 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
+                  }`}
                 >
                   <Save size={15} />
                   保存修订稿
