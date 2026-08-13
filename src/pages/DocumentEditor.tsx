@@ -200,6 +200,11 @@ const templateFilterOptions: Record<string, string[]> = {
 
 const lengthOptions = ['300-500', '500-800', '600-1200', '1000-1500', '1500-2000'];
 
+const referenceMaterialSites = [
+  { id: 'jixiang-knowledge', name: '吉祥知识平台', desc: '查询企业知识、制度与历史材料' },
+  { id: 'authority-site', name: '局方官网', desc: '查询局方公开政策与规范文件' },
+];
+
 const templateLayoutRules = [
   { label: '主标题', value: '二号方正小标宋，居中，段前 0 行、段后 1 行' },
   { label: '一级标题', value: '三号黑体，序号使用“一、”，段前 0.5 行' },
@@ -317,6 +322,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [documentEndDate, setDocumentEndDate] = useState('');
   const [editorAttachments, setEditorAttachments] = useState(attachments);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [referenceMaterialToast, setReferenceMaterialToast] = useState('');
   const [activeValidationIssueId, setActiveValidationIssueId] = useState('');
   const [validationSuggestionDrafts, setValidationSuggestionDrafts] = useState<Record<string, string>>(() => {
     const issues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
@@ -331,7 +337,6 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [isSaved, setIsSaved] = useState(true);
   const [appliedValidationIssueIds, setAppliedValidationIssueIds] = useState<string[]>([]);
   const [ignoredValidationIssueIds, setIgnoredValidationIssueIds] = useState<string[]>([]);
-  const [userRuleToast, setUserRuleToast] = useState('');
   const effectiveValidationIssues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
   const unresolvedValidationIssues = effectiveValidationIssues.filter((issue) => (
     !appliedValidationIssueIds.includes(issue.id) && !ignoredValidationIssueIds.includes(issue.id)
@@ -350,6 +355,11 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const handleOpenReferenceMaterial = (siteName: string) => {
+    setReferenceMaterialToast(`将跳转到${siteName}查询参考材料`);
+    window.setTimeout(() => setReferenceMaterialToast(''), 1800);
+  };
+
   const getSavedDocumentSourceLabel = (source: typeof initialSavedDocuments[number]['source']) => (
     source === 'validation' ? '校验' : '创作'
   );
@@ -361,7 +371,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     const keyword = documentSearch.trim().toLowerCase();
     const matchesName = !keyword || document.title.toLowerCase().includes(keyword);
     const matchesSource = documentSourceFilter === '全部' || getSavedDocumentSourceLabel(document.source) === documentSourceFilter;
-    const matchesType = documentTypeFilter === '全部' || (document.source === 'writing' && document.type === documentTypeFilter);
+    const matchesType = documentSourceFilter !== '创作' || documentTypeFilter === '全部' || (document.source === 'writing' && document.type === documentTypeFilter);
     const matchesStartDate = !documentStartDate || document.updatedDate >= documentStartDate;
     const matchesEndDate = !documentEndDate || document.updatedDate <= documentEndDate;
     return matchesName && matchesSource && matchesType && matchesStartDate && matchesEndDate;
@@ -719,11 +729,6 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setIsSaved(true);
   };
 
-  const handleOpenUserValidationRules = () => {
-    setUserRuleToast('将跳转到用户校验规则在线文档');
-    window.setTimeout(() => setUserRuleToast(''), 1800);
-  };
-
   const validationCurrentPanel = (
     <div className="space-y-4">
       <div className="rounded-lg border border-gray-200 bg-white p-3">
@@ -751,24 +756,6 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
               <p className="mt-1 text-xs leading-5 text-gray-500">{rule.desc}</p>
             </div>
           ))}
-          <div className="rounded-lg bg-gray-50 p-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                <CheckSquare size={14} className="text-theme-600" />
-                用户规则
-              </div>
-              <span className="rounded-full bg-theme-50 px-2 py-0.5 text-xs font-medium text-theme-700">
-                0 处
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={handleOpenUserValidationRules}
-              className="mt-1 text-xs font-semibold text-theme-700 underline underline-offset-4 hover:text-theme-800"
-            >
-              查看规则
-            </button>
-          </div>
         </div>
       </div>
 
@@ -956,9 +943,37 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       {/* 右侧当前公文信息 */}
       <div className="w-80 flex flex-col bg-gray-50 border-l border-gray-200 h-full">
         <div className="border-b border-gray-200 bg-white px-4 pb-3 pt-4">
-          <div className="mb-3 flex items-center gap-2 text-theme-700">
-            <FileText size={18} />
-            <span className="text-sm font-semibold">公文工作台</span>
+          <div className="mb-3 flex items-center justify-between gap-2 text-theme-700">
+            <div className="flex items-center gap-2">
+              <FileText size={18} />
+              <span className="text-sm font-semibold">公文工作台</span>
+            </div>
+            <div className="group relative">
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-theme-100 bg-theme-50 text-theme-700 transition-colors hover:bg-theme-100"
+                title="参考材料查询"
+                aria-label="参考材料查询"
+              >
+                <Search size={15} />
+              </button>
+              <div className="pointer-events-none absolute right-0 top-9 z-30 w-56 translate-y-1 rounded-xl border border-gray-100 bg-white p-2 text-gray-700 opacity-0 shadow-xl transition-all group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+                <div className="px-2 py-1.5 text-xs font-semibold text-gray-500">参考材料查询</div>
+                <div className="space-y-1">
+                  {referenceMaterialSites.map(site => (
+                    <button
+                      key={site.id}
+                      type="button"
+                      onClick={() => handleOpenReferenceMaterial(site.name)}
+                      className="block w-full rounded-lg px-2 py-2 text-left hover:bg-theme-50"
+                    >
+                      <span className="block text-sm font-semibold text-gray-900">{site.name}</span>
+                      <span className="mt-0.5 block text-xs leading-4 text-gray-500">{site.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-1 text-sm">
             {[
@@ -1014,7 +1029,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                         onChange={(event) => {
                           const nextSource = event.target.value;
                           setDocumentSourceFilter(nextSource);
-                          if (nextSource === '校验') {
+                          if (nextSource !== '创作') {
                             setDocumentTypeFilter('全部');
                           }
                         }}
@@ -1025,21 +1040,20 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                         ))}
                       </select>
                     </label>
-                    <label className="block">
-                      <span className="mb-1 block text-[11px] font-medium text-gray-400">文章类型</span>
-                      <select
-                        value={documentTypeFilter}
-                        onChange={(event) => setDocumentTypeFilter(event.target.value)}
-                        disabled={documentSourceFilter === '校验'}
-                        className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100 disabled:cursor-not-allowed disabled:text-gray-400"
-                      >
-                        {documentSourceFilter === '校验' ? (
-                          <option value="全部">不适用</option>
-                        ) : savedDocumentTypeOptions.map((type) => (
-                          <option key={type} value={type}>{type}</option>
-                        ))}
-                      </select>
-                    </label>
+                    {documentSourceFilter === '创作' && (
+                      <label className="block">
+                        <span className="mb-1 block text-[11px] font-medium text-gray-400">文章类型</span>
+                        <select
+                          value={documentTypeFilter}
+                          onChange={(event) => setDocumentTypeFilter(event.target.value)}
+                          className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs text-gray-700 outline-none focus:border-theme-200 focus:bg-white focus:ring-2 focus:ring-theme-100"
+                        >
+                          {savedDocumentTypeOptions.map((type) => (
+                            <option key={type} value={type}>{type}</option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
                   </div>
                   <div className="mt-3">
                     <span className="mb-1 block text-[11px] font-medium text-gray-400">时间段</span>
@@ -1704,12 +1718,12 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         </div>
       )}
     </div>
-    {userRuleToast && (
+    {referenceMaterialToast && (
       <div className="fixed bottom-6 right-6 z-[90] rounded-xl bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
-        {userRuleToast}
+        {referenceMaterialToast}
       </div>
     )}
-    </>
+  </>
   );
 }
 

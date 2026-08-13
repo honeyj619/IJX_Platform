@@ -45,3 +45,11 @@ export function getDemoPerson(index: number) {
 export function getInitialsAvatar(name: string, backgroundColor = '8b5cf6') {
   return `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=${backgroundColor}`;
 }
+
+export function getPersonAvatar(name: string) {
+  if (name === MAIN_USER_NAME) return MAIN_USER_AVATAR;
+  const palette = ['f9a8d4', '93c5fd', '86efac', 'fde68a', 'c4b5fd', 'fca5a5'];
+  const index = Math.max(0, THREE_KINGDOMS_NAMES.indexOf(name));
+  const backgroundColor = palette[index % palette.length];
+  return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=${backgroundColor}`;
+}
