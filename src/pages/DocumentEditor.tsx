@@ -302,6 +302,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [activeTemplateFilter, setActiveTemplateFilter] = useState('全部');
   const [requirementsEditable, setRequirementsEditable] = useState(documentMode === "validation" ? false : startInRequirements);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showApplyAllValidationConfirm, setShowApplyAllValidationConfirm] = useState(false);
   const [outlineEditing, setOutlineEditing] = useState(startInOutline);
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [isGeneratingFinalFile, setIsGeneratingFinalFile] = useState(false);
@@ -322,7 +323,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [documentEndDate, setDocumentEndDate] = useState('');
   const [editorAttachments, setEditorAttachments] = useState(attachments);
   const [copySuccess, setCopySuccess] = useState(false);
-  const [referenceMaterialToast, setReferenceMaterialToast] = useState('');
+  const [documentToast, setDocumentToast] = useState('');
   const [activeValidationIssueId, setActiveValidationIssueId] = useState('');
   const [validationSuggestionDrafts, setValidationSuggestionDrafts] = useState<Record<string, string>>(() => {
     const issues = validationIssues.length > 0 ? validationIssues : defaultValidationIssues;
@@ -343,9 +344,10 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   ));
   const pendingValidationIssuePositions = getValidationIssuePositions(content, unresolvedValidationIssues);
   const pendingValidationIssues = pendingValidationIssuePositions.map((position) => position.issue);
+  const hasPendingValidationIssues = pendingValidationIssues.length > 0;
   const activeValidationIssue = pendingValidationIssues.find((issue) => issue.id === activeValidationIssueId) || pendingValidationIssues[0] || null;
   const hasValidationResolutionChanges = appliedValidationIssueIds.length > 0 || ignoredValidationIssueIds.length > 0;
-  const canSaveValidationDraft = currentDocumentMode === "validation" && pendingValidationIssues.length > 0 && hasValidationResolutionChanges && !isSaved;
+  const canSaveValidationDraft = currentDocumentMode === "validation" && hasPendingValidationIssues && hasValidationResolutionChanges && !isSaved;
   const getValidationRuleIssueCount = (ruleId: string) => (
     pendingValidationIssues.filter((item) => item.type === ruleId).length
   );
@@ -355,9 +357,13 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const showDocumentToast = (message: string) => {
+    setDocumentToast(message);
+    window.setTimeout(() => setDocumentToast(''), 1800);
+  };
+
   const handleOpenReferenceMaterial = (siteName: string) => {
-    setReferenceMaterialToast(`将跳转到${siteName}查询参考材料`);
-    window.setTimeout(() => setReferenceMaterialToast(''), 1800);
+    showDocumentToast(`将跳转到${siteName}查询参考材料`);
   };
 
   const getSavedDocumentSourceLabel = (source: typeof initialSavedDocuments[number]['source']) => (
@@ -377,23 +383,20 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     return matchesName && matchesSource && matchesType && matchesStartDate && matchesEndDate;
   });
 
-  const handleSave = () => {
-    if (currentDocumentMode === "validation" && pendingValidationIssues.length > 0 && !hasValidationResolutionChanges) {
-      return;
-    }
+  const saveDocumentSnapshot = (snapshotContent = content, validationIssueCount = pendingValidationIssues.length) => {
     const trimmedTitle = requirementTitle.trim() || '未命名文档';
     const nextDocument = {
       id: selectedSavedDocumentId || `saved-${Date.now()}`,
       title: trimmedTitle,
       type: requirementType,
-      words: `${content.length}`,
+      words: `${snapshotContent.length}`,
       updatedAt: '刚刚',
       updatedDate: new Date().toISOString().slice(0, 10),
-      hasFinalFile: currentDocumentMode === "validation" ? pendingValidationIssues.length === 0 : finalFileReady,
+      hasFinalFile: currentDocumentMode === "validation" ? validationIssueCount === 0 : finalFileReady,
       source: currentDocumentMode === "validation" ? 'validation' : 'writing',
-      validationStatus: currentDocumentMode === "validation" ? (pendingValidationIssues.length === 0 ? '已完成' : '待修复') : undefined,
-      validationIssueCount: currentDocumentMode === "validation" ? pendingValidationIssues.length : undefined,
-      content,
+      validationStatus: currentDocumentMode === "validation" ? (validationIssueCount === 0 ? '已完成' : '待修复') : undefined,
+      validationIssueCount: currentDocumentMode === "validation" ? validationIssueCount : undefined,
+      content: snapshotContent,
       outline: outlineText,
     };
     setSavedDocuments((current) => {
@@ -404,6 +407,13 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     });
     setSelectedSavedDocumentId(nextDocument.id);
     setIsSaved(true);
+  };
+
+  const handleSave = () => {
+    if (currentDocumentMode === "validation" && pendingValidationIssues.length > 0 && !hasValidationResolutionChanges) {
+      return;
+    }
+    saveDocumentSnapshot();
   };
 
   const generateOutlineDraft = () => {
@@ -684,6 +694,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setAppliedValidationIssueIds((current) => current.includes(issue.id) ? current : [...current, issue.id]);
     setActiveValidationIssueId((current) => current === issue.id ? pendingValidationIssues.find((item) => item.id !== issue.id)?.id || '' : current);
     setIsSaved(false);
+    showDocumentToast('已应用当前修订，请注意及时保存');
   };
 
   const handleIgnoreValidationIssue = (issue: DocumentValidationIssue) => {
@@ -693,13 +704,17 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   };
 
   const handleApplyAllValidationIssues = () => {
-    setContent((current) => pendingValidationIssues.reduce(
+    setShowApplyAllValidationConfirm(false);
+    const nextContent = pendingValidationIssues.reduce(
       (nextContent, issue) => applyValidationIssueToText(nextContent, issue, validationSuggestionDrafts[issue.id] || getValidationCorrectedExcerpt(issue)),
-      current,
-    ));
+      content,
+    );
+    setContent(nextContent);
     setAppliedValidationIssueIds(effectiveValidationIssues.map((issue) => issue.id));
     setActiveValidationIssueId('');
-    setIsSaved(false);
+    setFinalFileReady(true);
+    saveDocumentSnapshot(nextContent, 0);
+    showDocumentToast('已应用所有修订结果并保存');
   };
 
   const handleExportValidatedDocument = () => {
@@ -1418,11 +1433,11 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-green-700"
                 >
                   <Download size={15} />
-                  导出文档
+                  下载最终结果
                 </button>
               ) : (
                 <button
-                  onClick={handleApplyAllValidationIssues}
+                  onClick={() => setShowApplyAllValidationConfirm(true)}
                   className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-theme-700"
                 >
                   <CheckCircle2 size={15} />
@@ -1436,7 +1451,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
                 <CheckSquare size={15} />
                 重新校验
               </button>
-              {pendingValidationIssues.length > 0 && (
+              {hasPendingValidationIssues && (
                 <button
                   onClick={handleSave}
                   disabled={!canSaveValidationDraft}
@@ -1568,6 +1583,29 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
               <button
                 onClick={handleConfirmDeleteDocument}
                 className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              >
+                确认
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showApplyAllValidationConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+            <div className="text-lg font-semibold text-gray-900">应用所有校验结果</div>
+            <p className="mt-3 text-sm leading-6 text-gray-600">是否确认应用所有校验结果并保存？</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                onClick={() => setShowApplyAllValidationConfirm(false)}
+                className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleApplyAllValidationIssues}
+                className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700"
               >
                 确认
               </button>
@@ -1718,9 +1756,9 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         </div>
       )}
     </div>
-    {referenceMaterialToast && (
-      <div className="fixed bottom-6 right-6 z-[90] rounded-xl bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
-        {referenceMaterialToast}
+    {documentToast && (
+      <div className="fixed left-1/2 top-6 z-[90] -translate-x-1/2 rounded-xl bg-gray-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
+        {documentToast}
       </div>
     )}
   </>
