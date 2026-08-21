@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { 
+import ProcessReferenceFilePicker from "../components/ProcessReferenceFilePicker";
+import {
   ArrowLeft, 
   Save, 
   Plus, 
@@ -303,6 +304,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [requirementsEditable, setRequirementsEditable] = useState(documentMode === "validation" ? false : startInRequirements);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [showApplyAllValidationConfirm, setShowApplyAllValidationConfirm] = useState(false);
+  const [showProcessReferencePicker, setShowProcessReferencePicker] = useState(false);
   const [outlineEditing, setOutlineEditing] = useState(startInOutline);
   const [isGeneratingOutline, setIsGeneratingOutline] = useState(false);
   const [isGeneratingFinalFile, setIsGeneratingFinalFile] = useState(false);
@@ -565,6 +567,17 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     setIsSaved(false);
   };
 
+  const handleSelectProcessReferenceFiles = (files: { name: string }[]) => {
+    setEditorAttachments((current) => {
+      const next = [...current];
+      files.forEach((file) => {
+        if (!next.includes(file.name)) next.push(file.name);
+      });
+      return next;
+    });
+    setIsSaved(false);
+  };
+
   const handleRemoveReferenceFile = (attachment: string) => {
     setEditorAttachments((current) => current.filter((item) => item !== attachment));
     onRemoveAttachment?.(attachment);
@@ -622,13 +635,22 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     <div className="rounded-lg border border-gray-200 bg-white p-3">
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm font-medium text-gray-700">参考文件</div>
-        <button
-          onClick={handleUploadReferenceFile}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-2.5 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-100"
-        >
-          <Plus size={13} />
-          上传参考文件
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            onClick={() => setShowProcessReferencePicker(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          >
+            <FileText size={13} />
+            从流程中选择参考文件
+          </button>
+          <button
+            onClick={handleUploadReferenceFile}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-2.5 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-100"
+          >
+            <Plus size={13} />
+            上传参考文件
+          </button>
+        </div>
       </div>
       {editorAttachments.length > 0 ? (
         <div className="space-y-2">
@@ -1761,6 +1783,11 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
         {documentToast}
       </div>
     )}
+    <ProcessReferenceFilePicker
+      open={showProcessReferencePicker}
+      onClose={() => setShowProcessReferencePicker(false)}
+      onConfirm={handleSelectProcessReferenceFiles}
+    />
   </>
   );
 }

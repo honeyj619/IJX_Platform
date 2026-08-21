@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, Target, Copy, RotateCcw } from "lucide-react";
 import { Link } from "react-router-dom";
+import ProcessReferenceFilePicker from "../components/ProcessReferenceFilePicker";
 import DocumentEditor from "./DocumentEditor";
 import PresentationEditor from "./PresentationEditor";
 import { documentValidationIssues, documentValidationRules, documentValidationSummary, type DocumentMode } from "../data/documentValidation";
@@ -281,6 +282,7 @@ export default function RuYiZone() {
   const [docLength, setDocLength] = useState("600-1200");
   const [docContent, setDocContent] = useState("");
   const [docAttachments, setDocAttachments] = useState<string[]>([]);
+  const [showProcessReferencePicker, setShowProcessReferencePicker] = useState(false);
   const [documentMode, setDocumentMode] = useState<DocumentMode>("writing");
   const [validationFileName, setValidationFileName] = useState("");
   const [validationError, setValidationError] = useState("");
@@ -357,6 +359,17 @@ export default function RuYiZone() {
       setValidationFileName("");
       setValidationReady(false);
     }
+  };
+
+  const handleSelectProcessReferenceFiles = (files: { name: string }[]) => {
+    setDocAttachments((current) => {
+      const next = [...current];
+      files.forEach((file) => {
+        if (!next.includes(file.name)) next.push(file.name);
+      });
+      return next;
+    });
+    setValidationError("");
   };
 
   const handleRemovePptAttachment = (attachment: string) => {
@@ -990,24 +1003,40 @@ export default function RuYiZone() {
           />
         </label>
       </div>
-      {documentMode === "writing" && docAttachments.length > 0 && (
+      {documentMode === "writing" && (
         <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-          <div className="mb-2 text-xs text-gray-500">已上传附件</div>
-          <div className="space-y-1.5">
-            {docAttachments.map((attachment) => (
-              <div key={attachment} className="flex items-center gap-2 text-sm text-gray-700">
-                <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
-                <span className="truncate">{attachment}</span>
-                <button
-                  onClick={() => handleRemoveAttachment(attachment)}
-                  className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500"
-                  title="删除附件"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs text-gray-500">已上传附件</div>
+            <button
+              type="button"
+              onClick={() => setShowProcessReferencePicker(true)}
+              className="inline-flex items-center gap-1 rounded-lg border border-theme-200 bg-white px-2.5 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-50"
+            >
+              <FileTextIcon size={13} />
+              从流程中选择参考文件
+            </button>
           </div>
+          {docAttachments.length > 0 ? (
+            <div className="space-y-1.5">
+              {docAttachments.map((attachment) => (
+                <div key={attachment} className="flex items-center gap-2 text-sm text-gray-700">
+                  <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
+                  <span className="truncate">{attachment}</span>
+                  <button
+                    onClick={() => handleRemoveAttachment(attachment)}
+                    className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500"
+                    title="删除附件"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg bg-white px-3 py-3 text-xs text-gray-400">
+              暂无附件，可上传本地文件或从发文申请流程中选择参考文件。
+            </div>
+          )}
         </div>
       )}
       <div className={documentMode === "writing" ? "mt-4" : "hidden"}>
@@ -2413,24 +2442,40 @@ export default function RuYiZone() {
                       </label>
                     </div>
 
-                    {documentMode === "writing" && docAttachments.length > 0 && (
+                    {documentMode === "writing" && (
                       <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
-                        <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">已上传附件</div>
-                        <div className="space-y-1.5">
-                          {docAttachments.map((attachment) => (
-                            <div key={attachment} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                              <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
-                              <span className="truncate">{attachment}</span>
-                              <button
-                                onClick={() => handleRemoveAttachment(attachment)}
-                                className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 dark:hover:bg-gray-600"
-                                title="删除附件"
-                              >
-                                <X size={12} />
-                              </button>
-                            </div>
-                          ))}
+                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">已上传附件</div>
+                          <button
+                            type="button"
+                            onClick={() => setShowProcessReferencePicker(true)}
+                            className="inline-flex items-center gap-1 rounded-lg border border-theme-200 bg-white px-2.5 py-1.5 text-xs font-medium text-theme-700 hover:bg-theme-50 dark:bg-gray-800 dark:hover:bg-theme-900/20"
+                          >
+                            <FileTextIcon size={13} />
+                            从流程中选择参考文件
+                          </button>
                         </div>
+                        {docAttachments.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {docAttachments.map((attachment) => (
+                              <div key={attachment} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
+                                <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
+                                <span className="truncate">{attachment}</span>
+                                <button
+                                  onClick={() => handleRemoveAttachment(attachment)}
+                                  className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 dark:hover:bg-gray-600"
+                                  title="删除附件"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="rounded-lg bg-white px-3 py-3 text-xs text-gray-400 dark:bg-gray-800">
+                            暂无附件，可上传本地文件或从发文申请流程中选择参考文件。
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2746,6 +2791,11 @@ export default function RuYiZone() {
         </div>{/* end flex-1 min-h-0 */}
       </div>
       )}
+      <ProcessReferenceFilePicker
+        open={showProcessReferencePicker}
+        onClose={() => setShowProcessReferencePicker(false)}
+        onConfirm={handleSelectProcessReferenceFiles}
+      />
     </>
 
   );
