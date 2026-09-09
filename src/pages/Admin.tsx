@@ -698,6 +698,1101 @@ function UserGroupManagement() {
   );
 }
 
+type AppPortalTab = 'App员工工作台' | 'App外部人员工作台' | 'PC工作台';
+type ManagedAppSource = '系统内置' | '管理员创建' | '流程审批' | '业务系统';
+type ManagedAppRange = '全员可用' | '指定部门' | '指定用户组' | '指定人员';
+type ManagedAppStatus = '启用' | '停用';
+type AppEditorMode = 'create' | 'config';
+
+type AppGroupRecord = {
+  id: string;
+  portal: AppPortalTab;
+  name: string;
+  order: number;
+};
+
+type ManagedAppRecord = {
+  id: string;
+  appId: string;
+  name: string;
+  description: string;
+  category: string;
+  source: ManagedAppSource;
+  developerCompany: string;
+  developerEmail: string;
+  range: ManagedAppRange;
+  status: ManagedAppStatus;
+  groupId: string;
+  entryUrl: string;
+  iconTone: string;
+  sort: number;
+};
+
+const appPortalTabs: AppPortalTab[] = ['App员工工作台', 'App外部人员工作台', 'PC工作台'];
+const appCategories = ['全部', '协同办公', '综合服务', '员工服务', '数据服务', 'AI助手', '数据卡片', '应用卡片', '常用功能', '财务系统', '人力系统', '综合系统', '运行系统', '营销系统'];
+const appRanges: Array<'全部' | ManagedAppRange> = ['全部', '全员可用', '指定部门', '指定用户组', '指定人员'];
+
+const initialAppGroups: AppGroupRecord[] = [
+  { id: 'app-service', portal: 'App员工工作台', name: '综合服务', order: 1 },
+  { id: 'app-document', portal: 'App员工工作台', name: '文档中心', order: 2 },
+  { id: 'app-employee', portal: 'App员工工作台', name: '员工服务', order: 3 },
+  { id: 'app-data', portal: 'App员工工作台', name: '数据服务', order: 4 },
+  { id: 'external-service', portal: 'App外部人员工作台', name: '外部协同', order: 1 },
+  { id: 'external-query', portal: 'App外部人员工作台', name: '信息查询', order: 2 },
+  { id: 'pc-data-card', portal: 'PC工作台', name: '数据卡片', order: 1 },
+  { id: 'pc-app-card', portal: 'PC工作台', name: '门户应用卡片', order: 2 },
+  { id: 'pc-common-system', portal: 'PC工作台', name: '常用系统', order: 3 },
+  { id: 'pc-common-feature', portal: 'PC工作台', name: '常用功能', order: 4 },
+];
+
+const initialManagedApps: ManagedAppRecord[] = [
+  {
+    id: 'approval',
+    appId: 'APP-10001',
+    name: '审批',
+    description: '简单、高效、开放的审批工具',
+    category: '协同办公',
+    source: '系统内置',
+    developerCompany: '北京飞书科技有限公司',
+    developerEmail: 'support@feishu.cn',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'app-service',
+    entryUrl: '/web_client/process',
+    iconTone: 'bg-orange-500',
+    sort: 1,
+  },
+  {
+    id: 'salary',
+    appId: 'APP-10002',
+    name: '工资单',
+    description: '便捷、安全的工资单管理',
+    category: '员工服务',
+    source: '流程审批',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'it-service@juneyaoair.com',
+    range: '指定部门',
+    status: '启用',
+    groupId: 'app-employee',
+    entryUrl: '/web_client/business',
+    iconTone: 'bg-blue-500',
+    sort: 2,
+  },
+  {
+    id: 'pc-stat-approval',
+    appId: 'PC-DATA-001',
+    name: '流程审批',
+    description: '待批阅流程',
+    category: '数据卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-data-card',
+    entryUrl: '/web_client/process',
+    iconTone: 'bg-pink-700',
+    sort: 1,
+  },
+  {
+    id: 'pc-stat-revenue',
+    appId: 'PC-DATA-002',
+    name: '业务收入',
+    description: '业务收入明细',
+    category: '数据卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-data-card',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-green-600',
+    sort: 2,
+  },
+  {
+    id: 'pc-stat-todo',
+    appId: 'PC-DATA-003',
+    name: '待办事项',
+    description: '我的待办',
+    category: '数据卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-data-card',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-amber-500',
+    sort: 3,
+  },
+  {
+    id: 'pc-stat-progress',
+    appId: 'PC-DATA-004',
+    name: '事项进度',
+    description: '事项协同看板',
+    category: '数据卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-data-card',
+    entryUrl: '/web_client/enterprise?tab=work-items',
+    iconTone: 'bg-blue-600',
+    sort: 4,
+  },
+  {
+    id: 'pc-card-documents',
+    appId: 'PC-CARD-001',
+    name: '今日未读文档',
+    description: '门户应用卡片',
+    category: '应用卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-app-card',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-sky-600',
+    sort: 1,
+  },
+  {
+    id: 'pc-card-calendar',
+    appId: 'PC-CARD-002',
+    name: '周历',
+    description: '门户应用卡片',
+    category: '应用卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-app-card',
+    entryUrl: '/web_client/calendar',
+    iconTone: 'bg-indigo-600',
+    sort: 2,
+  },
+  {
+    id: 'pc-card-systems',
+    appId: 'PC-CARD-003',
+    name: '常用系统',
+    description: '门户应用卡片',
+    category: '应用卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-app-card',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-amber-600',
+    sort: 3,
+  },
+  {
+    id: 'pc-card-office-apps',
+    appId: 'PC-CARD-004',
+    name: '常用功能',
+    description: '工作汇报、航班动态等入口',
+    category: '应用卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-app-card',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-pink-700',
+    sort: 4,
+  },
+  {
+    id: 'pc-card-duty',
+    appId: 'PC-CARD-005',
+    name: '今日值班',
+    description: '公司值班岗位与人员',
+    category: '应用卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-app-card',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-rose-600',
+    sort: 5,
+  },
+  {
+    id: 'pc-card-courses',
+    appId: 'PC-CARD-006',
+    name: '临期课程',
+    description: '门户应用卡片',
+    category: '应用卡片',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-app-card',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-violet-600',
+    sort: 6,
+  },
+  {
+    id: 'pc-system-oa',
+    appId: 'PC-SYS-001',
+    name: 'OA',
+    description: '办公自动化系统',
+    category: '综合系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=oa',
+    iconTone: 'bg-purple-500',
+    sort: 1,
+  },
+  {
+    id: 'pc-system-bip',
+    appId: 'PC-SYS-002',
+    name: 'BIP系统',
+    description: '财务综合管理平台',
+    category: '财务系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=bip',
+    iconTone: 'bg-amber-500',
+    sort: 2,
+  },
+  {
+    id: 'pc-system-fai',
+    appId: 'PC-SYS-003',
+    name: '财翼融合智能平台FAI',
+    description: '财务智能分析平台',
+    category: '财务系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=fai',
+    iconTone: 'bg-amber-500',
+    sort: 3,
+  },
+  {
+    id: 'pc-system-expense',
+    appId: 'PC-SYS-004',
+    name: '费控商旅系统',
+    description: '费控与商旅管理',
+    category: '财务系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=expense',
+    iconTone: 'bg-orange-500',
+    sort: 4,
+  },
+  {
+    id: 'pc-system-flight',
+    appId: 'PC-SYS-005',
+    name: '航班动态',
+    description: '航班实时动态查询',
+    category: '运行系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=flight',
+    iconTone: 'bg-cyan-500',
+    sort: 5,
+  },
+  {
+    id: 'pc-system-maintenance',
+    appId: 'PC-SYS-006',
+    name: '机务维修',
+    description: '机务维修管理',
+    category: '运行系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=maintenance',
+    iconTone: 'bg-green-500',
+    sort: 6,
+  },
+  {
+    id: 'pc-system-data-portal',
+    appId: 'PC-SYS-007',
+    name: '公司数据门户',
+    description: '公司数据统一入口',
+    category: '综合系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=data-portal',
+    iconTone: 'bg-blue-500',
+    sort: 7,
+  },
+  {
+    id: 'pc-system-pm',
+    appId: 'PC-SYS-008',
+    name: '企业项目管理平台',
+    description: '项目计划和进度管理',
+    category: '综合系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=pm',
+    iconTone: 'bg-indigo-500',
+    sort: 8,
+  },
+  {
+    id: 'pc-system-itops',
+    appId: 'PC-SYS-009',
+    name: '运维管理平台',
+    description: 'IT运维管理平台',
+    category: '综合系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=itops',
+    iconTone: 'bg-sky-500',
+    sort: 9,
+  },
+  {
+    id: 'pc-system-bi',
+    appId: 'PC-SYS-010',
+    name: '公司BI平台',
+    description: '经营分析平台',
+    category: '综合系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=bi',
+    iconTone: 'bg-cyan-500',
+    sort: 10,
+  },
+  {
+    id: 'pc-system-ehr',
+    appId: 'PC-SYS-011',
+    name: '人力资源E-HR系统',
+    description: '员工信息、考勤、薪资等人力服务',
+    category: '人力系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=ehr',
+    iconTone: 'bg-blue-500',
+    sort: 11,
+  },
+  {
+    id: 'pc-system-ioffice',
+    appId: 'PC-SYS-012',
+    name: 'ioffice',
+    description: '办公协同入口',
+    category: '人力系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=ioffice',
+    iconTone: 'bg-indigo-500',
+    sort: 12,
+  },
+  {
+    id: 'pc-system-school',
+    appId: 'PC-SYS-013',
+    name: '梧桐云学堂',
+    description: '企业在线学习平台',
+    category: '人力系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=school',
+    iconTone: 'bg-violet-500',
+    sort: 13,
+  },
+  {
+    id: 'pc-system-revenue',
+    appId: 'PC-SYS-014',
+    name: '收益管理系统',
+    description: '收益管理',
+    category: '营销系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=revenue',
+    iconTone: 'bg-rose-600',
+    sort: 14,
+  },
+  {
+    id: 'pc-system-member',
+    appId: 'PC-SYS-015',
+    name: '会员管理系统',
+    description: '会员管理',
+    category: '营销系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=member',
+    iconTone: 'bg-rose-500',
+    sort: 15,
+  },
+  {
+    id: 'pc-system-knowledge',
+    appId: 'PC-SYS-016',
+    name: '吉祥知识平台',
+    description: '企业知识平台',
+    category: '综合系统',
+    source: '业务系统',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'business-system@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-system',
+    entryUrl: '/web_client/business?system=knowledge',
+    iconTone: 'bg-violet-500',
+    sort: 16,
+  },
+  {
+    id: 'pc-feature-flight-status',
+    appId: 'PC-FUNC-001',
+    name: '航班动态',
+    description: '常用功能入口',
+    category: '常用功能',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-feature',
+    entryUrl: '/web_client/business',
+    iconTone: 'bg-cyan-600',
+    sort: 1,
+  },
+  {
+    id: 'pc-feature-work-report',
+    appId: 'PC-FUNC-002',
+    name: '工作汇报',
+    description: '常用功能入口',
+    category: '常用功能',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-feature',
+    entryUrl: '/web_client/work-report',
+    iconTone: 'bg-pink-600',
+    sort: 2,
+  },
+  {
+    id: 'pc-feature-okr',
+    appId: 'PC-FUNC-003',
+    name: 'OKR',
+    description: '常用功能入口',
+    category: '常用功能',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-feature',
+    entryUrl: '/web_client/okr',
+    iconTone: 'bg-blue-600',
+    sort: 3,
+  },
+  {
+    id: 'pc-feature-discount-ticket',
+    appId: 'PC-FUNC-004',
+    name: '优惠票',
+    description: '常用功能入口',
+    category: '常用功能',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-feature',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-amber-500',
+    sort: 4,
+  },
+  {
+    id: 'pc-feature-salary',
+    appId: 'PC-FUNC-005',
+    name: '我的薪酬',
+    description: '常用功能入口',
+    category: '常用功能',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-feature',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-emerald-600',
+    sort: 5,
+  },
+  {
+    id: 'pc-feature-leave',
+    appId: 'PC-FUNC-006',
+    name: '我的休假',
+    description: '常用功能入口',
+    category: '常用功能',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-feature',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-sky-600',
+    sort: 6,
+  },
+  {
+    id: 'pc-feature-certificate',
+    appId: 'PC-FUNC-007',
+    name: '证明开具',
+    description: '常用功能入口',
+    category: '常用功能',
+    source: '系统内置',
+    developerCompany: '吉祥航空信息管理部',
+    developerEmail: 'portal@juneyaoair.com',
+    range: '全员可用',
+    status: '启用',
+    groupId: 'pc-common-feature',
+    entryUrl: '/web_client/enterprise',
+    iconTone: 'bg-violet-600',
+    sort: 7,
+  },
+  {
+    id: 'data-board',
+    appId: 'APP-10006',
+    name: '数据看板',
+    description: '经营指标、服务指标和项目数据汇总',
+    category: '数据服务',
+    source: '系统内置',
+    developerCompany: '吉祥航空数据平台组',
+    developerEmail: 'data@juneyaoair.com',
+    range: '指定部门',
+    status: '停用',
+    groupId: 'app-data',
+    entryUrl: '/web_client/work-report',
+    iconTone: 'bg-emerald-500',
+    sort: 4,
+  },
+  {
+    id: 'external-ticket',
+    appId: 'APP-10007',
+    name: '外部工单',
+    description: '外部合作人员服务请求入口',
+    category: '综合服务',
+    source: '流程审批',
+    developerCompany: '吉祥航空客服中心',
+    developerEmail: 'service@juneyaoair.com',
+    range: '指定用户组',
+    status: '启用',
+    groupId: 'external-service',
+    entryUrl: '/web_client/business',
+    iconTone: 'bg-amber-500',
+    sort: 1,
+  },
+];
+
+const defaultManagedAppDraft: ManagedAppRecord = {
+  id: '',
+  appId: '',
+  name: '',
+  description: '',
+  category: '协同办公',
+  source: '管理员创建',
+  developerCompany: '吉祥航空信息管理部',
+  developerEmail: 'admin@juneyaoair.com',
+  range: '全员可用',
+  status: '启用',
+  groupId: 'app-service',
+  entryUrl: '',
+  iconTone: 'bg-[#2f75b5]',
+  sort: 1,
+};
+
+function ApplicationManagement() {
+  const [activePortal, setActivePortal] = useState<AppPortalTab>('App员工工作台');
+  const [groups, setGroups] = useState<AppGroupRecord[]>(initialAppGroups);
+  const [apps, setApps] = useState<ManagedAppRecord[]>(initialManagedApps);
+  const [selectedGroupId, setSelectedGroupId] = useState(initialAppGroups[0].id);
+  const [groupKeyword, setGroupKeyword] = useState('');
+  const [appKeyword, setAppKeyword] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('全部');
+  const [rangeFilter, setRangeFilter] = useState<'全部' | ManagedAppRange>('全部');
+  const [sortingGroups, setSortingGroups] = useState(false);
+  const [toast, setToast] = useState('');
+  const [editorMode, setEditorMode] = useState<AppEditorMode | null>(null);
+  const [appDraft, setAppDraft] = useState<ManagedAppRecord>(defaultManagedAppDraft);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [groupDialogOpen, setGroupDialogOpen] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [groupDraft, setGroupDraft] = useState('');
+
+  const portalGroups = groups
+    .filter(group => group.portal === activePortal)
+    .sort((a, b) => a.order - b.order);
+  const visibleGroups = portalGroups.filter(group => group.name.includes(groupKeyword.trim()));
+  const selectedGroup = portalGroups.find(group => group.id === selectedGroupId) || portalGroups[0];
+  const selectedGroupAppCount = selectedGroup ? apps.filter(app => app.groupId === selectedGroup.id).length : 0;
+  const filteredApps = apps
+    .filter(app => !selectedGroup || app.groupId === selectedGroup.id)
+    .filter(app => categoryFilter === '全部' || app.category === categoryFilter)
+    .filter(app => rangeFilter === '全部' || app.range === rangeFilter)
+    .filter(app => {
+      const keyword = appKeyword.trim().toLowerCase();
+      return !keyword || app.name.toLowerCase().includes(keyword) || app.appId.toLowerCase().includes(keyword);
+    })
+    .sort((a, b) => a.sort - b.sort);
+
+  useEffect(() => {
+    const firstGroup = groups
+      .filter(group => group.portal === activePortal)
+      .sort((a, b) => a.order - b.order)[0];
+    if (firstGroup && !groups.some(group => group.id === selectedGroupId && group.portal === activePortal)) {
+      setSelectedGroupId(firstGroup.id);
+    }
+  }, [activePortal, groups, selectedGroupId]);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(''), 2200);
+  };
+
+  const openCreateApp = () => {
+    setAppDraft({
+      ...defaultManagedAppDraft,
+      id: `custom-${Date.now()}`,
+      appId: `APP-${Math.floor(20000 + Math.random() * 70000)}`,
+      groupId: selectedGroup?.id || portalGroups[0]?.id || 'app-service',
+      sort: apps.length + 1,
+    });
+    setEditorMode('create');
+  };
+
+  const openConfigApp = (app: ManagedAppRecord) => {
+    setAppDraft(app);
+    setEditorMode('config');
+  };
+
+  const saveAppDraft = () => {
+    if (!appDraft.name.trim()) {
+      showToast('请输入应用名称');
+      return;
+    }
+    if (editorMode === 'create') {
+      setApps(current => [{ ...appDraft, name: appDraft.name.trim() }, ...current]);
+      showToast('应用已创建');
+    }
+    if (editorMode === 'config') {
+      setApps(current => current.map(app => app.id === appDraft.id ? { ...appDraft, name: appDraft.name.trim() } : app));
+      showToast('应用配置已保存');
+    }
+    setEditorMode(null);
+  };
+
+  const openAddGroup = () => {
+    setEditingGroupId(null);
+    setGroupDraft('');
+    setGroupDialogOpen(true);
+  };
+
+  const openEditGroup = (group: AppGroupRecord) => {
+    setEditingGroupId(group.id);
+    setGroupDraft(group.name);
+    setGroupDialogOpen(true);
+  };
+
+  const saveGroupDraft = () => {
+    const name = groupDraft.trim() || `新建应用组${portalGroups.length + 1}`;
+    if (editingGroupId) {
+      setGroups(current => current.map(group => group.id === editingGroupId ? { ...group, name } : group));
+      setGroupDraft('');
+      setEditingGroupId(null);
+      setGroupDialogOpen(false);
+      showToast('应用组已保存');
+      return;
+    }
+    const newGroup: AppGroupRecord = {
+      id: `group-${Date.now()}`,
+      portal: activePortal,
+      name,
+      order: portalGroups.length + 1,
+    };
+    setGroups(current => [...current, newGroup]);
+    setSelectedGroupId(newGroup.id);
+    setGroupDraft('');
+    setEditingGroupId(null);
+    setGroupDialogOpen(false);
+    showToast('应用组已新增');
+  };
+
+  const deleteSelectedGroup = () => {
+    if (!selectedGroup) return;
+    if (selectedGroupAppCount > 0) {
+      showToast('当前应用组下存在应用，暂不可删除');
+      return;
+    }
+    setGroups(current => current.filter(group => group.id !== selectedGroup.id));
+    showToast('应用组已删除');
+  };
+
+  const moveSelectedGroup = (direction: 'up' | 'down') => {
+    if (!selectedGroup) return;
+    const orderedGroups = portalGroups;
+    const currentIndex = orderedGroups.findIndex(group => group.id === selectedGroup.id);
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= orderedGroups.length) return;
+    const currentGroup = orderedGroups[currentIndex];
+    const targetGroup = orderedGroups[targetIndex];
+    setGroups(current => current.map(group => {
+      if (group.id === currentGroup.id) return { ...group, order: targetGroup.order };
+      if (group.id === targetGroup.id) return { ...group, order: currentGroup.order };
+      return group;
+    }));
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] pt-3 text-sm text-gray-800">
+      {toast && (
+        <div className="fixed right-8 top-20 z-50 flex items-center gap-2 rounded bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
+          <CheckCircle2 size={16} className="text-green-300" />
+          {toast}
+        </div>
+      )}
+      <AdminTabs active="应用管理" />
+
+      <div className="bg-white px-8 py-5">
+        <div className="mb-4 text-sm text-gray-500">
+          首页 <span className="mx-2">/</span> 工作台 <span className="mx-2">/</span>
+          <span className="text-gray-800">应用管理</span>
+        </div>
+        <h2 className="mb-5 text-[26px] font-semibold text-gray-900">应用管理</h2>
+        <div className="flex border-b border-gray-200">
+          {appPortalTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActivePortal(tab)}
+              className={`mr-10 border-b-2 px-1 pb-3 text-base transition-colors ${
+                activePortal === tab
+                  ? 'border-[#2f75b5] font-medium text-[#2f75b5]'
+                  : 'border-transparent text-gray-600 hover:text-[#2f75b5]'
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-5 p-5 max-xl:grid-cols-1">
+        <aside className="min-h-[640px] bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between gap-3">
+            <h3 className="text-lg font-semibold text-gray-900">应用组列表</h3>
+            <div className="flex items-center gap-3">
+              <button onClick={openAddGroup} className="inline-flex items-center gap-1 text-[#2f75b5] hover:underline">
+                <Plus size={16} />
+                添加
+              </button>
+              <button onClick={() => setSortingGroups(value => !value)} className="rounded border border-gray-300 bg-white px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+                {sortingGroups ? '完成' : '排序'}
+              </button>
+            </div>
+          </div>
+          <div className="relative mb-5">
+            <input
+              value={groupKeyword}
+              onChange={(event) => setGroupKeyword(event.target.value)}
+              placeholder="请输入应用组名称"
+              className="h-10 w-full rounded border border-gray-300 pl-3 pr-10 outline-none focus:border-[#2f75b5]"
+            />
+            <Search size={18} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
+          <div className="overflow-hidden rounded border border-gray-100">
+            <div className="grid grid-cols-[minmax(0,1fr)_92px] bg-gray-50 px-4 py-3 font-medium text-gray-700">
+              <span>应用组名称</span>
+              <span>操作</span>
+            </div>
+            <div className="divide-y divide-gray-100">
+              {visibleGroups.map(group => (
+                <div
+                  key={group.id}
+                  className={`grid w-full grid-cols-[minmax(0,1fr)_92px] items-center px-4 py-3 text-left transition-colors ${
+                    selectedGroup?.id === group.id ? 'bg-[#eaf4fc] text-[#2f75b5]' : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <button onClick={() => setSelectedGroupId(group.id)} className="min-w-0 text-left">
+                    <span className="block truncate font-medium">{group.name}</span>
+                  </button>
+                  <button onClick={() => openEditGroup(group)} className="text-left text-[#2f75b5] hover:underline">
+                    编辑
+                  </button>
+                </div>
+              ))}
+              {visibleGroups.length === 0 && (
+                <div className="px-4 py-10 text-center text-gray-400">暂无应用组</div>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button disabled={!sortingGroups} onClick={() => moveSelectedGroup('up')} className="rounded border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">上移</button>
+            <button disabled={!sortingGroups} onClick={() => moveSelectedGroup('down')} className="rounded border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40">下移</button>
+            <button onClick={deleteSelectedGroup} className="rounded border border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50">删除应用组</button>
+          </div>
+        </aside>
+
+        <section className="min-w-0 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">{selectedGroup?.name || '应用列表'}</h3>
+              <p className="mt-1 text-gray-500">当前应用组共 {selectedGroupAppCount} 个应用，列表筛选仅影响右侧展示。</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={openCreateApp} className="rounded bg-[#2f75b5] px-4 py-2 font-medium text-white hover:bg-[#28669f]">新增应用</button>
+              <button onClick={() => setRulesOpen(true)} className="rounded border border-[#2f75b5] bg-white px-4 py-2 font-medium text-[#2f75b5] hover:bg-[#eef7ff]">设置管理规则</button>
+            </div>
+          </div>
+
+          <div className="mb-5 flex flex-wrap items-center gap-3 border-y border-gray-100 py-4">
+            <label className="flex h-9 items-center rounded border border-gray-300 bg-white px-3">
+              <span className="mr-2 text-gray-500">应用类别:</span>
+              <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} className="border-none bg-transparent outline-none">
+                {appCategories.map(category => <option key={category} value={category}>{category}</option>)}
+              </select>
+            </label>
+            <label className="flex h-9 items-center rounded border border-gray-300 bg-white px-3">
+              <span className="mr-2 text-gray-500">可用范围:</span>
+              <select value={rangeFilter} onChange={(event) => setRangeFilter(event.target.value as '全部' | ManagedAppRange)} className="border-none bg-transparent outline-none">
+                {appRanges.map(range => <option key={range} value={range}>{range}</option>)}
+              </select>
+            </label>
+            <div className="relative h-9 w-80">
+              <Search size={17} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={appKeyword}
+                onChange={(event) => setAppKeyword(event.target.value)}
+                placeholder="搜索应用名或 App ID"
+                className="h-full w-full rounded border border-gray-300 pl-9 pr-3 outline-none focus:border-[#2f75b5]"
+              />
+            </div>
+            <button onClick={() => { setAppKeyword(''); setCategoryFilter('全部'); setRangeFilter('全部'); }} className="rounded border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">重置</button>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1080px] table-fixed border-collapse text-left">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50 text-gray-600">
+                  <th className="w-[300px] px-4 py-3 font-medium">应用</th>
+                  <th className="w-[140px] px-4 py-3 font-medium">应用来源</th>
+                  <th className="w-[260px] px-4 py-3 font-medium">开发者</th>
+                  <th className="w-[150px] px-4 py-3 font-medium">可用范围</th>
+                  <th className="w-[110px] px-4 py-3 font-medium">状态</th>
+                  <th className="w-[120px] px-4 py-3 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredApps.map(app => (
+                  <tr key={app.id} className="hover:bg-[#f5f9fd]">
+                    <td className="px-4 py-4">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded text-base font-bold text-white ${app.iconTone}`}>
+                          {app.name.slice(0, 1)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-gray-900">{app.name}</div>
+                          <div className="mt-1 truncate text-gray-500">{app.description}</div>
+                          <div className="mt-1 text-xs text-gray-400">{app.appId}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-gray-700">{app.source}</td>
+                    <td className="px-4 py-4">
+                      <div className="truncate text-gray-800">{app.developerCompany}</div>
+                      <div className="mt-1 truncate text-gray-500">{app.developerEmail}</div>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`rounded px-2.5 py-1 text-xs font-medium ${
+                        app.range === '全员可用' ? 'bg-blue-50 text-[#2f75b5]' : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        {app.range}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <span className={`rounded px-2.5 py-1 text-xs font-medium ${
+                        app.status === '启用' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        {app.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
+                      <button onClick={() => openConfigApp(app)} className="text-[#2f75b5] hover:underline">配置</button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredApps.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-14 text-center text-gray-400">暂无应用数据</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      {groupDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-md rounded bg-white p-6 shadow-xl">
+            <div className="mb-5 text-lg font-semibold text-gray-900">{editingGroupId ? '编辑应用组' : '新增应用组'}</div>
+            <label className="block text-sm text-gray-700">
+              应用组名称
+              <input value={groupDraft} onChange={(event) => setGroupDraft(event.target.value)} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" placeholder="请输入应用组名称" />
+            </label>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setGroupDialogOpen(false)} className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">取消</button>
+              <button onClick={saveGroupDraft} className="rounded bg-[#2f75b5] px-4 py-2 font-medium text-white hover:bg-[#28669f]">确定</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editorMode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-gray-900">{editorMode === 'create' ? '新增应用' : '配置应用'}</h3>
+              <button onClick={() => setEditorMode(null)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-2 gap-4 max-md:grid-cols-1">
+                <label className="block text-sm text-gray-700">应用名称
+                  <input value={appDraft.name} onChange={(event) => setAppDraft(prev => ({ ...prev, name: event.target.value }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+                </label>
+                <label className="block text-sm text-gray-700">应用分组
+                  <select value={appDraft.groupId} onChange={(event) => setAppDraft(prev => ({ ...prev, groupId: event.target.value }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                    {portalGroups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm text-gray-700">入口地址
+                  <input value={appDraft.entryUrl} onChange={(event) => setAppDraft(prev => ({ ...prev, entryUrl: event.target.value }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" placeholder="/web_client/..." />
+                </label>
+                <label className="block text-sm text-gray-700">应用类别
+                  <select value={appDraft.category} onChange={(event) => setAppDraft(prev => ({ ...prev, category: event.target.value }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                    {appCategories.filter(category => category !== '全部').map(category => <option key={category} value={category}>{category}</option>)}
+                  </select>
+                </label>
+                <label className="block text-sm text-gray-700">图标颜色
+                  <select value={appDraft.iconTone} onChange={(event) => setAppDraft(prev => ({ ...prev, iconTone: event.target.value }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                    <option value="bg-[#2f75b5]">后台蓝</option>
+                    <option value="bg-[#d51f5c]">品牌玫红</option>
+                    <option value="bg-orange-500">橙色</option>
+                    <option value="bg-emerald-500">绿色</option>
+                    <option value="bg-cyan-600">青色</option>
+                  </select>
+                </label>
+                <label className="block text-sm text-gray-700">排序值
+                  <input type="number" value={appDraft.sort} onChange={(event) => setAppDraft(prev => ({ ...prev, sort: Number(event.target.value) || 1 }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+                </label>
+                <label className="block text-sm text-gray-700">启用状态
+                  <select value={appDraft.status} onChange={(event) => setAppDraft(prev => ({ ...prev, status: event.target.value as ManagedAppStatus }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                    <option value="启用">启用</option>
+                    <option value="停用">停用</option>
+                  </select>
+                </label>
+                <label className="block text-sm text-gray-700">可用范围
+                  <select value={appDraft.range} onChange={(event) => setAppDraft(prev => ({ ...prev, range: event.target.value as ManagedAppRange }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                    {appRanges.filter(range => range !== '全部').map(range => <option key={range} value={range}>{range}</option>)}
+                  </select>
+                </label>
+              </div>
+              <label className="mt-4 block text-sm text-gray-700">描述
+                <textarea value={appDraft.description} onChange={(event) => setAppDraft(prev => ({ ...prev, description: event.target.value }))} rows={3} className="mt-2 w-full resize-none rounded border border-gray-300 px-3 py-2 outline-none focus:border-[#2f75b5]" />
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button onClick={() => setEditorMode(null)} className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">取消</button>
+              <button onClick={saveAppDraft} className="rounded bg-[#2f75b5] px-4 py-2 font-medium text-white hover:bg-[#28669f]">保存</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rulesOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-lg rounded bg-white p-6 shadow-xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">设置管理规则</h3>
+              <button onClick={() => setRulesOpen(false)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button>
+            </div>
+            <div className="space-y-4 text-sm text-gray-700">
+              <label className="block">默认可见范围
+                <select className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                  <option>全员可用</option>
+                  <option>继承应用组范围</option>
+                  <option>默认不可见</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-3"><input type="checkbox" defaultChecked className="h-4 w-4 accent-[#2f75b5]" />允许个人收藏应用</label>
+              <label className="flex items-center gap-3"><input type="checkbox" className="h-4 w-4 accent-[#2f75b5]" />展示未授权应用入口</label>
+              <label className="flex items-center gap-3"><input type="checkbox" defaultChecked className="h-4 w-4 accent-[#2f75b5]" />应用停用后保留历史访问记录</label>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button onClick={() => setRulesOpen(false)} className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">取消</button>
+              <button onClick={() => { setRulesOpen(false); showToast('管理规则已保存'); }} className="rounded bg-[#2f75b5] px-4 py-2 font-medium text-white hover:bg-[#28669f]">保存</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const documentTemplateRows = [
   { id: 'notice-red', name: '红头通知模板', category: '通知', updater: MAIN_USER_NAME, updatedAt: '2026-06-16 13:20', description: '适用于公司级正式通知、制度发布与跨部门工作安排。', titleLevel: '二号主标题', lineHeight: '28 磅', letterSpacing: '标准' },
   { id: 'party-study', name: '党群学习模板', category: '党群', updater: MAIN_USER_NAME, updatedAt: '2026-06-15 16:40', description: '适用于党群学习活动、主题教育、组织生活等材料。', titleLevel: '三号一级标题', lineHeight: '26 磅', letterSpacing: '加宽 0.3 磅' },
@@ -1571,7 +2666,7 @@ export default function Admin() {
             </div>
           ) : (
             /* 根据选中菜单展示对应内容 */
-            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
+            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' || activeSubMenu === 'app-management' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
               {/* 面包屑导航 */}
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                 <span className="cursor-pointer hover:text-gray-700" onClick={() => { setActiveMenu(null); setActiveSubMenu(null); }}>首页</span>
@@ -1635,7 +2730,7 @@ export default function Admin() {
                   {activeSubMenu === 'security-audit' && <ContentPlaceholder title="安全审计" icon="🔍" />}
                   {activeSubMenu === 'version-list' && <ContentPlaceholder title="版本列表" icon="📦" />}
                   {activeSubMenu === 'version-release' && <ContentPlaceholder title="发布记录" icon="🚀" />}
-                  {activeSubMenu === 'app-management' && <ContentPlaceholder title="应用管理" icon="📊" />}
+                  {activeSubMenu === 'app-management' && <ApplicationManagement />}
                   {activeSubMenu === 'mobile-download' && <ContentPlaceholder title="移动应用下载管理" icon="📱" />}
                   {activeSubMenu === 'portal-admin' && <ContentPlaceholder title="门户基础管理" icon="🌐" />}
                   {activeSubMenu === 'business-admin' && <ContentPlaceholder title="业务系统管理" icon="📁" />}

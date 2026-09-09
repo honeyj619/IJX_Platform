@@ -44,7 +44,7 @@ interface RoomSelection {
 }
 
 type RepeatUnit = '天' | '周' | '月' | '年';
-type RepeatEndType = 'never' | 'date';
+type RepeatEndType = 'date';
 type RepeatMonthRule = 'date' | 'weekday';
 
 const SLOT_WIDTH = 34;
@@ -124,7 +124,7 @@ export default function Calendar() {
     unit: '天',
     weekdays: ['四'],
     monthRule: 'weekday',
-    endType: 'never',
+    endType: 'date',
     endDate: '2026-12-01',
   });
   const [bookingDraft, setBookingDraft] = useState({
@@ -296,9 +296,7 @@ export default function Calendar() {
         ? `，按日期 ${selectedMonthDay}日`
         : `，按星期 ${selectedMonthWeekdayLabel}`;
     }
-    const endText = customRepeatDraft.endType === 'date' && customRepeatDraft.endDate
-      ? `，截至 ${customRepeatDraft.endDate}`
-      : '，永不截止';
+    const endText = `，截至 ${customRepeatDraft.endDate || '2026-12-01'}`;
     return `每 ${interval} ${customRepeatDraft.unit}${ruleText}${endText}`;
   };
 
@@ -1183,34 +1181,13 @@ export default function Calendar() {
               )}
 
               <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[112px_minmax(0,1fr)]">
-                <span className="pt-1 text-slate-600 dark:text-slate-300">截止时间:</span>
-                <div className="space-y-4">
-                  <label className="flex items-center gap-3 text-slate-700 dark:text-slate-200">
-                    <input
-                      type="radio"
-                      checked={customRepeatDraft.endType === 'date'}
-                      onChange={() => setCustomRepeatDraft(prev => ({ ...prev, endType: 'date' }))}
-                      className="h-4 w-4 [accent-color:var(--theme-600)]"
-                    />
-                    <span className="w-16 shrink-0">截止时间</span>
-                    <input
-                      type="date"
-                      value={customRepeatDraft.endDate}
-                      disabled={customRepeatDraft.endType !== 'date'}
-                      onChange={(event) => setCustomRepeatDraft(prev => ({ ...prev, endDate: event.target.value }))}
-                      className="h-9 min-w-0 flex-1 rounded border border-slate-200 px-3 text-sm outline-none focus:border-theme-500 disabled:bg-slate-100 disabled:text-slate-400 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100 dark:disabled:bg-gray-800/60"
-                    />
-                  </label>
-                  <label className="flex items-center gap-3 font-medium text-slate-800 dark:text-slate-100">
-                    <input
-                      type="radio"
-                      checked={customRepeatDraft.endType === 'never'}
-                      onChange={() => setCustomRepeatDraft(prev => ({ ...prev, endType: 'never' }))}
-                      className="h-4 w-4 [accent-color:var(--theme-600)]"
-                    />
-                    永不截止
-                  </label>
-                </div>
+                <span className="pt-2 text-slate-600 dark:text-slate-300">截止时间:</span>
+                <input
+                  type="date"
+                  value={customRepeatDraft.endDate}
+                  onChange={(event) => setCustomRepeatDraft(prev => ({ ...prev, endDate: event.target.value }))}
+                  className="h-9 min-w-0 rounded border border-slate-200 px-3 text-sm outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
+                />
               </div>
             </div>
 
