@@ -22,6 +22,7 @@ interface PresentationEditorProps {
   tone: string;
   language: string;
   textStyle: string;
+  template?: string;
   attachments?: string[];
   embedded?: boolean;
   onBack?: () => void;
@@ -37,6 +38,7 @@ export default function PresentationEditor({
   tone,
   language,
   textStyle,
+  template = "吉祥品牌",
   attachments = [],
   embedded = false,
   onBack,
@@ -161,7 +163,7 @@ export default function PresentationEditor({
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-theme-600 px-3 text-sm font-semibold text-white transition-colors hover:bg-theme-700"
                 >
                   <CheckCircle2 size={15} />
-                  生成最终文件
+                  确认PPT内容，生成最终文件
                 </button>
               </div>
             </div>
@@ -194,13 +196,13 @@ export default function PresentationEditor({
 
             <div className="mb-4 grid grid-cols-2 gap-2 text-xs">
               {[
-                ["创建方式", modeName],
+                ["模板", template],
                 ["页数", mode === "single" ? "单页" : pageCount],
                 ["受众", audience],
                 ["场景", scene],
                 ["语气", tone],
                 ["语言", language],
-                ["文本", textStyle],
+                ["文本量", textStyle],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg border border-gray-100 bg-white px-3 py-2">
                   <div className="text-gray-400">{label}</div>
@@ -234,7 +236,7 @@ export default function PresentationEditor({
                 {finalReady ? "PPT最终文件已生成" : "待生成最终PPT文件"}
               </div>
               <p className={`mt-1 text-xs leading-5 ${finalReady ? "text-green-700" : "text-gray-500"}`}>
-                {finalReady ? "可下载演示文件，后续接入真实生成接口。" : "确认草稿无误后生成最终文件。"}
+                {finalReady ? "可下载演示文件，后续接入真实生成接口。" : "确认PPT内容无误后生成最终文件。"}
               </p>
               <button
                 type="button"

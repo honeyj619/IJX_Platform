@@ -1,12 +1,13 @@
 ﻿import { ReactNode, useEffect, useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MessageSquare, Bell, Calendar, Folder, Hexagon, User, X, XCircle, Search, Menu, ChevronRight, ChevronLeft, Plus, Link as LinkIcon } from 'lucide-react';
+import { MessageSquare, Bell, Calendar, Hexagon, User, X, XCircle, Search, Menu, ChevronRight, ChevronLeft, Plus, Link as LinkIcon } from 'lucide-react';
 import { create } from 'zustand';
 import { useThemeStore } from '../store/themeStore';
 import { useLayoutStore } from '../store/layoutStore';
 import { UserMenu } from './UserMenu';
 import { SIDEBAR } from '../constants/layout';
 import { getDemoPerson, getInitialsAvatar } from '../data/people';
+import { openPortalLink } from '../utils/linkOpening';
 
 interface LayoutProps {
   children: ReactNode;
@@ -17,6 +18,22 @@ interface Page {
   title: string;
   path: string;
 }
+
+type CustomNavLink = {
+  id: string;
+  label: string;
+  to: string;
+};
+
+type NavigationItem = {
+  icon: React.ReactNode;
+  label: string;
+  to: string;
+  external?: boolean;
+  badge?: number;
+  badgeTitle?: string;
+  badgeTone?: string;
+};
 
 interface PagesStore {
   pages: Page[];
@@ -53,8 +70,8 @@ const pageTitles: Record<string, string> = {
   '/': '消息',
   '/enterprise': '工作门户',
   '/calendar': '日历',
-  '/knowledge': '知识库',
-  '/ekb': '知识库',
+  '/knowledge': '知识门户',
+  '/ekb': '知识门户',
   '/business': '业务系统',
   '/work-report': '工作汇报',
   '/work-items': '工作门户',
@@ -70,6 +87,15 @@ const clientPath = (path: string) => path === '/' ? WEB_CLIENT_BASE : `${WEB_CLI
 const stripClientBase = (path: string) => {
   if (path === WEB_CLIENT_BASE) return '/';
   return path.startsWith(`${WEB_CLIENT_BASE}/`) ? path.slice(WEB_CLIENT_BASE.length) : path;
+};
+const isExternalPath = (path: string) => /^(https?:|mailto:|tel:)/i.test(path);
+const normalizeCustomLinkUrl = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  if (/^(https?:|mailto:|tel:)/i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  if (trimmed.startsWith('/')) return trimmed;
+  return `https://${trimmed}`;
 };
 
 export default function Layout({ children }: LayoutProps) {
@@ -87,6 +113,15 @@ export default function Layout({ children }: LayoutProps) {
   const [showAddLinkPopup, setShowAddLinkPopup] = useState(false);
   const [linkLabel, setLinkLabel] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const [customNavLinks, setCustomNavLinks] = useState<CustomNavLink[]>(() => {
+    const saved = localStorage.getItem('customNavigationLinks');
+    if (!saved) return [];
+    try {
+      return JSON.parse(saved) as CustomNavLink[];
+    } catch {
+      return [];
+    }
+  });
   const addLinkBtnRef = useRef<HTMLButtonElement>(null);
 
   // 拖动调整左侧导航栏宽度
@@ -169,20 +204,32 @@ export default function Layout({ children }: LayoutProps) {
       document.documentElement.classList.remove('skin-pink', 'skin-blue', 'skin-purple', 'skin-green', 'skin-orange');
       document.documentElement.classList.add(`skin-${skin}`);
     };
-    
+
     applyTheme();
   }, [mode, skin]);
-  
-  const navItems = [
+
+  useEffect(() => {
+    localStorage.setItem('customNavigationLinks', JSON.stringify(customNavLinks));
+  }, [customNavLinks]);
+
+  const navItems: NavigationItem[] = [
     { icon: <MessageSquare size={20} />, label: '消息', to: clientPath('/'), badge: 8, badgeTitle: '8条未读消息', badgeTone: 'message' },
     { icon: <Bell size={20} />, label: '工作门户', to: clientPath('/enterprise'), badge: 21, badgeTitle: '21项未办事项', badgeTone: 'work' },
     { icon: <Calendar size={20} />, label: '日历', to: clientPath('/calendar') },
-    { icon: <Folder size={20} />, label: '知识库', to: clientPath('/ekb') },
     { icon: <Hexagon size={20} />, label: '业务系统', to: clientPath('/business') },
     { icon: <Bell size={20} />, label: '如意空间', to: clientPath('/ruyi-zone') },
+    ...customNavLinks.map(link => ({
+      icon: <LinkIcon size={20} />,
+      label: link.label,
+      to: link.to,
+      external: isExternalPath(link.to),
+    })),
   ];
 
   const navPaths = navItems.map(item => item.to);
+  const openExternalNavigation = (label: string, url: string) => {
+    openPortalLink({ url, label, mode: 'auto', navigate });
+  };
   
   useEffect(() => {
     const currentPath = location.pathname;
@@ -265,11 +312,13 @@ export default function Layout({ children }: LayoutProps) {
                 icon={item.icon}
                 label={item.label}
                 to={item.to}
-                active={location.pathname === item.to || (item.to !== WEB_CLIENT_BASE && location.pathname.startsWith(`${item.to}/`))}
+                active={!('external' in item && item.external) && (location.pathname === item.to || (item.to !== WEB_CLIENT_BASE && location.pathname.startsWith(`${item.to}/`)))}
                 collapsed={!showNavigation}
                 badge={item.badge}
                 badgeTitle={item.badgeTitle}
                 badgeTone={item.badgeTone}
+                external={'external' in item && item.external}
+                onExternalOpen={() => openExternalNavigation(item.label, item.to)}
               />
             ))}
           </nav>
@@ -308,9 +357,15 @@ export default function Layout({ children }: LayoutProps) {
                         key={page.id}
                         className={`relative flex items-center gap-3 px-3 py-3 rounded-md transition-colors group ${location.pathname === page.path ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}`}
                       >
-                        <Link to={page.path} className="flex-1 min-w-0 truncate">
-                          {page.title}
-                        </Link>
+                        {isExternalPath(page.path) ? (
+                          <button type="button" onClick={() => openExternalNavigation(page.title, page.path)} className="flex-1 min-w-0 truncate text-left">
+                            {page.title}
+                          </button>
+                        ) : (
+                          <Link to={page.path} className="flex-1 min-w-0 truncate">
+                            {page.title}
+                          </Link>
+                        )}
                         <button
                           onClick={(e) => handleClosePage(page.path, e)}
                           className="opacity-0 group-hover:opacity-100 transition-opacity text-white/70 hover:text-white"
@@ -397,13 +452,20 @@ export default function Layout({ children }: LayoutProps) {
                       </div>
                       <button
                         onClick={() => {
-                          if (linkLabel && linkUrl) {
+                          const label = linkLabel.trim();
+                          const url = normalizeCustomLinkUrl(linkUrl);
+                          if (label && url) {
+                            setCustomNavLinks(prev => {
+                              const exists = prev.some(item => item.to === url);
+                              if (exists) return prev.map(item => item.to === url ? { ...item, label } : item);
+                              return [...prev, { id: Date.now().toString(), label, to: url }];
+                            });
                             setLinkLabel('');
                             setLinkUrl('');
                             setShowAddLinkPopup(false);
                           }
                         }}
-                        disabled={!linkLabel || !linkUrl}
+                        disabled={!linkLabel.trim() || !linkUrl.trim()}
                         className="w-full py-2 text-sm font-medium bg-theme-500 text-white rounded-lg hover:bg-theme-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         确认添加
@@ -594,17 +656,14 @@ export default function Layout({ children }: LayoutProps) {
   );
 }
 
-function NavItem({ icon, label, to, active = false, collapsed = false, badge, badgeTitle, badgeTone }: { icon: React.ReactNode | null; label: string; to: string; active?: boolean; collapsed?: boolean; badge?: number; badgeTitle?: string; badgeTone?: string }) {
-  return (
-    <Link
-      to={to}
-      className={`
+function NavItem({ icon, label, to, active = false, collapsed = false, badge, badgeTitle, badgeTone, external = false, onExternalOpen }: { icon: React.ReactNode | null; label: string; to: string; active?: boolean; collapsed?: boolean; badge?: number; badgeTitle?: string; badgeTone?: string; external?: boolean; onExternalOpen?: () => void }) {
+  const className = `
         relative rounded-md transition-colors text-left
         ${active ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}
         ${collapsed ? 'w-12 flex flex-col items-center justify-center py-2 gap-0.5' : 'w-full flex items-center gap-3 px-3 py-3'}
-      `}
-      title={badgeTitle || label}
-    >
+      `;
+  const content = (
+    <>
       {icon && <span className="text-white flex-shrink-0">{icon}</span>}
       <span className={`text-white ${collapsed ? 'text-2xs leading-tight text-center w-full truncate' : 'flex-1 min-w-0 truncate'}`}>
         {label}
@@ -617,6 +676,24 @@ function NavItem({ icon, label, to, active = false, collapsed = false, badge, ba
           {badge > 99 ? '99+' : badge}
         </span>
       ) : null}
+    </>
+  );
+
+  if (external) {
+    return (
+      <button type="button" onClick={onExternalOpen} className={className} title={badgeTitle || label}>
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <Link
+      to={to}
+      className={className}
+      title={badgeTitle || label}
+    >
+      {content}
     </Link>
   );
 }

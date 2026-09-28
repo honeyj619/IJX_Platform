@@ -1,11 +1,12 @@
 ﻿import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight, MoreHorizontal, RefreshCw, ExternalLink, Trash2, ClipboardList, Sparkles, Target } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Minus, GripVertical, ChevronLeft } from 'lucide-react';
+import { Search, GripVertical, ChevronLeft } from 'lucide-react';
 import { Ticket, WalletCards, Plane, BadgeCheck, CheckSquare, ListTodo, BarChart3, UserPlus, Link2, Save, CircleDot, CircleCheckBig } from 'lucide-react';
 import { Landmark, Brain, Receipt, FileSignature, Calculator, Workflow, Users, LayoutDashboard, GraduationCap, Award, ClipboardCheck, Database, FileCheck, FolderKanban, Server, LineChart, Blocks, PieChart, Gauge, HardDrive, ShieldCheck, Truck, Hexagon, Shirt, Car, MessageSquare, Wrench, Fuel, BookMarked, Network, AlertTriangle, IterationCw, Shield, Clock, Zap, Volume2, Crown, Package, PackagePlus, Tag, Wallet, BarChart2, Activity, Globe, Smartphone, ShoppingBag, GitBranch, Phone, UserCheck, Repeat, Star, Briefcase, Sun, BookOpen, Paperclip, Send, Smile, AtSign, ImageIcon } from 'lucide-react';
 import { MAIN_USER_NAME, getDemoPerson, getPersonAvatar } from '../data/people';
 import { workItems, WorkItem, WorkItemTask, WorkItemType } from '../data/workItems';
+import { openPortalLink, type LinkOpenMode } from '../utils/linkOpening';
 
 // 定义卡片类型
 type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'officeApps' | 'duty' | 'courses';
@@ -27,13 +28,15 @@ type System = {
   category?: string;
   source?: string;
   description?: string;
+  openMode?: PortalOpenMode;
 };
 
 type StatKey = 'approval' | 'revenue' | 'todo' | 'progress';
-type DialogType = 'approvalConfig' | 'todoSources' | 'newTodo' | 'commonFeatures' | 'cardRequest' | 'featureRequest' | null;
+type DialogType = 'approvalConfig' | 'todoSources' | 'newTodo' | 'commonSystems' | 'commonFeatures' | 'cardRequest' | 'featureRequest' | null;
 type PersonalView = 'dashboard' | 'todo' | 'workItemBoard' | 'itemCreate' | 'itemDetail' | 'taskDetail' | 'taskCreate' | 'reportSubmit' | 'evaluationSubmit';
 type WorkItemReturnView = 'todo' | 'workItemBoard' | 'itemDetail' | 'taskDetail';
 type WorkItemCreateReturnView = 'todo' | 'workItemBoard';
+type PortalOpenMode = LinkOpenMode;
 
 type StatConfig = {
   key: StatKey;
@@ -50,6 +53,8 @@ type CommonFeature = {
   name: string;
   icon: React.ReactNode;
   tone: string;
+  category: string;
+  openMode?: PortalOpenMode;
   path?: string;
   destination?: string;
 };
@@ -283,7 +288,6 @@ const defaultSystemIds = [
   'member',
   'knowledge',
 ];
-const systemCategories = ['财务系统', '人力系统', '综合系统', '运行系统', '营销系统'];
 const selectedSystemsPresetKey = 'selectedSystemsPreset20260703v2';
 const defaultFeaturePresetKey = 'pinnedCommonFeatures20260705v2';
 
@@ -295,16 +299,18 @@ const dashboardStats: StatConfig[] = [
 ];
 
 const commonFeatures: CommonFeature[] = [
-  { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', path: '/web_client/business' },
-  { id: 'work-report', name: '工作汇报', icon: <FileText size={17} />, tone: 'bg-pink-50 text-pink-700', path: '/web_client/work-report' },
-  { id: 'okr', name: 'OKR', icon: <Target size={17} />, tone: 'bg-blue-50 text-blue-700', path: '/web_client/okr' },
-  { id: 'discount-ticket', name: '优惠票', icon: <Ticket size={17} />, tone: 'bg-amber-50 text-amber-700', destination: '优惠票' },
-  { id: 'salary', name: '我的薪酬', icon: <WalletCards size={17} />, tone: 'bg-emerald-50 text-emerald-700', destination: '我的薪酬' },
-  { id: 'leave', name: '我的休假', icon: <Sun size={17} />, tone: 'bg-sky-50 text-sky-700', destination: '我的休假' },
-  { id: 'certificate', name: '证明开具', icon: <BadgeCheck size={17} />, tone: 'bg-violet-50 text-violet-700', destination: '证明开具' },
+  { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', category: '办公协同', openMode: 'auto', path: '/web_client/business' },
+  { id: 'work-report', name: '工作汇报', icon: <FileText size={17} />, tone: 'bg-pink-50 text-pink-700', category: '办公协同', openMode: 'auto', path: '/web_client/work-report' },
+  { id: 'okr', name: 'OKR', icon: <Target size={17} />, tone: 'bg-blue-50 text-blue-700', category: '办公协同', openMode: 'auto', path: '/web_client/okr' },
+  { id: 'discount-ticket', name: '优惠票', icon: <Ticket size={17} />, tone: 'bg-amber-50 text-amber-700', category: '员工服务', openMode: 'native', destination: '优惠票' },
+  { id: 'salary', name: '我的薪酬', icon: <WalletCards size={17} />, tone: 'bg-emerald-50 text-emerald-700', category: '员工服务', openMode: 'native', destination: '我的薪酬' },
+  { id: 'leave', name: '我的休假', icon: <Sun size={17} />, tone: 'bg-sky-50 text-sky-700', category: '员工服务', openMode: 'native', destination: '我的休假' },
+  { id: 'certificate', name: '证明开具', icon: <BadgeCheck size={17} />, tone: 'bg-violet-50 text-violet-700', category: '员工服务', openMode: 'native', destination: '证明开具' },
 ];
 
 const defaultPinnedFeatureIds = ['flight-status', 'work-report', 'okr', 'discount-ticket', 'salary', 'leave', 'certificate'];
+const systemPickerCategories = ['财务系统', '人力系统', '综合系统', '运行系统', '营销系统'];
+const featurePickerCategories = ['办公协同', '员工服务'];
 
 const defaultTodoSources: TodoSource[] = [
   { id: 'task', name: '任务', enabled: true },
@@ -654,8 +660,6 @@ export default function Personal_Enterprise() {
   });
   
   const [showSettings, setShowSettings] = useState(false);
-  const [showCommonAppsPanel, setShowCommonAppsPanel] = useState(false);
-  const [showAddAppModal, setShowAddAppModal] = useState(false);
   const [activeStatKey, setActiveStatKey] = useState<StatKey>('approval');
   const [activeDialog, setActiveDialog] = useState<DialogType>(null);
   const [personalView, setPersonalView] = useState<PersonalView>('dashboard');
@@ -666,9 +670,13 @@ export default function Personal_Enterprise() {
   const [workItemFlowReturnView, setWorkItemFlowReturnView] = useState<WorkItemReturnView>('workItemBoard');
   const [workItemCreateReturnView, setWorkItemCreateReturnView] = useState<WorkItemCreateReturnView>('workItemBoard');
   const [layoutCategory, setLayoutCategory] = useState<'data' | 'app'>('data');
-  const [appSearch, setAppSearch] = useState('');
-  const [activeSystemCategory, setActiveSystemCategory] = useState(systemCategories[0]);
+  const [systemPickerKeyword, setSystemPickerKeyword] = useState('');
+  const [featurePickerKeyword, setFeaturePickerKeyword] = useState('');
+  const [activeSystemPickerCategory, setActiveSystemPickerCategory] = useState('全部');
+  const [activeFeaturePickerCategory, setActiveFeaturePickerCategory] = useState('全部');
   const layoutContentRef = useRef<HTMLDivElement>(null);
+  const systemPickerContentRef = useRef<HTMLDivElement>(null);
+  const featurePickerContentRef = useRef<HTMLDivElement>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [jumpTip, setJumpTip] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -918,21 +926,35 @@ export default function Personal_Enterprise() {
 
   // 过滤显示的系统
   const displayedSystems = systems.filter(sys => selectedSystems.includes(sys.id));
-  const filteredAddSystems = systems.filter(system => {
-    const matchesCategory = system.category === activeSystemCategory;
-    const keyword = appSearch.trim().toLowerCase();
-    const matchesSearch = !keyword || system.name.toLowerCase().includes(keyword) || (system.description ?? '').toLowerCase().includes(keyword);
-    return matchesCategory && matchesSearch;
-  });
-
-  const removeSystem = useCallback((id: string) => {
-    setSelectedSystems(prev => prev.filter(systemId => systemId !== id));
-  }, []);
-
-  const addSystem = useCallback((id: string) => {
-    setSelectedSystems(prev => prev.includes(id) ? prev : [...prev, id]);
-  }, []);
-
+  const systemPickerSearch = systemPickerKeyword.trim().toLowerCase();
+  const featurePickerSearch = featurePickerKeyword.trim().toLowerCase();
+  const systemPickerSections = systemPickerCategories
+    .map(category => ({
+      category,
+      items: systems.filter(system => {
+        const inCategory = (system.category || '其他') === category;
+        const matchesSearch = !systemPickerSearch
+          || system.name.toLowerCase().includes(systemPickerSearch)
+          || (system.description || '').toLowerCase().includes(systemPickerSearch)
+          || (system.source || '').toLowerCase().includes(systemPickerSearch)
+          || (system.category || '').toLowerCase().includes(systemPickerSearch);
+        return inCategory && matchesSearch;
+      }),
+    }))
+    .filter(section => section.items.length > 0);
+  const featurePickerSections = featurePickerCategories
+    .map(category => ({
+      category,
+      items: commonFeatures.filter(feature => {
+        const inCategory = feature.category === category;
+        const matchesSearch = !featurePickerSearch
+          || feature.name.toLowerCase().includes(featurePickerSearch)
+          || feature.category.toLowerCase().includes(featurePickerSearch)
+          || (feature.destination || '').toLowerCase().includes(featurePickerSearch);
+        return inCategory && matchesSearch;
+      }),
+    }))
+    .filter(section => section.items.length > 0);
   const enabledTodoSourceNames = todoSources.filter(source => source.enabled).map(source => source.name);
   const displayedTodoItems = [...todoItems, ...customTodos].filter(item => enabledTodoSourceNames.includes(item.source));
   const myTodoActions = deriveMyTodoActions(workItemList);
@@ -980,6 +1002,27 @@ export default function Personal_Enterprise() {
     if (!container || !section) return;
     container.scrollTo({
       top: section.offsetTop - 16,
+      behavior: 'smooth',
+    });
+  }, []);
+
+  const scrollToPickerSection = useCallback((
+    containerRef: { current: HTMLDivElement | null },
+    activeLabel: string,
+    sectionId: string,
+    setActive: (value: string) => void,
+  ) => {
+    setActive(activeLabel);
+    const container = containerRef.current;
+    if (!container) return;
+    if (activeLabel === '全部') {
+      container.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    container.scrollTo({
+      top: section.offsetTop - container.offsetTop - 8,
       behavior: 'smooth',
     });
   }, []);
@@ -1034,13 +1077,24 @@ export default function Personal_Enterprise() {
     setActiveStatKey(current => current === 'todo' || current === 'progress' ? 'approval' : current);
   }, []);
 
-  const handleFeatureClick = useCallback((feature: CommonFeature) => {
-    if (feature.path) {
-      navigate(feature.path);
-      return;
-    }
-    showJumpTip(feature.destination || feature.name);
+  const openConfiguredEntry = useCallback((label: string, target?: string, mode: PortalOpenMode = 'auto') => {
+    openPortalLink({
+      url: target,
+      label,
+      mode,
+      navigate,
+      onFeedback: showJumpTip,
+    });
   }, [navigate, showJumpTip]);
+
+  const handleSystemClick = useCallback((system: System) => {
+    const target = `/web_client/business?system=${system.id}`;
+    openConfiguredEntry(system.name, target, system.openMode || 'auto');
+  }, [openConfiguredEntry]);
+
+  const handleFeatureClick = useCallback((feature: CommonFeature) => {
+    openConfiguredEntry(feature.name, feature.path, feature.openMode || (feature.path ? 'auto' : 'native'));
+  }, [openConfiguredEntry]);
 
   const toggleFeature = useCallback((id: string) => {
     setPinnedFeatureIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -1620,9 +1674,9 @@ export default function Personal_Enterprise() {
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-amber-50 text-amber-700 text-sm font-medium rounded-full">{displayedSystems.length}个</span>
               <button
-                onClick={() => setShowCommonAppsPanel(true)}
+                onClick={() => setActiveDialog('commonSystems')}
                 className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                title="设置常用应用"
+                title="设置常用系统"
               >
                 <Settings size={18} className="text-gray-400" />
               </button>
@@ -1631,7 +1685,11 @@ export default function Personal_Enterprise() {
 
           <div className="grid grid-cols-4 gap-2">
             {displayedSystems.map(sys => (
-              <button key={sys.id} className="group flex min-w-0 flex-col items-center gap-2 rounded-xl border border-transparent px-2 py-2.5 transition-all duration-300 hover:border-gray-100 hover:bg-gray-50">
+              <button
+                key={sys.id}
+                onClick={() => handleSystemClick(sys)}
+                className="group flex min-w-0 flex-col items-center gap-2 rounded-xl border border-transparent px-2 py-2.5 transition-all duration-300 hover:border-gray-100 hover:bg-gray-50"
+              >
                 <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${sys.bgColor || 'bg-blue-500'} text-white shadow-sm transition-shadow group-hover:shadow-md`}>
                   {sys.icon}
                 </div>
@@ -1868,110 +1926,96 @@ export default function Personal_Enterprise() {
           />
         )}
       </div>
-      {/* 常用应用管理侧栏 */}
-      {showCommonAppsPanel && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end">
-          <div className="absolute inset-0 bg-black/25 backdrop-blur-[1px]" onClick={() => setShowCommonAppsPanel(false)} />
-          <aside className="relative flex h-full w-full max-w-[420px] flex-col bg-[#f3f4f8] shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-              <h2 className="text-xl font-semibold text-gray-950">常用应用</h2>
-              <button onClick={() => setShowCommonAppsPanel(false)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
-                <X size={22} />
+      {/* 常用系统配置 */}
+      {activeDialog === 'commonSystems' && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">常用系统</h2>
+                <p className="mt-1 text-sm text-gray-500">选择固定在工作门户里的业务系统入口</p>
+              </div>
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
+                <X size={20} />
               </button>
             </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-              <div className="rounded-2xl bg-white px-5 py-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {displayedSystems.map(system => (
-                    <div key={system.id} className="group relative flex min-w-0 items-center gap-2 rounded-xl border border-gray-100 px-2.5 py-2">
-                      <button onClick={() => removeSystem(system.id)} className="absolute -right-1.5 -top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-white text-blue-500 shadow-sm ring-1 ring-gray-100" title="移除">
-                        <Minus size={14} />
-                      </button>
-                      <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm ${system.bgColor ?? 'bg-blue-500'}`}>
-                        {system.icon}
-                      </div>
-                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-600">{system.name}</span>
-                      <GripVertical size={13} className="hidden shrink-0 text-gray-300 group-hover:block" />
-                    </div>
-                  ))}
-                  <button onClick={() => setShowAddAppModal(true)} className="flex items-center gap-2 rounded-xl border border-dashed border-gray-200 px-2.5 py-2 text-gray-500 hover:border-gray-300 hover:text-gray-900">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-400">
-                      <Plus size={20} />
-                    </span>
-                    <span className="text-xs font-medium">添加</span>
-                  </button>
-                </div>
-              </div>
-
-              <p className="mt-5 px-3 text-xs text-gray-400">拖动应用可调整展示顺序</p>
-            </div>
-          </aside>
-        </div>
-      )}
-
-      {/* 添加常用应用弹框 */}
-      {showAddAppModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
-          <div className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="border-b border-gray-100 px-6 py-4">
               <div className="relative">
-                <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input value={appSearch} onChange={(event) => setAppSearch(event.target.value)} placeholder="搜索" className="h-12 w-full rounded-lg bg-gray-100 pl-12 pr-4 text-base text-gray-900 outline-none focus:bg-white focus:ring-2 focus:ring-pink-700/20" />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={systemPickerKeyword}
+                  onChange={(event) => setSystemPickerKeyword(event.target.value)}
+                  placeholder="搜索系统名称、描述"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+                />
               </div>
-            </div>
-
-            <div className="flex items-center justify-between border-b border-gray-200 px-6">
-              <div className="flex gap-8 overflow-x-auto">
-                {systemCategories.map(category => (
-                  <button key={category} onClick={() => setActiveSystemCategory(category)} className={`relative whitespace-nowrap py-4 text-base font-medium ${activeSystemCategory === category ? 'text-gray-950' : 'text-gray-500 hover:text-gray-800'}`}>
-                    {category}
-                    {activeSystemCategory === category && <span className="absolute bottom-0 left-0 h-1 w-full rounded-full bg-gray-950" />}
-                  </button>
-                ))}
-              </div>
-              <button onClick={() => setShowAddAppModal(false)} className="ml-4 rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
-                <X size={22} />
-              </button>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
-              <h3 className="mb-4 text-2xl font-bold text-gray-950">{activeSystemCategory}</h3>
-              <div className="divide-y divide-gray-100">
-                {filteredAddSystems.map(system => {
-                  const added = selectedSystems.includes(system.id);
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {['全部', ...systemPickerCategories].map(category => {
+                  const count = category === '全部' ? systems.length : systems.filter(system => system.category === category).length;
+                  const active = activeSystemPickerCategory === category;
                   return (
-                    <div key={system.id} className="flex items-center justify-between gap-6 py-4">
-                      <div className="flex min-w-0 items-center gap-5">
-                        <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ${system.bgColor ?? 'bg-blue-500'}`}>
-                          {system.icon}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-xl font-semibold text-gray-950">{system.name}</div>
-                          <div className="mt-1 truncate text-sm text-gray-400">来源于{system.source}</div>
-                        </div>
-                      </div>
-                      <button onClick={() => addSystem(system.id)} disabled={added} className={`h-10 rounded-lg border px-8 text-base transition-colors ${added ? 'cursor-default border-gray-200 bg-gray-50 text-gray-400' : 'border-gray-200 bg-white text-gray-950 hover:border-pink-300 hover:text-pink-700'}`}>
-                        {added ? '已添加' : '添加'}
-                      </button>
-                    </div>
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => scrollToPickerSection(systemPickerContentRef, category, category === '全部' ? '' : `system-picker-${category}`, setActiveSystemPickerCategory)}
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        active ? 'bg-pink-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {category}
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? 'bg-white/20 text-white' : 'bg-white text-gray-500'}`}>{count}</span>
+                    </button>
                   );
                 })}
               </div>
             </div>
-
-            <div className="flex items-center justify-between border-t border-gray-100 bg-white px-6 py-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="shrink-0 text-base text-gray-950">已添加({displayedSystems.length}):</span>
-                <div className="flex min-w-0 gap-2 overflow-hidden">
-                  {displayedSystems.slice(0, 8).map(system => (
-                    <div key={system.id} className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ${system.bgColor ?? 'bg-blue-500'}`}>
-                      {system.icon}
-                    </div>
+            <div ref={systemPickerContentRef} className="min-h-0 flex-1 overflow-y-auto bg-gray-50/70 px-6 py-5">
+              {systemPickerSections.length > 0 ? (
+                <div className="space-y-6">
+                  {systemPickerSections.map(section => (
+                    <section key={section.category} id={`system-picker-${section.category}`} className="scroll-mt-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="h-4 w-1 rounded-full bg-pink-600" />
+                        <h3 className="text-sm font-bold text-gray-900">{section.category}</h3>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-xs text-gray-500">{section.items.length} 个</span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {section.items.map(system => {
+                          const selected = selectedSystems.includes(system.id);
+                          return (
+                            <button
+                              key={system.id}
+                              onClick={() => toggleSystem(system.id)}
+                              className={`flex min-h-[86px] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
+                                selected ? 'border-pink-200 bg-pink-50/70 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-white'
+                              }`}
+                            >
+                              <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-white ${system.bgColor ?? 'bg-blue-500'}`}>
+                                {system.icon}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-semibold text-gray-900">{system.name}</span>
+                                <span className="mt-1 block truncate text-xs text-gray-500">{system.description || '业务系统入口'}</span>
+                              </span>
+                              <CheckCircle2 size={18} className={selected ? 'text-pink-700' : 'text-gray-200'} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
                   ))}
                 </div>
-              </div>
-              <button onClick={() => setShowAddAppModal(false)} className="ml-4 h-10 rounded-lg bg-pink-700 px-7 text-sm font-semibold text-white hover:bg-pink-800">
+              ) : (
+                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white text-center">
+                  <Search size={28} className="text-gray-300" />
+                  <p className="mt-3 text-sm font-semibold text-gray-700">暂无匹配系统</p>
+                  <p className="mt-1 text-xs text-gray-400">换个关键词试试</p>
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <span className="text-xs text-gray-500">已固定 {selectedSystems.length} 个</span>
+              <button onClick={() => setActiveDialog(null)} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
                 完成
               </button>
             </div>
@@ -1982,7 +2026,7 @@ export default function Personal_Enterprise() {
       {/* 常用功能配置 */}
       {activeDialog === 'commonFeatures' && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
-          <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <div>
                 <h2 className="text-lg font-bold text-gray-900">常用功能</h2>
@@ -1992,28 +2036,79 @@ export default function Personal_Enterprise() {
                 <X size={20} />
               </button>
             </div>
-            <div className="grid gap-3 overflow-y-auto p-6 sm:grid-cols-2 lg:grid-cols-3">
-              {commonFeatures.map(feature => {
-                const selected = pinnedFeatureIds.includes(feature.id);
-                return (
-                  <button
-                    key={feature.id}
-                    onClick={() => toggleFeature(feature.id)}
-                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all ${
-                      selected ? 'border-pink-200 bg-pink-50/60' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${feature.tone}`}>
-                      {feature.icon}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-gray-900">{feature.name}</span>
-                      <span className="mt-1 block text-xs text-gray-500">{selected ? '已固定在门户' : '点击固定到门户'}</span>
-                    </span>
-                    <CheckCircle2 size={16} className={selected ? 'text-pink-700' : 'text-gray-200'} />
-                  </button>
-                );
-              })}
+            <div className="border-b border-gray-100 px-6 py-4">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={featurePickerKeyword}
+                  onChange={(event) => setFeaturePickerKeyword(event.target.value)}
+                  placeholder="搜索功能名称"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-10 pr-4 text-sm outline-none transition-colors placeholder:text-gray-400 focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
+                />
+              </div>
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                {['全部', ...featurePickerCategories].map(category => {
+                  const count = category === '全部' ? commonFeatures.length : commonFeatures.filter(feature => feature.category === category).length;
+                  const active = activeFeaturePickerCategory === category;
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => scrollToPickerSection(featurePickerContentRef, category, category === '全部' ? '' : `feature-picker-${category}`, setActiveFeaturePickerCategory)}
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                        active ? 'bg-pink-700 text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {category}
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${active ? 'bg-white/20 text-white' : 'bg-white text-gray-500'}`}>{count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div ref={featurePickerContentRef} className="min-h-0 flex-1 overflow-y-auto bg-gray-50/70 px-6 py-5">
+              {featurePickerSections.length > 0 ? (
+                <div className="space-y-6">
+                  {featurePickerSections.map(section => (
+                    <section key={section.category} id={`feature-picker-${section.category}`} className="scroll-mt-4">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="h-4 w-1 rounded-full bg-pink-600" />
+                        <h3 className="text-sm font-bold text-gray-900">{section.category}</h3>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-xs text-gray-500">{section.items.length} 个</span>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {section.items.map(feature => {
+                          const selected = pinnedFeatureIds.includes(feature.id);
+                          return (
+                            <button
+                              key={feature.id}
+                              onClick={() => toggleFeature(feature.id)}
+                              className={`flex min-h-[78px] items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
+                                selected ? 'border-pink-200 bg-pink-50/70 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-white'
+                              }`}
+                            >
+                              <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${feature.tone}`}>
+                                {feature.icon}
+                              </span>
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate text-sm font-semibold text-gray-900">{feature.name}</span>
+                                <span className="mt-1 block truncate text-xs text-gray-500">{feature.category}</span>
+                              </span>
+                              <CheckCircle2 size={18} className={selected ? 'text-pink-700' : 'text-gray-200'} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white text-center">
+                  <Search size={28} className="text-gray-300" />
+                  <p className="mt-3 text-sm font-semibold text-gray-700">暂无匹配功能</p>
+                  <p className="mt-1 text-xs text-gray-400">换个关键词试试</p>
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
               <span className="text-xs text-gray-500">已固定 {pinnedFeatureIds.length} 个</span>

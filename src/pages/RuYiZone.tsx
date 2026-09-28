@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, Target, Copy, RotateCcw } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import ProcessReferenceFilePicker from "../components/ProcessReferenceFilePicker";
 import DocumentEditor from "./DocumentEditor";
-import PresentationEditor from "./PresentationEditor";
+import PresentationWorkbench from "./PresentationWorkbench";
+import PresentationSettings from "../components/PresentationSettings";
 import { documentValidationIssues, documentValidationRules, documentValidationSummary, type DocumentMode } from "../data/documentValidation";
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from "../data/people";
 import {
   presentationModes,
   presentationOutline,
-  presentationParamOptions,
+  presentationTemplates,
   presentationSlides,
   type PresentationModeId,
 } from "../data/presentation";
@@ -266,6 +267,10 @@ const itServicePrompts = [
 ];
 
 export default function RuYiZone() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const documentWorkspacePath = location.pathname.endsWith('/ruyi-zone/document');
+  const presentationWorkspacePath = location.pathname.endsWith('/ruyi-zone/presentation');
   const [input, setInput] = useState("");
   const [assistants, setAssistants] = useState<Assistant[]>(defaultAssistants);
   const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null);
@@ -287,14 +292,17 @@ export default function RuYiZone() {
   const [validationFileName, setValidationFileName] = useState("");
   const [validationError, setValidationError] = useState("");
   const [validationReady, setValidationReady] = useState(false);
-  const [pptMode, setPptMode] = useState<PresentationModeId>("ai");
-  const [pptPageCount, setPptPageCount] = useState("10-15页");
+  const [pptMode] = useState<PresentationModeId>("ai");
+  const [pptPageCount, setPptPageCount] = useState("6-10页");
   const [pptAudience, setPptAudience] = useState("大众");
   const [pptScene, setPptScene] = useState("通用");
   const [pptTone, setPptTone] = useState("专业");
-  const [pptLanguage, setPptLanguage] = useState("简体中文");
+  const [pptLanguage, setPptLanguage] = useState("中文");
   const [pptTextStyle, setPptTextStyle] = useState("简洁");
   const [pptAttachments, setPptAttachments] = useState<string[]>([]);
+  const pptFileInputRef = useRef<HTMLInputElement>(null);
+  const pptFilesRef = useRef(new Map<string, File>());
+  const [pptTemplate, setPptTemplate] = useState(presentationTemplates[0]);
   const [presentationReady, setPresentationReady] = useState(false);
   const [presentationPrompt, setPresentationPrompt] = useState("");
   const [presentationTitle, setPresentationTitle] = useState("");
@@ -334,10 +342,7 @@ export default function RuYiZone() {
 
   const handleUploadAttachment = () => {
     if (activeTool === "PPT") {
-      setPptAttachments((current) => [
-        ...current,
-        `PPT参考资料${current.length + 1}.pdf`,
-      ]);
+      pptFileInputRef.current?.click();
       return;
     }
     if (activeTool === "公文" && documentMode === "validation") {
@@ -372,10 +377,6 @@ export default function RuYiZone() {
     setValidationError("");
   };
 
-  const handleRemovePptAttachment = (attachment: string) => {
-    setPptAttachments((current) => current.filter((item) => item !== attachment));
-  };
-
   const handleSend = () => {
     if (activeTool === 'PPT' && conversationKind === "presentationDraft") {
       const message = input.trim();
@@ -394,16 +395,14 @@ export default function RuYiZone() {
     if (activeTool === 'PPT') {
       const question = input.trim() || "AI赋能：企业效率革新与未来";
       const title = question.replace(/^(请|帮我|生成|做一份|制作|撰写)/, "").slice(0, 32) || "AI赋能企业效率革新";
-      setSentQuestion(question);
       setPresentationPrompt(question);
       setPresentationTitle(title);
-      setPresentationConfirmMessage("");
-      setConversationKind("presentationDraft");
-      setSelectedHistoryId(null);
-      setHasConversation(true);
-      setPresentationReady(false);
-      setPresentationAdjustments([]);
       setInput("");
+      setHasConversation(false);
+      setShowEditor(false);
+      setEmbedEditorInRuyiZone(false);
+      setShowPresentationEditor(true);
+      navigate('/web_client/ruyi-zone/presentation');
       return;
     }
     if (activeTool === '公文' && conversationKind === "documentValidation") {
@@ -477,6 +476,7 @@ export default function RuYiZone() {
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
     setShowPresentationEditor(false);
+    navigate('/web_client/ruyi-zone');
   };
 
   const getHistoryAssistantName = (kind: ConversationKind) => {
@@ -515,6 +515,7 @@ export default function RuYiZone() {
     setShowReportSubmitTargets(false);
     setSelectedReportSubmitTargets([1]);
     setReportSubmitDone(false);
+    if (documentWorkspacePath || presentationWorkspacePath) navigate('/web_client/ruyi-zone');
   };
 
   const openLegacyDocumentAssistant = () => {
@@ -538,28 +539,21 @@ export default function RuYiZone() {
     setEditorSessionId((current) => current + 1);
     setEmbedEditorInRuyiZone(true);
     setShowEditor(true);
+    setShowPresentationEditor(false);
+    navigate('/web_client/ruyi-zone/document');
   };
 
   const openLegacyPresentationAssistant = () => {
     const presentationAssistant = defaultAssistants.find((assistant) => assistant.name === "如意PPT创作") || null;
-    setActiveTool("PPT");
-    setConversationKind("presentationDraft");
-    setSelectedHistoryId(null);
+    setAssistants(defaultAssistants.map((assistant) => ({ ...assistant, isActive: assistant.name === "如意PPT创作" })));
     setSelectedAssistant(presentationAssistant);
-    setAssistants(defaultAssistants.map((assistant) => ({
-      ...assistant,
-      isActive: assistant.name === "如意PPT创作",
-    })));
-    setPresentationReady(false);
-    setPresentationConfirmMessage("");
-    setPresentationAdjustments([]);
-    setPresentationPrompt("");
-    setPresentationTitle("");
-    setInput("");
+    setSelectedHistoryId(null);
+    setActiveTool("PPT");
     setHasConversation(false);
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
-    setShowPresentationEditor(false);
+    setShowPresentationEditor(true);
+    navigate('/web_client/ruyi-zone/presentation');
   };
 
   const openLegacyItAssistant = () => {
@@ -577,7 +571,7 @@ export default function RuYiZone() {
     setHasConversation(true);
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
-    setShowPresentationEditor(false);
+    setShowPresentationEditor(true);
   };
 
 
@@ -614,6 +608,10 @@ export default function RuYiZone() {
   const handleAssistantSelect = (assistant: Assistant) => {
     if (assistant.name === "如意公文创作") {
       openLegacyDocumentAssistant();
+      return;
+    }
+    if (assistant.name === "如意PPT创作") {
+      openLegacyPresentationAssistant();
       return;
     }
     if (assistant.name === "IT服务助手") {
@@ -742,6 +740,23 @@ export default function RuYiZone() {
     </div>
   );
 
+  const renderPresentationModeSwitch = () => (
+    <div className="flex shrink-0 items-center gap-0.5 rounded-lg border border-theme-100 bg-theme-50/80 p-0.5 shadow-sm dark:border-theme-900/40 dark:bg-theme-900/20">
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-xs font-semibold text-theme-700 shadow-sm dark:bg-gray-800 dark:text-theme-300">
+        <PresentationIcon size={13} />
+        PPT创作
+      </span>
+      <button
+        type="button"
+        onClick={() => setActiveTool(null)}
+        className="ml-0.5 flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-white hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+        title="关闭PPT插件"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
+
   const getAttachmentMeta = (attachment: string) => {
     const extension = attachment.split('.').pop()?.toUpperCase() || 'DOC';
     const size = extension === 'PDF' ? '216.8 KB' : extension === 'XLSX' ? '12.48 KB' : '18.6 KB';
@@ -803,115 +818,27 @@ export default function RuYiZone() {
       </div>
     </div>
   );
-  const handlePresentationModeChange = (mode: PresentationModeId) => {
-    setPptMode(mode);
-    if (mode === "single") {
-      setPptPageCount("单页");
-    } else if (pptPageCount === "单页") {
-      setPptPageCount("10-15页");
-    }
-  };
-
-  const renderPresentationParamSelect = (
-    key: keyof typeof presentationParamOptions,
-    value: string,
-    onChange: (value: string) => void,
-    disabled = false,
-  ) => {
-    const option = presentationParamOptions[key];
-    return (
-      <label className="block min-w-0">
-        <span className="mb-1 block text-xs text-gray-500 dark:text-gray-400">{option.label}</span>
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          disabled={disabled}
-          className="h-9 w-full rounded-lg border border-gray-200 bg-white px-2.5 text-xs text-gray-800 outline-none transition-colors focus:border-theme-200 focus:ring-2 focus:ring-theme-100 disabled:bg-gray-50 disabled:text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
-        >
-          {option.options.map((item) => (
-            <option key={item} value={item}>{item}</option>
-          ))}
-        </select>
-      </label>
-    );
-  };
-
   const renderPresentationSettings = () => (
-    <div className="mt-4 space-y-4 rounded-2xl border border-theme-100/80 bg-white/85 p-4 shadow-[0_12px_32px_rgba(148,76,126,0.08)] backdrop-blur dark:border-gray-700 dark:bg-gray-800/80">
-      <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-950 dark:text-white">使用AI创建PPT</h3>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">选择创建方式，补充主题或参考文档，先生成执行方案再确认生成草稿。</p>
-          </div>
-          <span className="hidden rounded-full bg-theme-50 px-3 py-1 text-xs font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300 sm:inline-flex">PPT插件</span>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {presentationModes.map((mode) => (
-            <button
-              key={mode.id}
-              type="button"
-              onClick={() => handlePresentationModeChange(mode.id)}
-              className={`rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-sm ${pptMode === mode.id ? 'border-theme-300 bg-theme-50/70 ring-2 ring-theme-100 dark:border-theme-500 dark:bg-theme-900/20' : 'border-gray-200 bg-white hover:border-theme-100 dark:border-gray-700 dark:bg-gray-800'}`}
-            >
-              <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-theme-500 to-theme-600 text-white shadow-sm">
-                <PresentationIcon size={17} />
-              </div>
-              <div className="text-sm font-semibold text-gray-950 dark:text-white">{mode.name}</div>
-              <div className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">{mode.desc}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {pptAttachments.length > 0 && (
-        <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
-          <div className="mb-2 text-xs text-gray-500 dark:text-gray-400">已上传参考文档</div>
-          <div className="space-y-1.5">
-            {pptAttachments.map((attachment) => (
-              <div key={attachment} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200">
-                <Paperclip size={14} className="flex-shrink-0 text-theme-500" />
-                <span className="truncate">{attachment}</span>
-                <button
-                  onClick={() => handleRemovePptAttachment(attachment)}
-                  className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-white hover:text-red-500 dark:hover:bg-gray-600"
-                  title="删除参考文档"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {renderPresentationParamSelect("pageCount", pptMode === "single" ? "单页" : pptPageCount, setPptPageCount, pptMode === "single")}
-        {renderPresentationParamSelect("audience", pptAudience, setPptAudience)}
-        {renderPresentationParamSelect("scene", pptScene, setPptScene)}
-        {renderPresentationParamSelect("tone", pptTone, setPptTone)}
-        {renderPresentationParamSelect("language", pptLanguage, setPptLanguage)}
-        {renderPresentationParamSelect("textStyle", pptTextStyle, setPptTextStyle)}
-      </div>
-    </div>
+    <PresentationSettings
+      attachments={pptAttachments} setAttachments={setPptAttachments}
+      inputRef={pptFileInputRef} files={pptFilesRef.current}
+      template={pptTemplate} setTemplate={setPptTemplate}
+      values={{ pageCount: pptPageCount, textStyle: pptTextStyle, audience: pptAudience, scene: pptScene, tone: pptTone, language: pptLanguage }}
+      setters={{ pageCount: setPptPageCount, textStyle: setPptTextStyle, audience: setPptAudience, scene: setPptScene, tone: setPptTone, language: setPptLanguage }}
+    />
   );
   const handleLegacySend = () => {
     if (activeTool === "PPT") {
       const question = input.trim() || "AI赋能：企业效率革新与未来";
       const title = question.replace(/^(请|帮我|生成|做一份|制作|撰写)/, "").slice(0, 32) || "AI赋能企业效率革新";
-      setSentQuestion(question);
       setPresentationPrompt(question);
       setPresentationTitle(title);
-      setPresentationConfirmMessage("");
-      setConversationKind("presentationDraft");
-      setSelectedHistoryId(null);
-      setHasConversation(false);
-      setPresentationReady(true);
-      setPresentationAdjustments([]);
       setInput("");
+      setHasConversation(false);
       setShowEditor(false);
       setEmbedEditorInRuyiZone(false);
       setShowPresentationEditor(true);
+      navigate('/web_client/ruyi-zone/presentation');
       return;
     }
     if (activeTool === "公文" && documentMode === "validation") {
@@ -1320,22 +1247,27 @@ export default function RuYiZone() {
         </aside>
 
         <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-          {showPresentationEditor ? (
-            <PresentationEditor
-              mode={pptMode}
-              title={presentationTitle}
-              prompt={presentationPrompt}
-              pageCount={pptPageCount}
-              audience={pptAudience}
-              scene={pptScene}
-              tone={pptTone}
-              language={pptLanguage}
-              textStyle={pptTextStyle}
-              attachments={pptAttachments}
-              embedded
-              onBack={() => setShowPresentationEditor(false)}
+          {(showPresentationEditor || presentationWorkspacePath) ? (
+            <PresentationWorkbench
+              initialState={{
+                mode: pptMode,
+                title: presentationTitle,
+                prompt: presentationPrompt,
+                pageCount: pptPageCount,
+                audience: pptAudience,
+                scene: pptScene,
+                tone: pptTone,
+                language: pptLanguage,
+                textStyle: pptTextStyle,
+                template: pptTemplate,
+                attachments: pptAttachments,
+              }}
+              onBack={() => {
+                setShowPresentationEditor(false);
+                navigate('/web_client/ruyi-zone');
+              }}
             />
-          ) : showEditor ? (            <DocumentEditor
+          ) : (showEditor || documentWorkspacePath) ? (            <DocumentEditor
               key={`legacy-editor-${editorSessionId}`}
               docType={docType}
               docTitle={docTitle}
@@ -1437,16 +1369,15 @@ export default function RuYiZone() {
                   )}
                 </div>
               ) : activeTool === "PPT" ? (
-                <div className="flex items-start gap-3 pr-24">
-                  <div className="flex items-center gap-2 rounded-full bg-theme-50 px-3 py-1.5 text-sm font-medium text-theme-700">
-                    <PresentationIcon size={14} />
-                    AI演示
+                <div className="pr-24">
+                  <div className="mb-3 flex items-center">
+                    {renderPresentationModeSwitch()}
                   </div>
                   <textarea
                     value={input}
                     onChange={(event) => setInput(event.target.value)}
-                    placeholder="请输入PPT主题或创作要求..."
-                    className="h-24 flex-1 resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder:text-gray-400"
+                    placeholder="描述PPT主题、核心内容和使用场景..."
+                    className="h-20 w-full resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder:text-gray-400"
                   />
                 </div>
               ) : (
@@ -1647,22 +1578,27 @@ export default function RuYiZone() {
 
         {/* 第三列：如意空间内容区域 */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
-          {showPresentationEditor ? (
-            <PresentationEditor
-              mode={pptMode}
-              title={presentationTitle}
-              prompt={presentationPrompt}
-              pageCount={pptPageCount}
-              audience={pptAudience}
-              scene={pptScene}
-              tone={pptTone}
-              language={pptLanguage}
-              textStyle={pptTextStyle}
-              attachments={pptAttachments}
-              embedded
-              onBack={() => setShowPresentationEditor(false)}
+          {(showPresentationEditor || presentationWorkspacePath) ? (
+            <PresentationWorkbench
+              initialState={{
+                mode: pptMode,
+                title: presentationTitle,
+                prompt: presentationPrompt,
+                pageCount: pptPageCount,
+                audience: pptAudience,
+                scene: pptScene,
+                tone: pptTone,
+                language: pptLanguage,
+                textStyle: pptTextStyle,
+                template: pptTemplate,
+                attachments: pptAttachments,
+              }}
+              onBack={() => {
+                setShowPresentationEditor(false);
+                navigate('/web_client/ruyi-zone');
+              }}
             />
-          ) : showEditor && embedEditorInRuyiZone ? (
+          ) : ((showEditor && embedEditorInRuyiZone) || documentWorkspacePath) ? (
             <DocumentEditor
               key={`ruyi-editor-${editorSessionId}`}
               docType={docType}
@@ -1943,7 +1879,8 @@ export default function RuYiZone() {
                           <div className="mb-4 rounded-xl border border-theme-100 bg-theme-50/60 p-4 text-sm leading-6 text-gray-700 dark:border-theme-900/30 dark:bg-theme-900/20 dark:text-gray-200">
                             <div className="font-semibold text-gray-950 dark:text-white">{presentationTitle || 'AI赋能企业效率革新'}</div>
                             <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                              <span>创建方式：{presentationModes.find((mode) => mode.id === pptMode)?.name}</span>
+                              <span>模板：{pptTemplate}</span>
+                              <span>文本量：{pptTextStyle}</span>
                               <span>页数：{pptMode === 'single' ? '单页' : pptPageCount}</span>
                               <span>受众：{pptAudience}</span>
                               <span>场景：{pptScene}</span>
@@ -2342,16 +2279,15 @@ export default function RuYiZone() {
                   )}
 
                   {activeTool === 'PPT' && (
-                    <div className="flex items-start gap-3 pr-24">
-                      <div className="flex items-center gap-2 rounded-full bg-theme-50 px-3 py-1.5 text-sm font-medium text-theme-700 dark:bg-theme-900/30 dark:text-theme-300">
-                        <PresentationIcon size={14} />
-                        AI演示
+                    <div className="pr-24">
+                      <div className="mb-3 flex items-center">
+                        {renderPresentationModeSwitch()}
                       </div>
                       <textarea
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="请输入PPT主题或创作要求..."
-                        className="min-h-[110px] flex-1 resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
+                        placeholder="描述PPT主题、核心内容和使用场景..."
+                        className="min-h-[86px] w-full resize-none border-none bg-transparent text-base leading-7 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
                       />
                     </div>
                   )}

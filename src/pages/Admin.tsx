@@ -4,10 +4,19 @@ import {
   Menu, X, Shield, Lock, GitBranch, LayoutDashboard,
   Globe, Network, Palette, ChevronRight, User, Users, FolderTree,
   Route, Wand2, FileText, Edit3, Image as ImageIcon, Type, AlignJustify, Plus, Search, Upload,
-  Database, Briefcase, RefreshCw, CheckCircle2, Layers, Smartphone, ClipboardList
+  Database, Briefcase, RefreshCw, CheckCircle2, Layers, Smartphone, ClipboardList, ChevronLeft
 } from 'lucide-react';
 import NavigationConfig from '../components/NavigationConfig';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
+import {
+  TRUSTED_ROUTE_DICTIONARY_NAME,
+  TRUSTED_ROUTE_DICTIONARY_TYPE,
+  buildTrustedRouteRules,
+  loadTrustedRouteItems,
+  saveTrustedRouteItems,
+  validateTrustedRouteItem,
+  type TrustedRouteDictionaryItem,
+} from '../utils/linkOpening';
 
 interface MenuItem {
   id: string;
@@ -114,6 +123,7 @@ const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
   'ai-template': { menu: 'ai', subMenu: 'ai-template' },
   'report-template': { menu: 'initial', subMenu: 'report-template' },
   'system-nav': { menu: 'system', subMenu: 'system-nav' },
+  'system-dictionary': { menu: 'system', subMenu: 'system-dictionary' },
 };
 
 const adminTheme = {
@@ -284,6 +294,295 @@ function ContentPlaceholder({ title, icon }: { title: string; icon: string }) {
   );
 }
 
+type VersionPlatform = 'android' | 'ios' | 'desktop';
+type VersionStatus = '已发布' | '已失效' | '草稿';
+
+type VersionRecord = {
+  id: string;
+  platform: VersionPlatform;
+  versionNo: string;
+  buildNo: string;
+  forceUpdate: boolean;
+  status: VersionStatus;
+  content: string;
+  description: string;
+  updater: string;
+  updatedAt: string;
+  packageType: string;
+  supportedOS: string;
+  downloadUrl: string;
+};
+
+const versionPlatformTabs: Array<{ id: VersionPlatform; label: string }> = [
+  { id: 'android', label: 'android' },
+  { id: 'ios', label: 'iOS' },
+  { id: 'desktop', label: 'client' },
+];
+
+const initialVersionRows: VersionRecord[] = [
+  { id: 'android-340', platform: 'android', versionNo: '3.4.0', buildNo: '20251224001', forceUpdate: false, status: '已发布', content: '功能焕新 菜单系统升级：更多客别、更多时间...', description: '优化工作门户与消息提醒体验', updater: MAIN_USER_NAME, updatedAt: '2026-01-30 14:45:53', packageType: 'APK', supportedOS: 'Android 10+', downloadUrl: 'https://download.juneyaoair.com/ijx/android/3.4.0.apk' },
+  { id: 'android-321', platform: 'android', versionNo: '3.2.1', buildNo: '20250515004', forceUpdate: true, status: '已失效', content: '账号安全体系加强，本次升级为强制更新，建议...', description: '安全策略更新', updater: MAIN_USER_NAME, updatedAt: '2026-01-30 14:45:50', packageType: 'APK', supportedOS: 'Android 9+', downloadUrl: 'https://download.juneyaoair.com/ijx/android/3.2.1.apk' },
+  { id: 'ios-331', platform: 'ios', versionNo: '3.3.1', buildNo: '20251104001', forceUpdate: false, status: '已发布', content: '登录安全优化、个人信息增加个人生...', description: 'App Store 发布版本', updater: MAIN_USER_NAME, updatedAt: '2026-01-30 14:44:11', packageType: 'App Store', supportedOS: 'iOS 15+', downloadUrl: 'https://apps.apple.com/app/ijx' },
+  { id: 'ios-320', platform: 'ios', versionNo: '3.2.0', buildNo: '20250428002', forceUpdate: false, status: '已失效', content: 'iJX app now supports English 2. 福利中心：...', description: '双语能力更新', updater: MAIN_USER_NAME, updatedAt: '2025-06-24 22:30:28', packageType: 'App Store', supportedOS: 'iOS 14+', downloadUrl: 'https://apps.apple.com/app/ijx' },
+  { id: 'desktop-110', platform: 'desktop', versionNo: '1.1.0', buildNo: '20260915001', forceUpdate: false, status: '已发布', content: '新增 PC 工作门户、桌面端打开外部链接策略配置...', description: 'Windows 桌面客户端安装包', updater: MAIN_USER_NAME, updatedAt: '2026-09-15 18:30:21', packageType: 'EXE', supportedOS: 'Windows 10/11', downloadUrl: 'https://download.juneyaoair.com/ijx/desktop/1.1.0.exe' },
+  { id: 'desktop-100', platform: 'desktop', versionNo: '1.0.0', buildNo: '20260818001', forceUpdate: false, status: '已失效', content: '桌面端基础能力：门户入口、消息通知、日历同步...', description: '桌面端首个试运行版本', updater: MAIN_USER_NAME, updatedAt: '2026-08-18 11:05:02', packageType: 'MSI', supportedOS: 'Windows 10+', downloadUrl: 'https://download.juneyaoair.com/ijx/desktop/1.0.0.msi' },
+];
+
+const defaultVersionDraft: VersionRecord = {
+  id: '',
+  platform: 'desktop',
+  versionNo: '',
+  buildNo: '',
+  forceUpdate: false,
+  status: '草稿',
+  content: '',
+  description: '',
+  updater: MAIN_USER_NAME,
+  updatedAt: '刚刚',
+  packageType: 'EXE',
+  supportedOS: 'Windows 10/11',
+  downloadUrl: '',
+};
+
+function VersionManagement({ view }: { view: 'list' | 'release' }) {
+  const [activePlatform, setActivePlatform] = useState<VersionPlatform>('android');
+  const [rows, setRows] = useState<VersionRecord[]>(initialVersionRows);
+  const [keyword, setKeyword] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'全部' | VersionStatus>('全部');
+  const [forceFilter, setForceFilter] = useState<'全部' | '是' | '否'>('全部');
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [draft, setDraft] = useState<VersionRecord>(defaultVersionDraft);
+  const [toast, setToast] = useState('');
+
+  const filteredRows = rows
+    .filter(item => item.platform === activePlatform)
+    .filter(item => statusFilter === '全部' || item.status === statusFilter)
+    .filter(item => forceFilter === '全部' || (forceFilter === '是' ? item.forceUpdate : !item.forceUpdate))
+    .filter(item => {
+      const value = keyword.trim().toLowerCase();
+      return !value || item.versionNo.toLowerCase().includes(value) || item.buildNo.toLowerCase().includes(value);
+    });
+
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(''), 2200);
+  };
+
+  const openCreate = () => {
+    setDraft({
+      ...defaultVersionDraft,
+      id: `${activePlatform}-${Date.now()}`,
+      platform: activePlatform,
+      packageType: activePlatform === 'desktop' ? 'EXE' : activePlatform === 'ios' ? 'App Store' : 'APK',
+      supportedOS: activePlatform === 'desktop' ? 'Windows 10/11' : activePlatform === 'ios' ? 'iOS 15+' : 'Android 10+',
+    });
+    setEditorOpen(true);
+  };
+
+  const openEdit = (item: VersionRecord) => {
+    setDraft(item);
+    setEditorOpen(true);
+  };
+
+  const saveDraft = () => {
+    if (!draft.versionNo || !draft.buildNo) {
+      showToast('请填写版本号和构建号');
+      return;
+    }
+    setRows(current => {
+      const exists = current.some(item => item.id === draft.id);
+      if (exists) return current.map(item => item.id === draft.id ? draft : item);
+      return [draft, ...current];
+    });
+    setEditorOpen(false);
+    showToast('版本配置已保存');
+  };
+
+  return (
+    <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] pt-3 text-sm text-gray-800">
+      <AdminTabs active={view === 'list' ? '版本管理' : '版本更新记录'} />
+      {toast && (
+        <div className="fixed left-1/2 top-5 z-[80] -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
+          {toast}
+        </div>
+      )}
+      <div className="bg-white px-8 py-4">
+        <div className="mb-5 text-sm text-gray-500">
+          首页 <span className="mx-2">/</span> 版本管理 <span className="mx-2">/</span>
+          <span className="text-gray-800">{view === 'list' ? '版本管理' : '版本更新记录'}</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-6">
+          <label className="flex items-center gap-2">
+            <span className="whitespace-nowrap text-gray-700">版本号</span>
+            <input
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
+              placeholder="请输入版本号"
+              className="h-9 w-72 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"
+            />
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="whitespace-nowrap text-gray-700">状态</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as '全部' | VersionStatus)} className="h-9 w-64 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+              <option>全部</option>
+              <option>已发布</option>
+              <option>已失效</option>
+              <option>草稿</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2">
+            <span className="whitespace-nowrap text-gray-700">是否强制更新</span>
+            <select value={forceFilter} onChange={(event) => setForceFilter(event.target.value as '全部' | '是' | '否')} className="h-9 w-72 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+              <option>全部</option>
+              <option>是</option>
+              <option>否</option>
+            </select>
+          </label>
+          <div className="ml-auto flex gap-2">
+            <button className="rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">查询</button>
+            <button onClick={() => { setKeyword(''); setStatusFilter('全部'); setForceFilter('全部'); }} className="rounded border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50">重置</button>
+            <button className="px-3 text-[#2f75b5] hover:underline">展开⌄</button>
+          </div>
+        </div>
+        <div className="mt-6 flex gap-8 border-b border-gray-200">
+          {versionPlatformTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActivePlatform(tab.id)}
+              className={`relative pb-3 text-sm font-semibold ${activePlatform === tab.id ? 'text-[#2f75b5]' : 'text-gray-700 hover:text-[#2f75b5]'}`}
+            >
+              {tab.label}
+              {activePlatform === tab.id && <span className="absolute bottom-[-1px] left-0 h-0.5 w-full bg-[#2f75b5]" />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="p-5">
+        <div className="bg-white p-5">
+          <button onClick={openCreate} className="mb-4 rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">添加</button>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1180px] border-collapse text-left">
+              <thead>
+                <tr className="bg-gray-50 text-gray-900">
+                  <th className="px-3 py-3 font-medium">版本号</th>
+                  <th className="px-3 py-3 font-medium">构建号</th>
+                  <th className="px-3 py-3 font-medium">是否强制更新</th>
+                  <th className="px-3 py-3 font-medium">状态</th>
+                  <th className="px-3 py-3 font-medium">修复内容</th>
+                  <th className="px-3 py-3 font-medium">描述</th>
+                  {activePlatform === 'desktop' && <th className="px-3 py-3 font-medium">client配置</th>}
+                  <th className="px-3 py-3 font-medium">更新人</th>
+                  <th className="px-3 py-3 font-medium">更新时间</th>
+                  <th className="px-3 py-3 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredRows.map(item => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="whitespace-nowrap px-3 py-3 text-gray-800">{item.versionNo}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.buildNo}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.forceUpdate ? '是' : '否'}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.status}</td>
+                    <td className="max-w-[260px] truncate px-3 py-3 text-gray-700">{item.content}</td>
+                    <td className="max-w-[210px] truncate px-3 py-3 text-gray-500">{item.description}</td>
+                    {activePlatform === 'desktop' && (
+                      <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.packageType} · {item.supportedOS}</td>
+                    )}
+                    <td className="whitespace-nowrap px-3 py-3 text-gray-700">{item.updater}</td>
+                    <td className="whitespace-nowrap px-3 py-3 text-gray-700">{item.updatedAt}</td>
+                    <td className="whitespace-nowrap px-3 py-3">
+                      <button onClick={() => showToast('二维码下载已生成')} className="mr-4 text-[#2f75b5] hover:underline">下载二维码</button>
+                      <button onClick={() => openEdit(item)} className="mr-4 text-[#2f75b5] hover:underline">编辑</button>
+                      <button onClick={() => showToast('更多操作为前端模拟')} className="text-[#2f75b5] hover:underline">更多⌄</button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredRows.length === 0 && (
+                  <tr>
+                    <td colSpan={activePlatform === 'desktop' ? 10 : 9} className="px-3 py-12 text-center text-gray-400">暂无版本数据</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-4 flex items-center justify-end gap-2 text-sm text-gray-600">
+            <span>共 {filteredRows.length} 条</span>
+            <button className="h-8 w-8 rounded border border-gray-200 text-gray-300">‹</button>
+            <button className="h-8 w-8 rounded border border-[#2f75b5] text-[#2f75b5]">1</button>
+            <button className="h-8 w-8 rounded border border-gray-200">2</button>
+            <button className="h-8 w-8 rounded border border-gray-200">›</button>
+            <select className="h-8 rounded border border-gray-200 px-2">
+              <option>12 条/页</option>
+            </select>
+            <span>跳至</span>
+            <input className="h-8 w-12 rounded border border-gray-200 px-2" />
+            <span>页</span>
+          </div>
+        </div>
+      </div>
+
+      {editorOpen && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 px-4">
+          <div className="w-full max-w-2xl rounded bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h3 className="text-base font-bold text-gray-900">{rows.some(item => item.id === draft.id) ? '编辑版本配置' : '新增版本配置'}</h3>
+              <button onClick={() => setEditorOpen(false)} className="rounded p-1 text-gray-500 hover:bg-gray-100"><X size={18} /></button>
+            </div>
+            <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
+              <label className="text-sm text-gray-700">端类型
+                <select value={draft.platform} onChange={(event) => setDraft(prev => ({ ...prev, platform: event.target.value as VersionPlatform }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                  <option value="android">android</option>
+                  <option value="ios">iOS</option>
+                  <option value="desktop">client</option>
+                </select>
+              </label>
+              <label className="text-sm text-gray-700">版本号
+                <input value={draft.versionNo} onChange={(event) => setDraft(prev => ({ ...prev, versionNo: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="text-sm text-gray-700">构建号
+                <input value={draft.buildNo} onChange={(event) => setDraft(prev => ({ ...prev, buildNo: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="text-sm text-gray-700">状态
+                <select value={draft.status} onChange={(event) => setDraft(prev => ({ ...prev, status: event.target.value as VersionStatus }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                  <option>草稿</option>
+                  <option>已发布</option>
+                  <option>已失效</option>
+                </select>
+              </label>
+              <label className="text-sm text-gray-700">安装包类型
+                <input value={draft.packageType} onChange={(event) => setDraft(prev => ({ ...prev, packageType: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="text-sm text-gray-700">支持系统
+                <input value={draft.supportedOS} onChange={(event) => setDraft(prev => ({ ...prev, supportedOS: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="md:col-span-2 text-sm text-gray-700">下载地址
+                <input value={draft.downloadUrl} onChange={(event) => setDraft(prev => ({ ...prev, downloadUrl: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="md:col-span-2 text-sm text-gray-700">修复内容
+                <textarea value={draft.content} onChange={(event) => setDraft(prev => ({ ...prev, content: event.target.value }))} className="mt-1 h-20 w-full rounded border border-gray-300 px-3 py-2 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" checked={draft.forceUpdate} onChange={(event) => setDraft(prev => ({ ...prev, forceUpdate: event.target.checked }))} />
+                强制更新
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
+              <button onClick={() => setEditorOpen(false)} className="rounded border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50">取消</button>
+              <button onClick={saveDraft} className="rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">保存</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="pb-7 pt-2 text-center text-xs text-gray-500">
+        吉祥航空　如意到家
+        <div className="mt-1">Copyright © 2026 吉祥航空版权所有</div>
+      </div>
+    </div>
+  );
+}
+
 const reportTemplateRows = [
   { id: 'weekly', name: '工作周报模板', type: '工作汇报', fields: '关联OKR、本周事项、下周计划、汇报对象', updater: MAIN_USER_NAME, updatedAt: '2026-07-02 18:20' },
   { id: 'daily', name: '工作日报模板', type: '工作汇报', fields: '今日总结、明日计划、风险问题、抄送对象', updater: MAIN_USER_NAME, updatedAt: '2026-07-01 16:10' },
@@ -353,6 +652,7 @@ function ReportTemplateManagement() {
 
 
 type UserGroupSource = 'manual' | 'sync';
+type UserGroupScope = '全员' | '指定部门' | '指定人员';
 
 type UserGroupMember = {
   name: string;
@@ -367,6 +667,8 @@ type UserGroupRecord = {
   name: string;
   source: UserGroupSource;
   description: string;
+  scope?: UserGroupScope;
+  scopeTarget?: string;
   updatedAt: string;
   owner: string;
   members: UserGroupMember[];
@@ -456,6 +758,12 @@ function UserGroupManagement() {
   const [selectedGroupId, setSelectedGroupId] = useState(initialUserGroups[0].id);
   const [keyword, setKeyword] = useState('');
   const [syncOpen, setSyncOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createDescription, setCreateDescription] = useState('');
+  const [createScope, setCreateScope] = useState<UserGroupScope>('全员');
+  const [createScopeTarget, setCreateScopeTarget] = useState('');
+  const [createError, setCreateError] = useState('');
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
@@ -465,7 +773,6 @@ function UserGroupManagement() {
   const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim()));
   const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim()));
   const isManual = selectedGroup.source === 'manual';
-  const departmentCount = new Set(selectedGroup.members.map(member => member.department)).size;
 
   const showToast = (message: string) => {
     setToast(message);
@@ -479,20 +786,43 @@ function UserGroupManagement() {
   };
 
   const handleAddGroup = () => {
+    setCreateName('');
+    setCreateDescription('');
+    setCreateScope('全员');
+    setCreateScopeTarget('');
+    setCreateError('');
+    setCreateOpen(true);
+  };
+
+  const handleConfirmAddGroup = () => {
+    const name = createName.trim();
+    if (!name) {
+      setCreateError('请输入用户组名称');
+      return;
+    }
+    if (groups.some(group => group.name === name)) {
+      setCreateError('用户组名称已存在');
+      return;
+    }
+    if (createScope !== '全员' && !createScopeTarget.trim()) {
+      setCreateError(createScope === '指定部门' ? '请输入适用部门' : '请输入适用人员');
+      return;
+    }
     const newGroup: UserGroupRecord = {
-      id: `manual-${groups.length + 1}`,
-      name: `新建用户组${manualGroups.length + 1}`,
+      id: `manual-${Date.now()}`,
+      name,
       source: 'manual',
-      description: '手动创建的用户组，可按业务场景维护成员和授权范围。',
+      description: createDescription.trim(),
+      scope: createScope,
+      scopeTarget: createScope === '全员' ? '' : createScopeTarget.trim(),
       updatedAt: '2026-07-01 10:35',
       owner: MAIN_USER_NAME,
       members: [],
     };
     setGroups(current => [newGroup, ...current]);
     setSelectedGroupId(newGroup.id);
-    setEditing(true);
-    setDraftName(newGroup.name);
-    setDraftDescription(newGroup.description);
+    setEditing(false);
+    setCreateOpen(false);
     showToast('已新增手动用户组');
   };
 
@@ -601,35 +931,18 @@ function UserGroupManagement() {
               <div className="space-y-2">{syncedGroups.map(renderGroupButton)}</div>
             </div>
             {manualGroups.length + syncedGroups.length === 0 && <div className="px-4 py-6 text-center text-gray-400">暂无匹配用户组</div>}
-            <div className="flex items-center gap-2 text-gray-600"><ChevronRight size={14} /><span>未分组（0）</span></div>
           </div>
         </aside>
 
         <section className="min-w-0 p-6">
-          <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-4">
+          <div className="mb-6">
+              <div className="flex items-center">
                 {editing && isManual ? (
                   <input value={draftName} onChange={(event) => setDraftName(event.target.value)} className="h-9 w-72 rounded border border-gray-300 px-3 text-lg font-semibold text-gray-900 outline-none focus:border-[#2f75b5]" />
                 ) : (
                   <h3 className="text-lg font-semibold text-gray-900">{selectedGroup.name}</h3>
                 )}
-                <span className="text-gray-500">成员 <b className="ml-1 text-gray-900">{selectedGroup.members.length}</b></span>
-                <span className="h-4 w-px bg-gray-200" />
-                <span className="text-gray-500">部门 <b className="ml-1 text-gray-900">{departmentCount}</b></span>
-                <span className={`rounded px-2 py-1 text-xs ${isManual ? 'bg-blue-50 text-[#2f75b5]' : 'bg-gray-100 text-gray-500'}`}>{isManual ? '手动管理' : '系统同步'}</span>
               </div>
-              {editing && isManual ? (
-                <textarea value={draftDescription} onChange={(event) => setDraftDescription(event.target.value)} rows={2} className="mt-3 w-full max-w-3xl resize-none rounded border border-gray-300 px-3 py-2 text-sm text-gray-700 outline-none focus:border-[#2f75b5]" />
-              ) : (
-                <p className="mt-2 max-w-3xl text-sm text-gray-500">{selectedGroup.description}</p>
-              )}
-            </div>
-            <div className="text-right text-xs text-gray-500">
-              <div>来源：{isManual ? '后台手动维护' : '主数据员工层级'}</div>
-              <div className="mt-1">负责人：{selectedGroup.owner}</div>
-              <div className="mt-1">更新时间：{isManual ? selectedGroup.updatedAt : lastSyncTime}</div>
-            </div>
           </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -682,6 +995,50 @@ function UserGroupManagement() {
         </section>
       </div>
 
+      {createOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateOpen(false); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="create-user-group-title" className="w-full max-w-xl rounded bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h3 id="create-user-group-title" className="text-lg font-semibold text-gray-900">新增用户组</h3>
+              <button type="button" aria-label="关闭" onClick={() => setCreateOpen(false)} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
+            </div>
+            <div className="max-h-[min(65vh,540px)] space-y-5 overflow-y-auto px-6 py-5">
+              <label className="block text-sm text-gray-700">
+                <span>用户组名称 <span className="text-red-500">*</span></span>
+                <input autoFocus value={createName} onChange={(event) => { setCreateName(event.target.value); setCreateError(''); }} maxLength={50} placeholder="请输入用户组名称" className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="block text-sm text-gray-700">
+                <span>用户组描述</span>
+                <textarea value={createDescription} onChange={(event) => setCreateDescription(event.target.value)} maxLength={500} rows={3} placeholder="请输入用户组描述" className="mt-2 w-full resize-y rounded border border-gray-300 px-3 py-2 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="block text-sm text-gray-700">
+                <span>用户组所属分组</span>
+                <select value="manual" disabled className="mt-2 h-10 w-full rounded border border-gray-300 bg-gray-50 px-3 text-gray-700"><option value="manual">手动管理</option></select>
+              </label>
+              <label className="block text-sm text-gray-700">
+                <span>适用范围</span>
+                <select value={createScope} onChange={(event) => { setCreateScope(event.target.value as UserGroupScope); setCreateScopeTarget(''); setCreateError(''); }} className="mt-2 h-10 w-full rounded border border-gray-300 bg-white px-3 outline-none focus:border-[#2f75b5]">
+                  <option value="全员">全员</option>
+                  <option value="指定部门">指定部门</option>
+                  <option value="指定人员">指定人员</option>
+                </select>
+              </label>
+              {createScope !== '全员' && (
+                <label className="block text-sm text-gray-700">
+                  <span>{createScope === '指定部门' ? '适用部门' : '适用人员'} <span className="text-red-500">*</span></span>
+                  <input value={createScopeTarget} onChange={(event) => { setCreateScopeTarget(event.target.value); setCreateError(''); }} placeholder={createScope === '指定部门' ? '请输入部门名称' : '请输入人员姓名'} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+                </label>
+              )}
+              {createError && <p role="alert" className="text-sm text-red-600">{createError}</p>}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button type="button" onClick={() => setCreateOpen(false)} className="h-9 rounded border border-gray-300 px-4 text-gray-700 hover:bg-gray-50">取消</button>
+              <button type="button" onClick={handleConfirmAddGroup} className="h-9 rounded bg-[#2f75b5] px-4 font-medium text-white hover:bg-[#28669f]">确认</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {syncOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4">
           <div className="w-full max-w-md rounded bg-white p-6 shadow-xl">
@@ -698,10 +1055,446 @@ function UserGroupManagement() {
   );
 }
 
+const emptyTrustedRouteDraft: TrustedRouteDictionaryItem = {
+  id: '',
+  label: '',
+  origin: '',
+  paths: '',
+  sort: 1,
+  status: 'normal',
+  createdAt: '',
+};
+
+type TrustedRouteDictionaryMeta = {
+  id: string;
+  name: string;
+  type: string;
+  status: 'normal' | 'disabled';
+  remark: string;
+  createdAt: string;
+};
+
+const trustedRouteDictionaryMeta: TrustedRouteDictionaryMeta = {
+  id: '1',
+  name: TRUSTED_ROUTE_DICTIONARY_NAME,
+  type: TRUSTED_ROUTE_DICTIONARY_TYPE,
+  status: 'normal' as const,
+  remark: '客户端内嵌授信 URL 列表',
+  createdAt: '2026-09-27 10:00:00',
+};
+
+const formatDictionaryDateTime = () => {
+  const date = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+};
+
+function TrustedRouteDictionaryManagement() {
+  const [view, setView] = useState<'list' | 'detail'>('list');
+  const [dictionaryMeta, setDictionaryMeta] = useState<TrustedRouteDictionaryMeta>(trustedRouteDictionaryMeta);
+  const [dictionaryDeleted, setDictionaryDeleted] = useState(false);
+  const [metaEditorOpen, setMetaEditorOpen] = useState(false);
+  const [metaDraft, setMetaDraft] = useState<TrustedRouteDictionaryMeta>(trustedRouteDictionaryMeta);
+  const [metaErrors, setMetaErrors] = useState<string[]>([]);
+  const [items, setItems] = useState<TrustedRouteDictionaryItem[]>(() => loadTrustedRouteItems().map((item, index) => ({
+    ...item,
+    sort: item.sort ?? index + 1,
+    status: item.status ?? 'normal',
+    createdAt: item.createdAt || formatDictionaryDateTime(),
+  })));
+  const [dictionaryNameDraft, setDictionaryNameDraft] = useState('');
+  const [dictionaryTypeDraft, setDictionaryTypeDraft] = useState('');
+  const [dictionaryFilters, setDictionaryFilters] = useState({ name: '', type: '' });
+  const [labelKeywordDraft, setLabelKeywordDraft] = useState('');
+  const [labelKeyword, setLabelKeyword] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<TrustedRouteDictionaryItem>(emptyTrustedRouteDraft);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [toast, setToast] = useState('');
+
+  const rules = buildTrustedRouteRules(items);
+  const dictionaryVisible = !dictionaryDeleted
+    && (!dictionaryFilters.name || dictionaryMeta.name.toLowerCase().includes(dictionaryFilters.name.toLowerCase()))
+    && (!dictionaryFilters.type || dictionaryMeta.type.toLowerCase().includes(dictionaryFilters.type.toLowerCase()));
+  const filteredItems = items
+    .filter(item => !labelKeyword || item.label.toLowerCase().includes(labelKeyword.toLowerCase()))
+    .sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+  const pageSize = 12;
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const visibleItems = filteredItems.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  const allVisibleSelected = visibleItems.length > 0 && visibleItems.every(item => selectedIds.has(item.id));
+
+  useEffect(() => {
+    setCurrentPage(page => Math.min(page, totalPages));
+  }, [totalPages]);
+
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(''), 2200);
+  };
+
+  const openMetaEditor = () => {
+    setMetaDraft({ ...dictionaryMeta });
+    setMetaErrors([]);
+    setMetaEditorOpen(true);
+  };
+
+  const saveMetaDraft = () => {
+    const nextErrors: string[] = [];
+    if (!metaDraft.name.trim()) nextErrors.push('请输入字典名称');
+    if (!metaDraft.type.trim()) nextErrors.push('请输入字典类型');
+    if (nextErrors.length > 0) {
+      setMetaErrors(nextErrors);
+      return;
+    }
+    setDictionaryMeta({
+      ...metaDraft,
+      name: metaDraft.name.trim(),
+      type: metaDraft.type.trim(),
+      remark: metaDraft.remark.trim(),
+    });
+    setMetaEditorOpen(false);
+    showToast('字典信息已修改');
+  };
+
+  const deleteDictionary = () => {
+    if (!window.confirm(`确认删除字典“${dictionaryMeta.name}”及其全部字典数据吗？`)) return;
+    if (!saveTrustedRouteItems([])) {
+      showToast('删除失败，请检查浏览器存储权限');
+      return;
+    }
+    setItems([]);
+    setSelectedIds(new Set());
+    setDictionaryDeleted(true);
+    showToast('字典已删除');
+  };
+
+  const openCreate = () => {
+    setEditingId(null);
+    setDraft({
+      ...emptyTrustedRouteDraft,
+      id: `trusted-route-${Date.now()}`,
+      sort: Math.max(0, ...items.map(item => item.sort ?? 0)) + 1,
+      createdAt: formatDictionaryDateTime(),
+    });
+    setErrors([]);
+    setEditorOpen(true);
+  };
+
+  const openEdit = (item: TrustedRouteDictionaryItem) => {
+    setEditingId(item.id);
+    setDraft({ ...item });
+    setErrors([]);
+    setEditorOpen(true);
+  };
+
+  const saveDraft = () => {
+    const validation = validateTrustedRouteItem(draft);
+    const duplicateRules = validation.normalizedPaths.filter(path => items.some(item => {
+      if (item.id === editingId) return false;
+      const current = validateTrustedRouteItem(item);
+      return current.valid && current.normalizedOrigin === validation.normalizedOrigin && current.normalizedPaths.includes(path);
+    }));
+    const nextErrors = [...validation.errors];
+    if (duplicateRules.length > 0) nextErrors.push(`已存在相同的授信范围：${duplicateRules.join('、')}`);
+    if (nextErrors.length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+    if (validation.warnings.length > 0 && !window.confirm(`${validation.warnings.join('\n')}\n\n是否继续保存？`)) return;
+
+    const normalized: TrustedRouteDictionaryItem = {
+      id: draft.id || `trusted-route-${Date.now()}`,
+      label: draft.label.trim(),
+      origin: validation.normalizedOrigin,
+      paths: validation.normalizedPaths.join(';'),
+      sort: Math.max(1, Number(draft.sort) || 1),
+      status: draft.status === 'disabled' ? 'disabled' : 'normal',
+      createdAt: draft.createdAt || formatDictionaryDateTime(),
+    };
+    const nextItems = editingId
+      ? items.map(item => item.id === editingId ? normalized : item)
+      : [...items, normalized];
+    if (!saveTrustedRouteItems(nextItems)) {
+      setErrors(['保存失败，请检查浏览器存储权限后重试']);
+      return;
+    }
+    setItems(nextItems);
+    setEditorOpen(false);
+    showToast(editingId ? '授信路由已更新' : '授信路由已新增');
+  };
+
+  const deleteItem = (item: TrustedRouteDictionaryItem) => {
+    if (!window.confirm(`确认删除“${item.label}”的授信路由吗？`)) return;
+    const nextItems = items.filter(current => current.id !== item.id);
+    if (!saveTrustedRouteItems(nextItems)) {
+      showToast('删除失败，请检查浏览器存储权限');
+      return;
+    }
+    setItems(nextItems);
+    setSelectedIds(current => {
+      const next = new Set(current);
+      next.delete(item.id);
+      return next;
+    });
+    showToast('授信路由已删除');
+  };
+
+  const deleteSelectedItems = () => {
+    if (selectedIds.size === 0) {
+      showToast('请先选择需要删除的字典数据');
+      return;
+    }
+    if (!window.confirm(`确认删除选中的 ${selectedIds.size} 条字典数据吗？`)) return;
+    const nextItems = items.filter(item => !selectedIds.has(item.id));
+    if (!saveTrustedRouteItems(nextItems)) {
+      showToast('删除失败，请检查浏览器存储权限');
+      return;
+    }
+    setItems(nextItems);
+    setSelectedIds(new Set());
+    showToast('选中字典数据已删除');
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(current => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    setSelectedIds(current => {
+      const next = new Set(current);
+      if (allVisibleSelected) visibleItems.forEach(item => next.delete(item.id));
+      else visibleItems.forEach(item => next.add(item.id));
+      return next;
+    });
+  };
+
+  return (
+    <div className="relative min-w-0">
+      {view === 'list' ? (
+        <div className="space-y-5">
+          <section className="border border-gray-200 bg-white px-6 py-5">
+            <div className="grid grid-cols-[120px_minmax(220px,370px)_120px_minmax(220px,370px)_auto] items-center gap-4 max-xl:grid-cols-[110px_1fr]">
+              <label className="text-right text-sm text-gray-700 max-xl:text-left">字典名称</label>
+              <input value={dictionaryNameDraft} onChange={event => setDictionaryNameDraft(event.target.value)} placeholder="请输入字典名称" className="h-10 rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
+              <label className="text-right text-sm text-gray-700 max-xl:text-left">字典类型</label>
+              <input value={dictionaryTypeDraft} onChange={event => setDictionaryTypeDraft(event.target.value)} placeholder="请输入字典类型" className="h-10 rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
+              <div className="flex items-center justify-end gap-3 max-xl:col-span-2 max-xl:justify-start">
+                <button type="button" onClick={() => setDictionaryFilters({ name: dictionaryNameDraft.trim(), type: dictionaryTypeDraft.trim() })} className="h-10 rounded bg-[#2f75b5] px-5 text-sm font-medium text-white hover:bg-[#28669f]">查询</button>
+                <button type="button" onClick={() => { setDictionaryNameDraft(''); setDictionaryTypeDraft(''); setDictionaryFilters({ name: '', type: '' }); }} className="h-10 rounded border border-gray-300 bg-white px-5 text-sm text-gray-600 hover:bg-gray-50">重置</button>
+              </div>
+            </div>
+          </section>
+
+          <section className="border border-gray-200 bg-white p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
+                <thead className="border-y border-gray-200 bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="w-[90px] px-5 py-3 font-medium">字典编号</th>
+                    <th className="w-[200px] px-5 py-3 font-medium">字典名称</th>
+                    <th className="w-[240px] px-5 py-3 font-medium">字典类型</th>
+                    <th className="w-[120px] px-5 py-3 font-medium">状态</th>
+                    <th className="px-5 py-3 font-medium">备注</th>
+                    <th className="w-[190px] px-5 py-3 font-medium">创建时间</th>
+                    <th className="w-[140px] px-5 py-3 font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {dictionaryVisible ? (
+                    <tr className="hover:bg-[#f5f9fd]">
+                      <td className="px-5 py-4 text-gray-600">{dictionaryMeta.id}</td>
+                      <td className="px-5 py-4 font-medium text-gray-800">{dictionaryMeta.name}</td>
+                      <td className="px-5 py-4"><button type="button" onClick={() => setView('detail')} className="font-mono text-xs text-[#2f75b5] hover:underline">{dictionaryMeta.type}</button></td>
+                      <td className="px-5 py-4"><span className="inline-flex items-center gap-2 text-gray-700"><span className={`h-2 w-2 rounded-full ${dictionaryMeta.status === 'disabled' ? 'bg-gray-400' : 'bg-teal-500'}`} />{dictionaryMeta.status === 'disabled' ? '停用' : '正常'}</span></td>
+                      <td className="px-5 py-4 text-gray-600">{dictionaryMeta.remark || '-'}</td>
+                      <td className="px-5 py-4 text-gray-600">{dictionaryMeta.createdAt}</td>
+                      <td className="px-5 py-4"><div className="flex items-center gap-3 whitespace-nowrap"><button type="button" onClick={openMetaEditor} className="text-[#2f75b5] hover:underline">修改</button><button type="button" onClick={deleteDictionary} className="text-[#2f75b5] hover:underline">删除</button></div></td>
+                    </tr>
+                  ) : <tr><td colSpan={7} className="px-5 py-14 text-center text-gray-400">暂无字典数据</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-5 flex justify-end text-sm text-gray-500">共 {dictionaryVisible ? 1 : 0} 条</div>
+          </section>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={() => { setView('list'); setSelectedIds(new Set()); }} className="inline-flex items-center gap-1 text-sm text-[#2f75b5] hover:underline"><ChevronLeft size={16} />返回字典列表</button>
+            <div className="text-sm text-gray-500">共 {items.length} 条，生效规则 {rules.length} 条</div>
+          </div>
+
+          <section className="border border-gray-200 bg-white px-6 py-5">
+            <div className="grid grid-cols-[120px_minmax(220px,370px)_120px_minmax(220px,370px)_auto] items-center gap-4 max-xl:grid-cols-[110px_1fr]">
+              <label className="text-right text-sm text-gray-700 max-xl:text-left">字典名称</label>
+              <select value={dictionaryMeta.type} disabled className="h-10 rounded border border-gray-300 bg-white px-3 text-sm text-gray-700 disabled:bg-gray-50">
+                <option value={dictionaryMeta.type}>{dictionaryMeta.name}</option>
+              </select>
+              <label className="text-right text-sm text-gray-700 max-xl:text-left">字典标签</label>
+              <input value={labelKeywordDraft} onChange={event => setLabelKeywordDraft(event.target.value)} placeholder="请输入字典标签" className="h-10 rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
+              <div className="flex items-center justify-end gap-3 max-xl:col-span-2 max-xl:justify-start">
+                <button type="button" onClick={() => { setLabelKeyword(labelKeywordDraft.trim()); setCurrentPage(1); }} className="h-10 rounded bg-[#2f75b5] px-5 text-sm font-medium text-white hover:bg-[#28669f]">查询</button>
+                <button type="button" onClick={() => { setLabelKeywordDraft(''); setLabelKeyword(''); setCurrentPage(1); }} className="h-10 rounded border border-gray-300 bg-white px-5 text-sm text-gray-600 hover:bg-gray-50">重置</button>
+              </div>
+            </div>
+          </section>
+
+          <section className="border border-gray-200 bg-white p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <button type="button" onClick={openCreate} className="inline-flex h-9 items-center gap-1.5 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f]"><Plus size={16} />新增</button>
+              <button type="button" onClick={deleteSelectedItems} className="h-9 rounded border border-gray-300 bg-white px-4 text-sm text-gray-600 hover:bg-gray-50">删除</button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1280px] border-collapse text-left text-sm">
+                <thead className="border-y border-gray-200 bg-gray-50 text-gray-700">
+                  <tr>
+                    <th className="w-[52px] px-4 py-3"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} aria-label="选择全部字典数据" /></th>
+                    <th className="w-[100px] px-4 py-3 font-medium">字典编码</th>
+                    <th className="w-[180px] px-4 py-3 font-medium">字典标签</th>
+                    <th className="w-[250px] px-4 py-3 font-medium">字典键值</th>
+                    <th className="w-[110px] px-4 py-3 font-medium">字典排序</th>
+                    <th className="w-[120px] px-4 py-3 font-medium">字典状态</th>
+                    <th className="px-4 py-3 font-medium">备注</th>
+                    <th className="w-[180px] px-4 py-3 font-medium">创建时间</th>
+                    <th className="w-[140px] px-4 py-3 font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {visibleItems.map((item, index) => {
+                    const validation = validateTrustedRouteItem(item);
+                    return (
+                      <tr key={item.id} className="hover:bg-[#f5f9fd]">
+                        <td className="px-4 py-4"><input type="checkbox" checked={selectedIds.has(item.id)} onChange={() => toggleSelected(item.id)} aria-label={`选择${item.label}`} /></td>
+                        <td className="px-4 py-4 text-gray-600">{(currentPage - 1) * pageSize + index + 1}</td>
+                        <td className="px-4 py-4 font-medium text-gray-900">{item.label}</td>
+                        <td className="px-4 py-4 font-mono text-xs text-gray-700">{item.origin}</td>
+                        <td className="px-4 py-4 text-gray-600">{item.sort ?? index + 1}</td>
+                        <td className="px-4 py-4"><span className="inline-flex items-center gap-2 text-gray-700"><span className={`h-2 w-2 rounded-full ${item.status === 'disabled' ? 'bg-gray-400' : 'bg-teal-500'}`} />{item.status === 'disabled' ? '停用' : '正常'}</span></td>
+                        <td className="px-4 py-4 text-gray-600"><span title={validation.valid ? validation.normalizedPaths.map(path => `${validation.normalizedOrigin}${path}`).join('\n') : validation.errors.join('；')}>{item.paths}</span>{!validation.valid && <span className="ml-2 text-xs text-red-600">配置异常</span>}</td>
+                        <td className="px-4 py-4 text-gray-600">{item.createdAt || '-'}</td>
+                        <td className="px-4 py-4"><div className="flex items-center gap-3 whitespace-nowrap"><button type="button" onClick={() => openEdit(item)} className="text-[#2f75b5] hover:underline">编辑</button><button type="button" onClick={() => deleteItem(item)} className="text-[#2f75b5] hover:underline">删除</button></div></td>
+                      </tr>
+                    );
+                  })}
+                  {visibleItems.length === 0 && <tr><td colSpan={9} className="px-5 py-14 text-center text-gray-400">暂无字典数据</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-3 text-sm text-gray-500">
+              <span>共 {filteredItems.length} 条</span>
+              <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(page => Math.max(1, page - 1))} className="h-9 w-9 rounded border border-gray-200 text-gray-500 disabled:text-gray-300">‹</button>
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map(page => <button key={page} type="button" onClick={() => setCurrentPage(page)} className={`h-9 w-9 rounded border ${currentPage === page ? 'border-[#2f75b5] text-[#2f75b5]' : 'border-gray-200 text-gray-500'}`}>{page}</button>)}
+              <button type="button" disabled={currentPage === totalPages} onClick={() => setCurrentPage(page => Math.min(totalPages, page + 1))} className="h-9 w-9 rounded border border-gray-200 text-gray-500 disabled:text-gray-300">›</button>
+              <span className="rounded border border-gray-200 px-3 py-2">12 条/页</span>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {metaEditorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-xl overflow-hidden rounded bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-gray-900">修改字典</h3>
+              <button type="button" onClick={() => setMetaEditorOpen(false)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="关闭"><X size={20} /></button>
+            </div>
+            <div className="space-y-5 px-6 py-5">
+              <label className="block text-sm text-gray-700">字典名称 <span className="text-red-500">*</span>
+                <input autoFocus value={metaDraft.name} onChange={event => { setMetaDraft(current => ({ ...current, name: event.target.value })); setMetaErrors([]); }} placeholder="请输入字典名称" className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="block text-sm text-gray-700">字典类型 <span className="text-red-500">*</span>
+                <input value={metaDraft.type} onChange={event => { setMetaDraft(current => ({ ...current, type: event.target.value })); setMetaErrors([]); }} placeholder="请输入字典类型" className="mt-2 h-10 w-full rounded border border-gray-300 px-3 font-mono outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="block text-sm text-gray-700">状态
+                <select value={metaDraft.status} onChange={event => setMetaDraft(current => ({ ...current, status: event.target.value as 'normal' | 'disabled' }))} className="mt-2 h-10 w-full rounded border border-gray-300 bg-white px-3 outline-none focus:border-[#2f75b5]"><option value="normal">正常</option><option value="disabled">停用</option></select>
+              </label>
+              <label className="block text-sm text-gray-700">备注
+                <textarea value={metaDraft.remark} onChange={event => setMetaDraft(current => ({ ...current, remark: event.target.value }))} rows={3} placeholder="请输入备注" className="mt-2 w-full resize-y rounded border border-gray-300 px-3 py-2 outline-none focus:border-[#2f75b5]" />
+              </label>
+              {metaErrors.length > 0 && <div role="alert" className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{metaErrors.map(error => <div key={error}>{error}</div>)}</div>}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button type="button" onClick={() => setMetaEditorOpen(false)} className="h-9 rounded border border-gray-300 px-4 text-sm text-gray-600 hover:bg-gray-50">取消</button>
+              <button type="button" onClick={saveMetaDraft} className="h-9 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f]">确认</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editorOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-2xl overflow-hidden rounded bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">{editingId ? '编辑字典数据' : '新增字典数据'}</h3>
+                <p className="mt-1 text-xs text-gray-500">{dictionaryMeta.name}</p>
+              </div>
+              <button type="button" onClick={() => setEditorOpen(false)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="关闭"><X size={20} /></button>
+            </div>
+            <div className="space-y-5 px-6 py-5">
+              <label className="block text-sm text-gray-700">数据标签 <span className="text-red-500">*</span>
+                <input autoFocus value={draft.label} onChange={event => { setDraft(current => ({ ...current, label: event.target.value })); setErrors([]); }} placeholder="例如：OA系统" className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+              </label>
+              <label className="block text-sm text-gray-700">数据键值 <span className="text-red-500">*</span>
+                <input value={draft.origin} onChange={event => { setDraft(current => ({ ...current, origin: event.target.value })); setErrors([]); }} placeholder="例如：https://oa.example.com" className="mt-2 h-10 w-full rounded border border-gray-300 px-3 font-mono outline-none focus:border-[#2f75b5]" />
+                <span className="mt-1 block text-xs text-gray-400">填写具体业务系统的协议、子域名和可选端口；不填写公司母域名、路径或通配符。</span>
+              </label>
+              <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+                <label className="block text-sm text-gray-700">字典排序
+                  <input type="number" min={1} value={draft.sort ?? 1} onChange={event => setDraft(current => ({ ...current, sort: Number(event.target.value) || 1 }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
+                </label>
+                <label className="block text-sm text-gray-700">字典状态
+                  <select value={draft.status || 'normal'} onChange={event => setDraft(current => ({ ...current, status: event.target.value as 'normal' | 'disabled' }))} className="mt-2 h-10 w-full rounded border border-gray-300 bg-white px-3 outline-none focus:border-[#2f75b5]"><option value="normal">正常</option><option value="disabled">停用</option></select>
+                </label>
+              </div>
+              <label className="block text-sm text-gray-700">备注 <span className="text-red-500">*</span>
+                <textarea value={draft.paths} onChange={event => { setDraft(current => ({ ...current, paths: event.target.value })); setErrors([]); }} rows={3} placeholder="例如：/test1;/workflow;/approval" className="mt-2 w-full resize-y rounded border border-gray-300 px-3 py-2 font-mono outline-none focus:border-[#2f75b5]" />
+                <span className="mt-1 block text-xs text-gray-400">填写稳定的应用根路径；多个路径用分号分隔，不填写查询参数和锚点。</span>
+              </label>
+              {draft.origin.trim() && draft.paths.trim() && (
+                <div className="border-l-4 border-[#2f75b5] bg-blue-50 px-4 py-3 text-sm text-gray-700">
+                  <div className="mb-2 font-medium">组合预览</div>
+                  <div className="space-y-1 font-mono text-xs">
+                    {draft.paths.split(/[;；]/).map(path => path.trim()).filter(Boolean).map((path, index) => <div key={`${path}-${index}`}>{draft.origin.trim()}{path}</div>)}
+                  </div>
+                </div>
+              )}
+              {draft.paths.split(/[;；]/).map(path => path.trim()).includes('/') && (
+                <div className="rounded border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">高风险：路径 / 会授信该 Origin 下的全部页面，保存时需要再次确认。</div>
+              )}
+              {errors.length > 0 && (
+                <div role="alert" className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {errors.map(error => <div key={error}>{error}</div>)}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button type="button" onClick={() => setEditorOpen(false)} className="h-9 rounded border border-gray-300 px-4 text-sm text-gray-600 hover:bg-gray-50">取消</button>
+              <button type="button" onClick={saveDraft} className="h-9 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f]">确认</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && <div className="fixed bottom-8 left-1/2 z-[60] -translate-x-1/2 rounded bg-gray-900 px-4 py-2 text-sm text-white shadow-xl">{toast}</div>}
+    </div>
+  );
+}
+
 type AppPortalTab = 'App员工工作台' | 'App外部人员工作台' | 'PC工作台';
 type ManagedAppSource = '系统内置' | '管理员创建' | '流程审批' | '业务系统';
 type ManagedAppRange = '全员可用' | '指定部门' | '指定用户组' | '指定人员';
 type ManagedAppStatus = '启用' | '停用';
+type ManagedAppOpenMode = 'auto' | 'browser' | 'native';
 type AppEditorMode = 'create' | 'config';
 
 type AppGroupRecord = {
@@ -724,6 +1517,7 @@ type ManagedAppRecord = {
   status: ManagedAppStatus;
   groupId: string;
   entryUrl: string;
+  openMode?: ManagedAppOpenMode;
   iconTone: string;
   sort: number;
 };
@@ -731,6 +1525,12 @@ type ManagedAppRecord = {
 const appPortalTabs: AppPortalTab[] = ['App员工工作台', 'App外部人员工作台', 'PC工作台'];
 const appCategories = ['全部', '协同办公', '综合服务', '员工服务', '数据服务', 'AI助手', '数据卡片', '应用卡片', '常用功能', '财务系统', '人力系统', '综合系统', '运行系统', '营销系统'];
 const appRanges: Array<'全部' | ManagedAppRange> = ['全部', '全员可用', '指定部门', '指定用户组', '指定人员'];
+const appOpenModeLabels: Record<ManagedAppOpenMode, string> = {
+  auto: '自动判断',
+  browser: '电脑浏览器打开',
+  native: '原生能力',
+};
+const appOpenModes: ManagedAppOpenMode[] = ['auto', 'browser', 'native'];
 
 const initialAppGroups: AppGroupRecord[] = [
   { id: 'app-service', portal: 'App员工工作台', name: '综合服务', order: 1 },
@@ -1353,8 +2153,15 @@ const defaultManagedAppDraft: ManagedAppRecord = {
   status: '启用',
   groupId: 'app-service',
   entryUrl: '',
+  openMode: 'auto',
   iconTone: 'bg-[#2f75b5]',
   sort: 1,
+};
+
+const resolveManagedAppOpenMode = (app: ManagedAppRecord): ManagedAppOpenMode => {
+  if (app.openMode) return app.openMode;
+  if (app.category === '员工服务') return 'native';
+  return 'auto';
 };
 
 function ApplicationManagement() {
@@ -1417,7 +2224,7 @@ function ApplicationManagement() {
   };
 
   const openConfigApp = (app: ManagedAppRecord) => {
-    setAppDraft(app);
+    setAppDraft({ ...app, openMode: resolveManagedAppOpenMode(app) });
     setEditorMode('config');
   };
 
@@ -1632,6 +2439,7 @@ function ApplicationManagement() {
                   <th className="w-[140px] px-4 py-3 font-medium">应用来源</th>
                   <th className="w-[260px] px-4 py-3 font-medium">开发者</th>
                   <th className="w-[150px] px-4 py-3 font-medium">可用范围</th>
+                  <th className="w-[150px] px-4 py-3 font-medium">打开方式</th>
                   <th className="w-[110px] px-4 py-3 font-medium">状态</th>
                   <th className="w-[120px] px-4 py-3 font-medium">操作</th>
                 </tr>
@@ -1664,6 +2472,11 @@ function ApplicationManagement() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
+                      <span className="rounded bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                        {appOpenModeLabels[resolveManagedAppOpenMode(app)]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
                       <span className={`rounded px-2.5 py-1 text-xs font-medium ${
                         app.status === '启用' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
                       }`}>
@@ -1677,7 +2490,7 @@ function ApplicationManagement() {
                 ))}
                 {filteredApps.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-14 text-center text-gray-400">暂无应用数据</td>
+                    <td colSpan={7} className="px-4 py-14 text-center text-gray-400">暂无应用数据</td>
                   </tr>
                 )}
               </tbody>
@@ -1721,6 +2534,12 @@ function ApplicationManagement() {
                 </label>
                 <label className="block text-sm text-gray-700">入口地址
                   <input value={appDraft.entryUrl} onChange={(event) => setAppDraft(prev => ({ ...prev, entryUrl: event.target.value }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" placeholder="/web_client/..." />
+                </label>
+                <label className="block text-sm text-gray-700">打开方式
+                  <select value={appDraft.openMode || 'auto'} onChange={(event) => setAppDraft(prev => ({ ...prev, openMode: event.target.value as ManagedAppOpenMode }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                    {appOpenModes.map(mode => <option key={mode} value={mode}>{appOpenModeLabels[mode]}</option>)}
+                  </select>
+                  <span className="mt-1 block text-xs text-gray-400">自动判断：站内地址使用前端路由；外链在客户端命中授信路由时内嵌，否则使用默认浏览器。</span>
                 </label>
                 <label className="block text-sm text-gray-700">应用类别
                   <select value={appDraft.category} onChange={(event) => setAppDraft(prev => ({ ...prev, category: event.target.value }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
@@ -2591,6 +3410,13 @@ export default function Admin() {
             <Menu size={20} className="text-gray-600" />
           </button>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/web_client/enterprise')}
+              className="inline-flex items-center gap-1.5 rounded border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:border-[#2f75b5] hover:text-[#2f75b5]"
+            >
+              <LayoutDashboard size={15} />
+              回到门户
+            </button>
             <span className="text-sm text-gray-500">首页</span>
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
@@ -2666,7 +3492,7 @@ export default function Admin() {
             </div>
           ) : (
             /* 根据选中菜单展示对应内容 */
-            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' || activeSubMenu === 'app-management' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
+            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' || activeSubMenu === 'system-dictionary' || activeSubMenu === 'app-management' || activeSubMenu === 'version-list' || activeSubMenu === 'version-release' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
               {/* 面包屑导航 */}
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                 <span className="cursor-pointer hover:text-gray-700" onClick={() => { setActiveMenu(null); setActiveSubMenu(null); }}>首页</span>
@@ -2722,14 +3548,14 @@ export default function Admin() {
                   {activeSubMenu === 'system-user' && <ContentPlaceholder title="用户管理" icon="👥" />}
                   {activeSubMenu === 'system-role' && <ContentPlaceholder title="角色管理" icon="🔑" />}
                   {activeSubMenu === 'system-menu' && <ContentPlaceholder title="菜单管理" icon="📋" />}
-                  {activeSubMenu === 'system-dictionary' && <ContentPlaceholder title="字典管理" icon="📘" />}
+                  {activeSubMenu === 'system-dictionary' && <TrustedRouteDictionaryManagement />}
                   {activeSubMenu === 'system-external-user' && <ContentPlaceholder title="外部人员管理" icon="👥" />}
                   {activeSubMenu === 'system-user-groups' && <UserGroupManagement />}
                   {activeSubMenu === 'system-nav' && <NavigationConfig />}
                   {activeSubMenu === 'security-log' && <ContentPlaceholder title="操作日志" icon="📋" />}
                   {activeSubMenu === 'security-audit' && <ContentPlaceholder title="安全审计" icon="🔍" />}
-                  {activeSubMenu === 'version-list' && <ContentPlaceholder title="版本列表" icon="📦" />}
-                  {activeSubMenu === 'version-release' && <ContentPlaceholder title="发布记录" icon="🚀" />}
+                  {activeSubMenu === 'version-list' && <VersionManagement view="list" />}
+                  {activeSubMenu === 'version-release' && <VersionManagement view="release" />}
                   {activeSubMenu === 'app-management' && <ApplicationManagement />}
                   {activeSubMenu === 'mobile-download' && <ContentPlaceholder title="移动应用下载管理" icon="📱" />}
                   {activeSubMenu === 'portal-admin' && <ContentPlaceholder title="门户基础管理" icon="🌐" />}
@@ -2777,8 +3603,8 @@ export default function Admin() {
                       </div>
                     </div>
                   )}
-                  {activeSubMenu === 'version-list' && <ContentPlaceholder title="版本列表" icon="📦" />}
-                  {activeSubMenu === 'version-release' && <ContentPlaceholder title="发布记录" icon="🚀" />}
+                  {activeSubMenu === 'version-list' && <VersionManagement view="list" />}
+                  {activeSubMenu === 'version-release' && <VersionManagement view="release" />}
                 </div>
               )}
 

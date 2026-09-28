@@ -2,6 +2,7 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
+import EKB from './EKB';
 import { getDemoPerson } from '../data/people';
 
 // 常用系统数据 - 与导航栏业务系统保持一致
@@ -41,11 +42,12 @@ const FILE_ITEMS = [
   { title: '关于发布《上海吉祥航空股份有限公司旅客遗失物品管理办法(R3)》的通知', isNew: true, date: '2026-05-21 14:45:35' },
 ];
 
-type PortalType = 'personal' | 'enterprise';
+type PortalType = 'personal' | 'enterprise' | 'knowledge';
 
 function getPortalTypeFromSearch(search: string): PortalType {
   const tab = new URLSearchParams(search).get('tab');
   if (tab === 'enterprise') return 'enterprise';
+  if (tab === 'knowledge') return 'knowledge';
   return 'personal';
 }
 
@@ -67,6 +69,7 @@ export default function Enterprise() {
     setPortalType(nextType);
     let nextPath = '/web_client/enterprise';
     if (nextType === 'enterprise') nextPath = '/web_client/enterprise?tab=enterprise';
+    if (nextType === 'knowledge') nextPath = '/web_client/enterprise?tab=knowledge';
     navigate(nextPath, { replace: false });
   };
 
@@ -109,6 +112,16 @@ export default function Enterprise() {
           >
             企业门户
           </button>
+          <button
+            onClick={() => switchPortalType('knowledge')}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              portalType === 'knowledge'
+                ? 'bg-white dark:bg-gray-600 text-gray-800 dark:text-white shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            知识门户
+          </button>
         </div>
         <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400">
           <Search size={18} />
@@ -120,6 +133,10 @@ export default function Enterprise() {
       {portalType === 'personal' ? (
         <div className="relative">
           <Personal_Enterprise />
+        </div>
+      ) : portalType === 'knowledge' ? (
+        <div className="relative">
+          <EKB />
         </div>
       ) : (
         <div className="relative">
@@ -533,5 +550,4 @@ function CalendarIcon() {
     </svg>
   );
 }
-
 
