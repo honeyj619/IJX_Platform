@@ -4,7 +4,9 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import ProcessReferenceFilePicker from "../components/ProcessReferenceFilePicker";
 import DocumentEditor from "./DocumentEditor";
 import PresentationWorkbench from "./PresentationWorkbench";
+import AdvisorWorkbench from "./AdvisorWorkbench";
 import PresentationSettings from "../components/PresentationSettings";
+import { buildAdvisorUrl } from "../data/advisor";
 import { documentValidationIssues, documentValidationRules, documentValidationSummary, type DocumentMode } from "../data/documentValidation";
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from "../data/people";
 import {
@@ -65,7 +67,7 @@ const defaultAssistants: Assistant[] = [
   { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
   { id: 3, name: "如意公文创作", isActive: false, icon: <FileTextIcon size={18} /> },
   { id: 4, name: "如意PPT创作", isActive: false, icon: <PresentationIcon size={18} /> },
-  { id: 5, name: "如意工作参谋师", isActive: false, icon: <Target size={18} /> },
+  { id: 5, name: "如意参谋师", isActive: false, icon: <Target size={18} /> },
 ];
 
 const historyItems: HistoryItem[] = [
@@ -271,6 +273,7 @@ export default function RuYiZone() {
   const navigate = useNavigate();
   const documentWorkspacePath = location.pathname.endsWith('/ruyi-zone/document');
   const presentationWorkspacePath = location.pathname.endsWith('/ruyi-zone/presentation');
+  const advisorWorkspacePath = location.pathname.endsWith('/ruyi-zone/advisor');
   const [input, setInput] = useState("");
   const [assistants, setAssistants] = useState<Assistant[]>(defaultAssistants);
   const [selectedAssistant, setSelectedAssistant] = useState<Assistant | null>(null);
@@ -328,6 +331,7 @@ export default function RuYiZone() {
   const [reportSubmitDone, setReportSubmitDone] = useState(false);
 
   const resolveConversationKind = (question: string): ConversationKind => {
+    if (/汇报|周报|日报|工作进展|任务分析|风险分析|工作洞察/.test(question)) return "goalAssistant";
     if (/会议纪要|纪要|录音/.test(question)) return "meetingMinutes";
     if (/反馈|问题|报错|不好用|VPN|服务台/.test(question)) return "feedback";
     if (/立项|项目申请|项目流程/.test(question)) return "project";
@@ -463,9 +467,34 @@ export default function RuYiZone() {
       return;
     }
     const question = input.trim();
-    if (question) {
+    // FR-01：识别「生成XX周报」指令，直接进入项目周报模式
+    const projectReportMatch = question.match(/^(?:请|帮我)?(?:生成|编写|输出|制作)(.{1,24}?)周报$/);
+    if (selectedAssistant?.name === "如意参谋师") {
+      if (!question) return;
+      const mode = /分析|风险|进展|洞察|未提交/.test(question) ? "insight" : "report";
       setSentQuestion(question);
-      setConversationKind(resolveConversationKind(question));
+      setConversationKind("goalAssistant");
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setInput("");
+      navigate(buildAdvisorUrl({ mode: projectReportMatch ? 'project-report' : mode, source: 'ruyi-zone', initialPrompt: question }));
+      return;
+    }
+    if (question) {
+      if (projectReportMatch) {
+        navigate(buildAdvisorUrl({ mode: 'project-report', source: 'ruyi-zone', initialPrompt: question }));
+        setInput("");
+        return;
+      }
+      const nextKind = resolveConversationKind(question);
+      if (nextKind === "goalAssistant") {
+        const mode = /分析|风险|进展|洞察|未提交/.test(question) ? "insight" : "report";
+        navigate(buildAdvisorUrl({ mode, source: 'ruyi-zone', initialPrompt: question }));
+        setInput("");
+        return;
+      }
+      setSentQuestion(question);
+      setConversationKind(nextKind);
       setSelectedHistoryId(null);
       setHasConversation(true);
       setInput("");
@@ -484,7 +513,7 @@ export default function RuYiZone() {
     if (kind === "knowledge" || kind === "operations") return "企业知识专家";
     if (kind === "documentDraft" || kind === "documentValidation") return "如意公文创作";
     if (kind === "presentationDraft") return "如意PPT创作";
-    if (kind === "goalAssistant") return "如意工作参谋师";
+    if (kind === "goalAssistant") return "如意参谋师";
     return "";
   };
 
@@ -515,7 +544,7 @@ export default function RuYiZone() {
     setShowReportSubmitTargets(false);
     setSelectedReportSubmitTargets([1]);
     setReportSubmitDone(false);
-    if (documentWorkspacePath || presentationWorkspacePath) navigate('/web_client/ruyi-zone');
+    if (documentWorkspacePath || presentationWorkspacePath || advisorWorkspacePath) navigate('/web_client/ruyi-zone');
   };
 
   const openLegacyDocumentAssistant = () => {
@@ -625,20 +654,22 @@ export default function RuYiZone() {
       setInput("");
       return;
     }
-    if (assistant.name === "如意工作参谋师") {
+    if (assistant.name === "如意参谋师") {
       setAssistants(defaultAssistants.map((item) => ({ ...item, isActive: item.id === assistant.id })));
       setSelectedAssistant(assistant);
       setSelectedHistoryId(null);
-      setHasConversation(true);
+      setHasConversation(false);
       setActiveTool(null);
       setShowEditor(false);
       setEmbedEditorInRuyiZone(false);
       setConversationKind("goalAssistant");
-      setSentQuestion("请根据我的OKR生成本周工作汇报并汇总KR进展");
+      setSentQuestion("");
       setInput("");
       setShowReportSubmitTargets(false);
       setSelectedReportSubmitTargets([1]);
       setReportSubmitDone(false);
+      setShowPresentationEditor(false);
+      navigate('/web_client/ruyi-zone/advisor');
       return;
     }
     // 更新选中状态
@@ -1517,7 +1548,7 @@ export default function RuYiZone() {
                   key={assistant.id}
                   className={`
                     group relative min-h-[76px] overflow-hidden rounded-xl border p-2.5 text-left transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md
-                    ${selectedAssistant?.id === assistant.id
+                    ${(selectedAssistant?.id === assistant.id || (advisorWorkspacePath && assistant.name === "如意参谋师"))
                       ? 'border-theme-200 bg-gradient-to-br from-theme-50 to-white text-theme-700 shadow-sm ring-1 ring-theme-100 dark:border-theme-800 dark:from-theme-900/30 dark:to-gray-800 dark:text-theme-300'
                       : 'border-gray-100 bg-white text-gray-700 hover:border-theme-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-theme-800'
                     }
@@ -1528,7 +1559,7 @@ export default function RuYiZone() {
                   <div className="relative flex h-full flex-col justify-between gap-3">
                     <div className={`
                       flex h-7 w-7 items-center justify-center rounded-lg
-                      ${selectedAssistant?.id === assistant.id ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-theme-50 group-hover:text-theme-600 dark:bg-gray-700 dark:text-gray-400'}
+                      ${(selectedAssistant?.id === assistant.id || (advisorWorkspacePath && assistant.name === "如意参谋师")) ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-500 group-hover:bg-theme-50 group-hover:text-theme-600 dark:bg-gray-700 dark:text-gray-400'}
                     `}>
                       {assistant.icon}
                     </div>
@@ -1578,7 +1609,9 @@ export default function RuYiZone() {
 
         {/* 第三列：如意空间内容区域 */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
-          {(showPresentationEditor || presentationWorkspacePath) ? (
+          {advisorWorkspacePath ? (
+            <AdvisorWorkbench onBack={() => navigate('/web_client/ruyi-zone')} />
+          ) : (showPresentationEditor || presentationWorkspacePath) ? (
             <PresentationWorkbench
               initialState={{
                 mode: pptMode,
@@ -1768,7 +1801,7 @@ export default function RuYiZone() {
 
                       {conversationKind === "goalAssistant" && (
                         <>
-                          <p className="mb-4 leading-7">我是如意工作参谋师。我会把工作汇报和 OKR 放在一起看：先根据日程、待办任务、历史周报和附件生成本周汇报草稿，再提示哪些 KR 需要继续跟进。</p>
+                          <p className="mb-4 leading-7">我是如意参谋师。我会把工作汇报和 OKR 放在一起看：先根据日程、待办任务、历史周报和附件生成本周汇报草稿，再提示哪些 KR 需要继续跟进。</p>
                           <p className="mb-3 leading-7">数据来源包括：</p>
                           <ul className="mb-6 list-disc space-y-2 pl-6 leading-7">
                             <li>日程会议记录：提取会议目标、参与人和下周计划。</li>
@@ -1786,7 +1819,7 @@ export default function RuYiZone() {
                             {[
                               { title: "O1 推进工作汇报与OKR联动", kr: "KR1 完成汇报入口、详情、评论与已读状态", thisWeek: "本周完成看汇报列表、详情弹框和关联OKR展示，并补充评论与已读情况。", nextWeek: "下周继续校验统计口径，跟进未提交提醒与汇报导出能力。" },
                               { title: "O2 优化如意空间公文创作链路", kr: "KR2 完成模板预览、大纲确认和最终文件生成", thisWeek: "已调整公文要求、模板选择、参考文件和最终文件下载状态。", nextWeek: "继续梳理管理后台模板字段和前台编辑的一致性。" },
-                              { title: "O3 完善门户办公应用体验", kr: "KR3 接入工作汇报、OKR和AI助手入口", thisWeek: "完成工作门户办公应用、OKR独立入口和如意工作参谋师浮层。", nextWeek: "补充数据权限、人员范围筛选和统计明细联动。" },
+                              { title: "O3 完善门户办公应用体验", kr: "KR3 接入工作汇报、OKR和AI助手入口", thisWeek: "完成工作门户办公应用、OKR独立入口和如意参谋师工作台。", nextWeek: "补充数据权限、人员范围筛选和统计明细联动。" },
                             ].map((draft, index) => (
                               <div key={draft.kr}>
                                 <div className="font-semibold text-gray-950 dark:text-white">{index + 1}. {draft.title}</div>
@@ -1811,7 +1844,7 @@ export default function RuYiZone() {
                               KR当前进展汇总
                             </h3>
                           </div>
-                          <p className="mb-4 leading-7">如意工作参谋师已读取您的 O 和下设 KR，结合各执行人的工作汇报内容，把当前进展汇总到对应 KR 下。</p>
+                          <p className="mb-4 leading-7">如意参谋师已读取您的 O 和下设 KR，结合各执行人的工作汇报内容，把当前进展汇总到对应 KR 下。</p>
                           <p className="mb-3 leading-7">本次评估条件：2026-06-22 至 2026-06-28，选择我的 O1、O2，人员范围为直属下级和自定义通讯录人员。</p>
                           <div className="mb-6 space-y-6 leading-7">
                             {[
@@ -1826,7 +1859,7 @@ export default function RuYiZone() {
                                   {
                                     kr: "KR2 完成汇报统计和助手浮层",
                                     owners: [getDemoPerson(5), getDemoPerson(6)],
-                                    progress: "汇报统计明细已按日期展示，如意工作参谋师已支持按自定义时间和人员生成总结，剩余是筛选口径细化。",
+                                    progress: "汇报统计明细已按日期展示，如意参谋师已支持按自定义时间和人员生成总结，剩余是筛选口径细化。",
                                   },
                                 ],
                               },
@@ -1841,7 +1874,7 @@ export default function RuYiZone() {
                                   {
                                     kr: "KR2 统一新版、旧版如意助手入口",
                                     owners: [MAIN_USER_NAME, getDemoPerson(7)],
-                                    progress: "新版常用助手已整合为如意工作参谋师，旧版已增加IT服务助手入口，交互已可预览。",
+                                    progress: "新版常用助手已整合为如意参谋师，旧版已增加IT服务助手入口，交互已可预览。",
                                   },
                                 ],
                               },
@@ -2311,7 +2344,7 @@ export default function RuYiZone() {
                     <textarea
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="你想问我什么呢？"
+                      placeholder={selectedAssistant?.name === "如意参谋师" ? "描述需要生成的汇报或工作分析需求..." : "你想问我什么呢？"}
                       className="min-h-[112px] w-full resize-none border-none bg-transparent pr-24 text-lg font-medium leading-8 text-gray-900 outline-none placeholder-gray-400 dark:text-white dark:placeholder-gray-500"
                     />
                   )}

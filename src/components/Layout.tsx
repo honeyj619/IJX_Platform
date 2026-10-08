@@ -77,10 +77,16 @@ const pageTitles: Record<string, string> = {
   '/work-items': '工作门户',
   '/okr': 'OKR',
   '/ruyi-zone': '如意空间',
+  '/ruyi-zone/presentation': '如意PPT工作台',
+  '/ruyi-zone/document': '公文工作台',
+  '/ruyi-zone/advisor': '如意参谋师',
   '/agent-square': '智能体广场',
   '/profile': '个人信息',
   '/settings': '系统设置'
 };
+
+// 仅做重定向的兼容路径，不记录到“打开的页面”
+const redirectOnlyPaths = new Set(['/presentation', '/work-items']);
 
 const WEB_CLIENT_BASE = '/web_client';
 const clientPath = (path: string) => path === '/' ? WEB_CLIENT_BASE : `${WEB_CLIENT_BASE}${path}`;
@@ -233,7 +239,10 @@ export default function Layout({ children }: LayoutProps) {
   
   useEffect(() => {
     const currentPath = location.pathname;
-    const pageTitle = pageTitles[stripClientBase(currentPath)] || currentPath;
+    const clientRelativePath = stripClientBase(currentPath);
+    // 重定向兼容路径不记录，避免跳转中间态显示为原始路径
+    if (redirectOnlyPaths.has(clientRelativePath)) return;
+    const pageTitle = pageTitles[clientRelativePath] || currentPath;
     
     if (pageTitle && !navPaths.includes(currentPath)) {
       addPage({ title: pageTitle, path: currentPath });

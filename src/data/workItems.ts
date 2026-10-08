@@ -161,7 +161,7 @@ export const workItems: WorkItem[] = [
     latestReport: '本周需补充历史汇报样例和 KR 进度口径。',
     tasks: [
       { id: 'task-report-1', title: '确认 KR 进度字段口径', assigner: getDemoPerson(7), assignee: getDemoPerson(12), owner: getDemoPerson(12), due: '今天 17:00', status: '进行中', progress: 50, executionReports: [{ id: 'exec-report-1', reporter: getDemoPerson(12), submittedAt: '2026-07-21 18:10', progress: 50, summary: '已梳理 OKR 统计视图里 O 与 KR 的层级关系。', risk: '部分系统暂无可用数据' }] },
-      { id: 'task-report-2', title: '整理汇报助手取数样例', assigner: getDemoPerson(7), assignee: MAIN_USER_NAME, owner: MAIN_USER_NAME, due: '明天 18:00', status: '未开始', progress: 15, executionReports: [] },
+      { id: 'task-report-2', title: '整理参谋师取数样例', assigner: getDemoPerson(7), assignee: MAIN_USER_NAME, owner: MAIN_USER_NAME, due: '明天 18:00', status: '未开始', progress: 15, executionReports: [] },
       { id: 'task-report-2-1', parentId: 'task-report-2', title: '补充最近两周汇报样例', assigner: MAIN_USER_NAME, assignee: MAIN_USER_NAME, owner: MAIN_USER_NAME, due: '明天 12:00', status: '未开始', progress: 0, executionReports: [] },
       { id: 'task-report-3', title: '输出参谋总结样式建议', assigner: getDemoPerson(7), assignee: getDemoPerson(17), owner: getDemoPerson(17), due: '周五', status: '进行中', progress: 65, executionReports: [{ id: 'exec-report-3', reporter: getDemoPerson(17), submittedAt: '2026-07-22 11:00', progress: 65, summary: '已输出参谋总结样式建议第一版。', risk: '需和周报入口统一' }] },
     ],
@@ -173,7 +173,7 @@ export const workItems: WorkItem[] = [
     ],
     timeline: [
       { id: 'time-report-1', actor: getDemoPerson(7), action: '发起跨部门协同事项', time: '2026-07-19 10:00' },
-      { id: 'time-report-2', actor: MAIN_USER_NAME, action: '领取汇报助手样例整理任务', time: '2026-07-21 11:25' },
+      { id: 'time-report-2', actor: MAIN_USER_NAME, action: '领取参谋师样例整理任务', time: '2026-07-21 11:25' },
     ],
   },
   {

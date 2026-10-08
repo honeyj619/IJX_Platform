@@ -146,7 +146,7 @@ export default function App() {
         <Route path="/profile" element={<Navigate to="/web_client/profile" replace />} />
         <Route path="/agent-square" element={<Navigate to="/web_client/agent-square" replace />} />
         <Route path="/ruyi-zone" element={<Navigate to="/web_client/ruyi-zone" replace />} />
-        <Route path="/presentation" element={<Navigate to="/web_client/presentation" replace />} />
+        <Route path="/presentation" element={<Navigate to="/web_client/ruyi-zone/presentation" replace />} />
         <Route path="/calendar" element={<Navigate to="/web_client/calendar" replace />} />
         <Route path="/business" element={<Navigate to="/web_client/business" replace />} />
         <Route path="/work-report" element={<Navigate to="/web_client/work-report" replace />} />

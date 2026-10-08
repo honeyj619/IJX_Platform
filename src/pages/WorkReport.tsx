@@ -2,8 +2,6 @@
 import {
   ArrowLeft,
   BarChart3,
-  Bot,
-  CalendarDays,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
@@ -12,15 +10,12 @@ import {
   Eye,
   FileText,
   Filter,
-  Lightbulb,
-  ListChecks,
   MessageSquareText,
   PenLine,
   Save,
   Search,
   Send,
   Settings,
-  Sparkles,
   Target,
   UserRound,
   X,
@@ -28,7 +23,9 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { buildAdvisorUrl } from '../data/advisor';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 
 type WorkReportView = 'write' | 'reports' | 'stats';
@@ -98,7 +95,7 @@ const reportHistory = [
         nextWeek: '继续补充经营指标解释与数据看板跳转提示，推动业务指标在门户和周报里保持一致。',
       },
       o3: {
-        thisWeek: '完成工作汇报入口设计、OKR 独立模块拆分，并将周报助手调整为浮动如意助手入口，支持根据会议、任务、日程辅助生成周报。',
+        thisWeek: '完成工作汇报入口设计、OKR 独立模块拆分，并统一接入如意参谋师，支持根据会议、任务、日程辅助生成汇报。',
         nextWeek: '继续完善看汇报页面的 OKR 关联、已读状态、评论反馈和详情查看流程。',
       },
     },
@@ -172,12 +169,6 @@ const reportHistory = [
   },
 ];
 
-const assistantSources = [
-  { icon: <MessageSquareText size={15} />, name: 'IM沟通', desc: '提取本周 8 条协同事项', color: 'text-pink-700 bg-pink-50' },
-  { icon: <CalendarDays size={15} />, name: '日程', desc: '识别 3 个会议与待办', color: 'text-emerald-600 bg-emerald-50' },
-  { icon: <ListChecks size={15} />, name: '任务', desc: '汇总 5 条完成记录', color: 'text-amber-600 bg-amber-50' },
-];
-
 type OkrReportContent = {
   thisWeek: string;
   nextWeek: string;
@@ -222,7 +213,7 @@ const initialOkrReports: Record<string, OkrReportContent> = {
     nextWeek: '继续验证流程入口和审批平均时长指标展示。',
   },
   'o3-kr2': {
-    thisWeek: '完成工作汇报入口设计、OKR 独立模块拆分和周报助手浮动入口。',
+    thisWeek: '完成工作汇报入口设计、OKR 独立模块拆分和如意参谋师浮动入口。',
     nextWeek: '完善看汇报页面的 OKR 关联、已读状态和评论反馈。',
   },
   'o3-kr3': {
@@ -233,13 +224,14 @@ const initialOkrReports: Record<string, OkrReportContent> = {
 
 export default function WorkReport() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const handledAdvisorResult = useRef<string | null>(null);
   const [activeView, setActiveView] = useState<WorkReportView>('reports');
   const [okrReports, setOkrReports] = useState<Record<string, OkrReportContent>>(initialOkrReports);
   const [reportTo, setReportTo] = useState(reportTargets.join(','));
   const [copyTo, setCopyTo] = useState(copiedTargets.join(','));
   const [selectedObjectiveId, setSelectedObjectiveId] = useState('o3');
   const [toast, setToast] = useState('');
-  const [assistantOpen, setAssistantOpen] = useState(false);
 
   const selectedObjective = useMemo(
     () => okrObjectives.find(item => item.id === selectedObjectiveId) || okrObjectives[0],
@@ -251,6 +243,43 @@ export default function WorkReport() {
     window.setTimeout(() => setToast(''), 1800);
   };
 
+  useEffect(() => {
+    const result = (location.state as {
+      advisorResult?: {
+        source?: string;
+        reportTo?: string;
+        copyTo?: string;
+        draft?: Partial<{ summary: string; completed: string; risks: string; nextPlan: string }>;
+      };
+    } | null)?.advisorResult;
+    if (!result || handledAdvisorResult.current === location.key) return;
+    handledAdvisorResult.current = location.key;
+    setOkrReports(current => ({
+      ...current,
+      'o3-kr2': {
+        thisWeek: result.draft?.completed || result.draft?.summary || current['o3-kr2'].thisWeek,
+        nextWeek: result.draft?.nextPlan || current['o3-kr2'].nextWeek,
+      },
+    }));
+    if (result.reportTo) setReportTo(result.reportTo);
+    if (result.copyTo) setCopyTo(result.copyTo);
+    setActiveView('write');
+    showToast('如意参谋师草稿已回填，可继续编辑');
+  }, [location.key, location.state]);
+
+  const openAdvisor = () => {
+    const insightMode = activeView === 'reports' || activeView === 'stats';
+    navigate(buildAdvisorUrl({
+      mode: insightMode ? 'insight' : 'report',
+      source: activeView === 'stats' ? 'report-stats' : 'work-report',
+      reportType: activeView === 'write' ? '工作汇报' : undefined,
+      period: '2026-06-22 至 2026-06-28',
+      scope: insightMode ? '所在部门' : '本人',
+      initialPrompt: insightMode ? '分析当前工作汇报的提交情况、重点进展和风险事项' : '结合当前工作数据生成本期工作汇报',
+      returnTo: '/web_client/work-report',
+    }));
+  };
+
   const importLastReport = () => {
     setOkrReports({
       'o1-kr1': { thisWeek: '完成经营数据口径统一与指标来源梳理。', nextWeek: '补充数据看板跳转说明和指标解释。' },
@@ -260,38 +289,10 @@ export default function WorkReport() {
       'o2-kr2': { thisWeek: '整理发布会反馈和市场认可材料。', nextWeek: '补充后续传播计划。' },
       'o2-kr3': { thisWeek: '梳理客户招募阻塞。', nextWeek: '跟进客户转化数据。' },
       'o3-kr1': { thisWeek: '完成流程线上化入口与页面联动调整。', nextWeek: '继续验证流程效率指标。' },
-      'o3-kr2': { thisWeek: '完成工作汇报入口、OKR 模块拆分和周报助手交互调整。', nextWeek: '完善看汇报详情、评论和已读状态。' },
+      'o3-kr2': { thisWeek: '完成工作汇报入口、OKR 模块拆分和如意参谋师交互调整。', nextWeek: '完善看汇报详情、评论和已读状态。' },
       'o3-kr3': { thisWeek: '整理智能办公培训素材。', nextWeek: '补充培训覆盖统计。' },
     });
     showToast('已导入上次汇报内容');
-  };
-
-  const generateByAi = () => {
-    setOkrReports({
-      'o1-kr1': { thisWeek: '本周围绕营收指标口径完成数据字段核对，明确销售额与利润率在门户和周报中的一致表达。', nextWeek: '下周补充数据来源说明，完成与经营看板的入口联动验证。' },
-      'o1-kr2': { thisWeek: '本周完成门户办公应用和业务入口的适配优化，保障不同分辨率下稳定展示。', nextWeek: '下周继续跟进业务入口异常状态和跳转反馈。' },
-      'o1-kr3': { thisWeek: '本周梳理审批制度和流程成本相关呈现方式，补充待办、流程审批等入口提示。', nextWeek: '下周补充可量化的流程效率指标和成本下降口径。' },
-      'o2-kr1': { thisWeek: '本周跟进试点功能反馈，整理测试过程记录和验证口径。', nextWeek: '下周推动测试问题清单闭环。' },
-      'o2-kr2': { thisWeek: '本周整理产品发布相关会议纪要，补充市场反馈材料。', nextWeek: '下周明确发布会后续行动项。' },
-      'o2-kr3': { thisWeek: '本周记录客户招募与转化阻塞，形成阶段性反馈。', nextWeek: '下周补充客户转化数据和下一轮验证目标。' },
-      'o3-kr1': { thisWeek: '本周完成核心流程线上化入口优化，并同步验证审批相关路径。', nextWeek: '下周继续跟踪审批平均时长下降指标。' },
-      'o3-kr2': { thisWeek: `围绕 ${selectedObjective.title}，本周完成工作汇报入口设计、看汇报详情弹框、OKR 独立模块和周报助手交互优化。`, nextWeek: '下周继续完善汇报对象已读情况、评论反馈与 KR 最新汇报展示。' },
-      'o3-kr3': { thisWeek: '本周整理智能办公培训演示素材，补充入口说明。', nextWeek: '下周补充培训覆盖数据和反馈记录。' },
-    });
-    showToast('汇报助手已生成本周汇报草稿');
-  };
-
-  const polishReport = () => {
-    setOkrReports(prev => Object.fromEntries(
-      Object.entries(prev).map(([key, value]) => [
-        key,
-        {
-          thisWeek: `${value.thisWeek.replace(/。$/, '')}，整体进展符合计划，相关问题已形成跟踪清单并同步责任人。`,
-          nextWeek: `${value.nextWeek.replace(/。$/, '')}，并将在下周同步完成结果与风险反馈。`,
-        },
-      ])
-    ));
-    showToast('汇报助手已优化今日总结');
   };
 
   return (
@@ -428,40 +429,15 @@ export default function WorkReport() {
 
       {(activeView === 'write' || activeView === 'reports' || activeView === 'stats') && (
         <button
-          onClick={() => setAssistantOpen(true)}
-          className="fixed right-5 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-1 rounded-2xl bg-white p-2 text-gray-700 shadow-xl ring-1 ring-pink-100 transition hover:-translate-y-[52%] hover:shadow-2xl"
-          title="汇报助手"
+          onClick={openAdvisor}
+          className="fixed right-5 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-1 rounded-xl bg-white p-2 text-gray-700 shadow-xl ring-1 ring-pink-100 transition hover:-translate-y-[52%] hover:shadow-2xl"
+          title="打开如意参谋师"
         >
-          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-pink-600 to-pink-800 shadow-lg">
-            <img
-              src="https://api.dicebear.com/7.x/avataaars/svg?seed=ruyi_assistant"
-              alt="汇报助手"
-              className="h-full w-full"
-            />
+          <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-pink-700 text-white shadow-sm">
+            <Target size={22} />
           </div>
-          <span className="text-[11px] font-semibold text-pink-700">汇报助手</span>
+          <span className="text-[11px] font-semibold text-pink-700">如意参谋师</span>
         </button>
-      )}
-
-      {assistantOpen && activeView === 'write' && (
-        <WeeklyAssistantDrawer
-          open={assistantOpen}
-          onClose={() => setAssistantOpen(false)}
-          onGenerate={generateByAi}
-          onInsert={() => {
-            generateByAi();
-            setAssistantOpen(false);
-            showToast('已插入智能周报内容');
-          }}
-        />
-      )}
-
-      {assistantOpen && (activeView === 'reports' || activeView === 'stats') && (
-        <ReportSummaryAssistantDrawer
-          open={assistantOpen}
-          onClose={() => setAssistantOpen(false)}
-          onGenerate={() => showToast('汇报助手已生成汇报分析')}
-        />
       )}
     </div>
   );
@@ -724,79 +700,8 @@ function ReportComposer({
   );
 }
 
-function ReportAssistantPanel({
-  onGenerate,
-  onPolish,
-  onToast,
-}: {
-  onGenerate: () => void;
-  onPolish: () => void;
-  onToast: (message: string) => void;
-}) {
-  return (
-    <aside className="rounded-2xl border border-pink-100 bg-gradient-to-br from-white to-pink-50 shadow-sm">
-      <div className="border-b border-pink-100/70 p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-700 text-white">
-            <Bot size={20} />
-          </div>
-          <div>
-            <h2 className="font-bold text-gray-900">汇报助手</h2>
-            <p className="text-xs text-gray-500">根据协作数据辅助写本周汇报</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4 p-5">
-        <div>
-          <p className="mb-2 text-xs font-semibold text-gray-500">可参考数据</p>
-          <div className="space-y-2">
-            {assistantSources.map(source => (
-              <div key={source.name} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm ring-1 ring-pink-100">
-                <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${source.color}`}>{source.icon}</div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{source.name}</p>
-                  <p className="text-xs text-gray-500">{source.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-pink-100">
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900">
-            <Sparkles size={16} className="text-pink-700" />
-            本周隐性工作识别
-          </div>
-          <div className="space-y-2 text-sm leading-6 text-gray-600">
-            <p>1. 推进工作汇报入口与个人门户联动。</p>
-            <p>2. 多次根据反馈调整公文编辑流程。</p>
-            <p>3. 协调模板管理与如意空间跳转关系。</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-2">
-          <button onClick={onGenerate} className="flex items-center justify-between rounded-xl bg-pink-700 px-4 py-3 text-left text-sm font-semibold text-white shadow-sm transition hover:bg-pink-800">
-            <span className="flex items-center gap-2"><Sparkles size={16} />生成本周汇报</span>
-            <ChevronRight size={16} />
-          </button>
-          <button onClick={onPolish} className="flex items-center justify-between rounded-xl bg-white px-4 py-3 text-left text-sm font-medium text-gray-700 shadow-sm ring-1 ring-pink-100 transition hover:text-pink-800">
-            <span className="flex items-center gap-2"><PenLine size={16} className="text-pink-700" />润色当前内容</span>
-            <ChevronRight size={16} className="text-gray-300" />
-          </button>
-          <button onClick={() => onToast('汇报助手已补充风险与计划建议')} className="flex items-center justify-between rounded-xl bg-white px-4 py-3 text-left text-sm font-medium text-gray-700 shadow-sm ring-1 ring-pink-100 transition hover:text-pink-800">
-            <span className="flex items-center gap-2"><Lightbulb size={16} className="text-pink-700" />补充风险与计划</span>
-            <ChevronRight size={16} className="text-gray-300" />
-          </button>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
-
 const reportStatRows = [
-  { name: MAIN_USER_NAME, department: '信息管理部', role: '产品经理', submitted: 2, missing: 0, task: '工作汇报与OKR联动', progress: '完成看汇报详情、评论与汇报助手入口优化', summary: '围绕门户办公应用、OKR模块拆分和汇报助手体验完成多轮迭代，问题闭环较快。', status: '已提交' },
+  { name: MAIN_USER_NAME, department: '信息管理部', role: '产品经理', submitted: 2, missing: 0, task: '工作汇报与OKR联动', progress: '完成看汇报详情、评论与如意参谋师入口优化', summary: '围绕门户办公应用、OKR模块拆分和如意参谋师体验完成多轮迭代，问题闭环较快。', status: '已提交' },
   { name: getDemoPerson(5), department: '产品部', role: '产品经理', submitted: 1, missing: 1, task: '新产品路演测试', progress: '完成路演材料整理，试点反馈待补充', summary: '本周期重点支撑新产品上线标准与发布材料，后续需要补充客户反馈数据。', status: '部分提交' },
   { name: getDemoPerson(6), department: '市场部', role: '业务经理', submitted: 0, missing: 2, task: '客户招募转化', progress: '客户招募数据未同步', summary: '缺少本周期汇报，AI判断客户转化事项存在跟进断点，需要提醒补交。', status: '未提交' },
   { name: getDemoPerson(7), department: '信息管理部', role: '研发负责人', submitted: 2, missing: 0, task: '系统上线支撑', progress: '完成配置校验与验收问题梳理', summary: '围绕核心系统实施上线推进较稳定，已形成问题清单和下一步配置校验计划。', status: '已提交' },
@@ -910,200 +815,6 @@ function StatNumberCard({ title, value, desc, tone }: { title: string; value: st
     </div>
   );
 }
-
-function ReportSummaryAssistantDrawer({ open, onClose, onGenerate }: { open: boolean; onClose: () => void; onGenerate: () => void }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[70]">
-      <div className="absolute inset-0 bg-gray-900/20" onClick={onClose} />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-[560px] flex-col bg-[#fff7fb] shadow-2xl">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-pink-100 bg-[#fff8fb] px-4">
-          <h2 className="text-sm font-bold text-gray-950">汇报助手</h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-gray-500 hover:bg-white" title="关闭"><X size={17} /></button>
-        </header>
-        <div className="flex-1 overflow-y-auto px-4 py-4 scrollbar-hover">
-          <section className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-pink-100">
-            <div className="mb-3 flex items-center gap-2 text-sm font-bold text-pink-800"><Sparkles size={16} />发起工作汇报分析</div>
-            <div className="grid gap-3">
-              <div className="grid grid-cols-[1fr_24px_1fr] items-center rounded-lg border border-pink-200 bg-pink-50/30 px-3 py-2 text-sm"><span>2026-06-22</span><span className="text-center text-gray-400">~</span><span>2026-06-23</span></div>
-              <button className="flex h-10 items-center justify-between rounded-lg border border-gray-200 px-3 text-sm text-gray-600"><span>{`人员范围：${MAIN_USER_NAME}、${getDemoPerson(5)}、${getDemoPerson(6)}、${getDemoPerson(7)}`}</span><ChevronRight size={15} className="rotate-90 text-gray-300" /></button>
-              <input className="h-10 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100" defaultValue="工作汇报与OKR联动" />
-            </div>
-            <button onClick={onGenerate} className="mt-4 w-full rounded-lg bg-pink-700 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-800">生成汇报分析</button>
-          </section>
-          <section className="mt-4 rounded-xl bg-pink-100/70 p-4">
-            <div className="mb-3 text-sm font-bold text-pink-900">分析结果</div>
-            <div className="space-y-3 text-sm leading-6 text-gray-700">
-              <p>本时间范围内共识别 4 名人员、6 条任务进展，已提交率约 72%。</p>
-              <p>{`${MAIN_USER_NAME}围绕工作汇报和 OKR 联动推进最充分；${getDemoPerson(7)}主要承接系统上线支撑；${getDemoPerson(6)}存在未提交风险。`}</p>
-              <p>建议对未提交人员发起提醒，并将“工作汇报与OKR联动”事项纳入下周重点跟进。</p>
-            </div>
-          </section>
-        </div>
-      </aside>
-    </div>
-  );
-}
-
-function WeeklyAssistantDrawer({
-  open,
-  onClose,
-  onGenerate,
-  onInsert,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onGenerate: () => void;
-  onInsert: () => void;
-}) {
-  if (!open) return null;
-
-  const sourceTabs = [
-    { name: '日程', items: ['产品需求评审会 06-15', 'OKR拆解评审会 06-16', '工作门户验收沟通 06-17'] },
-    { name: '待办任务', items: ['完成工作汇报页面联调', '修复OKR编辑态交互', '补充看汇报详情评论'] },
-    { name: '历史周报', items: ['第23周：公文编辑流程优化', '第24周：工作门户与OKR拆分'] },
-    { name: '附件', items: ['智能周报功能说明.pdf', 'OKR拆解草图.png'] },
-  ];
-
-  const okrDrafts = [
-    {
-      title: 'OKR 1：管理域数字化需求承接与交付',
-      kr: 'KR1：完成需求调研、方案评审与立项汇报',
-      thisWeek: '结合本周日程和待办任务，完成工作汇报入口优化、OKR编辑态交互调整，并处理如意空间公文能力相关验收反馈。参考历史周报延续事项，补充了列表筛选、详情评论和页面滚动体验。',
-      nextWeek: '继续推进工作汇报与OKR数据联动，补充对齐关系、下级OKR查看和周报插入后的保存校验，确保门户办公应用流程闭环。',
-    },
-    {
-      title: 'OKR 2：核心系统与周边能力上线支撑',
-      kr: 'KR2：完成基础配置、页面适配与验收问题闭环',
-      thisWeek: '根据附件中的功能说明和验收记录，修复OKR页面白屏、主题色不一致、编辑态展示冗余等问题，并完成本地预览验证。',
-      nextWeek: '继续整理遗留问题清单，推进工作汇报助手的数据来源标注、全局插入效果校验和历史汇报追踪。',
-    },
-  ];
-
-  return (
-    <div className="fixed inset-0 z-[70]">
-      <div className="absolute inset-0 bg-gray-900/20" onClick={onClose} />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-[560px] flex-col bg-[#fff7fb] shadow-2xl">
-        <header className="flex h-14 shrink-0 items-center justify-between border-b border-pink-100 bg-[#fff8fb] px-4">
-          <h2 className="text-sm font-bold text-gray-950">汇报助手</h2>
-          <div className="flex items-center gap-2 text-gray-500">
-            <button className="rounded-lg p-1.5 hover:bg-white" title="新会话">
-              <FileText size={16} />
-            </button>
-            <button className="rounded-lg p-1.5 hover:bg-white" title="历史">
-              <Clock3 size={16} />
-            </button>
-            <button onClick={onClose} className="rounded-lg p-1.5 hover:bg-white" title="关闭">
-              <X size={17} />
-            </button>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          <div className="mb-4 flex justify-end">
-            <button
-              onClick={onGenerate}
-              className="rounded-lg bg-pink-700 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-pink-800"
-            >
-              生成周报
-            </button>
-          </div>
-
-          <section className="mb-4 rounded-xl bg-pink-100/80 p-3">
-            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-pink-900">
-              <span className="h-1.5 w-1.5 rounded-full bg-pink-700" />
-              根据日程、待办任务、历史周报、附件生成本周周报
-            </div>
-            <div className="grid grid-cols-4 gap-2 text-xs font-semibold text-gray-600">
-              {sourceTabs.map(source => (
-                <button key={source.name} className="rounded-lg bg-white px-2 py-2 text-center shadow-sm ring-1 ring-pink-100 first:bg-pink-700 first:text-white">
-                  {source.name}
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 space-y-2 rounded-lg bg-white/70 p-3 text-sm">
-              {sourceTabs.map(source => (
-                <div key={source.name} className="grid grid-cols-[72px_minmax(0,1fr)] gap-2">
-                  <span className="font-semibold text-pink-800">{source.name}</span>
-                  <div className="min-w-0 space-y-1 text-gray-600">
-                    {source.items.map(item => <p key={item} className="truncate">{item}</p>)}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="mb-4 rounded-xl bg-white p-4 shadow-sm">
-            <div className="mb-4 flex items-center justify-between gap-2">
-              <h3 className="text-lg font-bold text-gray-950">智能周报草稿</h3>
-              <span className="rounded bg-pink-50 px-2 py-0.5 text-xs font-semibold text-pink-800">按 OKR 维度生成</span>
-            </div>
-            <div className="space-y-4">
-              {okrDrafts.map((draft, index) => (
-                <div key={draft.kr} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
-                  <div className="mb-2 flex items-start gap-2">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pink-700 text-xs font-bold text-white">{index + 1}</span>
-                    <div>
-                      <h4 className="text-sm font-bold leading-6 text-gray-950">{draft.title}</h4>
-                      <p className="text-xs font-semibold text-pink-800">{draft.kr}</p>
-                    </div>
-                  </div>
-                  <div className="grid gap-3 text-sm leading-6 text-gray-700 md:grid-cols-2">
-                    <div className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
-                      <p className="mb-1 font-bold text-gray-900">本周工作</p>
-                      <p>{draft.thisWeek}</p>
-                    </div>
-                    <div className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
-                      <p className="mb-1 font-bold text-gray-900">下周计划</p>
-                      <p>{draft.nextWeek}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-            <div className="mb-2 flex items-center gap-2 text-sm font-bold text-amber-700">
-              <Sparkles size={16} />
-              全局插入
-            </div>
-            <p className="mb-3 text-xs leading-5 text-amber-700">将上方 OKR 维度草稿一键插入到写汇报页面，对应每条 KR 的本周工作和下周计划。</p>
-            <div className="grid grid-cols-[1fr_64px] gap-2">
-              <button
-                onClick={onInsert}
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
-              >
-                全局插入
-              </button>
-              <button onClick={onClose} className="rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-200">
-                忽略
-              </button>
-            </div>
-          </section>
-        </div>
-
-        <footer className="shrink-0 border-t border-pink-100 bg-white p-3">
-          <div className="rounded-xl border border-pink-300 bg-white p-3 shadow-sm focus-within:ring-2 focus-within:ring-pink-100">
-            <textarea
-              className="h-16 w-full resize-none text-sm outline-none placeholder:text-gray-400"
-              placeholder="请输入补充要求，或上传附件后生成周报"
-            />
-            <div className="mt-2 flex items-center justify-between">
-              <button className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-50" title="上传附件">
-                <Paperclip size={16} />
-              </button>
-              <button className="flex h-8 w-8 items-center justify-center rounded-full bg-pink-100 text-pink-700 hover:bg-pink-200" title="发送">
-                <Send size={16} />
-              </button>
-            </div>
-          </div>
-        </footer>
-      </aside>
-    </div>
-  );
-}
-
 
 function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
   const navigate = useNavigate();
@@ -1505,5 +1216,3 @@ function MetricRing({ label, value, progress }: { label?: string; value: string;
     </div>
   );
 }
-
-

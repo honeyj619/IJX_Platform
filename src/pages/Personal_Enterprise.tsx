@@ -1,11 +1,12 @@
 ﻿import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight, MoreHorizontal, RefreshCw, ExternalLink, Trash2, ClipboardList, Sparkles, Target } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Search, GripVertical, ChevronLeft } from 'lucide-react';
 import { Ticket, WalletCards, Plane, BadgeCheck, CheckSquare, ListTodo, BarChart3, UserPlus, Link2, Save, CircleDot, CircleCheckBig } from 'lucide-react';
 import { Landmark, Brain, Receipt, FileSignature, Calculator, Workflow, Users, LayoutDashboard, GraduationCap, Award, ClipboardCheck, Database, FileCheck, FolderKanban, Server, LineChart, Blocks, PieChart, Gauge, HardDrive, ShieldCheck, Truck, Hexagon, Shirt, Car, MessageSquare, Wrench, Fuel, BookMarked, Network, AlertTriangle, IterationCw, Shield, Clock, Zap, Volume2, Crown, Package, PackagePlus, Tag, Wallet, BarChart2, Activity, Globe, Smartphone, ShoppingBag, GitBranch, Phone, UserCheck, Repeat, Star, Briefcase, Sun, BookOpen, Paperclip, Send, Smile, AtSign, ImageIcon } from 'lucide-react';
 import { MAIN_USER_NAME, getDemoPerson, getPersonAvatar } from '../data/people';
 import { workItems, WorkItem, WorkItemTask, WorkItemType } from '../data/workItems';
+import { buildAdvisorUrl } from '../data/advisor';
 import { openPortalLink, type LinkOpenMode } from '../utils/linkOpening';
 
 // 定义卡片类型
@@ -32,8 +33,8 @@ type System = {
 };
 
 type StatKey = 'approval' | 'revenue' | 'todo' | 'progress';
-type DialogType = 'approvalConfig' | 'todoSources' | 'newTodo' | 'commonSystems' | 'commonFeatures' | 'cardRequest' | 'featureRequest' | null;
-type PersonalView = 'dashboard' | 'todo' | 'workItemBoard' | 'itemCreate' | 'itemDetail' | 'taskDetail' | 'taskCreate' | 'reportSubmit' | 'evaluationSubmit';
+type DialogType = 'dataCardConfig' | 'todoSources' | 'newTodo' | 'commonSystems' | 'commonFeatures' | 'cardRequest' | 'featureRequest' | null;
+type PersonalView = 'dashboard' | 'dataCardDetail' | 'todo' | 'workItemBoard' | 'itemCreate' | 'itemDetail' | 'taskDetail' | 'taskCreate' | 'reportSubmit' | 'evaluationSubmit';
 type WorkItemReturnView = 'todo' | 'workItemBoard' | 'itemDetail' | 'taskDetail';
 type WorkItemCreateReturnView = 'todo' | 'workItemBoard';
 type PortalOpenMode = LinkOpenMode;
@@ -297,6 +298,13 @@ const dashboardStats: StatConfig[] = [
   { key: 'todo', title: '待办事项', count: '10', color: 'amber', summary: '事项列表' },
   { key: 'progress', title: '事项进度', count: '15', color: 'blue', summary: '关注事项进度' },
 ];
+
+const defaultDataCardDisplayCounts: Record<StatKey, number> = {
+  approval: 3,
+  revenue: 3,
+  todo: 3,
+  progress: 2,
+};
 
 const commonFeatures: CommonFeature[] = [
   { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', category: '办公协同', openMode: 'auto', path: '/web_client/business' },
@@ -645,6 +653,8 @@ function getLatestWorkItemActivity(item: WorkItem) {
 
 export default function Personal_Enterprise() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const handledAdvisorResult = useRef<string | null>(null);
   // 卡片配置状态
   const [cards, setCards] = useState<CardConfig[]>(() => {
     const saved = localStorage.getItem('dashboardCards');
@@ -690,10 +700,23 @@ export default function Personal_Enterprise() {
     domain: '管理',
     description: '',
   });
-  const [approvalDisplayCount, setApprovalDisplayCount] = useState(() => {
-    const saved = Number(localStorage.getItem('approvalDisplayCount'));
-    return Number.isFinite(saved) && saved > 0 ? saved : 3;
+  const [dataCardDisplayCounts, setDataCardDisplayCounts] = useState<Record<StatKey, number>>(() => {
+    const saved = localStorage.getItem('dataCardDisplayCounts');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Partial<Record<StatKey, number>>;
+        return { ...defaultDataCardDisplayCounts, ...parsed };
+      } catch {
+        return defaultDataCardDisplayCounts;
+      }
+    }
+    const legacyApprovalCount = Number(localStorage.getItem('approvalDisplayCount'));
+    return {
+      ...defaultDataCardDisplayCounts,
+      approval: Number.isFinite(legacyApprovalCount) && legacyApprovalCount > 0 ? legacyApprovalCount : defaultDataCardDisplayCounts.approval,
+    };
   });
+  const [configuringStatKey, setConfiguringStatKey] = useState<StatKey>('approval');
   const [customTodos, setCustomTodos] = useState<TodoItem[]>(() => {
     const saved = localStorage.getItem('customDashboardTodos');
     if (!saved) return [];
@@ -887,8 +910,8 @@ export default function Personal_Enterprise() {
   }, [trackedItems]);
 
   useEffect(() => {
-    localStorage.setItem('approvalDisplayCount', String(approvalDisplayCount));
-  }, [approvalDisplayCount]);
+    localStorage.setItem('dataCardDisplayCounts', JSON.stringify(dataCardDisplayCounts));
+  }, [dataCardDisplayCounts]);
 
   useEffect(() => {
     localStorage.setItem('customDashboardTodos', JSON.stringify(customTodos));
@@ -959,7 +982,53 @@ export default function Personal_Enterprise() {
   const displayedTodoItems = [...todoItems, ...customTodos].filter(item => enabledTodoSourceNames.includes(item.source));
   const myTodoActions = deriveMyTodoActions(workItemList);
   const myTrackedWorkItems = deriveMyTrackedWorkItems(workItemList);
+  const dashboardTodoItems: TodoItem[] = [
+    ...myTodoActions.map(item => ({
+      id: item.id,
+      title: item.title,
+      source: item.source,
+      owner: MAIN_USER_NAME,
+      due: item.due,
+      status: item.status,
+      progress: item.progress,
+    })),
+    ...displayedTodoItems,
+  ];
+  const dashboardProgressItems: TrackedItem[] = myTrackedWorkItems.map(item => ({
+    id: item.id,
+    title: item.title,
+    source: item.sourceRefs.some(source => source.type === 'OKR') ? 'okr' : 'project',
+    owner: item.owner,
+    progress: item.progress,
+    status: item.status,
+    tasks: item.tasks.map(task => ({ name: task.title, owner: task.owner, progress: task.progress })),
+  }));
   const selectedWorkItem = workItemList.find(item => item.id === selectedWorkItemId) || myTrackedWorkItems[0] || workItemList[0];
+
+  useEffect(() => {
+    const result = (location.state as {
+      advisorResult?: {
+        source?: string;
+        contextId?: string;
+        draft?: Partial<{ summary: string; completed: string; risks: string; nextPlan: string }>;
+      };
+    } | null)?.advisorResult;
+    if (!result || result.source !== 'work-item' || handledAdvisorResult.current === location.key) return;
+    const item = workItemList.find(candidate => candidate.id === result.contextId);
+    if (!item) return;
+    handledAdvisorResult.current = location.key;
+    setSelectedWorkItemId(item.id);
+    setWorkItemFlowReturnView('workItemBoard');
+    setWorkItemReportTaskId(undefined);
+    setWorkItemReportDraft({
+      thisPeriod: result.draft?.completed || result.draft?.summary || '',
+      nextPlan: result.draft?.nextPlan || '',
+      risk: result.draft?.risks || '',
+      progress: Math.min(100, Math.max(item.progress, 70)),
+    });
+    setPersonalView('reportSubmit');
+    showToast('如意参谋师草稿已回填，可继续编辑');
+  }, [location.key, location.state, showToast, workItemList]);
   const selectedWorkItemTask = selectedWorkItem?.tasks.find(task => task.id === selectedWorkItemTaskId) || selectedWorkItem?.tasks[0];
   const currentCreateSourceOptions = workItemCreateSourceOptions.filter(source => source.kind === workItemCreateDraft.sourceKind);
   const selectedCreateSource = workItemCreateSourceOptions.find(source => source.id === workItemCreateDraft.sourceId);
@@ -1041,40 +1110,31 @@ export default function Personal_Enterprise() {
   }, [layoutCategory]);
 
   const handleStatEdit = useCallback((key: StatKey) => {
-    if (key === 'todo') {
-      setActiveDialog('todoSources');
-      return;
-    }
-    if (key === 'approval') {
-      setActiveDialog('approvalConfig');
-      return;
-    }
-    if (key === 'progress') {
-      setPersonalView('workItemBoard');
-      return;
-    }
-    showJumpTip('业务收入配置');
-  }, [showJumpTip]);
+    setConfiguringStatKey(key);
+    setActiveDialog('dataCardConfig');
+  }, []);
 
   const handleStatSelect = useCallback((key: StatKey) => {
     setMenuId(null);
-    if (key === 'todo') {
-      setActiveStatKey(key);
-      setPersonalView('todo');
-      return;
-    }
-    if (key === 'progress') {
-      setActiveStatKey(key);
-      setPersonalView('workItemBoard');
-      return;
-    }
     setActiveStatKey(key);
     setPersonalView('dashboard');
   }, []);
 
+  const handleStatMore = useCallback((key: StatKey) => {
+    setActiveStatKey(key);
+    if (key === 'todo') {
+      setPersonalView('todo');
+      return;
+    }
+    if (key === 'progress') {
+      setPersonalView('workItemBoard');
+      return;
+    }
+    setPersonalView('dataCardDetail');
+  }, []);
+
   const backToDashboard = useCallback(() => {
     setPersonalView('dashboard');
-    setActiveStatKey(current => current === 'todo' || current === 'progress' ? 'approval' : current);
   }, []);
 
   const openConfiguredEntry = useCallback((label: string, target?: string, mode: PortalOpenMode = 'auto') => {
@@ -1499,14 +1559,16 @@ export default function Personal_Enterprise() {
           <StatsDetailPanel
             activeStat={activeStat}
             tone={activeTone}
-            approvals={approvalProcesses.slice(0, approvalDisplayCount)}
+            approvals={approvalProcesses.slice(0, dataCardDisplayCounts.approval)}
             approvalTotal={approvalProcesses.length}
-            todos={displayedTodoItems}
-            trackedItems={trackedItems}
-            revenueDetails={revenueDetails}
+            todos={dashboardTodoItems.slice(0, dataCardDisplayCounts.todo)}
+            todoTotal={dashboardTodoItems.length}
+            trackedItems={dashboardProgressItems.slice(0, dataCardDisplayCounts.progress)}
+            progressTotal={dashboardProgressItems.length}
+            revenueDetails={revenueDetails.slice(0, dataCardDisplayCounts.revenue)}
+            revenueTotal={revenueDetails.length}
             onEdit={handleStatEdit}
-            onAddTodo={() => setActiveDialog('newTodo')}
-            onNavigate={showJumpTip}
+            onMore={handleStatMore}
           />
         </div>
       );
@@ -1829,6 +1891,15 @@ export default function Personal_Enterprise() {
             ))}
           </div>
         )}
+        {personalView === 'dataCardDetail' && (
+          <DataCardDetailView
+            stat={activeStat}
+            tone={activeTone}
+            approvals={approvalProcesses}
+            revenueDetails={revenueDetails}
+            onBack={backToDashboard}
+          />
+        )}
         {personalView === 'todo' && (
           <MyTodoView
             actions={myTodoActions}
@@ -1855,7 +1926,14 @@ export default function Personal_Enterprise() {
             onCreateSubtask={(itemId, taskId) => openWorkItemTask(itemId, taskId, 'workItemBoard')}
             onComment={(itemId) => openWorkItemComment(itemId, 'workItemBoard')}
             onCompleteTask={handleCompleteWorkItemTask}
-            onWeeklyReport={() => navigate('/web_client/work-report')}
+            onWeeklyReport={(contextId) => navigate(buildAdvisorUrl({
+              mode: 'report',
+              source: 'work-item',
+              contextId,
+              reportType: '事项汇报',
+              initialPrompt: '结合当前事项、任务和历史汇报生成本期工作汇报',
+              returnTo: '/web_client/enterprise',
+            }))}
           />
         )}
         {personalView === 'itemCreate' && (
@@ -1912,7 +1990,14 @@ export default function Personal_Enterprise() {
             draft={workItemReportDraft}
             onBack={() => setPersonalView(workItemFlowReturnView)}
             onDraftChange={setWorkItemReportDraft}
-            onWeeklyReport={() => navigate('/web_client/work-report')}
+            onWeeklyReport={() => navigate(buildAdvisorUrl({
+              mode: 'report',
+              source: workItemReportTaskId ? 'task' : 'work-item',
+              contextId: workItemReportTaskId || selectedWorkItem.id,
+              reportType: '事项汇报',
+              initialPrompt: '根据当前事项和任务执行记录生成汇报草稿',
+              returnTo: '/web_client/enterprise',
+            }))}
             onSubmit={handleSubmitWorkItemReport}
           />
         )}
@@ -2125,14 +2210,14 @@ export default function Personal_Enterprise() {
         </div>
       )}
 
-      {/* 流程审批展示配置 */}
-      {activeDialog === 'approvalConfig' && (
+      {/* 数据卡片展示配置 */}
+      {activeDialog === 'dataCardConfig' && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
           <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
               <div>
-                <h2 className="text-lg font-bold text-gray-900">编辑流程审批</h2>
-                <p className="mt-1 text-sm text-gray-500">选择详情卡片最多展示的流程数量</p>
+                <h2 className="text-lg font-bold text-gray-900">编辑{dashboardStats.find(item => item.key === configuringStatKey)?.title}</h2>
+                <p className="mt-1 text-sm text-gray-500">设置下方对应列表最多展示的数据数量</p>
               </div>
               <button onClick={() => setActiveDialog(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800">
                 <X size={20} />
@@ -2141,15 +2226,15 @@ export default function Personal_Enterprise() {
             <div className="p-6">
               <label className="text-sm font-medium text-gray-700">最多展示</label>
               <select
-                value={approvalDisplayCount}
-                onChange={(event) => setApprovalDisplayCount(Number(event.target.value))}
+                value={dataCardDisplayCounts[configuringStatKey]}
+                onChange={(event) => setDataCardDisplayCounts(current => ({ ...current, [configuringStatKey]: Number(event.target.value) }))}
                 className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-pink-400"
               >
                 {[1, 2, 3, 4, 5].map(count => (
                   <option key={count} value={count}>{count} 条</option>
                 ))}
               </select>
-              <p className="mt-3 text-xs text-gray-500">当前共有 {approvalProcesses.length} 条待批阅流程，详情区会按配置数量截取展示。</p>
+              <p className="mt-3 text-xs text-gray-500">配置只影响个人门户中的预览列表，点击“更多”仍可查看全部数据。</p>
             </div>
             <div className="flex justify-end border-t border-gray-100 bg-gray-50 px-6 py-4">
               <button onClick={() => setActiveDialog(null)} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
@@ -3172,7 +3257,7 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onOpenTask
   onCreateSubtask: (itemId: string, taskId: string) => void;
   onComment: (itemId: string) => void;
   onCompleteTask: (itemId: string, taskId: string) => void;
-  onWeeklyReport: () => void;
+  onWeeklyReport: (contextId?: string) => void;
 }) {
   const [filter, setFilter] = useState<ProgressFilter>('全部');
   const [sort, setSort] = useState<ProgressSort>('风险优先');
@@ -3249,9 +3334,9 @@ function WorkItemBoardView({ items, onBack, onCreateItem, onOpenItem, onOpenTask
         onBack={onBack}
         action={
           <div className="flex flex-wrap gap-2">
-            <button onClick={onWeeklyReport} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100">
+            <button onClick={() => onWeeklyReport(selected?.id)} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100">
               <Sparkles size={16} />
-              生成周报
+              如意参谋师
             </button>
             <button onClick={onCreateItem} className="inline-flex items-center gap-2 rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pink-800">
               <Plus size={16} />
@@ -4070,7 +4155,7 @@ function WorkItemReportSubmitView({ item, taskId, draft, onBack, onDraftChange, 
           <div className="flex flex-wrap gap-2">
             <button onClick={onWeeklyReport} className="inline-flex items-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm hover:bg-blue-100">
               <Sparkles size={16} />
-              AI周报总结
+              如意参谋师
             </button>
             <button onClick={onSubmit} className="inline-flex items-center gap-2 rounded-xl bg-pink-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-pink-800">
               <Save size={16} />
@@ -4627,60 +4712,38 @@ function CardHeaderActions({ menuId, menuKey, onEdit, onToggleMenu }: {
   );
 }
 
-function StatsDetailPanel({ activeStat, tone, approvals, approvalTotal, todos, trackedItems, revenueDetails, onEdit, onAddTodo, onNavigate }: {
+function StatsDetailPanel({ activeStat, tone, approvals, approvalTotal, todos, todoTotal, trackedItems, progressTotal, revenueDetails, revenueTotal, onEdit, onMore }: {
   activeStat: StatConfig;
   tone: typeof statToneMap[keyof typeof statToneMap];
   approvals: ApprovalProcess[];
   approvalTotal: number;
   todos: TodoItem[];
+  todoTotal: number;
   trackedItems: TrackedItem[];
+  progressTotal: number;
   revenueDetails: { name: string; value: string; change: string; owner: string }[];
+  revenueTotal: number;
   onEdit: (key: StatKey) => void;
-  onAddTodo: () => void;
-  onNavigate: (destination: string) => void;
+  onMore: (key: StatKey) => void;
 }) {
   const renderHeaderAction = () => {
-    if (activeStat.key === 'revenue') {
-      return (
+    return (
+      <div className="flex items-center gap-2">
         <button
-          onClick={() => onNavigate('数据看板')}
+          onClick={() => onEdit(activeStat.key)}
           className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
         >
-          <MoreHorizontal size={16} />
-          更多
+          <Settings size={15} />
+          展示数量
         </button>
-      );
-    }
-
-    if (activeStat.key === 'todo') {
-      return (
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onAddTodo}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
-          >
-            <Plus size={15} />
-            新增任务
-          </button>
-          <button
-            onClick={() => onEdit(activeStat.key)}
-            className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
-          >
-            <Edit3 size={15} />
-            编辑来源
-          </button>
-        </div>
-      );
-    }
-
-    return (
-      <button
-        onClick={() => onEdit(activeStat.key)}
-        className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
-      >
-        <Edit3 size={15} />
-        编辑
-      </button>
+        <button
+          onClick={() => onMore(activeStat.key)}
+          className="inline-flex items-center gap-1 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
+        >
+          更多
+          <ChevronRight size={15} />
+        </button>
+      </div>
     );
   };
 
@@ -4714,23 +4777,27 @@ function StatsDetailPanel({ activeStat, tone, approvals, approvalTotal, todos, t
         )}
 
         {activeStat.key === 'revenue' && (
-          <div className="grid gap-3 sm:grid-cols-3">
-            {revenueDetails.map(item => (
-              <button key={item.name} onClick={() => onNavigate('数据看板')} className="rounded-xl border border-gray-100 bg-white p-4 text-left transition-all hover:border-green-100 hover:bg-green-50/30">
-                <p className="text-sm font-semibold text-gray-700">{item.name}</p>
-                <p className="mt-2 text-xl font-bold text-gray-900">{item.value}</p>
-                <div className="mt-3 flex items-center justify-between text-xs">
-                  <span className="text-gray-400">{item.owner}</span>
-                  <span className="font-semibold text-green-600">{item.change}</span>
+          <div>
+            <div className="mb-3 text-xs text-gray-500">当前展示 {revenueDetails.length} 条，共 {revenueTotal} 条</div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {revenueDetails.map(item => (
+                <div key={item.name} className="rounded-xl border border-gray-100 bg-white p-4 text-left">
+                  <p className="text-sm font-semibold text-gray-700">{item.name}</p>
+                  <p className="mt-2 text-xl font-bold text-gray-900">{item.value}</p>
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span className="text-gray-400">{item.owner}</span>
+                    <span className="font-semibold text-green-600">{item.change}</span>
+                  </div>
                 </div>
-              </button>
-            ))}
+              ))}
+            </div>
           </div>
         )}
 
         {activeStat.key === 'todo' && (
-          <div className="space-y-3">
-            {todos.map(item => (
+          <div>
+            <div className="mb-3 text-xs text-gray-500">当前展示 {todos.length} 条，共 {todoTotal} 条</div>
+            <div className="space-y-3">{todos.map(item => (
               <div key={item.id} className="rounded-xl border border-gray-100 px-4 py-3 hover:bg-amber-50/30">
                 <div className="flex flex-wrap items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-700">
@@ -4757,19 +4824,54 @@ function StatsDetailPanel({ activeStat, tone, approvals, approvalTotal, todos, t
                   </div>
                 )}
               </div>
-            ))}
+            ))}</div>
           </div>
         )}
 
         {activeStat.key === 'progress' && (
-          <div className="space-y-3">
-            {trackedItems.map(item => (
+          <div>
+            <div className="mb-3 text-xs text-gray-500">当前展示 {trackedItems.length} 条，共 {progressTotal} 条</div>
+            <div className="space-y-3">{trackedItems.map(item => (
               <TrackedItemCard key={item.id} item={item} />
-            ))}
+            ))}</div>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+function DataCardDetailView({ stat, tone, approvals, revenueDetails, onBack }: {
+  stat: StatConfig;
+  tone: typeof statToneMap[keyof typeof statToneMap];
+  approvals: ApprovalProcess[];
+  revenueDetails: { name: string; value: string; change: string; owner: string }[];
+  onBack: () => void;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+      <header className={`flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-5 ${tone.bg}`}>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-xl border border-white bg-white text-gray-500 shadow-sm hover:text-pink-700" title="返回个人门户"><ChevronLeft size={19} /></button>
+          <div><h2 className="text-lg font-bold text-gray-900">{stat.title}</h2><p className="mt-1 text-sm text-gray-500">{stat.summary}</p></div>
+        </div>
+        <span className={`rounded-full bg-white px-3 py-1.5 text-sm font-semibold shadow-sm ${tone.text}`}>共 {stat.key === 'approval' ? approvals.length : revenueDetails.length} 条</span>
+      </header>
+      <div className="p-6">
+        {stat.key === 'approval' ? (
+          <div className="space-y-3">{approvals.map(item => <ProcessItemFlow key={item.id} {...item} />)}</div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-gray-100">
+            <div className="grid grid-cols-[1fr_160px_140px_140px] gap-4 bg-gray-50 px-5 py-3 text-sm font-semibold text-gray-600 max-md:grid-cols-[1fr_120px]"><span>收入类型</span><span className="max-md:hidden">负责部门</span><span>金额</span><span className="max-md:hidden">环比变化</span></div>
+            {revenueDetails.map(item => (
+              <div key={item.name} className="grid grid-cols-[1fr_160px_140px_140px] items-center gap-4 border-t border-gray-100 px-5 py-4 text-sm max-md:grid-cols-[1fr_120px]">
+                <span className="font-semibold text-gray-800">{item.name}</span><span className="text-gray-500 max-md:hidden">{item.owner}</span><span className="font-bold text-gray-900">{item.value}</span><span className="font-semibold text-green-600 max-md:hidden">{item.change}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
