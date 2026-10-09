@@ -243,9 +243,9 @@ const approvalLinks: ProcessLink[] = [
 ];
 
 const knowledgeLinks: ProcessLink[] = [
-  { id: 1, title: "智能办公系统功能介绍", to: "/knowledge?doc=smart-office-intro&source=ruyi-zone" },
-  { id: 2, title: "协同办公平台使用手册", to: "/knowledge?doc=collaboration-manual&source=ruyi-zone" },
-  { id: 3, title: "常见问题 FAQ 汇总", to: "/knowledge?doc=faq&source=ruyi-zone" },
+  { id: 1, title: "智能办公系统功能介绍", to: "/web_client/ekb?doc=smart-office-intro&source=ruyi-zone" },
+  { id: 2, title: "协同办公平台使用手册", to: "/web_client/ekb?doc=collaboration-manual&source=ruyi-zone" },
+  { id: 3, title: "常见问题 FAQ 汇总", to: "/web_client/ekb?doc=faq&source=ruyi-zone" },
 ];
 
 const operationsLinks: ProcessLink[] = [
@@ -1848,7 +1848,7 @@ export default function RuYiZone() {
                             <li><span className="font-semibold">根据录音创建：</span>上传会议录音文件，由系统生成纪要草稿。</li>
                           </ol>
                           <div className="mb-6 flex flex-wrap gap-3">
-                            <Link to="/web_client/knowledge?template=meeting-minutes" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">查看会议纪要模板</Link>
+                            <Link to="/web_client/ekb?template=meeting-minutes" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">查看会议纪要模板</Link>
                             <Link to="/web_client/ruyi-zone?tool=document&scene=meeting-minutes" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">创建空白纪要</Link>
                           </div>
                         </>
@@ -1928,7 +1928,7 @@ export default function RuYiZone() {
                             <li>迟到 2 次，早退 0 次。</li>
                             <li>请假 1 天，整体出勤率 95.5%。</li>
                           </ul>
-                          <p className="mb-6 leading-7">整体表现良好。相关制度可查看 <Link to="/web_client/knowledge?doc=attendance-policy&source=ruyi-zone" className="font-semibold text-theme-700 underline-offset-4 hover:underline dark:text-theme-300">考勤管理制度 v2.3</Link>。</p>
+                          <p className="mb-6 leading-7">整体表现良好。相关制度可查看 <Link to="/web_client/ekb?doc=attendance-policy&source=ruyi-zone" className="font-semibold text-theme-700 underline-offset-4 hover:underline dark:text-theme-300">考勤管理制度 v2.3</Link>。</p>
                         </>
                       )}
 

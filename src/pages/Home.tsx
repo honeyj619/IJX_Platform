@@ -440,6 +440,22 @@ const messages: Message[] = [
         content: "好的！很高兴为您服务。如有需要随时召唤我，祝您工作顺利！🌟\n\n温馨提示：您今天还有2个待办事项，3条待审批流程。",
         time: "今天 10:45",
       },
+      // 项目汇报企微提醒（黄/红灯项目发送后推送给领导）
+      {
+        id: 17,
+        sender: 'other',
+        type: 'text',
+        content: "【工作汇报】\n收到刘备的如意空间智能办公建设（黄灯）项目汇报，请及时查阅。\n汇报周期：2026-10-03 至 2026-10-09\n整体项目进展：本周按计划推进系统集成与联调，整体进度 45%，存在 2 项跨部门协调事项，详见汇报内容。\n查看地址：工作汇报-汇报发送明细",
+        time: "今天 17:42",
+      },
+      // 周日定时汇总提醒（红黄灯项目数量 + 跳转地址）
+      {
+        id: 18,
+        sender: 'other',
+        type: 'text',
+        content: "【系统提醒】本周红黄灯项目汇报情况，请关注\n统计周期：2026-10-03 至 2026-10-09\n黄灯项目：1 个（如意空间智能办公建设）\n红灯项目：1 个（数据平台治理专项）\n待办提醒：以上项目汇报请确认已发送\n查看地址：工作汇报-汇报发送明细",
+        time: "周日 20:00",
+      },
     ],
   },
   {
@@ -2152,7 +2168,7 @@ function renderChatContent(chatMsg: ChatMessage, isMe: boolean) {
         return (
           <div className="p-3">
             {chatMsg.content && (
-              <p className={`text-sm leading-relaxed ${isMe ? 'text-gray-700' : 'text-gray-700 dark:text-gray-300'}`}>{chatMsg.content}</p>
+              <p className={`whitespace-pre-line text-sm leading-relaxed ${isMe ? 'text-gray-700' : 'text-gray-700 dark:text-gray-300'}`}>{chatMsg.content}</p>
             )}
           </div>
         );
@@ -2160,7 +2176,7 @@ function renderChatContent(chatMsg: ChatMessage, isMe: boolean) {
       default:
         return (
           <div className="p-3">
-            <p className={`text-sm leading-relaxed ${isMe ? 'text-gray-700' : 'text-gray-700 dark:text-gray-300'}`}>{chatMsg.content}</p>
+            <p className={`whitespace-pre-line text-sm leading-relaxed ${isMe ? 'text-gray-700' : 'text-gray-700 dark:text-gray-300'}`}>{chatMsg.content}</p>
           </div>
         );
     }

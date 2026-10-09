@@ -6,7 +6,6 @@ import Home from "@/pages/Home";
 import Enterprise from "@/pages/Enterprise";
 import Assistant from "@/pages/Assistant";
 import Process from "@/pages/Process";
-import Knowledge from "@/pages/Knowledge";
 import Profile from "@/pages/Profile";
 import RuYiZone from "@/pages/RuYiZone";
 import AgentSquarePage from "@/pages/AgentSquarePage";
@@ -114,7 +113,6 @@ export default function App() {
         <Route path="enterprise" element={<Enterprise />} />
         <Route path="assistant" element={<Assistant />} />
         <Route path="process" element={<Process />} />
-        <Route path="knowledge" element={<Knowledge />} />
         <Route path="ekb" element={<EKB />} />
         <Route path="profile" element={<Profile />} />
         <Route path="agent-square" element={<AgentSquarePage />} />
@@ -141,7 +139,6 @@ export default function App() {
         <Route path="/enterprise" element={<Navigate to="/web_client/enterprise" replace />} />
         <Route path="/assistant" element={<Navigate to="/web_client/assistant" replace />} />
         <Route path="/process" element={<Navigate to="/web_client/process" replace />} />
-        <Route path="/knowledge" element={<Navigate to="/web_client/knowledge" replace />} />
         <Route path="/ekb" element={<Navigate to="/web_client/ekb" replace />} />
         <Route path="/profile" element={<Navigate to="/web_client/profile" replace />} />
         <Route path="/agent-square" element={<Navigate to="/web_client/agent-square" replace />} />

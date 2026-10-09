@@ -220,7 +220,6 @@ const businessSystems: System[] = [
   { id: 'referral', name: '内推系统', icon: <UserPlus size={16} />, bgColor: 'bg-indigo-600', category: '人力系统', source: '业务系统', description: '内部推荐管理系统' },
   { id: 'hr-digital', name: '人力数字平台管理系统', icon: <Database size={16} />, bgColor: 'bg-blue-600', category: '人力系统', source: '业务系统', description: '人力资源数字化管理平台' },
   { id: 'oa', name: 'OA', icon: <FileCheck size={16} />, bgColor: 'bg-purple-500', category: '综合系统', source: '业务系统', description: '办公自动化系统' },
-  { id: 'knowledge', name: '吉祥知识平台', icon: <BookOpen size={16} />, bgColor: 'bg-violet-500', category: '综合系统', source: '业务系统', description: '企业知识平台' },
   { id: 'pm', name: '企业项目管理平台', icon: <FolderKanban size={16} />, bgColor: 'bg-indigo-500', category: '综合系统', source: '业务系统', description: '项目计划和进度管理' },
   { id: 'itops', name: '运维管理平台', icon: <Server size={16} />, bgColor: 'bg-sky-500', category: '综合系统', source: '业务系统', description: 'IT运维管理平台' },
   { id: 'data-portal', name: '公司数据门户', icon: <BarChart3 size={16} />, bgColor: 'bg-blue-500', category: '综合系统', source: '业务系统', description: '公司数据统一入口' },
@@ -287,7 +286,6 @@ const defaultSystemIds = [
   'school',
   'revenue',
   'member',
-  'knowledge',
 ];
 const selectedSystemsPresetKey = 'selectedSystemsPreset20260703v2';
 const defaultFeaturePresetKey = 'pinnedCommonFeatures20260705v2';
@@ -1538,7 +1536,8 @@ export default function Personal_Enterprise() {
     setActiveDialog(null);
     showToast('已提交申请流程');
   }, [showToast]);
-  const renderPortalCard = (card: CardConfig) => {
+
+  const renderPortalCard = (card: CardConfig) => {
     if (card.id === 'stats') {
       return (
         <div className="space-y-4">

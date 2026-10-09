@@ -3,7 +3,6 @@ import Home from '../pages/Home.vue'
 import Enterprise from '../pages/Enterprise.vue'
 import Assistant from '../pages/Assistant.vue'
 import Process from '../pages/Process.vue'
-import Knowledge from '../pages/Knowledge.vue'
 import Profile from '../pages/Profile.vue'
 import RuYiZone from '../pages/RuYiZone.vue'
 import AgentSquarePage from '../pages/AgentSquarePage.vue'
@@ -20,7 +19,6 @@ const router = createRouter({
     { path: '/enterprise', name: 'Enterprise', component: Enterprise },
     { path: '/assistant', name: 'Assistant', component: Assistant },
     { path: '/process', name: 'Process', component: Process },
-    { path: '/knowledge', name: 'Knowledge', component: Knowledge },
     { path: '/ekb', name: 'EKB', component: EKB },
     { path: '/profile', name: 'Profile', component: Profile },
     { path: '/agent-square', name: 'AgentSquare', component: AgentSquarePage },

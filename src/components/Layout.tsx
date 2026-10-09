@@ -1,11 +1,27 @@
 ﻿import { ReactNode, useEffect, useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { MessageSquare, Bell, Calendar, Hexagon, User, X, XCircle, Search, Menu, ChevronRight, ChevronLeft, Plus, Link as LinkIcon } from 'lucide-react';
+import {
+  MessagesSquare,
+  LayoutGrid,
+  CalendarDays,
+  Feather,
+  Workflow,
+  CloudCog,
+  X,
+  XCircle,
+  Search,
+  Menu,
+  ChevronRight,
+  ChevronLeft,
+  Plus,
+  Link as LinkIcon,
+  type LucideIcon,
+} from 'lucide-react';
 import { create } from 'zustand';
 import { useThemeStore } from '../store/themeStore';
 import { useLayoutStore } from '../store/layoutStore';
 import { UserMenu } from './UserMenu';
-import { SIDEBAR } from '../constants/layout';
+import { BREAKPOINTS, SIDEBAR } from '../constants/layout';
 import { getDemoPerson, getInitialsAvatar } from '../data/people';
 import { openPortalLink } from '../utils/linkOpening';
 
@@ -26,7 +42,7 @@ type CustomNavLink = {
 };
 
 type NavigationItem = {
-  icon: React.ReactNode;
+  icon: LucideIcon;
   label: string;
   to: string;
   external?: boolean;
@@ -70,8 +86,6 @@ const pageTitles: Record<string, string> = {
   '/': '消息',
   '/enterprise': '工作门户',
   '/calendar': '日历',
-  '/knowledge': '知识门户',
-  '/ekb': '知识门户',
   '/business': '业务系统',
   '/work-report': '工作汇报',
   '/work-items': '工作门户',
@@ -80,6 +94,7 @@ const pageTitles: Record<string, string> = {
   '/ruyi-zone/presentation': '如意PPT工作台',
   '/ruyi-zone/document': '公文工作台',
   '/ruyi-zone/advisor': '如意参谋师',
+  '/ekb': '知识门户',
   '/agent-square': '智能体广场',
   '/profile': '个人信息',
   '/settings': '系统设置'
@@ -107,7 +122,7 @@ const normalizeCustomLinkUrl = (value: string) => {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { pages, addPage, removePage, removeAllPages, isPageOpen } = usePagesStore();
+  const { pages, addPage, removePage, removeAllPages } = usePagesStore();
   const { mode, skin } = useThemeStore();
   const { showNavigation, toggleNavigation, isResponsive, setIsResponsive } = useLayoutStore();
   
@@ -119,6 +134,7 @@ export default function Layout({ children }: LayoutProps) {
   const [showAddLinkPopup, setShowAddLinkPopup] = useState(false);
   const [linkLabel, setLinkLabel] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const hasCheckedResponsiveRef = useRef(false);
   const [customNavLinks, setCustomNavLinks] = useState<CustomNavLink[]>(() => {
     const saved = localStorage.getItem('customNavigationLinks');
     if (!saved) return [];
@@ -175,21 +191,19 @@ export default function Layout({ children }: LayoutProps) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, showNavigation, toggleNavigation]);
+  }, [isDragging, showNavigation, sidebarWidth, toggleNavigation]);
   
   // 响应式检测 - 简化版本
   useEffect(() => {
-    let initialCheck = true;
-    
     const checkResponsive = () => {
       const width = window.innerWidth;
-      const isNarrow = width < 1024; // 更低的断点，避免过度响应
+      const isNarrow = width <= BREAKPOINTS.TABLET;
       setIsResponsive(isNarrow);
-      
-      // 只在首次加载和小屏幕情况下自动折叠，避免循环
-      if (initialCheck && width < 1024) {
-        initialCheck = false;
-        if (showNavigation) {
+
+      // 首次进入平板或更窄视口时收起导航，为主工作区保留空间。
+      if (!hasCheckedResponsiveRef.current) {
+        hasCheckedResponsiveRef.current = true;
+        if (isNarrow && showNavigation) {
           setIsManuallyCollapsed(true);
           toggleNavigation();
         }
@@ -200,7 +214,7 @@ export default function Layout({ children }: LayoutProps) {
     window.addEventListener('resize', checkResponsive);
     
     return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive]); // 移除会导致循环的依赖
+  }, [setIsResponsive, showNavigation, toggleNavigation]);
   
   useEffect(() => {
     const applyTheme = () => {
@@ -219,13 +233,13 @@ export default function Layout({ children }: LayoutProps) {
   }, [customNavLinks]);
 
   const navItems: NavigationItem[] = [
-    { icon: <MessageSquare size={20} />, label: '消息', to: clientPath('/'), badge: 8, badgeTitle: '8条未读消息', badgeTone: 'message' },
-    { icon: <Bell size={20} />, label: '工作门户', to: clientPath('/enterprise'), badge: 21, badgeTitle: '21项未办事项', badgeTone: 'work' },
-    { icon: <Calendar size={20} />, label: '日历', to: clientPath('/calendar') },
-    { icon: <Hexagon size={20} />, label: '业务系统', to: clientPath('/business') },
-    { icon: <Bell size={20} />, label: '如意空间', to: clientPath('/ruyi-zone') },
+    { icon: MessagesSquare, label: '消息', to: clientPath('/'), badge: 8, badgeTitle: '8条未读消息', badgeTone: 'message' },
+    { icon: LayoutGrid, label: '工作门户', to: clientPath('/enterprise'), badge: 21, badgeTitle: '21项未办事项', badgeTone: 'work' },
+    { icon: CalendarDays, label: '日历', to: clientPath('/calendar') },
+    { icon: Workflow, label: '业务系统', to: clientPath('/business') },
+    { icon: CloudCog, label: '如意空间', to: clientPath('/ruyi-zone') },
     ...customNavLinks.map(link => ({
-      icon: <LinkIcon size={20} />,
+      icon: LinkIcon,
       label: link.label,
       to: link.to,
       external: isExternalPath(link.to),
@@ -259,7 +273,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-gray-50 dark:bg-gray-900">
+    <div className="flex h-screen w-full overflow-hidden bg-[var(--ui-surface-page)]">
       {/* 响应式侧边栏遮罩 - 移动端 */}
       {isResponsive && showNavigation && (
         <div 
@@ -274,7 +288,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* 左侧导航栏 - 简化响应式逻辑 */}
       <div 
         className={`
-          bg-gradient-to-theme text-white flex flex-col transition-all duration-300 ease-in-out
+          client-navigation-shell flex flex-col transition-all duration-300 ease-in-out
           ${isDragging ? 'select-none' : ''}
         `}
         style={{ 
@@ -298,23 +312,24 @@ export default function Layout({ children }: LayoutProps) {
               <input
                 type="text"
                 placeholder="搜索..."
-                className="w-full pl-9 pr-3 py-2 rounded-full bg-white/15 text-white text-sm placeholder-white/50 focus:outline-none focus:bg-white/25 focus:ring-1 focus:ring-white/40 transition-all duration-300"
+                className="w-full h-9 pl-9 pr-3 rounded-lg border border-transparent bg-white/45 text-[var(--ui-text-title)] text-sm placeholder:text-[var(--ui-text-weak)] focus:outline-none focus:border-[var(--ui-brand-primary)] focus:bg-white/80 focus:ring-2 focus:ring-[color-mix(in_srgb,var(--ui-brand-primary)_16%,transparent)] transition-colors"
                 onClick={() => setIsSearchOpen(true)}
               />
-              <Search size={14} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 group-focus-within:text-white/80 transition-colors" />
+              <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[var(--ui-text-weak)] group-focus-within:text-[var(--ui-brand-primary)] transition-colors" />
             </div>
           ) : (
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/15 hover:bg-white/25 transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-lg bg-white/45 hover:bg-white/80 transition-colors"
+              title="搜索"
             >
-              <Search size={16} className="text-white/80" />
+              <Search size={16} className="text-[var(--ui-text-body)]" />
             </button>
           )}
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
-          <nav className={`${showNavigation ? 'space-y-1 px-3' : 'space-y-1 px-1 flex flex-col items-center'}`}>
+          <nav className={`${showNavigation ? 'space-y-1.5 px-3' : 'space-y-1 px-1 flex flex-col items-center'}`}>
             {navItems.map((item) => (
               <NavItem
                 key={item.to}
@@ -335,8 +350,8 @@ export default function Layout({ children }: LayoutProps) {
           {/* 打开的页面 - 展开态 */}
           {showNavigation && (
             <div className="mt-6 px-3">
-              <div className="h-px bg-white/40 my-4"></div>
-              <div className="flex items-center justify-between text-sm font-semibold mb-2">
+              <div className="h-px bg-[var(--ui-border)] my-4"></div>
+              <div className="flex items-center justify-between text-sm font-semibold text-[var(--ui-text-title)] mb-2">
                 <span>打开的页面</span>
                 {pages.filter(page => !navPaths.includes(page.path)).length > 0 && (
                   <button
@@ -346,7 +361,7 @@ export default function Layout({ children }: LayoutProps) {
                         navigate(WEB_CLIENT_BASE);
                       }
                     }}
-                    className="text-xs hover:text-white/80 transition-colors flex items-center gap-1"
+                    className="text-xs text-[var(--ui-text-body)] hover:text-[var(--ui-brand-primary)] transition-colors flex items-center gap-1"
                   >
                     <X size={14} />
                     全部关闭
@@ -355,7 +370,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
               <div className="space-y-1">
                 {pages.filter(page => !navPaths.includes(page.path)).length === 0 ? (
-                  <div className="px-3 py-3 rounded-md text-white/60 text-sm italic">
+                  <div className="px-3 py-3 rounded-lg text-[var(--ui-text-weak)] text-sm">
                     暂无打开的页面
                   </div>
                 ) : (
@@ -364,7 +379,7 @@ export default function Layout({ children }: LayoutProps) {
                     .map((page) => (
                       <div
                         key={page.id}
-                        className={`relative flex items-center gap-3 px-3 py-3 rounded-md transition-colors group ${location.pathname === page.path ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}`}
+                        className={`relative flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-[var(--ui-text-body)] transition-colors group ${location.pathname === page.path ? 'bg-white font-semibold text-[var(--ui-text-title)]' : 'hover:bg-white/65'}`}
                       >
                         {isExternalPath(page.path) ? (
                           <button type="button" onClick={() => openExternalNavigation(page.title, page.path)} className="flex-1 min-w-0 truncate text-left">
@@ -377,7 +392,7 @@ export default function Layout({ children }: LayoutProps) {
                         )}
                         <button
                           onClick={(e) => handleClosePage(page.path, e)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-white/70 hover:text-white"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--ui-text-weak)] hover:text-[var(--ui-brand-primary)]"
                         >
                           <XCircle size={16} />
                         </button>
@@ -391,13 +406,13 @@ export default function Layout({ children }: LayoutProps) {
           {/* 打开的页面 - 折叠态 */}
           {!showNavigation && (
             <div className="flex flex-col items-center mt-4">
-              <div className="h-px bg-white/40 w-8 mb-4"></div>
+              <div className="h-px bg-[var(--ui-border)] w-8 mb-4"></div>
               {pages.filter(page => !navPaths.includes(page.path)).length > 0 ? (
                 <div
                   className="relative flex flex-col items-center py-1"
                   title={`${pages.filter(page => !navPaths.includes(page.path)).length} 个打开的页面`}
                 >
-                  <div className="w-10 h-10 rounded-md bg-white/20 flex items-center justify-center text-sm font-bold text-white">
+                  <div className="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center text-sm font-semibold text-[var(--ui-text-body)]">
                     {pages.filter(page => !navPaths.includes(page.path)).length}
                   </div>
                 </div>
@@ -406,7 +421,7 @@ export default function Layout({ children }: LayoutProps) {
           )}
         </div>
 
-        <div className={`border-t border-white/20 ${showNavigation ? 'p-3' : 'p-2 flex flex-col items-center gap-2'} flex-shrink-0`}>
+        <div className={`border-t border-[var(--ui-border)] ${showNavigation ? 'p-3' : 'p-2 flex flex-col items-center gap-2'} flex-shrink-0`}>
           <div className={`${showNavigation ? 'flex items-center justify-between' : 'flex flex-col items-center gap-2'}`}>
             {/* 添加链接按钮 */}
             <div className="relative">
@@ -415,8 +430,8 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={() => setShowAddLinkPopup(!showAddLinkPopup)}
                 className={`
                   ${showNavigation ? 'inline-flex items-center gap-1.5' : 'flex justify-center'}
-                  p-2 rounded-lg hover:bg-white/20 transition-all duration-300
-                  text-white/80 hover:text-white
+                  p-2 rounded-lg hover:bg-white/70 transition-colors
+                  text-[var(--ui-text-body)] hover:text-[var(--ui-brand-primary)]
                 `}
                 title="添加链接"
               >
@@ -496,8 +511,8 @@ export default function Layout({ children }: LayoutProps) {
               }}
               className={`
                 ${showNavigation ? 'inline-flex justify-end' : 'flex justify-center'}
-                p-2 rounded-lg hover:bg-white/20 transition-all duration-300
-                text-white/80 hover:text-white
+                p-2 rounded-lg hover:bg-white/70 transition-colors
+                text-[var(--ui-text-body)] hover:text-[var(--ui-brand-primary)]
               `}
               title={showNavigation ? "收起导航栏" : "展开导航栏"}
             >
@@ -517,7 +532,7 @@ export default function Layout({ children }: LayoutProps) {
           onMouseDown={handleMouseDown}
         >
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-1 h-16 bg-white/50 rounded-full"></div>
+            <div className="w-1 h-16 bg-[var(--ui-brand-primary)]/50 rounded-full"></div>
           </div>
         </div>
       )}
@@ -529,7 +544,7 @@ export default function Layout({ children }: LayoutProps) {
       >
         {/* 移动端顶部导航栏 - 包含菜单按钮 */}
         {isResponsive && (
-          <div className="lg:hidden h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0">
+          <div className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0">
             <button 
               onClick={() => {
                 setIsManuallyCollapsed(false);
@@ -665,22 +680,25 @@ export default function Layout({ children }: LayoutProps) {
   );
 }
 
-function NavItem({ icon, label, to, active = false, collapsed = false, badge, badgeTitle, badgeTone, external = false, onExternalOpen }: { icon: React.ReactNode | null; label: string; to: string; active?: boolean; collapsed?: boolean; badge?: number; badgeTitle?: string; badgeTone?: string; external?: boolean; onExternalOpen?: () => void }) {
+function NavItem({ icon: Icon, label, to, active = false, collapsed = false, badge, badgeTitle, badgeTone, external = false, onExternalOpen }: { icon: LucideIcon; label: string; to: string; active?: boolean; collapsed?: boolean; badge?: number; badgeTitle?: string; badgeTone?: string; external?: boolean; onExternalOpen?: () => void }) {
   const className = `
-        relative rounded-md transition-colors text-left
-        ${active ? 'bg-white/30 font-bold' : 'hover:bg-white/20'}
-        ${collapsed ? 'w-12 flex flex-col items-center justify-center py-2 gap-0.5' : 'w-full flex items-center gap-3 px-3 py-3'}
+        group relative rounded-lg text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--ui-brand-primary)]
+        ${active ? 'bg-white font-semibold shadow-[0_1px_2px_rgba(48,49,51,0.04)]' : 'hover:bg-white/65'}
+        ${collapsed ? 'w-12 flex flex-col items-center justify-center py-2 gap-0.5' : 'w-full min-h-11 flex items-center gap-2.5 px-2 py-2.5'}
       `;
   const content = (
     <>
-      {icon && <span className="text-white flex-shrink-0">{icon}</span>}
-      <span className={`text-white ${collapsed ? 'text-2xs leading-tight text-center w-full truncate' : 'flex-1 min-w-0 truncate'}`}>
+      <span className={`relative flex h-5 w-5 flex-shrink-0 items-center justify-center ${active ? 'text-[var(--ui-brand-primary)]' : 'text-[var(--ui-text-body)] group-hover:text-[var(--ui-text-title)]'}`}>
+        <Icon size={20} strokeWidth={active ? 2.35 : 2.1} />
+        {active && <span className="absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-[var(--ui-nav-accent)] ring-1 ring-white" aria-hidden="true" />}
+      </span>
+      <span className={`${active ? 'text-[var(--ui-text-title)]' : 'text-[var(--ui-text-body)]'} ${collapsed ? 'text-2xs leading-tight text-center w-full truncate' : 'flex-1 min-w-0 truncate text-sm'}`}>
         {label}
       </span>
       {badge ? (
         <span
           title={badgeTitle}
-          className={`flex items-center justify-center rounded-full font-semibold text-white shadow-sm ${badgeTone === 'work' ? 'bg-amber-500' : 'bg-red-500'} ${collapsed ? 'absolute right-0.5 top-0.5 h-4 min-w-4 px-1 text-[10px] leading-none' : 'ml-auto h-5 min-w-5 px-1.5 text-xs'}`}
+          className={`flex items-center justify-center rounded-full font-semibold text-white shadow-sm bg-red-500 ${collapsed ? 'absolute right-0.5 top-0.5 h-4 min-w-4 px-1 text-[10px] leading-none' : 'ml-auto h-5 min-w-5 px-1.5 text-xs'}`}
         >
           {badge > 99 ? '99+' : badge}
         </span>
