@@ -1,6 +1,7 @@
 import { useState, type RefObject, type Dispatch, type SetStateAction } from "react";
 import { Check, FileText, X } from "lucide-react";
-import { presentationParamOptions, presentationTemplates } from "../data/presentation";
+import { presentationParamOptions, presentationTemplateList } from "../data/presentation";
+import PresentationTemplatePreview from "./PresentationTemplatePreview";
 
 interface Props {
   attachments: string[];
@@ -14,14 +15,11 @@ interface Props {
 }
 const extensions = ["txt", "md", "markdown", "pdf", "xlsx", "xls", "docx"];
 const control = "h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 outline-none focus:border-theme-400 focus:ring-2 focus:ring-theme-100 dark:border-gray-600 dark:bg-gray-700 dark:text-white";
-const templateStyles = [
-  { accent: "bg-theme-600", surface: "bg-theme-50", line: "bg-theme-200" },
-  { accent: "bg-blue-600", surface: "bg-blue-50", line: "bg-blue-200" },
-  { accent: "bg-emerald-600", surface: "bg-emerald-50", line: "bg-emerald-200" },
-];
 
 export default function PresentationSettings({ attachments, setAttachments, inputRef, files, template, setTemplate, values, setters }: Props) {
   const [error, setError] = useState("");
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
   const upload = (selected: FileList | null) => {
     if (!selected) return;
     const batch = Array.from(selected);
@@ -36,6 +34,7 @@ export default function PresentationSettings({ attachments, setAttachments, inpu
     batch.forEach(file => files.set(file.name, file));
     setAttachments(next); setError("");
   };
+
   return (
     <div className="mt-4 space-y-4 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
       <section aria-label="文件/附件输入" className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
@@ -71,26 +70,50 @@ export default function PresentationSettings({ attachments, setAttachments, inpu
       <section>
         <h3 className="mb-2 text-sm text-gray-500 dark:text-gray-400">选择 PPT 模板</h3>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {presentationTemplates.map((item, index) => {
-            const style = templateStyles[index % templateStyles.length];
-            const selected = template === item;
-            return <button key={item} type="button" onClick={() => setTemplate(item)} className={`relative overflow-hidden rounded-lg border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-800 ${selected ? 'border-theme-300 ring-2 ring-theme-100' : 'border-gray-200 dark:border-gray-700'}`}>
-              <div className={`h-20 p-3 ${style.surface} dark:bg-gray-700/70`}>
-                <div className={`mb-2 h-1.5 w-14 rounded-full ${style.accent}`} />
-                <div className="mx-auto w-24 rounded bg-white p-2 shadow-sm">
-                  <div className={`mb-1.5 h-1 w-12 rounded ${style.accent}`} />
-                  <div className={`mb-1 h-1 rounded ${style.line}`} />
-                  <div className="h-1 w-2/3 rounded bg-gray-200" />
+          {presentationTemplateList.map(tpl => {
+            const selected = template === tpl.name;
+            return (
+              <button key={tpl.id} type="button" onClick={() => setTemplate(tpl.name)} className={`group relative overflow-hidden rounded-lg border bg-white text-left transition-all hover:-translate-y-0.5 hover:shadow-md dark:bg-gray-800 ${selected ? `${tpl.border} ring-2 ring-theme-100` : 'border-gray-200 dark:border-gray-700'}`}>
+                <div className={`relative h-20 p-3 ${tpl.surface} dark:bg-gray-700/70`}>
+                  <div className={`mb-2 h-1.5 w-14 rounded-full ${tpl.accent}`} />
+                  <div className="mx-auto w-24 rounded bg-white p-2 shadow-sm">
+                    <div className={`mb-1.5 h-1 w-12 rounded ${tpl.accent}`} />
+                    <div className={`mb-1 h-1 rounded ${tpl.line}`} />
+                    <div className="h-1 w-2/3 rounded bg-gray-200" />
+                  </div>
+                  {/* 悬停预览按钮（参考公文模板卡片） */}
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900/0 opacity-0 transition-all group-hover:bg-gray-900/35 group-hover:opacity-100">
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={event => { event.stopPropagation(); setPreviewId(tpl.id); }}
+                      onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setPreviewId(tpl.id); } }}
+                      className="rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-gray-800 shadow-md hover:bg-white"
+                    >
+                      预览
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center justify-between px-3 py-2 text-sm font-semibold text-gray-800 dark:text-gray-100">
-                <span>{item}</span>
-                {selected && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-theme-600 text-white"><Check size={12} /></span>}
-              </div>
-            </button>;
+                <div className="flex items-center justify-between px-3 py-2">
+                  <div className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-gray-800 dark:text-gray-100">{tpl.name}</span>
+                    <span className="block truncate text-[11px] text-gray-400">{tpl.desc}</span>
+                  </div>
+                  {selected && <span className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-theme-600 text-white"><Check size={12} /></span>}
+                </div>
+              </button>
+            );
           })}
         </div>
       </section>
+
+      {/* 模板预览弹窗（共享组件） */}
+      <PresentationTemplatePreview
+        previewId={previewId}
+        onClose={() => setPreviewId(null)}
+        onSwitch={setPreviewId}
+        onUse={name => { setTemplate(name); setPreviewId(null); }}
+      />
     </div>
   );
 }

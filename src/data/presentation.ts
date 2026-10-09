@@ -25,7 +25,97 @@ export const presentationModes: PresentationMode[] = [
   { id: "single", name: "AI生成单页", desc: "快速生成一页可复用页面" },
 ];
 
-export const presentationTemplates = ["吉祥品牌", "简约商务", "清新学术"];
+export interface PresentationTemplateRule {
+  label: string;
+  value: string;
+}
+
+export interface PresentationTemplate {
+  id: string;
+  name: string;
+  desc: string;
+  category: '品牌' | '商务' | '学术';
+  /** 强调色（tailwind class） */
+  accent: string;
+  /** 浅底色 */
+  surface: string;
+  /** 辅助线色 */
+  line: string;
+  /** 选中边框色 */
+  border: string;
+  /** 预览示例页 */
+  sampleSlides: { title: string; bullets: string[] }[];
+  /** 模板规范说明 */
+  rules: PresentationTemplateRule[];
+}
+
+export const presentationTemplateList: PresentationTemplate[] = [
+  {
+    id: 'tpl-brand',
+    name: '吉祥品牌',
+    desc: '品牌红主色，适合对外汇报与宣传',
+    category: '品牌',
+    accent: 'bg-[#d51f5c]',
+    surface: 'bg-[#fdf2f6]',
+    line: 'bg-[#f3c6d8]',
+    border: 'border-[#f0aecb]',
+    sampleSlides: [
+      { title: 'AI赋能：企业效率革新', bullets: ['统一入口', '智能辅助', '流程提效'] },
+      { title: '业务背景', bullets: ['系统入口分散', '知识获取成本高', '流程推进依赖人工'] },
+      { title: '推进路径', bullets: ['第一阶段：内容创作', '第二阶段：流程协同', '第三阶段：经营分析'] },
+    ],
+    rules: [
+      { label: '主色调', value: '品牌红 #D51F5C，突出企业识别' },
+      { label: '标题版式', value: '大标题居中，副标题灰字紧随其下' },
+      { label: '页面结构', value: '封面 + 目录 + 章节页 + 总结页，16:9' },
+      { label: '适用场景', value: '对外汇报、品牌宣传、发布会材料' },
+    ],
+  },
+  {
+    id: 'tpl-business',
+    name: '简约商务',
+    desc: '深蓝主色，适合工作汇报与方案评审',
+    category: '商务',
+    accent: 'bg-[#2563eb]',
+    surface: 'bg-[#eff6ff]',
+    line: 'bg-[#bfdbfe]',
+    border: 'border-[#93c5fd]',
+    sampleSlides: [
+      { title: '季度工作汇报', bullets: ['目标回顾', '关键进展', '风险与计划'] },
+      { title: '关键进展', bullets: ['门户改版上线', '协同效率提升 32%', '接入 6 个业务系统'] },
+      { title: '风险与计划', bullets: ['跨系统数据口径待统一', '下季度推进真实数据联调'] },
+    ],
+    rules: [
+      { label: '主色调', value: '深蓝 #2563EB，沉稳专业' },
+      { label: '标题版式', value: '左对齐标题 + 色块强调条' },
+      { label: '页面结构', value: '封面 + 议程 + 数据页 + 结论页，16:9' },
+      { label: '适用场景', value: '工作汇报、方案评审、项目复盘' },
+    ],
+  },
+  {
+    id: 'tpl-academic',
+    name: '清新学术',
+    desc: '翠绿主色，适合学术汇报与研究报告',
+    category: '学术',
+    accent: 'bg-[#059669]',
+    surface: 'bg-[#ecfdf5]',
+    line: 'bg-[#a7f3d0]',
+    border: 'border-[#6ee7b7]',
+    sampleSlides: [
+      { title: '研究背景与问题', bullets: ['研究动机', '核心问题', '文献基础'] },
+      { title: '研究方法', bullets: ['数据采集', '模型构建', '对照实验'] },
+      { title: '结论与展望', bullets: ['主要结论', '局限性', '后续方向'] },
+    ],
+    rules: [
+      { label: '主色调', value: '翠绿 #059669，清新简洁' },
+      { label: '标题版式', value: '章节编号 + 标题，正文层级分明' },
+      { label: '页面结构', value: '封面 + 大纲 + 方法 + 结论，16:9' },
+      { label: '适用场景', value: '学术会议、研究报告、课程讲义' },
+    ],
+  },
+];
+
+export const presentationTemplates = presentationTemplateList.map(template => template.name);
 
 export const presentationParamOptions: Record<string, PresentationParamOption> = {
   pageCount: { label: "页数", options: ["3-5页", "6-10页", "11-15页", "16-20页"] },

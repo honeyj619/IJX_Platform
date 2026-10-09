@@ -2,14 +2,14 @@
 import {
   ArrowLeft,
   BarChart3,
-  CheckCircle2,
   ChevronRight,
   ClipboardList,
   Clock3,
   Download,
   Eye,
   FileText,
-  Filter,
+  FolderKanban,
+  History,
   MessageSquareText,
   PenLine,
   Save,
@@ -17,18 +17,30 @@ import {
   Send,
   Settings,
   Target,
-  UserRound,
   X,
-  Paperclip,
   Plus,
-  Trash2,
+  Trash2, RefreshCw,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { buildAdvisorUrl } from '../data/advisor';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
+import ProjectWeeklyReport from '../components/ProjectWeeklyReport';
+import { getHealthLightMeta } from '../data/projectWeeklyReport';
+import {
+  appendReportSendRecords,
+  canViewReportSendRecord,
+  createReportSendRecordId,
+  deriveSendResult,
+  formatReportRecordTime,
+  getReportSendRecords,
+  splitRecipientNames,
+  subscribeReportSendRecords,
+  type ReportSendRecord,
+  type ReportSendReceipt,
+} from '../data/reportSendRecords';
 
-type WorkReportView = 'write' | 'reports' | 'stats';
+type WorkReportView = 'write' | 'reports' | 'sent' | 'stats';
 
 const okrObjectives = [
   {
@@ -226,12 +238,18 @@ export default function WorkReport() {
   const navigate = useNavigate();
   const location = useLocation();
   const handledAdvisorResult = useRef<string | null>(null);
-  const [activeView, setActiveView] = useState<WorkReportView>('reports');
+  const initialView = new URLSearchParams(location.search).get('view');
+  const [activeView, setActiveView] = useState<WorkReportView>(
+    initialView === 'sent' || initialView === 'write' || initialView === 'stats' ? initialView : 'reports',
+  );
   const [okrReports, setOkrReports] = useState<Record<string, OkrReportContent>>(initialOkrReports);
   const [reportTo, setReportTo] = useState(reportTargets.join(','));
   const [copyTo, setCopyTo] = useState(copiedTargets.join(','));
-  const [selectedObjectiveId, setSelectedObjectiveId] = useState('o3');
+  const [selectedObjectiveId] = useState('o3');
   const [toast, setToast] = useState('');
+  const [sendRecords, setSendRecords] = useState(getReportSendRecords);
+  const [selectedSendRecord, setSelectedSendRecord] = useState<ReportSendRecord | null>(null);
+  const [resendToast, setResendToast] = useState('');
 
   const selectedObjective = useMemo(
     () => okrObjectives.find(item => item.id === selectedObjectiveId) || okrObjectives[0],
@@ -242,6 +260,16 @@ export default function WorkReport() {
     setToast(message);
     window.setTimeout(() => setToast(''), 1800);
   };
+
+  useEffect(() => subscribeReportSendRecords(() => setSendRecords(getReportSendRecords())), []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const view = params.get('view');
+    if (view === 'sent' || view === 'write' || view === 'stats' || view === 'reports') setActiveView(view);
+    const recordId = params.get('record');
+    if (recordId) setSelectedSendRecord(sendRecords.find(record => record.id === recordId) || null);
+  }, [location.search, sendRecords]);
 
   useEffect(() => {
     const result = (location.state as {
@@ -268,7 +296,7 @@ export default function WorkReport() {
   }, [location.key, location.state]);
 
   const openAdvisor = () => {
-    const insightMode = activeView === 'reports' || activeView === 'stats';
+    const insightMode = activeView !== 'write';
     navigate(buildAdvisorUrl({
       mode: insightMode ? 'insight' : 'report',
       source: activeView === 'stats' ? 'report-stats' : 'work-report',
@@ -293,6 +321,56 @@ export default function WorkReport() {
       'o3-kr3': { thisWeek: '整理智能办公培训素材。', nextWeek: '补充培训覆盖统计。' },
     });
     showToast('已导入上次汇报内容');
+  };
+
+  const submitManualReport = (nonOkrItems: NonOkrWorkItem[]) => {
+    const sentAt = formatReportRecordTime();
+    const targets = splitRecipientNames(reportTo);
+    const copies = splitRecipientNames(copyTo);
+    const receipts: ReportSendReceipt[] = [...targets, ...copies].map(target => ({
+      channel: 'PC门户',
+      target,
+      time: sentAt,
+      success: true,
+      read: false,
+    }));
+    const completed = [
+      ...Object.values(okrReports).map(item => item.thisWeek).filter(Boolean),
+      ...nonOkrItems.map(item => `${item.title}：${item.thisWeek}`).filter(Boolean),
+    ].join('\n');
+    const nextPlan = [
+      ...Object.values(okrReports).map(item => item.nextWeek).filter(Boolean),
+      ...nonOkrItems.map(item => `${item.title}：${item.nextWeek}`).filter(Boolean),
+    ].join('\n');
+    const now = new Date();
+    const monday = new Date(now);
+    const weekday = now.getDay() || 7;
+    monday.setDate(now.getDate() - weekday + 1);
+    const formatDate = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    appendReportSendRecords([{
+      id: createReportSendRecordId('manual-work'),
+      reportType: '工作汇报',
+      title: `${now.getFullYear()}年第${Math.ceil((((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000) + new Date(now.getFullYear(), 0, 1).getDay() + 1) / 7)}周工作汇报`,
+      sender: MAIN_USER_NAME,
+      sentAt,
+      period: `${formatDate(monday)} 至 ${formatDate(now)}`,
+      projectMembers: [],
+      channels: ['PC门户'],
+      reportTo: targets,
+      copyTo: copies,
+      result: deriveSendResult(receipts),
+      receipts,
+      sourceLabels: ['OKR', '工作事项'],
+      personalSnapshot: {
+        summary: `本次汇报包含 ${Object.keys(okrReports).length} 条 KR 进展和 ${nonOkrItems.length} 条其他工作事项。`,
+        completed,
+        risks: '暂无新增风险。',
+        nextPlan,
+        support: '如需协调支持，请在评论中补充。',
+      },
+    }]);
+    setActiveView('sent');
+    showToast('汇报已提交并写入发送记录');
   };
 
   return (
@@ -357,7 +435,7 @@ export default function WorkReport() {
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="text-lg font-bold text-gray-900">工作汇报</h2>
-                <p className="mt-1 text-sm text-gray-500">{activeView === 'stats' ? '按日期明细查看团队汇报情况' : '查看汇报内容、关联 OKR、已读情况和评论'}</p>
+                <p className="mt-1 text-sm text-gray-500">{activeView === 'stats' ? '按日期明细查看团队汇报情况' : '查看工作汇报、项目汇报、已读情况、评论与发送情况'}</p>
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="inline-flex rounded-xl bg-gray-50 p-1 ring-1 ring-gray-100">
@@ -410,13 +488,14 @@ export default function WorkReport() {
             onCopyToChange={setCopyTo}
             onImportLast={importLastReport}
             onToast={showToast}
+            onSubmit={submitManualReport}
           />
           </div>
         )}
 
-        {activeView === 'reports' && (
+        {(activeView === 'reports' || activeView === 'sent') && (
           <div className="min-h-0 flex-1">
-            <ReportsView onWrite={() => setActiveView('write')} />
+            <ReportsView sendRecords={sendRecords} onSelectSendRecord={setSelectedSendRecord} />
           </div>
         )}
 
@@ -427,7 +506,7 @@ export default function WorkReport() {
         )}
       </div>
 
-      {(activeView === 'write' || activeView === 'reports' || activeView === 'stats') && (
+      {(activeView === 'write' || activeView === 'reports' || activeView === 'sent' || activeView === 'stats') && (
         <button
           onClick={openAdvisor}
           className="fixed right-5 top-1/2 z-40 flex -translate-y-1/2 flex-col items-center gap-1 rounded-xl bg-white p-2 text-gray-700 shadow-xl ring-1 ring-pink-100 transition hover:-translate-y-[52%] hover:shadow-2xl"
@@ -439,23 +518,24 @@ export default function WorkReport() {
           <span className="text-[11px] font-semibold text-pink-700">如意参谋师</span>
         </button>
       )}
-    </div>
-  );
-}
 
-function NavPill({ active, icon, label, onClick }: { active: boolean; icon: React.ReactNode; label: string; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all ${
-        active
-          ? 'bg-pink-700 text-white shadow-sm shadow-pink-700/20'
-          : 'bg-gray-50 text-gray-600 hover:bg-pink-50 hover:text-pink-700'
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
+      {selectedSendRecord && (
+        <ReportSendRecordDetail
+          record={selectedSendRecord}
+          onClose={() => setSelectedSendRecord(null)}
+          onResend={() => {
+            setSendRecords(current => current.map(item => item.id === selectedSendRecord.id
+              ? { ...item, result: '发送成功', sentAt: '刚刚', receipts: item.receipts.map(receipt => ({ ...receipt, success: true, time: '刚刚' })) }
+              : item));
+            setResendToast(`已重新发送《${selectedSendRecord.title}》`);
+            setSelectedSendRecord(null);
+          }}
+        />
+      )}
+      {resendToast && (
+        <div className="fixed bottom-16 left-1/2 z-[95] -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-xl">{resendToast}<button type="button" onClick={() => setResendToast('')} className="ml-3 text-gray-400 hover:text-white">×</button></div>
+      )}
+    </div>
   );
 }
 
@@ -469,6 +549,7 @@ function ReportComposer({
   onCopyToChange,
   onImportLast,
   onToast,
+  onSubmit,
 }: {
   okrReports: Record<string, OkrReportContent>;
   reportTo: string;
@@ -479,6 +560,7 @@ function ReportComposer({
   onCopyToChange: (value: string) => void;
   onImportLast: () => void;
   onToast: (message: string) => void;
+  onSubmit: (items: NonOkrWorkItem[]) => void;
 }) {
   const [nonOkrItems, setNonOkrItems] = useState<NonOkrWorkItem[]>([
     {
@@ -689,7 +771,7 @@ function ReportComposer({
           保存
         </button>
         <button
-          onClick={() => onToast('汇报已提交')}
+          onClick={() => onSubmit(nonOkrItems)}
           className="inline-flex items-center gap-2 rounded-lg bg-pink-700 px-7 py-2.5 text-sm font-semibold text-white shadow-sm shadow-pink-700/20 transition hover:bg-pink-800"
         >
           <Send size={16} />
@@ -816,15 +898,60 @@ function StatNumberCard({ title, value, desc, tone }: { title: string; value: st
   );
 }
 
-function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
+function ReportsView({
+  sendRecords,
+  onSelectSendRecord,
+}: {
+  sendRecords: ReportSendRecord[];
+  onSelectSendRecord: (record: ReportSendRecord) => void;
+}) {
   const navigate = useNavigate();
   const [selectedReport, setSelectedReport] = useState<typeof reportHistory[number] | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
+  const [reportTypeFilter, setReportTypeFilter] = useState<'all' | 'work' | 'project'>('all');
+  const [keyword, setKeyword] = useState('');
+  const [scopeFilter, setScopeFilter] = useState<'received' | 'managed'>('received');
+  const [projectKeyword, setProjectKeyword] = useState('');
+  const [healthFilter, setHealthFilter] = useState<'all' | 'green' | 'yellow' | 'red'>('all');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
   const [commentsByReport, setCommentsByReport] = useState<Record<number, typeof reportHistory[number]['comments']>>(
     Object.fromEntries(reportHistory.map(report => [report.id, report.comments]))
   );
 
-  const groupedReports = reportHistory.reduce<Record<string, typeof reportHistory>>((groups, report) => {
+  const normalizedKeyword = keyword.trim().toLowerCase();
+  const projectKw = projectKeyword.trim().toLowerCase();
+  const visibleSendRecords = sendRecords.filter(record => {
+    // 范围：我收到的（收件人/抄送含我或我发送） / 我管理的（项目汇报且我是项目负责人/成员或发送人）
+    const received = record.sender === MAIN_USER_NAME
+      || record.reportTo.includes(MAIN_USER_NAME)
+      || record.copyTo.includes(MAIN_USER_NAME);
+    const managed = record.reportType === '项目汇报'
+      && (record.sender === MAIN_USER_NAME
+        || record.projectOwner === MAIN_USER_NAME
+        || record.projectMembers.includes(MAIN_USER_NAME));
+    if (scopeFilter === 'received' ? !received : !managed) return false;
+    if (reportTypeFilter !== 'all' && (reportTypeFilter === 'work' ? record.reportType !== '工作汇报' : record.reportType !== '项目汇报')) return false;
+    // 项目汇报 + 项目关键词：按项目名称 / 编号模糊匹配
+    if (projectKw && record.reportType === '项目汇报') {
+      const hay = `${record.projectName || ''} ${record.projectCode || ''}`.toLowerCase();
+      if (!hay.includes(projectKw)) return false;
+    }
+    // 项目汇报：按健康状态灯筛选
+    if (reportTypeFilter === 'project' && healthFilter !== 'all' && record.healthLight !== healthFilter) return false;
+    if (!normalizedKeyword) return true;
+    return [record.title, record.sender, record.projectName || '', record.period]
+      .some(value => value.toLowerCase().includes(normalizedKeyword));
+  });
+  const totalSendRecords = visibleSendRecords.length;
+  const totalPages = Math.max(1, Math.ceil(totalSendRecords / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedSendRecords = visibleSendRecords.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const visibleWorkReports = reportTypeFilter === 'project' ? [] : reportHistory.filter(report => (
+    !normalizedKeyword || [report.title, report.person, report.type, ...report.reportTo]
+      .some(value => value.toLowerCase().includes(normalizedKeyword))
+  ));
+  const groupedReports = visibleWorkReports.reduce<Record<string, typeof reportHistory>>((groups, report) => {
     groups[report.groupDate] = [...(groups[report.groupDate] || []), report];
     return groups;
   }, {});
@@ -861,10 +988,11 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
 
         <div className="shrink-0 border-b border-gray-100 px-6 py-4">
           <div className="grid gap-3 lg:grid-cols-[180px_260px_minmax(180px,1fr)_86px]">
-            <button className="flex h-10 items-center justify-between rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-500 hover:border-pink-200">
-              <span>汇报类型</span>
-              <ChevronRight size={15} className="rotate-90 text-gray-300" />
-            </button>
+            <select value={reportTypeFilter} onChange={event => setReportTypeFilter(event.target.value as 'all' | 'work' | 'project')} className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 outline-none hover:border-pink-200 focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
+              <option value="all">全部汇报</option>
+              <option value="work">工作汇报</option>
+              <option value="project">项目汇报</option>
+            </select>
             <div className="grid h-10 grid-cols-[1fr_24px_1fr] items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-400">
               <span>开始日期</span>
               <span className="text-center">~</span>
@@ -872,7 +1000,7 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
             </div>
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100" placeholder="搜索人员、汇报内容或 OKR" />
+              <input value={keyword} onChange={event => setKeyword(event.target.value)} className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100" placeholder="搜索人员、项目或汇报内容" />
             </div>
             <label className="flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 text-sm text-gray-600">
               <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-pink-700 focus:ring-pink-500" />
@@ -880,18 +1008,122 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
             </label>
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-[200px_minmax(200px,1fr)]">
-            <button className="flex h-10 items-center justify-between rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-500 hover:border-pink-200">
-              <span>请选择范围</span>
-              <ChevronRight size={15} className="rotate-90 text-gray-300" />
-            </button>
-            <button className="flex h-10 items-center justify-between rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-500 hover:border-pink-200">
-              <span>请选择人员</span>
-              <ChevronRight size={15} className="rotate-90 text-gray-300" />
-            </button>
+            <select value={scopeFilter} onChange={event => setScopeFilter(event.target.value as 'received' | 'managed')} className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 outline-none hover:border-pink-200 focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
+              <option value="received">我收到的</option>
+              <option value="managed">我管理的</option>
+            </select>
+            <div className="flex items-center gap-3">
+              <button className="flex h-10 flex-1 items-center justify-between rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-500 hover:border-pink-200">
+                <span>请选择人员</span>
+                <ChevronRight size={15} className="rotate-90 text-gray-300" />
+              </button>
+              {reportTypeFilter === 'project' && (
+                <>
+                  <div className="relative h-10 flex-1">
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      value={projectKeyword}
+                      onChange={event => { setProjectKeyword(event.target.value); setPage(1); }}
+                      placeholder="搜索项目名称 / ID"
+                      className="h-10 w-full rounded-lg border border-pink-200 bg-pink-50/30 pl-9 pr-3 text-sm text-gray-700 outline-none focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
+                    />
+                  </div>
+                  <select value={healthFilter} onChange={event => { setHealthFilter(event.target.value as 'all' | 'green' | 'yellow' | 'red'); setPage(1); }} className="h-10 w-[130px] rounded-lg border border-pink-200 bg-pink-50/30 px-3 text-sm text-gray-700 outline-none focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100">
+                    <option value="all">全部健康度</option>
+                    <option value="green">绿灯（正常）</option>
+                    <option value="yellow">黄灯（关注）</option>
+                    <option value="red">红灯（风险）</option>
+                  </select>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 scrollbar-hover">
+          {visibleSendRecords.length > 0 && (
+            <section className="mb-8">
+              <div className="mb-3 flex items-center gap-2">
+                <span className="h-5 w-1 rounded-full bg-pink-700" />
+                <h3 className="font-bold text-gray-800">汇报发送</h3>
+                <span className="rounded-full bg-gray-50 px-2 py-0.5 text-xs text-gray-500">共 {totalSendRecords} 条</span>
+              </div>
+              <div className="overflow-hidden rounded-xl border border-gray-100">
+                <div className="grid grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 max-xl:min-w-[1140px]">
+                  <div>人员</div>
+                  <div>汇报类型</div>
+                  <div>汇报内容</div>
+                  <div>关联OKR</div>
+                  <div>汇报对象</div>
+                  <div>已读情况</div>
+                  <div>发送</div>
+                  <div>评论</div>
+                </div>
+                <div className="overflow-x-auto">
+                  {pagedSendRecords.map(record => {
+                    const light = record.healthLight ? getHealthLightMeta(record.healthLight) : null;
+                    const readCount = record.receipts.filter(receipt => receipt.read).length;
+                    return (
+                      <button
+                        key={record.id}
+                        type="button"
+                        onClick={() => onSelectSendRecord(record)}
+                        className="grid w-full grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] items-center border-t border-gray-100 px-4 py-4 text-left transition hover:bg-pink-50/40 max-xl:min-w-[1140px]"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-100 to-pink-100 text-sm font-bold text-pink-700">{record.sender.slice(0, 1)}</div>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-gray-900">{record.sender}</div>
+                            <div className="truncate text-xs text-gray-400">{record.projectCode || record.reportType}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm text-gray-700">
+                          {record.reportType === '项目汇报' ? <FolderKanban size={15} className="text-pink-700" /> : <FileText size={15} className="text-pink-700" />}
+                          {record.reportType}
+                        </div>
+                        <div className="min-w-0 pr-4">
+                          <div className="mb-1 truncate text-sm font-medium text-gray-900">{record.title}</div>
+                          <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
+                            <span>{record.period}</span>
+                            {light && <span className={`inline-flex items-center gap-1 font-semibold ${light.text}`}><span className={`h-1.5 w-1.5 rounded-full ${light.dot}`} />{light.label}</span>}
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-400">—</div>
+                        <div className="truncate text-sm text-gray-600">{record.reportTo.join('、')}</div>
+                        <div className="text-sm text-gray-600">{readCount}/{record.receipts.length} 已读</div>
+                        <div>
+                          <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${record.result === '发送成功' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>{record.result === '发送成功' ? '已发送' : '发送失败'}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-1 text-sm text-gray-600">
+                          <MessageSquareText size={15} className="text-gray-400" />
+                          -
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          )}
+          {totalSendRecords > 0 && (
+            <div className="mb-8 flex items-center justify-between gap-3">
+              <p className="text-xs text-gray-500">共 {totalSendRecords} 条</p>
+              <div className="flex items-center gap-1">
+                <button type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40" title="上一页">‹</button>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map(pageNo => (
+                  <button
+                    key={pageNo}
+                    type="button"
+                    onClick={() => setPage(pageNo)}
+                    className={`h-8 min-w-8 rounded-lg px-2 text-sm font-semibold transition-colors ${pageNo === safePage ? 'bg-pink-700 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    {pageNo}
+                  </button>
+                ))}
+                <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40" title="下一页">›</button>
+              </div>
+            </div>
+          )}
           {Object.entries(groupedReports).map(([date, reports]) => (
             <section key={date} className="mb-8 last:mb-0">
               <div className="mb-3 flex items-center gap-2">
@@ -900,13 +1132,14 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
                 <span className="rounded-full bg-gray-50 px-2 py-0.5 text-xs text-gray-500">{reports.length} 条</span>
               </div>
               <div className="overflow-hidden rounded-xl border border-gray-100">
-                <div className="grid grid-cols-[180px_132px_minmax(220px,1fr)_220px_154px_110px_92px] bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 max-xl:min-w-[1100px]">
+                <div className="grid grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 max-xl:min-w-[1140px]">
                   <div>人员</div>
                   <div>汇报类型</div>
                   <div>汇报内容</div>
                   <div>关联OKR</div>
                   <div>汇报对象</div>
                   <div>已读情况</div>
+                  <div>发送</div>
                   <div>评论</div>
                 </div>
                 <div className="overflow-x-auto">
@@ -930,7 +1163,7 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
                             setSelectedReport(report);
                           }
                         }}
-                        className="grid w-full cursor-pointer grid-cols-[180px_132px_minmax(220px,1fr)_220px_154px_110px_92px] items-center border-t border-gray-100 px-4 py-4 text-left transition hover:bg-pink-50/40 max-xl:min-w-[1100px]"
+                        className="grid w-full cursor-pointer grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] items-center border-t border-gray-100 px-4 py-4 text-left transition hover:bg-pink-50/40 max-xl:min-w-[1140px]"
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-100 to-pink-100 text-sm font-bold text-pink-700">
@@ -963,6 +1196,7 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
                         </div>
                         <div className="truncate text-sm text-gray-600">{report.reportTo.join('、')}</div>
                         <div className="text-sm text-gray-600">{readCount}/{report.readReceipts.length} 已读</div>
+                        <div className="text-sm text-gray-400">—</div>
                         <div className="inline-flex items-center gap-1 text-sm text-gray-600">
                           <MessageSquareText size={15} className="text-gray-400" />
                           {comments.length || '-'}
@@ -974,6 +1208,9 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
               </div>
             </section>
           ))}
+          {visibleSendRecords.length === 0 && Object.keys(groupedReports).length === 0 && (
+            <div className="py-16 text-center text-sm text-gray-400">暂无符合条件的汇报</div>
+          )}
         </div>
       </main>
 
@@ -1123,33 +1360,82 @@ function ReportsView({ onWrite: _onWrite }: { onWrite: () => void }) {
   );
 }
 
-function ReportTextarea({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  required?: boolean;
-}) {
+
+function ReportSendRecordDetail({ record, onClose, onResend }: { record: ReportSendRecord; onClose: () => void; onResend?: () => void }) {
+  const light = record.healthLight ? getHealthLightMeta(record.healthLight) : null;
+  const snapshotSections = record.personalSnapshot ? [
+    ['汇报摘要', record.personalSnapshot.summary],
+    ['本期完成', record.personalSnapshot.completed],
+    ['风险事项', record.personalSnapshot.risks],
+    ['下期计划', record.personalSnapshot.nextPlan],
+    ['协调支持', record.personalSnapshot.support],
+  ] : [];
+
   return (
-    <div className="grid gap-3 md:grid-cols-[130px_minmax(0,1fr)]">
-      <label className="pt-2 text-sm font-semibold text-gray-800">
-        {required && <span className="mr-1 text-red-500">*</span>}
-        {label}：
-      </label>
-      <div>
-        <textarea
-          value={value}
-          onChange={(event) => onChange(event.target.value.slice(0, 800))}
-          placeholder={placeholder}
-          className="min-h-[112px] w-full resize-y rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm leading-6 text-gray-800 outline-none transition focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
-        />
-        <div className="mt-1 text-right text-xs text-gray-400">{value.length} / 800</div>
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-gray-950/35 px-4 py-6" onClick={onClose}>
+      <div className="flex max-h-[92vh] w-full max-w-7xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-xl font-bold text-gray-950">{record.title}</h3>
+              <span className="rounded-full bg-pink-50 px-2.5 py-1 text-xs font-semibold text-pink-800">{record.reportType}</span>
+              {light && <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${light.bg} ${light.text}`}><span className={`h-1.5 w-1.5 rounded-full ${light.dot}`} />{light.label}</span>}
+            </div>
+            <p className="mt-2 text-sm text-gray-500">{record.sender} · {record.sentAt} · {record.period}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700" title="关闭"><X size={18} /></button>
+        </header>
+        <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="overflow-y-auto bg-[#f7f8fa] px-6 py-5 scrollbar-hover">
+            {record.weeklyData ? (
+              <ProjectWeeklyReport data={record.weeklyData} filled description={record.weeklyData.overallDescription} readOnly />
+            ) : (
+              <div className="mx-auto max-w-3xl space-y-4">
+                {snapshotSections.map(([title, content]) => (
+                  <section key={title} className="rounded-xl border border-gray-200 bg-white p-5">
+                    <h4 className="text-sm font-bold text-gray-900">{title}</h4>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-gray-600">{content || '暂无内容'}</p>
+                  </section>
+                ))}
+              </div>
+            )}
+          </div>
+          <aside className="min-h-0 overflow-y-auto border-l border-gray-100 bg-white p-5 scrollbar-hover">
+            <section>
+              <h4 className="text-sm font-bold text-gray-900">发送链路</h4>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">发送人</p><p className="mt-1 font-semibold text-gray-800">{record.sender}</p></div>
+                <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">汇报对象</p><p className="mt-1 font-semibold text-gray-800">{record.reportTo.join('、') || '-'}</p></div>
+                <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">抄送对象</p><p className="mt-1 font-semibold text-gray-800">{record.copyTo.join('、') || '-'}</p></div>
+                {record.projectOwner && <div className="rounded-lg bg-gray-50 p-3"><p className="text-xs text-gray-400">项目负责人 / 成员</p><p className="mt-1 font-semibold leading-6 text-gray-800">{record.projectOwner} · {record.projectMembers.join('、')}</p></div>}
+              </div>
+            </section>
+            <section className="mt-6 border-t border-gray-100 pt-5">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-gray-900">发送回执</h4>
+                {record.result !== '发送成功' ? (
+                  <button type="button" onClick={onResend} className="inline-flex items-center gap-1.5 rounded-lg bg-pink-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-pink-800">
+                    <RefreshCw size={12} />重新发送
+                  </button>
+                ) : (
+                  <span className="text-xs text-gray-400">{record.result}</span>
+                )}
+              </div>
+              <div className="mt-3 space-y-2">
+                {record.receipts.map((receipt, index) => (
+                  <div key={`${receipt.channel}-${receipt.target}-${index}`} className="rounded-lg border border-gray-100 px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-2"><span className="truncate text-sm font-semibold text-gray-800">{receipt.target}</span><span className={receipt.success ? 'text-xs font-semibold text-emerald-600' : 'text-xs font-semibold text-red-500'}>{receipt.success ? '已送达' : '失败'}</span></div>
+                    <p className="mt-1 text-xs text-gray-400">{receipt.channel} · {receipt.time}{receipt.read ? ' · 已读' : ''}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+            <section className="mt-6 border-t border-gray-100 pt-5">
+              <h4 className="text-sm font-bold text-gray-900">数据来源</h4>
+              <div className="mt-3 flex flex-wrap gap-2">{record.sourceLabels.map(label => <span key={label} className="rounded-lg bg-gray-50 px-2.5 py-1.5 text-xs text-gray-600">{label}</span>)}</div>
+            </section>
+          </aside>
+        </div>
       </div>
     </div>
   );
@@ -1180,39 +1466,6 @@ function ReportInput({
         placeholder={placeholder}
         className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-800 outline-none transition focus:border-pink-300 focus:ring-2 focus:ring-pink-100"
       />
-    </div>
-  );
-}
-
-function MetricCard({ title, value, desc, color }: { title: string; value: string; desc: string; color: 'pink' | 'blue' | 'green' }) {
-  const styles = {
-    pink: 'from-pink-50 to-white text-pink-700',
-    blue: 'from-pink-50 to-white text-pink-800',
-    green: 'from-emerald-50 to-white text-emerald-700',
-  };
-  return (
-    <div className={`rounded-2xl border border-gray-100 bg-gradient-to-br ${styles[color]} p-5 shadow-sm`}>
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-600">{title}</p>
-        <BarChart3 size={18} />
-      </div>
-      <p className="mt-4 text-3xl font-bold">{value}</p>
-      <p className="mt-2 text-sm text-gray-500">{desc}</p>
-    </div>
-  );
-}
-
-function MetricRing({ label, value, progress }: { label?: string; value: string; progress: number }) {
-  return (
-    <div>
-      {label && <p className="text-xs text-gray-400">{label}</p>}
-      <div className="mt-1 inline-flex items-center gap-2">
-        <span
-          className="h-4 w-4 rounded-full"
-          style={{ background: `conic-gradient(#4f6fed ${progress * 3.6}deg, #e5e7eb 0deg)` }}
-        />
-        <span className="font-semibold text-gray-700">{value}</span>
-      </div>
     </div>
   );
 }

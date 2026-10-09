@@ -118,7 +118,8 @@ export const buildProjectWeeklyData = (params: {
   weekNumber?: number;
   period?: string;
 }): ProjectWeeklyData => {
-  const planProgress = Math.min(params.progress + 6, 100);
+  // 计划进度：正常项目按计划推进（计划=实际）；关注/风险项目存在滞后
+  const planProgress = params.riskLevel === '正常' ? params.progress : Math.min(params.progress + 6, 100);
   const openRiskCount = params.riskLevel === '风险' ? 3 : params.riskLevel === '关注' ? 1 : 0;
   const healthLight = resolveHealthLight({ overallProgress: params.progress, planProgress, openRiskCount });
   const doneCount = Math.round((params.progress / 100) * 30);
@@ -140,9 +141,9 @@ export const buildProjectWeeklyData = (params: {
     projectName: params.projectName,
     projectCode: '—',
     projectLevel: '—',
-    sponsor: '王成斌',
-    manager: '宋婧',
-    itManager: '蒋涵',
+    sponsor: '刘备',
+    manager: '诸葛亮',
+    itManager: '司马懿',
     currentStage: '开发实施',
     weekNumber: params.weekNumber ?? 33,
     period: params.period ?? '2026-08-03 ~ 2026-08-09',
@@ -184,7 +185,7 @@ export const buildProjectWeeklyData = (params: {
       {
         id: '1', name: '测试大要求 - storys/bigen', type: 'story/bigen', result: '已解决',
         description: '系统中项目故事-集成管理-上海吉祥航空实业股份有限公司电话-0000-0019009',
-        solution: '已制定解决方案并完成验证', planDate: '2025-12-19', assignee: '张鹤',
+        solution: '已制定解决方案并完成验证', planDate: '2025-12-19', assignee: '赵云',
       },
     ],
     risks: [],

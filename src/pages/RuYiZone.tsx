@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code, FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog, Target, Copy, RotateCcw } from "lucide-react";
+import {
+  Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code,
+  FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog,
+  Target, Copy, RotateCcw, CheckCircle2, Loader2,
+} from 'lucide-react';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ProcessReferenceFilePicker from "../components/ProcessReferenceFilePicker";
 import DocumentEditor from "./DocumentEditor";
@@ -60,6 +64,8 @@ type ConversationKind =
   | "documentDraft"
   | "documentValidation"
   | "presentationDraft"
+  | "projectReportDraft"
+  | "reportStats"
   | "goalAssistant";
 
 const defaultAssistants: Assistant[] = [
@@ -281,6 +287,9 @@ export default function RuYiZone() {
   const [isMobile, setIsMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isLegacyMode, setIsLegacyMode] = useState(false);
+  // 对话式项目汇报：必填项（项目、周期）→ 步骤 → 生成
+  const [prDraft, setPrDraft] = useState<{ projectName: string; period: string; step: 'collect' | 'generating' | 'done' }>({ projectName: '', period: '', step: 'collect' });
+  const [prMissingFields, setPrMissingFields] = useState<string[]>([]);
   const [legacyEditorStartsInRequirements, setLegacyEditorStartsInRequirements] = useState(false);
   const [legacyEditorStartsInOutline, setLegacyEditorStartsInOutline] = useState(false);
   const [editorSessionId, setEditorSessionId] = useState(0);
@@ -331,6 +340,8 @@ export default function RuYiZone() {
   const [reportSubmitDone, setReportSubmitDone] = useState(false);
 
   const resolveConversationKind = (question: string): ConversationKind => {
+    if (/统计.*汇报|汇报.*统计|发送情况|多少.*(项目|汇报)/.test(question)) return "reportStats";
+    if (/项目汇报/.test(question)) return "projectReportDraft";
     if (/汇报|周报|日报|工作进展|任务分析|风险分析|工作洞察/.test(question)) return "goalAssistant";
     if (/会议纪要|纪要|录音/.test(question)) return "meetingMinutes";
     if (/反馈|问题|报错|不好用|VPN|服务台/.test(question)) return "feedback";
@@ -382,17 +393,70 @@ export default function RuYiZone() {
   };
 
   const handleSend = () => {
+    // 对话式项目汇报：必填项解析（项目名 / 周期）
+    if (conversationKind === "projectReportDraft") {
+      const message = input.trim();
+      if (!message) return;
+      setSentQuestion(message);
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setInput("");
+
+      // 周期识别：本周 / 上周 / 日期
+      const periodMatch = message.match(/(本周|上周|上上周|这周)/) || message.match(/(\d{4}[-/年]\d{1,2}[-/月]\d{1,2})\s*[至到~]\s*(\d{4}[-/年]\d{1,2}[-/月]\d{1,2})?/);
+      // 项目名识别："XX项目" 或 引号内容
+      const projMatch = message.match(/[《"']([^"》']+)[》"'](?=项目|汇报)/) || message.match(/([一-龥A-Za-z0-9]{2,12})(?=项目)/);
+
+      const next = { ...prDraft };
+      if (projMatch) next.projectName = projMatch[1];
+      if (periodMatch) next.period = periodMatch[0];
+      const missing: string[] = [];
+      if (!next.projectName) missing.push('项目名称（例如：旅游度假平台项目）');
+      if (!next.period) missing.push('汇报周期（例如：本周 / 上周 / 2026-10-01 至 2026-10-07）');
+
+      if (missing.length > 0) {
+        setPrDraft({ ...next, step: 'collect' });
+        setPrMissingFields(missing);
+        return;
+      }
+      // 必填齐备 → 生成步骤 → 完成
+      setPrMissingFields([]);
+      setPrDraft({ ...next, step: 'generating' });
+      window.setTimeout(() => setPrDraft(current => ({ ...current, step: 'done' })), 2400);
+      return;
+    }
+
+    // 项目管理工程师：汇报发送统计问答
+    if (conversationKind === "reportStats") {
+      const message = input.trim();
+      if (!message) return;
+      setSentQuestion(message);
+      setSelectedHistoryId(null);
+      setHasConversation(true);
+      setInput("");
+      return;
+    }
+
     if (activeTool === 'PPT' && conversationKind === "presentationDraft") {
       const message = input.trim();
       if (!message) return;
       if (/确认|可以|没问题|生成|就这样|通过/.test(message)) {
+        // 确认需求：直接进入PPT工作台大纲流程（携带录入的需求）
         setPresentationConfirmMessage(message);
         setPresentationReady(true);
+        setInput("");
+        setHasConversation(false);
+        setShowPresentationEditor(true);
+        navigate('/web_client/ruyi-zone/presentation');
       } else {
-        setPresentationReady(false);
+        // 调整意见：合并进需求描述，同样带入工作台
+        setPresentationPrompt((current) => `${current}\n补充要求：${message}`);
         setPresentationAdjustments((current) => [...current, message]);
+        setInput("");
+        setHasConversation(false);
+        setShowPresentationEditor(true);
+        navigate('/web_client/ruyi-zone/presentation');
       }
-      setInput("");
       return;
     }
 
@@ -471,13 +535,15 @@ export default function RuYiZone() {
     const projectReportMatch = question.match(/^(?:请|帮我)?(?:生成|编写|输出|制作)(.{1,24}?)周报$/);
     if (selectedAssistant?.name === "如意参谋师") {
       if (!question) return;
-      const mode = /分析|风险|进展|洞察|未提交/.test(question) ? "insight" : "report";
       setSentQuestion(question);
       setConversationKind("goalAssistant");
       setSelectedHistoryId(null);
       setHasConversation(true);
       setInput("");
-      navigate(buildAdvisorUrl({ mode: projectReportMatch ? 'project-report' : mode, source: 'ruyi-zone', initialPrompt: question }));
+      // 仅精确「生成XX周报」指令进工作台；其余（含生成类表述）均保留对话模式
+      if (projectReportMatch) {
+        navigate(buildAdvisorUrl({ mode: 'project-report', source: 'ruyi-zone', initialPrompt: question }));
+      }
       return;
     }
     if (question) {
@@ -487,9 +553,9 @@ export default function RuYiZone() {
         return;
       }
       const nextKind = resolveConversationKind(question);
-      if (nextKind === "goalAssistant") {
-        const mode = /分析|风险|进展|洞察|未提交/.test(question) ? "insight" : "report";
-        navigate(buildAdvisorUrl({ mode, source: 'ruyi-zone', initialPrompt: question }));
+      // 未选择插件时一律保持对话模式；仅精确的「生成XX周报」指令进入参谋师工作台
+      if (nextKind === "goalAssistant" && projectReportMatch) {
+        navigate(buildAdvisorUrl({ mode: 'project-report', source: 'ruyi-zone', initialPrompt: question }));
         setInput("");
         return;
       }
@@ -577,11 +643,14 @@ export default function RuYiZone() {
     setAssistants(defaultAssistants.map((assistant) => ({ ...assistant, isActive: assistant.name === "如意PPT创作" })));
     setSelectedAssistant(presentationAssistant);
     setSelectedHistoryId(null);
+    // 导航栏选择如意PPT：直接进入 PPT 工作台
     setActiveTool("PPT");
     setHasConversation(false);
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
     setShowPresentationEditor(true);
+    setConversationKind("pending");
+    setInput("");
     navigate('/web_client/ruyi-zone/presentation');
   };
 
@@ -1292,6 +1361,7 @@ export default function RuYiZone() {
                 textStyle: pptTextStyle,
                 template: pptTemplate,
                 attachments: pptAttachments,
+                autoGenerate: showPresentationEditor,
               }}
               onBack={() => {
                 setShowPresentationEditor(false);
@@ -1625,6 +1695,7 @@ export default function RuYiZone() {
                 textStyle: pptTextStyle,
                 template: pptTemplate,
                 attachments: pptAttachments,
+                autoGenerate: showPresentationEditor,
               }}
               onBack={() => {
                 setShowPresentationEditor(false);
@@ -1894,6 +1965,106 @@ export default function RuYiZone() {
                             ))}
                           </div>
                           <Link to="/web_client/okr?assistant=assessment&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">打开 OKR 页面继续调整</Link>
+                        </>
+                      )}
+
+                      {/* 对话式项目汇报：必填收集 -> 生成步骤 -> 结果 */}
+                      {conversationKind === "projectReportDraft" && (
+                        <>
+                          {prDraft.step === 'collect' && (
+                            <>
+                              <p className="mb-4 leading-7">好的，我来帮您撰写项目汇报。为了生成准确的汇报内容，需要确认以下必填信息：</p>
+                              <div className="mb-4 space-y-2">
+                                <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                                  <span className={`h-2 w-2 rounded-full ${prDraft.projectName ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                                  <span className="text-sm text-gray-700">项目名称{prDraft.projectName ? `：${prDraft.projectName}` : '（待录入）'}</span>
+                                </div>
+                                <div className="flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                                  <span className={`h-2 w-2 rounded-full ${prDraft.period ? 'bg-emerald-500' : 'bg-amber-400'}`} />
+                                  <span className="text-sm text-gray-700">汇报周期{prDraft.period ? `：${prDraft.period}` : '（待录入）'}</span>
+                                </div>
+                              </div>
+                              {prMissingFields.length > 0 && (
+                                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
+                                  还缺少 <span className="font-semibold">{prMissingFields.length} 项必填内容</span>，请补充：
+                                  <ul className="mt-1.5 list-disc pl-5">{prMissingFields.map(field => <li key={field}>{field}</li>)}</ul>
+                                  <p className="mt-1.5 text-xs text-amber-600">示例：帮我写《旅游度假平台》项目本周汇报</p>
+                                </div>
+                              )}
+                              {prDraft.projectName && prDraft.period && (
+                                <p className="text-sm text-gray-500">信息已齐备，发送任意内容开始生成。</p>
+                              )}
+                            </>
+                          )}
+                          {prDraft.step === 'generating' && (
+                            <>
+                              <p className="mb-4 leading-7">必填信息已确认，正在生成《{prDraft.projectName}》项目汇报（{prDraft.period}）：</p>
+                              <div className="space-y-2.5">
+                                {['读取禅道项目数据', '清洗与指标计算', '渲染汇报模板'].map((stage, index) => (
+                                  <div key={stage} className="flex items-center gap-2.5 text-sm text-gray-700">
+                                    <Loader2 size={14} className="animate-spin text-theme-600" />
+                                    {stage}
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                          {prDraft.step === 'done' && (
+                            <>
+                              <div className="mb-4 flex items-center gap-2">
+                                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-50 text-emerald-600"><CheckCircle2 size={14} /></span>
+                                <p className="font-semibold text-gray-900">项目汇报已生成</p>
+                              </div>
+                              <div className="mb-4 space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-4 text-sm leading-6">
+                                <div><span className="text-gray-400">项目名称：</span><span className="font-semibold text-gray-800">{prDraft.projectName}</span></div>
+                                <div><span className="text-gray-400">汇报周期：</span><span className="font-semibold text-gray-800">{prDraft.period}</span></div>
+                                <div><span className="text-gray-400">汇报类型：</span><span className="font-semibold text-gray-800">项目汇报</span></div>
+                                <div><span className="text-gray-400">整体进展：</span>本周按计划推进，核心模块开发完成，整体进度 85%；已完成 17 项本周工作，无未关闭风险。</div>
+                                <div><span className="text-gray-400">健康状态：</span><span className="inline-flex items-center gap-1 font-semibold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />绿灯（正常）</span></div>
+                              </div>
+                              <button
+                                onClick={() => navigate('/web_client/ruyi-zone/advisor?mode=project-report')}
+                                className="inline-flex items-center gap-2 rounded-lg bg-theme-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-theme-700"
+                              >
+                                进入项目汇报工作台查看完整汇报
+                              </button>
+                            </>
+                          )}
+                        </>
+                      )}
+
+                      {/* 项目管理工程师：汇报发送统计 */}
+                      {conversationKind === "reportStats" && (
+                        <>
+                          <p className="mb-4 leading-7">作为项目管理工程师，您有权限查看全部项目汇报的发送统计。基于当前汇报数据：</p>
+                          <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            {[
+                              ['项目汇报总数', '3', 'text-gray-900'],
+                              ['发送成功', '2', 'text-emerald-600'],
+                              ['发送失败', '1', 'text-red-500'],
+                              ['绿灯项目', '2', 'text-emerald-600'],
+                            ].map(([label, value, color]) => (
+                              <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
+                                <p className="text-xs text-gray-400">{label}</p>
+                                <p className={`mt-1 text-xl font-bold ${color}`}>{value}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="space-y-2">
+                            {[
+                              ['工作门户常用功能体验优化', '2026-10-05 至 2026-10-08', '绿灯', '发送成功'],
+                              ['如意空间智能办公建设', '2026-10-05 至 2026-10-07', '黄灯', '发送成功'],
+                              ['工作门户常用功能体验优化', '2026-09-28 至 2026-10-04', '绿灯', '发送失败'],
+                            ].map(([name, period, light, result], index) => (
+                              <div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 px-3 py-2.5 text-sm">
+                                <span className={`h-1.5 w-1.5 rounded-full ${light === '绿灯' ? 'bg-emerald-500' : light === '黄灯' ? 'bg-amber-400' : 'bg-red-500'}`} />
+                                <span className="min-w-0 flex-1 truncate font-medium text-gray-800">{name}</span>
+                                <span className="text-xs text-gray-400">{period}</span>
+                                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${result === '发送成功' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>{result === '发送成功' ? '已发送' : '发送失败'}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <Link to="/web_client/work-report" className="mt-5 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100">前往工作汇报查看明细</Link>
                         </>
                       )}
 
