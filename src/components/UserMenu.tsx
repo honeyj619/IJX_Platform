@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { User, FileText, Users, Settings, LogOut, Shield, Palette, Moon, Sun, Download } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { useThemeStore } from "../store/themeStore";
-import { Skin } from "../store/themeStore";
+import { User, Settings, LogOut, Shield, Download } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { MAIN_USER_AVATAR, MAIN_USER_NAME } from "../data/people";
 
 interface MenuItem {
@@ -23,7 +21,6 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { mode, skin, setMode, setSkin } = useThemeStore();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -85,27 +82,19 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
     }
   };
 
-  const skins: { value: Skin; name: string; color: string }[] = [
-    { value: 'pink', name: '樱花粉', color: '#ec4899' },
-    { value: 'blue', name: '天空蓝', color: '#3b82f6' },
-    { value: 'purple', name: '紫罗兰', color: '#a855f7' },
-    { value: 'green', name: '薄荷绿', color: '#22c55e' },
-    { value: 'orange', name: '日落橙', color: '#f97316' },
-  ];
-
   return (
     <div className="relative" ref={menuRef}>
       {/* 头像按钮 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center rounded-lg hover:bg-white/10 transition-colors ${collapsed ? 'justify-center p-1' : 'gap-2 p-2 w-full'}`}
+        className={`flex items-center rounded-lg text-[var(--ui-text-title)] hover:bg-white/70 dark:text-[var(--ui-text-title)] dark:hover:bg-white/10 transition-colors ${collapsed ? 'justify-center p-1' : 'gap-2 p-2 w-full'}`}
       >
         <img
           src={MAIN_USER_AVATAR}
           alt="用户头像"
-          className={`rounded-full border-2 border-white flex-shrink-0 cursor-pointer hover:border-pink-400 transition-all ${collapsed ? 'w-9 h-9' : 'w-10 h-10'}`}
+          className={`rounded-full border-2 border-white flex-shrink-0 cursor-pointer hover:border-[var(--ui-brand-primary)] transition-all ${collapsed ? 'w-9 h-9' : 'w-10 h-10'}`}
         />
-        {!collapsed && <span className="font-bold text-lg truncate hidden md:block text-white">{MAIN_USER_NAME}</span>}
+        {!collapsed && <span className="font-semibold text-sm truncate hidden md:block">{MAIN_USER_NAME}</span>}
       </button>
 
       {/* 下拉菜单 */}
@@ -115,7 +104,7 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
           left: collapsed ? (menuRef.current?.getBoundingClientRect().right || 0) + 8 : (menuRef.current?.getBoundingClientRect().left || 0)
         }}>
           {/* 用户信息头部 */}
-          <div className="p-4 bg-gradient-to-r from-pink-500 to-purple-600">
+          <div className="p-4 bg-[var(--ui-brand-primary)]">
             <div className="flex items-center gap-3">
               <img
                 src={MAIN_USER_AVATAR}

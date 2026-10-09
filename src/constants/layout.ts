@@ -6,15 +6,15 @@
 /** 侧边栏宽度常量 */
 export const SIDEBAR = {
   /** 展开宽度 (px) */
-  EXPANDED_WIDTH: 256,
+  EXPANDED_WIDTH: 168,
   /** 折叠宽度 (px) */
   COLLAPSED_WIDTH: 64,
   /** 展开宽度字符串 */
-  EXPANDED: '256px',
+  EXPANDED: '168px',
   /** 折叠宽度字符串 */
   COLLAPSED: '64px',
   /** 拖动最大宽度 (px) */
-  MAX_DRAG_WIDTH: 384,
+  MAX_DRAG_WIDTH: 320,
 } as const;
 
 /** 响应式断点（用于 JS 条件判断） */
