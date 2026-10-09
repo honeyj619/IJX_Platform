@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import ProcessReferenceFilePicker from "../components/ProcessReferenceFilePicker";
+import { workItems } from "../data/workItems";
+import { getReportSendRecords } from "../data/reportSendRecords";
 import DocumentEditor from "./DocumentEditor";
 import PresentationWorkbench from "./PresentationWorkbench";
 import AdvisorWorkbench from "./AdvisorWorkbench";
@@ -290,6 +292,18 @@ export default function RuYiZone() {
   // 对话式项目汇报：必填项（项目、周期）→ 步骤 → 生成
   const [prDraft, setPrDraft] = useState<{ projectName: string; period: string; step: 'collect' | 'generating' | 'done' }>({ projectName: '', period: '', step: 'collect' });
   const [prMissingFields, setPrMissingFields] = useState<string[]>([]);
+  const [prCandidates, setPrCandidates] = useState<string[]>([]);
+  const [prNoMatch, setPrNoMatch] = useState(false);
+  // PMO 统计答案
+  const [statsAnswer, setStatsAnswer] = useState<{
+    periodWord: string;
+    lightWord: string;
+    total: number;
+    sentCount: number;
+    unsentCount: number;
+    records: Array<{ name: string; period: string; light: string; result: string }>;
+    unsent: Array<{ name: string; light: string }>;
+  } | null>(null);
   const [legacyEditorStartsInRequirements, setLegacyEditorStartsInRequirements] = useState(false);
   const [legacyEditorStartsInOutline, setLegacyEditorStartsInOutline] = useState(false);
   const [editorSessionId, setEditorSessionId] = useState(0);
@@ -341,7 +355,7 @@ export default function RuYiZone() {
 
   const resolveConversationKind = (question: string): ConversationKind => {
     if (/统计.*汇报|汇报.*统计|发送情况|多少.*(项目|汇报)/.test(question)) return "reportStats";
-    if (/项目汇报/.test(question)) return "projectReportDraft";
+    if (/项目汇报|项目周报/.test(question)) return "projectReportDraft";
     if (/汇报|周报|日报|工作进展|任务分析|风险分析|工作洞察/.test(question)) return "goalAssistant";
     if (/会议纪要|纪要|录音/.test(question)) return "meetingMinutes";
     if (/反馈|问题|报错|不好用|VPN|服务台/.test(question)) return "feedback";
@@ -392,6 +406,39 @@ export default function RuYiZone() {
     setValidationError("");
   };
 
+  // PMO 统计计算：时间段 + 健康灯参数化（供 reportStats 意图复用）
+  const computeStatsAnswer = (message: string) => {
+    const periodWord = message.match(/(本周|上周|上上周|这周)/)?.[1] || '本周';
+    const lightWord = message.match(/(绿灯|黄灯|红灯)/)?.[1]
+      || (message.includes('正常') ? '绿灯' : message.includes('关注') ? '黄灯' : message.includes('风险') ? '红灯' : '');
+
+    const records = getReportSendRecords().filter(r => r.reportType === '项目汇报');
+    const sentProjects = new Set(records.map(r => r.projectName || ''));
+    const allProjects = workItems.map(item => ({
+      name: item.title,
+      healthLight: item.riskLevel === '正常' ? '绿灯' : item.riskLevel === '关注' ? '黄灯' : '红灯',
+    }));
+    const unsent = allProjects.filter(p => !sentProjects.has(p.name));
+    const lightOf = (l?: string) => l === 'green' ? '绿灯' : l === 'yellow' ? '黄灯' : l === 'red' ? '红灯' : '';
+    const visibleRecords = records.filter(r => !lightWord || lightOf(r.healthLight) === lightWord);
+    const visibleUnsent = unsent.filter(p => !lightWord || p.healthLight === lightWord);
+
+    return {
+      periodWord,
+      lightWord,
+      total: lightWord ? visibleRecords.length + visibleUnsent.length : allProjects.length,
+      sentCount: visibleRecords.length,
+      unsentCount: lightWord ? visibleUnsent.length : allProjects.length - records.length,
+      records: visibleRecords.map(r => ({
+        name: r.projectName || r.title,
+        period: r.period,
+        light: lightOf(r.healthLight),
+        result: r.result === '发送成功' ? '已发送' : '发送失败',
+      })),
+      unsent: visibleUnsent.map(p => ({ name: p.name, light: p.healthLight })),
+    };
+  };
+
   const handleSend = () => {
     // 对话式项目汇报：必填项解析（项目名 / 周期）
     if (conversationKind === "projectReportDraft") {
@@ -408,11 +455,31 @@ export default function RuYiZone() {
       const projMatch = message.match(/[《"']([^"》']+)[》"'](?=项目|汇报)/) || message.match(/([一-龥A-Za-z0-9]{2,12})(?=项目)/);
 
       const next = { ...prDraft };
-      if (projMatch) next.projectName = projMatch[1];
+      let projectCandidates: string[] = [];
+      if (projMatch) {
+        const name = projMatch[1];
+        // 与项目管理平台项目池模糊匹配
+        const matches = workItems.filter(item => item.title.includes(name) || name.includes(item.title));
+        if (matches.length === 1) {
+          next.projectName = matches[0].title;
+        } else if (matches.length > 1) {
+          // 多候选：等待用户选择，不写入
+          projectCandidates = matches.map(item => item.title);
+          next.projectName = '';
+        } else {
+          // 无匹配：保持为空，提示未找到并列候选
+          projectCandidates = workItems.map(item => item.title);
+          next.projectName = '';
+        }
+      }
       if (periodMatch) next.period = periodMatch[0];
+
       const missing: string[] = [];
       if (!next.projectName) missing.push('项目名称（例如：旅游度假平台项目）');
       if (!next.period) missing.push('汇报周期（例如：本周 / 上周 / 2026-10-01 至 2026-10-07）');
+
+      setPrCandidates(projectCandidates);
+      setPrNoMatch(!!projMatch && projectCandidates.length > 0 && !next.projectName);
 
       if (missing.length > 0) {
         setPrDraft({ ...next, step: 'collect' });
@@ -426,7 +493,7 @@ export default function RuYiZone() {
       return;
     }
 
-    // 项目管理工程师：汇报发送统计问答
+    // PMO：汇报发送统计问答（时间段 + 健康灯参数化）
     if (conversationKind === "reportStats") {
       const message = input.trim();
       if (!message) return;
@@ -434,6 +501,7 @@ export default function RuYiZone() {
       setSelectedHistoryId(null);
       setHasConversation(true);
       setInput("");
+      setStatsAnswer(computeStatsAnswer(message));
       return;
     }
 
@@ -564,6 +632,7 @@ export default function RuYiZone() {
       setSelectedHistoryId(null);
       setHasConversation(true);
       setInput("");
+      if (nextKind === "reportStats") setStatsAnswer(computeStatsAnswer(question));
     }
   };
 
@@ -1991,6 +2060,26 @@ export default function RuYiZone() {
                                   <p className="mt-1.5 text-xs text-amber-600">示例：帮我写《旅游度假平台》项目本周汇报</p>
                                 </div>
                               )}
+                              {prNoMatch && prCandidates.length > 0 && (
+                                <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3">
+                                  <p className="text-sm font-semibold text-gray-800">未匹配到该项目，请从以下项目中选择：</p>
+                                  <div className="mt-2 flex flex-wrap gap-1.5">
+                                    {prCandidates.map(name => (
+                                      <button
+                                        key={name}
+                                        onClick={() => {
+                                          setPrDraft(current => ({ ...current, projectName: name }));
+                                          setPrNoMatch(false);
+                                          setPrCandidates([]);
+                                        }}
+                                        className="rounded-md border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:border-theme-300 hover:bg-theme-50 hover:text-theme-700"
+                                      >
+                                        {name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                               {prDraft.projectName && prDraft.period && (
                                 <p className="text-sm text-gray-500">信息已齐备，发送任意内容开始生成。</p>
                               )}
@@ -2033,16 +2122,19 @@ export default function RuYiZone() {
                         </>
                       )}
 
-                      {/* 项目管理工程师：汇报发送统计 */}
-                      {conversationKind === "reportStats" && (
+                                            {/* PMO：汇报发送统计（时间段 + 健康灯参数化） */}
+                      {conversationKind === "reportStats" && statsAnswer && (
                         <>
-                          <p className="mb-4 leading-7">作为项目管理工程师，您有权限查看全部项目汇报的发送统计。基于当前汇报数据：</p>
+                          <p className="mb-4 leading-7">
+                            作为项目管理工程师，您有权限查看全部项目汇报的发送情况。{statsAnswer.periodWord}
+                            {statsAnswer.lightWord ? `${statsAnswer.lightWord}项目` : '项目'}汇报发送统计如下：
+                          </p>
                           <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
                             {[
-                              ['项目汇报总数', '3', 'text-gray-900'],
-                              ['发送成功', '2', 'text-emerald-600'],
-                              ['发送失败', '1', 'text-red-500'],
-                              ['绿灯项目', '2', 'text-emerald-600'],
+                              ['应发项目', String(statsAnswer.total), 'text-gray-900'],
+                              ['已发送', String(statsAnswer.sentCount), 'text-emerald-600'],
+                              ['未发送', String(statsAnswer.unsentCount), statsAnswer.unsentCount > 0 ? 'text-amber-600' : 'text-gray-400'],
+                              ['发送率', statsAnswer.total > 0 ? `${Math.round(statsAnswer.sentCount / statsAnswer.total * 100)}%` : '-', 'text-theme-600'],
                             ].map(([label, value, color]) => (
                               <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 px-3 py-3">
                                 <p className="text-xs text-gray-400">{label}</p>
@@ -2050,22 +2142,39 @@ export default function RuYiZone() {
                               </div>
                             ))}
                           </div>
-                          <div className="space-y-2">
-                            {[
-                              ['工作门户常用功能体验优化', '2026-10-05 至 2026-10-08', '绿灯', '发送成功'],
-                              ['如意空间智能办公建设', '2026-10-05 至 2026-10-07', '黄灯', '发送成功'],
-                              ['工作门户常用功能体验优化', '2026-09-28 至 2026-10-04', '绿灯', '发送失败'],
-                            ].map(([name, period, light, result], index) => (
-                              <div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 px-3 py-2.5 text-sm">
-                                <span className={`h-1.5 w-1.5 rounded-full ${light === '绿灯' ? 'bg-emerald-500' : light === '黄灯' ? 'bg-amber-400' : 'bg-red-500'}`} />
-                                <span className="min-w-0 flex-1 truncate font-medium text-gray-800">{name}</span>
-                                <span className="text-xs text-gray-400">{period}</span>
-                                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${result === '发送成功' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>{result === '发送成功' ? '已发送' : '发送失败'}</span>
-                              </div>
-                            ))}
-                          </div>
+                          {statsAnswer.records.length > 0 && (
+                            <div className="mb-3 space-y-2">
+                              <p className="text-sm font-semibold text-gray-800">已发送明细</p>
+                              {statsAnswer.records.map((r, index) => (
+                                <div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-100 px-3 py-2.5 text-sm">
+                                  <span className={`h-1.5 w-1.5 rounded-full ${r.light === '绿灯' ? 'bg-emerald-500' : r.light === '黄灯' ? 'bg-amber-400' : 'bg-red-500'}`} />
+                                  <span className="min-w-0 flex-1 truncate font-medium text-gray-800">{r.name}</span>
+                                  <span className="text-xs text-gray-400">{r.period}</span>
+                                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${r.result === '已发送' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>{r.result}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {statsAnswer.unsent.length > 0 && (
+                            <div className="mb-3 space-y-2">
+                              <p className="text-sm font-semibold text-gray-800">未发送项目（可催办）</p>
+                              {statsAnswer.unsent.map((p, index) => (
+                                <div key={index} className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-amber-200 bg-amber-50/40 px-3 py-2.5 text-sm">
+                                  <span className={`h-1.5 w-1.5 rounded-full ${p.light === '绿灯' ? 'bg-emerald-500' : p.light === '黄灯' ? 'bg-amber-400' : 'bg-red-500'}`} />
+                                  <span className="min-w-0 flex-1 truncate font-medium text-gray-800">{p.name}</span>
+                                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">未发送</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {statsAnswer.records.length === 0 && statsAnswer.unsent.length === 0 && (
+                            <p className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-500">{statsAnswer.lightWord ? '当前没有' + statsAnswer.lightWord + '项目的汇报记录' : '当前没有汇报发送记录'}</p>
+                          )}
                           <Link to="/web_client/work-report" className="mt-5 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100">前往工作汇报查看明细</Link>
                         </>
+                      )}
+                      {conversationKind === "reportStats" && !statsAnswer && (
+                        <p className="leading-7">作为项目管理工程师，您可以询问项目汇报发送情况，例如：上周项目汇报发送情况 / 黄灯项目周报发送了吗。</p>
                       )}
 
                       {conversationKind === "presentationDraft" && (
