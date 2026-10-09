@@ -45,7 +45,6 @@ import ProjectWeeklyReport, { REPORT_SECTION_COUNT as sectionCount } from '../co
 import ContactPicker from '../components/ContactPicker';
 
 type AdvisorStage = 'empty' | 'confirming' | 'generating' | 'draft' | 'dispatching' | 'sending' | 'submitted' | 'failed';
-type SideTab = 'current' | 'history';
 type AdvisorReportKind = 'personal' | 'project';
 type DispatchConfig = {
   sender: string;
@@ -178,7 +177,6 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   const [mode, setMode] = useState<AdvisorMode>(initialMode);
   const [stage, setStage] = useState<AdvisorStage>('empty');
   const [prompt, setPrompt] = useState(initialPrompt);
-  const [sideTab, setSideTab] = useState<SideTab>('current');
   const [generationStep, setGenerationStep] = useState(0);
   const [draft, setDraft] = useState<ReportDraft>(() => ({
     ...defaultDraft,
@@ -1445,19 +1443,16 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   };
 
 
-  const renderHistorySidebar = () => (
-    <div className="px-4 py-4">
-      <div className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input value={historySearch} onChange={event => setHistorySearch(event.target.value)} placeholder="搜索汇报或洞察记录" className="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-9 pr-3 text-xs outline-none focus:border-theme-300 focus:bg-white" /></div>
-      <div className="mt-4 space-y-2">{filteredHistory.map(record => <button key={record.id} onClick={() => navigate(`/web_client/work-report?view=sent&record=${encodeURIComponent(record.id)}`)} className="w-full rounded-lg border border-gray-100 bg-white px-3 py-3 text-left hover:border-theme-100 hover:bg-theme-50/40"><div className="flex items-start justify-between gap-2"><p className="truncate text-sm font-semibold text-gray-800">{record.title}</p><span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${record.result === '发送成功' ? 'bg-emerald-50 text-emerald-700' : record.result === '部分送达' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-600'}`}>{record.result}</span></div><p className="mt-1 text-xs text-gray-400">{record.reportType} · {record.projectName || record.period}</p><p className="mt-2 text-[11px] text-gray-400">{record.sentAt}</p></button>)}</div>
-      {filteredHistory.length === 0 && <div className="py-12 text-center text-xs text-gray-400">暂无匹配记录</div>}
-    </div>
-  );
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-[#f6f7f9] text-gray-900">
       {toast && <div className="fixed left-1/2 top-20 z-[90] -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-xl">{toast}</div>}
       <header className="flex h-16 shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-4 md:px-6">
         <div className="flex min-w-0 items-center gap-3"><button onClick={handleBack} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-theme-200 hover:bg-theme-50 hover:text-theme-700" title="返回"><ArrowLeft size={17} /></button><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-theme-600 text-white"><Bot size={19} /></div><div className="min-w-0"><h1 className="truncate text-base font-bold text-gray-950">如意参谋师</h1><p className="truncate text-xs text-gray-400">统一汇报生成与工作洞察</p></div></div>
+        <button onClick={() => navigate('/web_client/work-report')} className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-600 hover:border-theme-200 hover:bg-theme-50 hover:text-theme-700" title="查看工作汇报页面">
+          <FolderKanban size={15} />
+          所有汇报
+        </button>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
@@ -1482,8 +1477,8 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           </footer>
         </main>
         <aside className="flex w-full shrink-0 flex-col border-t border-gray-200 bg-white lg:h-full lg:w-[320px] lg:border-l lg:border-t-0">
-          <div className="grid h-12 shrink-0 grid-cols-2 border-b border-gray-100 px-3"><button onClick={() => setSideTab('current')} className={`border-b-2 text-xs font-semibold ${sideTab === 'current' ? 'border-theme-600 text-theme-700' : 'border-transparent text-gray-500'}`}>当前参谋需求</button><button onClick={() => setSideTab('history')} className={`border-b-2 text-xs font-semibold ${sideTab === 'history' ? 'border-theme-600 text-theme-700' : 'border-transparent text-gray-500'}`}>我的记录</button></div>
-          <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hover">{sideTab === 'current' ? renderCurrentSidebar() : renderHistorySidebar()}</div>
+          <div className="flex h-12 shrink-0 items-center border-b border-gray-100 px-4"><span className="text-sm font-semibold text-gray-900">当前参谋需求</span></div>
+          <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hover">{renderCurrentSidebar()}</div>
           <footer className="shrink-0 border-t border-gray-100 bg-white p-3">
             {stage === 'empty' ? (
               <button onClick={startRequirementConfirmation} disabled={!prompt.trim() || (mode === 'report' && reportKind === 'project' && selectedProjectIds.length === 0) || (selectedSourceIds.includes('projects') && selectedProjectIds.length === 0)} className="w-full rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50" title={selectedSourceIds.includes('projects') && selectedProjectIds.length === 0 ? '已勾选项目管理平台，需选择至少 1 个项目' : mode === 'report' && reportKind === 'project' && selectedProjectIds.length === 0 ? '项目汇报必填：请选择至少 1 个项目' : undefined}>确认需求并生成</button>
