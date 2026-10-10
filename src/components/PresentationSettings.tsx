@@ -26,8 +26,8 @@ export default function PresentationSettings({ attachments, setAttachments, inpu
     if (batch.some(file => !extensions.includes(file.name.split(".").pop()?.toLowerCase() || ""))) {
       setError("文件格式不支持，请选择 TXT、MD、MARKDOWN、PDF、XLSX、XLS 或 DOCX。"); return;
     }
-    if (batch.some(file => file.size > 50 * 1024 * 1024)) {
-      setError("单个文件不能超过 50 MB，请重新选择。"); return;
+    if (batch.reduce((sum, file) => sum + file.size, 0) > 10 * 1024 * 1024) {
+      setError("参考附件总大小不能超过 10 MB，请重新选择。"); return;
     }
     const next = [...new Set([...attachments, ...batch.map(file => file.name)])];
     if (next.length > 10) { setError("附件合计最多 10 个，请减少后再添加。"); return; }
@@ -39,7 +39,7 @@ export default function PresentationSettings({ attachments, setAttachments, inpu
     <div className="mt-4 space-y-4 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
       <section aria-label="文件/附件输入" className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400">已上传附件</h3>
+          <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400">已上传附件 <span className="text-red-500">*</span></h3>
           <span className="text-xs text-gray-500">{attachments.length} / 10</span>
         </div>
         <input ref={inputRef} type="file" multiple accept={extensions.map(ext => `.${ext}`).join(",")} className="hidden" aria-label="选择PPT参考文档" onChange={event => { upload(event.target.files); event.target.value = ""; }} />
@@ -52,8 +52,8 @@ export default function PresentationSettings({ attachments, setAttachments, inpu
               setAttachments(current => current.filter(value => value !== item)); files.delete(item); setError("");
             }}><X size={14} /></button>
           </li>)}
-        </ul> : <div className="mt-2 rounded-lg bg-white px-3 py-3 text-xs text-gray-400 dark:bg-gray-800">暂无附件，点击需求输入框下方的回形针上传参考文档。</div>}
-        <p className="mt-2 text-xs leading-5 text-gray-400">支持 TXT、MD、MARKDOWN、PDF、XLSX、XLS、DOCX；单文件不超过 50 MB，合计最多 10 个。</p>
+        </ul> : <div className="mt-2 rounded-lg bg-white px-3 py-3 text-xs text-gray-400 dark:bg-gray-800">必填：请点击需求输入框下方的回形针上传参考文档。</div>}
+        <p className="mt-2 text-xs leading-5 text-gray-400">支持 TXT、MD、MARKDOWN、PDF、XLSX、XLS、DOCX；总大小不超过 10 MB，合计最多 10 个（必填）。</p>
         {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
       </section>
       <section>
