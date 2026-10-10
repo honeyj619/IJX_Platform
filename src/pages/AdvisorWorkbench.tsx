@@ -209,7 +209,8 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   // 演示：模拟发送失败（原型验证失败场景用）
   const [simulateFail, setSimulateFail] = useState(false);
   // 项目周报扩展：周报类型 / 周报数据 / 进展描述 / 分发配置 / 回执
-  const [reportKind, setReportKind] = useState<AdvisorReportKind>(params.get('mode') === 'project-report' ? 'project' : 'personal');
+  // 当前仅支持项目汇报（个人汇报暂未开放，入口隐藏）
+  const [reportKind, setReportKind] = useState<AdvisorReportKind>('project');
   // 项目汇报模式下，"项目管理平台"数据来源保持必选
   useEffect(() => {
     if (mode === 'report' && reportKind === 'project' && !selectedSourceIds.includes('projects')) {
@@ -1218,7 +1219,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               <label className="grid grid-cols-[68px_minmax(0,1fr)] items-center gap-2.5 text-xs font-semibold text-gray-500">
                 <span>汇报类型</span>
                 <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-normal">
-                  {([['personal', '个人汇报'], ['project', '项目汇报']] as const).map(([kind, label]) => (
+                  {([['project', '项目汇报']] as const).map(([kind, label]) => (
                     <button key={kind} type="button" onClick={() => {
                       setReportKind(kind);
                       if (kind === 'project') {
@@ -1369,7 +1370,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               </label>
               {mode === 'report' && (
                 <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-normal">
-                  {([['personal', '个人汇报'], ['project', '项目汇报']] as const).map(([kind, label]) => (
+                  {([['project', '项目汇报']] as const).map(([kind, label]) => (
                     <button key={kind} type="button" onClick={() => {
                       setReportKind(kind);
                       if (kind === 'project') setSelectedSourceIds(current => current.includes('projects') ? current : [...current, 'projects']);
