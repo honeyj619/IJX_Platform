@@ -247,6 +247,7 @@ export default function Layout({ children }: LayoutProps) {
   ];
 
   const navPaths = navItems.map(item => item.to);
+  const isMessagePage = location.pathname === WEB_CLIENT_BASE || location.pathname === `${WEB_CLIENT_BASE}/`;
   const openExternalNavigation = (label: string, url: string) => {
     openPortalLink({ url, label, mode: 'auto', navigate });
   };
@@ -273,7 +274,7 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-[var(--ui-surface-page)]">
+    <div className="client-app-shell flex h-screen w-full gap-2 overflow-hidden p-2 bg-[var(--ui-surface-page)]">
       {/* 响应式侧边栏遮罩 - 移动端 */}
       {isResponsive && showNavigation && (
         <div 
@@ -288,7 +289,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* 左侧导航栏 - 简化响应式逻辑 */}
       <div 
         className={`
-          client-navigation-shell flex flex-col transition-all duration-300 ease-in-out
+          client-navigation-shell flex flex-col overflow-hidden transition-all duration-300 ease-in-out
           ${isDragging ? 'select-none' : ''}
         `}
         style={{ 
@@ -296,9 +297,9 @@ export default function Layout({ children }: LayoutProps) {
           // 响应式模式下处理侧边栏位置
           ...(isResponsive && {
             position: 'fixed',
-            left: 0,
-            top: 0,
-            height: '100vh',
+            left: 8,
+            top: 8,
+            height: 'calc(100vh - 16px)',
             zIndex: 50,
             transform: showNavigation ? 'translateX(0)' : 'translateX(-100%)'
           })
@@ -528,7 +529,7 @@ export default function Layout({ children }: LayoutProps) {
           className={`fixed top-0 w-1 h-full cursor-col-resize z-[55] group transition-opacity ${
             isDragging ? 'bg-theme-300' : 'hover:bg-theme-300'
           } ${!showNavigation && !isDragging ? 'opacity-0' : 'opacity-100'}`}
-          style={{ left: `${showNavigation ? sidebarWidth : SIDEBAR.COLLAPSED_WIDTH}px` }}
+          style={{ left: `${(showNavigation ? sidebarWidth : SIDEBAR.COLLAPSED_WIDTH) + 8}px` }}
           onMouseDown={handleMouseDown}
         >
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -539,7 +540,7 @@ export default function Layout({ children }: LayoutProps) {
 
       {/* 主内容区域 */}
       <div 
-        className="flex-1 overflow-hidden flex flex-col h-full transition-all duration-300"
+        className={`client-main-shell flex-1 overflow-hidden flex flex-col h-full min-w-0 transition-all duration-300 ${isMessagePage ? '' : 'rounded-xl border border-white/60 bg-white dark:bg-gray-900'}`}
         style={{ height: '100%' }}
       >
         {/* 移动端顶部导航栏 - 包含菜单按钮 */}
@@ -559,7 +560,7 @@ export default function Layout({ children }: LayoutProps) {
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto min-h-0">
+        <div className={`flex-1 min-h-0 ${isMessagePage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           {children}
         </div>
         
@@ -682,9 +683,9 @@ export default function Layout({ children }: LayoutProps) {
 
 function NavItem({ icon: Icon, label, to, active = false, collapsed = false, badge, badgeTitle, badgeTone, external = false, onExternalOpen }: { icon: LucideIcon; label: string; to: string; active?: boolean; collapsed?: boolean; badge?: number; badgeTitle?: string; badgeTone?: string; external?: boolean; onExternalOpen?: () => void }) {
   const className = `
-        group relative rounded-lg text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--ui-brand-primary)]
-        ${active ? 'bg-white font-semibold shadow-[0_1px_2px_rgba(48,49,51,0.04)]' : 'hover:bg-white/65'}
-        ${collapsed ? 'w-12 flex flex-col items-center justify-center py-2 gap-0.5' : 'w-full min-h-11 flex items-center gap-2.5 px-2 py-2.5'}
+        group relative text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--ui-brand-primary)]
+        ${active ? 'bg-white shadow-[0_1px_2px_rgba(48,49,51,0.04)]' : 'hover:bg-white/65'}
+        ${collapsed ? 'w-12 rounded-lg flex flex-col items-center justify-center py-2 gap-0.5' : 'h-[42px] w-full rounded-md flex items-center gap-2.5 px-2 font-semibold'}
       `;
   const content = (
     <>

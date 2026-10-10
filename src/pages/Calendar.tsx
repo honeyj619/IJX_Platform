@@ -482,7 +482,7 @@ export default function Calendar() {
 
   return (
     <>
-      <div className="h-full flex flex-col bg-slate-50 dark:bg-gray-900 w-full">
+      <div className="flex h-full w-full flex-col overflow-hidden bg-white dark:bg-gray-900">
         {/* 内联工具栏 — tabs + 创建日程 */}
         <div className="flex items-center justify-between px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-700/60 shrink-0">
           <div className="flex items-center bg-gray-100/80 dark:bg-gray-700/80 rounded-lg p-0.5">
@@ -518,7 +518,7 @@ export default function Calendar() {
 
         {activeTab === 'meeting-room' ? renderMeetingRoomView() : (
         <div className="py-0 w-full flex-1 overflow-hidden">
-          <div className="flex h-full w-max min-w-full overflow-hidden">
+          <div className="flex h-full w-full min-w-0 overflow-hidden">
             <div className={`${isTallViewport ? 'w-80' : 'w-64'} shrink-0 bg-white dark:bg-gray-800 border-r border-slate-200/60 dark:border-gray-700 h-full overflow-y-auto`}>
               <div className="p-4 border-b border-slate-100 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-4">
@@ -649,11 +649,7 @@ export default function Calendar() {
               </div>
             </div>
 
-            <div className={`flex h-full shrink-0 flex-col bg-white dark:bg-gray-800 ${
-              isTallViewport
-                ? 'w-[820px] xl:w-[820px] xl:min-w-[820px]'
-                : 'w-[680px] xl:w-[calc(100vw-16rem)] xl:min-w-[680px]'
-            }`}>
+            <div className="flex h-full min-w-0 flex-1 flex-col bg-white dark:bg-gray-800">
               <div className="p-4 border-b border-slate-100 dark:border-gray-700 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <button className="px-4 py-2 bg-theme-50 text-theme-700 rounded-xl text-sm font-medium hover:bg-theme-100 transition-colors border border-theme-200">

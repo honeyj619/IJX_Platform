@@ -2,6 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --ui-brand-primary: #b82971;
+  --ui-brand-accent: #d49a73;
+  --ui-text-title: #303133;
+  --ui-text-body: #606266;
+  --ui-text-weak: #909399;
+  --ui-border: #e4e7ed;
+  --ui-surface-page: #f5f7fa;
+  --ui-surface-selected: #ebedf0;
+  --ui-surface-card: #ffffff;
+  --ui-shell-gap: 8px;
+  --ui-shell-radius: 16px;
+}
+
+.dark {
+  --ui-text-title: #e5eaf3;
+  --ui-text-body: #cfd3dc;
+  --ui-text-weak: #a3a6ad;
+  --ui-border: #414243;
+  --ui-surface-page: #262727;
+  --ui-surface-selected: #39393a;
+  --ui-surface-card: #141414;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -15,7 +39,7 @@ html, body, #root {
 }
 
 body {
-  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Segoe UI", sans-serif;
+  font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -24,31 +48,34 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-:root {
-  --ui-brand-primary: #B82971;
-  --ui-brand-hover: color-mix(in srgb, var(--ui-brand-primary) 88%, black);
-  --ui-brand-active: color-mix(in srgb, var(--ui-brand-primary) 78%, black);
-  --ui-brand-tint: color-mix(in srgb, var(--ui-brand-primary) 7%, #FFFFFF);
-  --ui-nav-accent: #D49A73;
-  --ui-text-title: #303133;
-  --ui-text-body: #606266;
-  --ui-text-weak: #909399;
-  --ui-border: #E4E7ED;
-  --ui-surface-page: #F5F7FA;
-  --ui-surface-selected: #EBEDF0;
-  --ui-surface-card: #FFFFFF;
-}
-
 /* Pink theme */
 .skin-pink {
-  --theme-50: #fcf5f9;
-  --theme-100: #f7e7ef;
-  --theme-200: #edc9db;
-  --theme-300: #dfa0c0;
-  --theme-400: #cf6ca0;
+  --theme-50: #fcf1f6;
+  --theme-100: #f8e1ec;
+  --theme-200: #efbfd6;
+  --theme-300: #e494ba;
+  --theme-400: #cf5e96;
   --theme-500: #b82971;
-  --theme-600: #a22363;
-  --theme-700: #851d52;
+  --theme-600: #a01f61;
+  --theme-700: #84194f;
+  --theme-800: #6d1743;
+  --theme-900: #5b173a;
+}
+
+.client-app-shell {
+  background-color: var(--ui-surface-page);
+  background-image: url('./assets/client-background.png');
+  background-position: left top;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.client-navigation-shell {
+  background: transparent;
+}
+
+.client-main-shell {
+  box-shadow: 0 1px 3px rgba(48, 49, 51, 0.06);
 }
 
 /* Blue theme */
@@ -160,16 +187,6 @@ body {
   background: linear-gradient(to bottom, var(--theme-200), var(--theme-400));
 }
 
-.client-navigation-shell {
-  color: var(--ui-text-title);
-  background-color: var(--ui-surface-page);
-  background-image: url('/assets/navigation-background.png');
-  background-position: left top;
-  background-repeat: no-repeat;
-  background-size: cover;
-  border-right: 1px solid color-mix(in srgb, var(--ui-border) 72%, transparent);
-}
-
 .bg-gradient-to-br-theme {
   background: linear-gradient(to bottom right, var(--theme-50), white, var(--theme-100));
 }
@@ -181,24 +198,6 @@ body {
 /* Dark mode enhancements */
 .dark {
   color-scheme: dark;
-  --ui-brand-primary: #B82971;
-  --ui-brand-hover: color-mix(in srgb, var(--ui-brand-primary) 88%, white);
-  --ui-brand-active: color-mix(in srgb, var(--ui-brand-primary) 78%, white);
-  --ui-brand-tint: color-mix(in srgb, var(--ui-brand-primary) 12%, #141414);
-  --ui-nav-accent: #D9A680;
-  --ui-text-title: #E5EAF3;
-  --ui-text-body: #CFD3DC;
-  --ui-text-weak: #A3A6AD;
-  --ui-border: #414243;
-  --ui-surface-page: #262727;
-  --ui-surface-selected: #39393A;
-  --ui-surface-card: #141414;
-}
-
-.dark .client-navigation-shell {
-  background-color: var(--ui-surface-page);
-  background-image: none;
-  border-right-color: var(--ui-border);
 }
 
 .dark body {
