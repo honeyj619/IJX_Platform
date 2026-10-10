@@ -337,7 +337,7 @@ export default function Layout({ children }: LayoutProps) {
                 icon={item.icon}
                 label={item.label}
                 to={item.to}
-                active={!('external' in item && item.external) && (location.pathname === item.to || (item.to !== WEB_CLIENT_BASE && location.pathname.startsWith(`${item.to}/`)))}
+                active={!('external' in item && item.external) && location.pathname === item.to}
                 collapsed={!showNavigation}
                 badge={item.badge}
                 badgeTitle={item.badgeTitle}

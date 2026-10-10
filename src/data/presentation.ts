@@ -52,7 +52,7 @@ export interface PresentationTemplate {
 export const presentationTemplateList: PresentationTemplate[] = [
   {
     id: 'tpl-brand',
-    name: '吉祥品牌',
+    name: '吉祥主题',
     desc: '品牌红主色，适合对外汇报与宣传',
     category: '品牌',
     accent: 'bg-[#d51f5c]',
@@ -73,7 +73,7 @@ export const presentationTemplateList: PresentationTemplate[] = [
   },
   {
     id: 'tpl-business',
-    name: '简约商务',
+    name: '吉祥IT主题',
     desc: '深蓝主色，适合工作汇报与方案评审',
     category: '商务',
     accent: 'bg-[#2563eb]',
@@ -94,7 +94,7 @@ export const presentationTemplateList: PresentationTemplate[] = [
   },
   {
     id: 'tpl-academic',
-    name: '清新学术',
+    name: 'IT项目立项主题',
     desc: '翠绿主色，适合学术汇报与研究报告',
     category: '学术',
     accent: 'bg-[#059669]',
@@ -112,6 +112,54 @@ export const presentationTemplateList: PresentationTemplate[] = [
       { label: '页面结构', value: '封面 + 大纲 + 方法 + 结论，16:9' },
       { label: '适用场景', value: '学术会议、研究报告、课程讲义' },
     ],
+  },
+  {
+    id: 'tpl-aoc',
+    name: '吉祥AOC主题',
+    desc: '运行控制场景演示模板',
+    category: '商务',
+    accent: 'bg-[#2563eb]',
+    surface: 'bg-[#eff6ff]',
+    line: 'bg-[#bfdbfe]',
+    border: 'border-[#93c5fd]',
+    sampleSlides: [
+      { title: 'AOC 智能运行', bullets: ['航班保障', '动态监控', '协同指挥'] },
+      { title: '运行概览', bullets: ['航班正常率提升', '保障节点全流程可视', '异常处置时长缩短'] },
+      { title: '协同机制', bullets: ['空地一体化联动', '信息实时共享', '决策支持辅助'] },
+    ],
+    rules: [],
+  },
+  {
+    id: 'tpl-20th',
+    name: '吉祥二十周年主题',
+    desc: '二十周年庆典演示模板',
+    category: '品牌',
+    accent: 'bg-[#d51f5c]',
+    surface: 'bg-[#fdf2f6]',
+    line: 'bg-[#f3c6d8]',
+    border: 'border-[#f0aecb]',
+    sampleSlides: [
+      { title: '廿载同行 · 展翼未来', bullets: ['发展历程', '里程碑成果', '未来展望'] },
+      { title: '发展历程', bullets: ['1996 创业起步', '2010 上市跨越', '2026 廿载新程'] },
+      { title: '未来展望', bullets: ['智慧航空', '绿色飞行', '全球网络'] },
+    ],
+    rules: [],
+  },
+  {
+    id: 'tpl-brand2',
+    name: '吉祥品牌主题',
+    desc: '品牌对外演示模板',
+    category: '品牌',
+    accent: 'bg-[#059669]',
+    surface: 'bg-[#ecfdf5]',
+    line: 'bg-[#a7f3d0]',
+    border: 'border-[#6ee7b7]',
+    sampleSlides: [
+      { title: '品牌焕新', bullets: ['品牌主张', '视觉体系', '传播策略'] },
+      { title: '视觉体系', bullets: ['主视觉延展', '辅助图形', '应用规范'] },
+      { title: '传播策略', bullets: ['整合传播', '场景渗透', '效果评估'] },
+    ],
+    rules: [],
   },
 ];
 

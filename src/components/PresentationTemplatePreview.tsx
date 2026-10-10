@@ -69,11 +69,8 @@ export default function PresentationTemplatePreview({ previewId, onClose, onSwit
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-3 sm:p-4" onClick={onClose}>
       <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white p-4 shadow-2xl sm:p-5" onClick={event => event.stopPropagation()}>
-        <div className="mb-4 flex flex-shrink-0 items-start justify-between gap-4">
-          <div>
-            <div className="text-lg font-semibold text-gray-900">模板预览 · {template.name}</div>
-            <div className="mt-1 text-sm text-gray-500">{template.desc} · 分类：{template.category}</div>
-          </div>
+        <div className="mb-4 flex flex-shrink-0 items-center justify-between gap-4">
+          <div className="text-lg font-semibold text-gray-900">模板预览</div>
           <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="关闭预览"><X size={18} /></button>
         </div>
 
@@ -83,18 +80,15 @@ export default function PresentationTemplatePreview({ previewId, onClose, onSwit
             <button
               key={tpl.id}
               onClick={() => { onSwitch(tpl.id); setSlideIndex(0); }}
-              className={`flex min-w-[150px] items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors hover:bg-gray-50 ${template.id === tpl.id ? `${tpl.border} bg-theme-50/40` : 'border-gray-200'}`}
+              className={`flex min-w-[132px] items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${template.id === tpl.id ? 'border-theme-600 bg-theme-600 text-white' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
             >
-              <div className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${tpl.accent}`} />
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-gray-900">{tpl.name}</div>
-                <div className="truncate text-xs text-gray-500">{tpl.category}</div>
-              </div>
+              <span className={`h-2 w-2 flex-shrink-0 rounded-full ${template.id === tpl.id ? 'bg-white' : 'bg-theme-400'}`} />
+              <span className="min-w-0 truncate text-sm font-semibold">{tpl.name}</span>
             </button>
           ))}
         </div>
 
-        <div className="grid min-h-0 flex-1 gap-4 overflow-hidden py-4 pr-1 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden py-4">
           {/* 16:9 页面预览 + 翻页 */}
           <div className="flex min-h-0 flex-col rounded-lg bg-gray-50 p-3 sm:p-5">
             <div className="mx-auto flex min-h-0 w-full max-w-[560px] flex-1 items-center">
@@ -106,7 +100,7 @@ export default function PresentationTemplatePreview({ previewId, onClose, onSwit
               <button type="button" disabled={slideIndex === 0} onClick={() => setSlideIndex(index => Math.max(0, index - 1))} className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40" aria-label="上一页"><ChevronLeft size={16} /></button>
               <div className="flex items-center gap-1.5">
                 {slides.map((slide, index) => (
-                  <button key={slide.title} type="button" onClick={() => setSlideIndex(index)} aria-label={`第 ${index + 1} 页`} className={`h-1.5 rounded-full transition-all ${index === slideIndex ? `w-5 ${template.accent}` : 'w-1.5 bg-gray-300 hover:bg-gray-400'}`} />
+                  <button key={slide.title} type="button" onClick={() => setSlideIndex(index)} aria-label={`第 ${index + 1} 页`} className={`h-1.5 rounded-full transition-all ${index === slideIndex ? 'w-5 bg-theme-600' : 'w-1.5 bg-gray-300 hover:bg-gray-400'}`} />
                 ))}
               </div>
               <button type="button" disabled={slideIndex >= slides.length - 1} onClick={() => setSlideIndex(index => Math.min(slides.length - 1, index + 1))} className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40" aria-label="下一页"><ChevronRight size={16} /></button>
@@ -114,25 +108,13 @@ export default function PresentationTemplatePreview({ previewId, onClose, onSwit
             </div>
           </div>
 
-          {/* 模板规范 */}
-          <div className="flex min-h-0 flex-col rounded-lg border border-gray-100 bg-white p-3">
-            <div className="mb-3 flex-shrink-0 text-sm font-semibold text-gray-700">模板规范</div>
-            <div className="scrollbar-hover min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
-              {template.rules.map(rule => (
-                <div key={rule.label} className="rounded-lg bg-gray-50 p-3">
-                  <div className="text-xs font-semibold text-gray-500">{rule.label}</div>
-                  <div className="mt-1 text-sm leading-5 text-gray-800">{rule.value}</div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="mt-4 flex flex-shrink-0 items-center justify-between gap-3 border-t border-gray-100 pt-4">
           <span className="text-xs text-gray-400">示例页仅为版式示意，实际内容按需求生成</span>
           <div className="flex gap-2">
             <button onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">取消</button>
-            <button onClick={() => onUse(template.name)} className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${template.accent} hover:opacity-90`}>使用此模板</button>
+            <button onClick={() => onUse(template.name)} className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700">使用此模板</button>
           </div>
         </div>
       </div>
