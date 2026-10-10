@@ -1215,25 +1215,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
             </label>
           </section>
           <section className="space-y-2.5 border-t border-gray-100 pt-4">
-            {mode === 'report' && (
-              <label className="grid grid-cols-[68px_minmax(0,1fr)] items-center gap-2.5 text-xs font-semibold text-gray-500">
-                <span>汇报类型</span>
-                <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-normal">
-                  {([['project', '项目汇报']] as const).map(([kind, label]) => (
-                    <button key={kind} type="button" onClick={() => {
-                      setReportKind(kind);
-                      if (kind === 'project') {
-                        // 项目汇报：项目数据源必选，自动补勾
-                        setSelectedSourceIds(current => current.includes('projects') ? current : [...current, 'projects']);
-                      }
-                    }}
-                      className={`rounded-md px-2 py-1.5 font-semibold transition-colors ${reportKind === kind ? 'bg-theme-600 text-white shadow-sm' : 'text-gray-500 hover:bg-white'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </label>
-            )}
+
             <label className="grid grid-cols-[68px_minmax(0,1fr)] items-center gap-2.5 text-xs font-semibold text-gray-500">
               <span>时间范围</span>
               <input value={period} onChange={event => setPeriod(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-xs font-normal text-gray-700 outline-none focus:border-theme-300 focus:bg-white" />
@@ -1368,18 +1350,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               <label className="mt-2 block text-xs font-semibold text-gray-500">需求描述
                 <textarea value={prompt} onChange={event => setPrompt(event.target.value)} rows={5} className="mt-1.5 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal leading-6 text-gray-700 outline-none focus:border-theme-300 focus:ring-2 focus:ring-theme-100" placeholder="调整需求后，点击下方重新生成" />
               </label>
-              {mode === 'report' && (
-                <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-normal">
-                  {([['project', '项目汇报']] as const).map(([kind, label]) => (
-                    <button key={kind} type="button" onClick={() => {
-                      setReportKind(kind);
-                      if (kind === 'project') setSelectedSourceIds(current => current.includes('projects') ? current : [...current, 'projects']);
-                    }} className={`rounded-md px-2 py-1.5 font-semibold transition-colors ${reportKind === kind ? 'bg-theme-600 text-white shadow-sm' : 'text-gray-500 hover:bg-white'}`}>
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
+
               <label className="mt-3 block text-xs font-semibold text-gray-500">时间范围
                 <input value={period} onChange={event => setPeriod(event.target.value)} className="mt-1.5 h-8 w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-xs font-normal text-gray-700 outline-none focus:border-theme-300 focus:bg-white" />
               </label>
