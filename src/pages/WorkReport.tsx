@@ -250,6 +250,13 @@ export default function WorkReport() {
   const [sendRecords, setSendRecords] = useState(getReportSendRecords);
   const [selectedSendRecord, setSelectedSendRecord] = useState<ReportSendRecord | null>(null);
   const [resendToast, setResendToast] = useState('');
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (!resendToast) return;
+    const timer = window.setTimeout(() => setResendToast(''), 5000);
+    return () => window.clearTimeout(timer);
+  }, [resendToast]);
 
   const selectedObjective = useMemo(
     () => okrObjectives.find(item => item.id === selectedObjectiveId) || okrObjectives[0],
@@ -521,19 +528,23 @@ export default function WorkReport() {
 
       {selectedSendRecord && (
         <ReportSendRecordDetail
-          record={selectedSendRecord}
+          record={sendRecords.find(item => item.id === selectedSendRecord.id) || selectedSendRecord}
+          resending={resending}
           onClose={() => setSelectedSendRecord(null)}
           onResend={() => {
-            setSendRecords(current => current.map(item => item.id === selectedSendRecord.id
-              ? { ...item, result: '发送成功', sentAt: '刚刚', receipts: item.receipts.map(receipt => ({ ...receipt, success: true, time: '刚刚' })) }
-              : item));
-            setResendToast(`已重新发送《${selectedSendRecord.title}》`);
-            setSelectedSendRecord(null);
+            setResending(true);
+            window.setTimeout(() => {
+              setSendRecords(current => current.map(item => item.id === selectedSendRecord.id
+                ? { ...item, result: '发送成功', sentAt: '刚刚', receipts: item.receipts.map(receipt => ({ ...receipt, success: true, time: '刚刚' })) }
+                : item));
+              setResending(false);
+              setResendToast(`《${selectedSendRecord.title}》发送成功`);
+            }, 900);
           }}
         />
       )}
       {resendToast && (
-        <div className="fixed bottom-16 left-1/2 z-[95] -translate-x-1/2 rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-xl">{resendToast}<button type="button" onClick={() => setResendToast('')} className="ml-3 text-gray-400 hover:text-white">×</button></div>
+        <div className="fixed bottom-16 left-1/2 z-[95] -translate-x-1/2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl">{resendToast}<button type="button" onClick={() => setResendToast('')} className="ml-3 text-emerald-100 hover:text-white">×</button></div>
       )}
     </div>
   );
@@ -1361,7 +1372,7 @@ function ReportsView({
 }
 
 
-function ReportSendRecordDetail({ record, onClose, onResend }: { record: ReportSendRecord; onClose: () => void; onResend?: () => void }) {
+function ReportSendRecordDetail({ record, onClose, onResend, resending = false }: { record: ReportSendRecord; onClose: () => void; onResend?: () => void; resending?: boolean }) {
   const light = record.healthLight ? getHealthLightMeta(record.healthLight) : null;
   const snapshotSections = record.personalSnapshot ? [
     ['汇报摘要', record.personalSnapshot.summary],
@@ -1414,8 +1425,8 @@ function ReportSendRecordDetail({ record, onClose, onResend }: { record: ReportS
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-bold text-gray-900">发送回执</h4>
                 {record.result !== '发送成功' ? (
-                  <button type="button" onClick={onResend} className="inline-flex items-center gap-1.5 rounded-lg bg-pink-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-pink-800">
-                    <RefreshCw size={12} />重新发送
+                  <button type="button" onClick={onResend} disabled={resending} className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-colors ${resending ? 'cursor-not-allowed bg-pink-400' : 'bg-pink-700 hover:bg-pink-800'}`}>
+                    <RefreshCw size={12} className={resending ? 'animate-spin' : ''} />{resending ? '发送中…' : '重新发送'}
                   </button>
                 ) : (
                   <span className="text-xs text-gray-400">{record.result}</span>
