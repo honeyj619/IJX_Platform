@@ -213,43 +213,88 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
         )}
       </section>
 
-      {/* 详细阶段甘特（简化：横条 + 进度，可折叠） */}
-      <section className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-gray-900">详细阶段进展（按阶段分解任务）</h3>
+      {/* 详细阶段甘特图（按阶段分解任务，对齐 PC 周报模板） */}
+      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="mb-4 flex items-center justify-between px-6 pt-5">
+          <h3 className="text-sm font-bold text-gray-900">详细阶段甘特图（按阶段分解任务）</h3>
           <div className="flex gap-2">
             <button type="button" onClick={() => setCollapsedStages(new Set())} className="rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-50">全部展开</button>
             <button type="button" onClick={() => setCollapsedStages(new Set(data.stages.map(s => s.id)))} className="rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-50">全部折叠</button>
           </div>
         </div>
-        <div className="space-y-2">
-          {data.stages.map(stage => {
-            const collapsed = collapsedStages.has(stage.id);
-            const barColor = stage.status === 'done' ? 'bg-emerald-500' : stage.status === 'doing' ? 'bg-theme-500' : 'bg-gray-300';
-            return (
-              <div key={stage.id} className="rounded-lg border border-gray-100">
-                <button type="button" onClick={() => toggleStage(stage.id)} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left hover:bg-gray-50">
-                  {collapsed ? <ChevronRight size={15} className="shrink-0 text-gray-400" /> : <ChevronDown size={15} className="shrink-0 text-gray-400" />}
-                  <span className="w-36 shrink-0 truncate text-xs font-semibold text-gray-700">{stage.name}</span>
-                  <span className="w-28 shrink-0 text-[11px] text-gray-400">{stage.start} ~ {stage.end}</span>
-                  <span className="relative h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-gray-100">
-                    <span className={`absolute inset-y-0 left-0 rounded-full ${barColor}`} style={{ width: `${stage.progress}%` }} />
-                  </span>
-                  <span className="w-12 shrink-0 text-right text-xs font-semibold text-gray-600">{stage.progress}%</span>
-                </button>
-                {!collapsed && (
-                  <div className="border-t border-gray-100 px-12 py-2 text-[11px] text-gray-400">
-                    {stage.taskSummary} · 状态：{stage.status === 'done' ? '已完成' : stage.status === 'doing' ? '进行中' : '待开始'}
-                  </div>
-                )}
+
+        <div className="pb-2">
+          {/* 时间轴表头：月份 + 周 双层 */}
+          <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start">
+            <div className="px-4 py-3 text-xs font-bold text-gray-900">阶段 / 任务</div>
+            <div className="border-b border-gray-200">
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                {[{ n: '6月', span: 4 }, { n: '7月', span: 4 }, { n: '8月', span: 5 }, { n: '9月', span: 4 }].map(mo => (
+                  <div key={mo.n} style={{ gridColumn: `span ${mo.span}` }} className="border-r border-gray-100 py-2 text-center text-xs font-semibold text-gray-600 last:border-r-0">{mo.n}</div>
+                ))}
               </div>
-            );
-          })}
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(17, 1fr)' }}>
+                {Array.from({ length: 17 }, (_, i) => (
+                  <div key={i} className="border-r border-gray-100/60 py-1.5 text-center text-[11px] text-gray-400 last:border-r-0">W{i + 1}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* 阶段行 */}
+          <div>
+            {data.stages.map((stage, idx) => {
+              const collapsed = collapsedStages.has(stage.id);
+              const toNum = (s: string) => {
+                const [, mm, dd] = s.split('-').map(Number);
+                return (new Date(2026, mm - 1, dd).getTime() - new Date(2026, 5, 1).getTime()) / 86400000;
+              };
+              const TOTAL = (new Date(2026, 8, 30).getTime() - new Date(2026, 5, 1).getTime()) / 86400000;
+              const a = toNum(stage.start), b = toNum(stage.end);
+              const left = (a / TOTAL) * 100, width = ((b - a + 1) / TOTAL) * 100;
+              const nowLeft = (new Date(2026, 7, 13).getTime() - new Date(2026, 5, 1).getTime()) / 86400000 / TOTAL * 100;
+              const valTxt = stage.status === 'doing' ? `进行中 · ${stage.progress}%` : stage.status === 'done' ? '100%' : '待开始';
+              return (
+                <div key={stage.id} className="grid grid-cols-[300px_minmax(0,1fr)] border-b border-gray-100 last:border-b-0" style={{ minHeight: collapsed ? 46 : 58 }}>
+                  <button type="button" onClick={() => toggleStage(stage.id)} className="flex flex-col justify-center gap-0.5 px-4 py-2.5 text-left hover:bg-gray-50/60">
+                    <span className="flex items-center gap-2 text-[13px] font-semibold text-gray-700">
+                      {collapsed ? <ChevronRight size={13} className="shrink-0 text-gray-400" /> : <ChevronDown size={13} className="shrink-0 text-gray-400" />}
+                      <span className="before:inline-block before:h-1.5 before:w-1.5 before:rounded-full before:content-['']">{stage.name}</span>
+                    </span>
+                    <span className="pl-[21px] text-[11.5px] text-gray-400">{stage.start} ~ {stage.end} · {stage.taskSummary}</span>
+                  </button>
+                  <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #f1f5f9 1px, transparent 1px)', backgroundSize: 'calc(100%/17) 100%' }}>
+                    {/* 今日线 */}
+                    <div className="absolute inset-y-0 z-10 w-0.5" style={{ left: `${nowLeft}%`, background: 'repeating-linear-gradient(0deg, #ffd166 0 4px, transparent 4px 8px)' }}>
+                      <span className="absolute -left-[5px] -top-0.5 h-3 w-3 rounded-full bg-[#ffd166] shadow-[0_0_8px_rgba(255,209,102,.75)]" />
+                    </div>
+                    {/* 阶段横条 */}
+                    <div
+                      className={`absolute top-[13px] flex h-8 items-center rounded-md px-3 text-xs font-medium tracking-wide text-white ${stage.status === 'todo' ? 'border-[1.5px] border-dashed border-gray-300 !bg-transparent !text-gray-400' : stage.status === 'doing' ? 'shadow-md ring-2 ring-theme-200' : 'shadow-sm'}`}
+                      style={{ left: `${left}%`, width: `${width}%`, background: stage.status === 'todo' ? undefined : `linear-gradient(90deg, var(--theme-${[300, 400, 500, 500, 600, 700][idx] ?? 700}), var(--theme-${[400, 500, 600, 600, 700, 700][idx] ?? 700}))` }}
+                    >
+                      <span>{stage.start} ~ {stage.end}</span>
+                      <span className="ml-auto pl-2 text-[11.5px] opacity-95">{valTxt}</span>
+                    </div>
+                    {/* 展开态：阶段下任务摘要条 */}
+                    {!collapsed && (
+                      <div className="absolute bottom-1 left-2 right-2 truncate text-[10.5px] text-gray-400">{stage.taskSummary} · 状态：{stage.status === 'done' ? '已完成' : stage.status === 'doing' ? '进行中' : '待开始'}</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <div className="mt-3 flex items-center gap-4 text-[11px] text-gray-400">
-          <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full bg-emerald-500" />已完成</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full bg-theme-500" />进行中</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-4 rounded-full bg-gray-300" />待开始</span>
+
+        {/* 图例 */}
+        <div className="flex flex-wrap items-center gap-5 border-t border-gray-200 px-6 py-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5 text-gray-400">点击阶段行可展开/折叠；横条为该阶段整体周期与进度</span>
+          <span className="flex-1" />
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: 'linear-gradient(90deg, var(--theme-400), var(--theme-500))' }} />已完成</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm ring-1 ring-theme-200" style={{ background: 'linear-gradient(90deg, var(--theme-500), var(--theme-600))' }} />进行中</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm border-[1.5px] border-dashed border-gray-400" />待开始</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: 'repeating-linear-gradient(90deg,#ffd166 0 3px,#fff 3px 6px)' }} />今日（2026-08-13）</span>
         </div>
       </section>
 
