@@ -209,8 +209,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   // 演示：模拟发送失败（原型验证失败场景用）
   const [simulateFail, setSimulateFail] = useState(false);
   // 项目周报扩展：周报类型 / 周报数据 / 进展描述 / 分发配置 / 回执
-  // 当前仅支持项目汇报（个人汇报暂未开放，入口隐藏）
-  const [reportKind, setReportKind] = useState<AdvisorReportKind>('project');
+  const [reportKind, setReportKind] = useState<AdvisorReportKind>(params.get('mode') === 'project-report' ? 'project' : 'personal');
   // 项目汇报模式下，"项目管理平台"数据来源保持必选
   useEffect(() => {
     if (mode === 'report' && reportKind === 'project' && !selectedSourceIds.includes('projects')) {
@@ -1217,6 +1216,23 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           <section className="space-y-2.5 border-t border-gray-100 pt-4">
 
             <label className="grid grid-cols-[68px_minmax(0,1fr)] items-center gap-2.5 text-xs font-semibold text-gray-500">
+                <span>汇报类型</span>
+                <div className="grid grid-cols-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-normal">
+                  {([['personal', '个人汇报'], ['project', '项目汇报']] as const).map(([kind, label]) => (
+                    <button key={kind} type="button" onClick={() => {
+                      setReportKind(kind);
+                      if (kind === 'project') {
+                        // 项目汇报：项目数据源必选，自动补勾
+                        setSelectedSourceIds(current => current.includes('projects') ? current : [...current, 'projects']);
+                      }
+                    }}
+                      className={`rounded-md px-2 py-1.5 font-semibold transition-colors ${reportKind === kind ? 'bg-theme-600 text-white shadow-sm' : 'text-gray-500 hover:bg-white'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </label>
+            <label className="grid grid-cols-[68px_minmax(0,1fr)] items-center gap-2.5 text-xs font-semibold text-gray-500">
               <span>时间范围</span>
               <input value={period} onChange={event => setPeriod(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-xs font-normal text-gray-700 outline-none focus:border-theme-300 focus:bg-white" />
             </label>
@@ -1350,6 +1366,18 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               <label className="mt-2 block text-xs font-semibold text-gray-500">需求描述
                 <textarea value={prompt} onChange={event => setPrompt(event.target.value)} rows={5} className="mt-1.5 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal leading-6 text-gray-700 outline-none focus:border-theme-300 focus:ring-2 focus:ring-theme-100" placeholder="调整需求后，点击下方重新生成" />
               </label>
+              {mode === 'report' && (
+                <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-normal">
+                  {([['personal', '个人汇报'], ['project', '项目汇报']] as const).map(([kind, label]) => (
+                    <button key={kind} type="button" onClick={() => {
+                      setReportKind(kind);
+                      if (kind === 'project') setSelectedSourceIds(current => current.includes('projects') ? current : [...current, 'projects']);
+                    }} className={`rounded-md px-2 py-1.5 font-semibold transition-colors ${reportKind === kind ? 'bg-theme-600 text-white shadow-sm' : 'text-gray-500 hover:bg-white'}`}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <label className="mt-3 block text-xs font-semibold text-gray-500">时间范围
                 <input value={period} onChange={event => setPeriod(event.target.value)} className="mt-1.5 h-8 w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 text-xs font-normal text-gray-700 outline-none focus:border-theme-300 focus:bg-white" />
