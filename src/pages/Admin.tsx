@@ -1,6 +1,11 @@
-﻿import { useEffect, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
+  FileArchive,
+  Presentation,
+  MoreHorizontal,
+  Trash2,
+  PencilLine,
   Menu, X, Shield, Lock, GitBranch, LayoutDashboard,
   Globe, Network, Palette, ChevronRight, User, Users, FolderTree,
   Route, Wand2, FileText, Edit3, Image as ImageIcon, Type, AlignJustify, Plus, Search, Upload,
@@ -8,6 +13,8 @@ import {
 } from 'lucide-react';
 import NavigationConfig from '../components/NavigationConfig';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
+import ContactPicker from '../components/ContactPicker';
+import { contactDirectory, findContactByName } from '../data/contactDirectory';
 import {
   TRUSTED_ROUTE_DICTIONARY_NAME,
   TRUSTED_ROUTE_DICTIONARY_TYPE,
@@ -98,6 +105,7 @@ const menuItems: MenuItem[] = [
     icon: <Wand2 size={18} />,
     children: [
       { id: 'ai-template', label: '公文模板管理', icon: <FileText size={16} /> },
+      { id: 'ppt-template', label: 'PPT模板管理', icon: <Presentation size={16} /> },
     ]
   },
   {
@@ -121,9 +129,11 @@ const topLevelSystemSections = menuItems.find(item => item.id === 'system')?.chi
 
 const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
   'ai-template': { menu: 'ai', subMenu: 'ai-template' },
+  'ppt-template': { menu: 'ai', subMenu: 'ppt-template' },
   'report-template': { menu: 'initial', subMenu: 'report-template' },
   'system-nav': { menu: 'system', subMenu: 'system-nav' },
   'system-dictionary': { menu: 'system', subMenu: 'system-dictionary' },
+  'user-groups': { menu: 'system', subMenu: 'system-user-groups' },
 };
 
 const adminTheme = {
@@ -660,6 +670,12 @@ type UserGroupMember = {
   userId: string;
   department: string;
   position: string;
+  /** 条目类型：人员 / 部门 */
+  kind?: 'person' | 'department';
+  /** 域账号（人员必填，部门为 -） */
+  domainAccount?: string;
+  /** 员工编号（人员必填，部门为 -） */
+  employeeNo?: string;
 };
 
 type UserGroupRecord = {
@@ -669,10 +685,24 @@ type UserGroupRecord = {
   description: string;
   scope?: UserGroupScope;
   scopeTarget?: string;
+  /** 适用功能（如：项目工作台、流程审批） */
+  features?: string;
+  /** 适用成员范围（全员/指定部门/指定人员的展示值） */
+  memberScope?: string;
   updatedAt: string;
   owner: string;
   members: UserGroupMember[];
 };
+
+/** 用户组可授权功能池（适用功能可选值，scope 为默认适用范围） */
+const USER_GROUP_FEATURE_POOL = [
+  { name: '工作门户 · 协同功能', description: '门户待办、跨部门协同与常用应用入口', scope: '全员' },
+  { name: '工作汇报', description: '项目周报/汇报的生成与分发', scope: '信息管理部' },
+  { name: '流程审批', description: '发起与审批 OA 流程', scope: '信息管理部' },
+  { name: '知识库', description: '知识文档的阅读与贡献权限', scope: '全员' },
+  { name: 'AI 公文创作', description: 'AI 辅助公文写作灰度', scope: '信息管理部 / 数字化中心' },
+  { name: '如意空间', description: '如意助手与智能体工作台', scope: '全员' },
+];
 
 const initialUserGroups: UserGroupRecord[] = [
   {
@@ -680,12 +710,16 @@ const initialUserGroups: UserGroupRecord[] = [
     name: '项目协同组',
     source: 'manual',
     description: '由管理员维护，用于跨部门项目工作台、流程和知识库权限授权。',
+    features: '工作门户 · 协同功能 / 工作汇报 / 流程审批 / 知识库',
+    memberScope: '指定部门（信息管理部、数字化中心）',
     updatedAt: '2026-06-28 16:20',
     owner: MAIN_USER_NAME,
     members: [
-      { name: MAIN_USER_NAME, phone: '+86 13611750104', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理' },
-      { name: getDemoPerson(13), phone: '+86 13800138021', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管' },
-      { name: getDemoPerson(14), phone: '+86 13900139032', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理' },
+      { name: MAIN_USER_NAME, phone: 'liangjie@juneyao.com', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理', kind: 'person', domainAccount: 'liangjie', employeeNo: 'HO00-00000001' },
+      { name: getDemoPerson(13), phone: 'zhouyu@juneyao.com', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管', kind: 'person', domainAccount: 'zhouyu', employeeNo: 'HO00-00000002' },
+      { name: getDemoPerson(14), phone: 'lusu@juneyao.com', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理', kind: 'person', domainAccount: 'lusu', employeeNo: 'HO00-00000003' },
+      { name: '信息管理部', phone: '-', userId: 'dept-xxglb', department: '-', position: '-', kind: 'department' },
+      { name: '数字化中心', phone: '-', userId: 'dept-szhzx', department: '-', position: '-', kind: 'department' },
     ]
   },
   {
@@ -693,10 +727,12 @@ const initialUserGroups: UserGroupRecord[] = [
     name: 'AI公文试点组',
     source: 'manual',
     description: '手动添加的试点用户，可编辑成员，用于AI公文创作灰度范围配置。',
+    features: 'AI 公文创作 / 如意空间',
+    memberScope: '指定人员（灰度试点名单）',
     updatedAt: '2026-06-27 11:05',
     owner: getDemoPerson(11),
     members: [
-      { name: getDemoPerson(11), phone: '+86 13500135022', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人' },
+      { name: getDemoPerson(11), phone: 'xunyu@juneyao.com', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人', kind: 'person', domainAccount: 'xunyu', employeeNo: 'HO00-00000004' },
       { name: '陈一航', phone: '+86 13400134033', userId: '8ef67331', department: '市场营销部 / 数字营销处', position: '处长' },
     ]
   },
@@ -720,9 +756,11 @@ const initialUserGroups: UserGroupRecord[] = [
     updatedAt: '2026-07-01 09:30',
     owner: '主数据',
     members: [
-      { name: MAIN_USER_NAME, phone: '+86 13611750104', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理' },
-      { name: getDemoPerson(13), phone: '+86 13800138021', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管' },
-      { name: getDemoPerson(14), phone: '+86 13900139032', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理' },
+      { name: MAIN_USER_NAME, phone: 'liangjie@juneyao.com', userId: '4de17977', department: '信息管理部 / 管理支撑产品处', position: '产品经理', kind: 'person', domainAccount: 'liangjie', employeeNo: 'HO00-00000001' },
+      { name: getDemoPerson(13), phone: 'zhouyu@juneyao.com', userId: '7af32018', department: '信息管理部 / 业务协同处', position: '业务主管', kind: 'person', domainAccount: 'zhouyu', employeeNo: 'HO00-00000002' },
+      { name: getDemoPerson(14), phone: 'lusu@juneyao.com', userId: '6bc45190', department: '数字化中心 / 项目管理处', position: '项目经理', kind: 'person', domainAccount: 'lusu', employeeNo: 'HO00-00000003' },
+      { name: '信息管理部', phone: '-', userId: 'dept-xxglb', department: '-', position: '-', kind: 'department' },
+      { name: '数字化中心', phone: '-', userId: 'dept-szhzx', department: '-', position: '-', kind: 'department' },
     ]
   },
   {
@@ -734,7 +772,7 @@ const initialUserGroups: UserGroupRecord[] = [
     owner: '主数据',
     members: [
       { name: getDemoPerson(12), phone: '+86 13700137011', userId: '9aa78120', department: '航务运行部 / 运行支撑处', position: '高级经理' },
-      { name: getDemoPerson(11), phone: '+86 13500135022', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人' },
+      { name: getDemoPerson(11), phone: 'xunyu@juneyao.com', userId: '1dc90244', department: '信息管理部 / 平台研发处', position: '技术负责人', kind: 'person', domainAccount: 'xunyu', employeeNo: 'HO00-00000004' },
       { name: '陈一航', phone: '+86 13400134033', userId: '8ef67331', department: '市场营销部 / 数字营销处', position: '处长' },
     ]
   },
@@ -761,14 +799,34 @@ function UserGroupManagement() {
   const [createOpen, setCreateOpen] = useState(false);
   const [createName, setCreateName] = useState('');
   const [createDescription, setCreateDescription] = useState('');
-  const [createScope, setCreateScope] = useState<UserGroupScope>('全员');
-  const [createScopeTarget, setCreateScopeTarget] = useState('');
   const [createError, setCreateError] = useState('');
   const [editing, setEditing] = useState(false);
   const [draftName, setDraftName] = useState('');
   const [draftDescription, setDraftDescription] = useState('');
   const [toast, setToast] = useState('');
   const [lastSyncTime, setLastSyncTime] = useState('2026-07-01 09:30');
+  // 侧滑详情打开的用户组 id（null 关闭）
+  const [detailGroupId, setDetailGroupId] = useState<string | null>(null);
+  // 通讯录选人（当前详情组待添加的名单）
+  const [pickerNames, setPickerNames] = useState<string[]>([]);
+  // 详情内搜索：类型（成员/部门）与关键词
+  const [memberSearchType, setMemberSearchType] = useState<'member' | 'department'>('member');
+  const [memberKeyword, setMemberKeyword] = useState('');
+  const detailGroup = groups.find(group => group.id === detailGroupId) || null;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // 移除成员确认（name+userId）
+  const [removeConfirm, setRemoveConfirm] = useState<{ name: string; userId: string } | null>(null);
+  // 删除确认弹框与风险勾选
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteAck, setDeleteAck] = useState(false);
+  // 详情内编辑用户组信息
+  const [editingGroup, setEditingGroup] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editFeatures, setEditFeatures] = useState('');
+  const [editMemberScope, setEditMemberScope] = useState('');
+  const handleOpenPickerRef = useRef<() => void>(null);
+  handleOpenPickerRef.current = () => setPickerOpen(true);
   const selectedGroup = groups.find(group => group.id === selectedGroupId) || groups[0];
   const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim()));
   const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim()));
@@ -788,8 +846,6 @@ function UserGroupManagement() {
   const handleAddGroup = () => {
     setCreateName('');
     setCreateDescription('');
-    setCreateScope('全员');
-    setCreateScopeTarget('');
     setCreateError('');
     setCreateOpen(true);
   };
@@ -804,17 +860,13 @@ function UserGroupManagement() {
       setCreateError('用户组名称已存在');
       return;
     }
-    if (createScope !== '全员' && !createScopeTarget.trim()) {
-      setCreateError(createScope === '指定部门' ? '请输入适用部门' : '请输入适用人员');
-      return;
-    }
     const newGroup: UserGroupRecord = {
       id: `manual-${Date.now()}`,
       name,
       source: 'manual',
       description: createDescription.trim(),
-      scope: createScope,
-      scopeTarget: createScope === '全员' ? '' : createScopeTarget.trim(),
+      features: '待配置',
+      memberScope: '全员',
       updatedAt: '2026-07-01 10:35',
       owner: MAIN_USER_NAME,
       members: [],
@@ -841,23 +893,34 @@ function UserGroupManagement() {
     showToast('用户组信息已保存');
   };
 
-  const handleAddMember = () => {
-    const nextMember: UserGroupMember = {
-      name: '新增成员',
-      phone: '+86 13000000000',
-      userId: `new${selectedGroup.members.length + 1}`,
-      department: '信息管理部 / 临时授权',
-      position: '成员',
-    };
-    setGroups(current => current.map(group => group.id === selectedGroup.id
-      ? { ...group, members: [...group.members, nextMember], updatedAt: '2026-07-01 10:45' }
+  // 通讯录确认选人 → 批量写入当前详情组（去重）
+  const handleConfirmPickMembers = () => {
+    if (!detailGroup) return;
+    const existing = new Set(detailGroup.members.map(member => member.name));
+    const additions: UserGroupMember[] = pickerNames
+      .filter(name => !existing.has(name))
+      .map(name => {
+        const contact = findContactByName(name);
+        return {
+          name,
+          phone: contact?.email || `${name.replace(/\s/g, '').toLowerCase()}@juneyao.com`,
+          userId: contact?.id || `new-${name}`,
+          department: contact?.department || '信息管理部',
+          position: contact?.title || '成员',
+        };
+      });
+    if (additions.length === 0) { setPickerNames([]); return; }
+    setGroups(current => current.map(group => group.id === detailGroup.id
+      ? { ...group, members: [...group.members, ...additions], updatedAt: '2026-07-01 10:45' }
       : group
     ));
-    showToast('已添加成员');
+    setPickerNames([]);
+    showToast(`已添加 ${additions.length} 名成员`);
   };
 
   const handleRemoveMember = (userId: string) => {
-    setGroups(current => current.map(group => group.id === selectedGroup.id
+    if (!detailGroup) return;
+    setGroups(current => current.map(group => group.id === detailGroup.id
       ? { ...group, members: group.members.filter(member => member.userId !== userId), updatedAt: '2026-07-01 10:45' }
       : group
     ));
@@ -865,20 +928,36 @@ function UserGroupManagement() {
   };
 
   const renderGroupButton = (group: UserGroupRecord) => (
-    <button
+    <div
       key={group.id}
       onClick={() => {
         setSelectedGroupId(group.id);
         setEditing(false);
       }}
-      className={`flex w-full items-center justify-between rounded px-4 py-3 text-left transition ${selectedGroupId === group.id ? 'bg-blue-50 text-[#2f75b5]' : 'text-gray-700 hover:bg-gray-50'}`}
+      className={`group/row flex w-full cursor-pointer items-center justify-between rounded px-4 py-3 text-left transition ${selectedGroupId === group.id ? 'bg-blue-50 text-[#2f75b5]' : 'text-gray-700 hover:bg-gray-50'}`}
     >
       <span className="flex min-w-0 items-center gap-2 font-medium">
         <Users size={17} />
         <span className="truncate">{group.name}</span>
       </span>
-      <span className="ml-2 rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">{group.members.length}</span>
-    </button>
+      <button
+        type="button"
+        title="用户组详情"
+        onClick={(event) => {
+          event.stopPropagation();
+          setDetailGroupId(group.id);
+          setPickerNames([]);
+          setMemberKeyword('');
+          setMemberSearchType('member');
+          setEditingGroup(false);
+          setDeleteOpen(false);
+          setDeleteAck(false);
+        }}
+        className="ml-2 flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+      >
+        <MoreHorizontal size={16} />
+      </button>
+    </div>
   );
 
   return (
@@ -935,65 +1014,215 @@ function UserGroupManagement() {
         </aside>
 
         <section className="min-w-0 p-6">
-          <div className="mb-6">
-              <div className="flex items-center">
-                {editing && isManual ? (
-                  <input value={draftName} onChange={(event) => setDraftName(event.target.value)} className="h-9 w-72 rounded border border-gray-300 px-3 text-lg font-semibold text-gray-900 outline-none focus:border-[#2f75b5]" />
-                ) : (
-                  <h3 className="text-lg font-semibold text-gray-900">{selectedGroup.name}</h3>
-                )}
-              </div>
+          {/* 名称 + 行内统计示意 */}
+          <div className="mb-5">
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h3 className="text-lg font-semibold text-gray-900">{selectedGroup.name}</h3>
+              <span className="text-sm text-gray-500">
+                成员 <span className="font-semibold text-gray-800">{selectedGroup.members.filter(member => member.kind !== 'department').length}</span>
+                <span className="mx-2 text-gray-300">·</span>
+                部门 <span className="font-semibold text-gray-800">{(() => { const deptRows = selectedGroup.members.filter(member => member.kind === 'department'); return deptRows.length > 0 ? deptRows.length : new Set(selectedGroup.members.map(member => member.department.split(' / ')[0])).size; })()}</span>
+              </span>
+            </div>
+            <p className="mt-2 text-sm text-gray-500">{selectedGroup.description || '暂无描述'}</p>
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <button className="h-9 rounded border border-gray-300 bg-gray-50 px-4 text-gray-700">搜索成员</button>
-            <input className="h-9 w-72 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" placeholder="请输入成员姓名、邮箱..." />
-            {isManual ? (
-              <>
-                {editing ? (
-                  <>
-                    <button onClick={handleSaveGroup} className="h-9 rounded bg-[#2f75b5] px-4 text-white hover:bg-[#28669f]">保存</button>
-                    <button onClick={() => setEditing(false)} className="h-9 rounded border border-gray-300 bg-white px-4 text-gray-700 hover:bg-gray-50">取消</button>
-                  </>
-                ) : (
-                  <button onClick={handleStartEdit} className="h-9 rounded border border-[#2f75b5] bg-white px-4 text-[#2f75b5] hover:bg-blue-50">编辑用户组</button>
-                )}
-                <button onClick={handleAddMember} className="h-9 rounded bg-[#2f75b5] px-4 text-white hover:bg-[#28669f]">添加成员</button>
-              </>
-            ) : (
-              <span className="rounded bg-gray-100 px-3 py-2 text-xs text-gray-500">同步组不支持在此编辑成员</span>
-            )}
+          {/* 搜索：类型切换（成员/部门）+ 关键词（即时过滤） */}
+          <div className="mb-4 flex items-center gap-2">
+            <select value={memberSearchType} onChange={(event) => setMemberSearchType(event.target.value as 'member' | 'department')} className="h-9 shrink-0 rounded border border-gray-300 bg-white px-2 text-sm text-gray-700 outline-none focus:border-[#2f75b5]">
+              <option value="member">成员</option>
+              <option value="department">部门</option>
+            </select>
+            <div className="relative min-w-0 flex-1">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                value={memberKeyword}
+                onChange={(event) => setMemberKeyword(event.target.value)}
+                placeholder={memberSearchType === 'member' ? '搜索成员姓名 / 域账号 / 员工编号' : '搜索部门名称'}
+                className="h-9 w-full rounded border border-gray-300 pl-9 pr-3 text-sm outline-none focus:border-[#2f75b5]"
+              />
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-[900px] w-full border-collapse text-left">
+          {/* 成员列表（人员 + 部门条目，按搜索过滤） */}
+          <div className="overflow-x-auto rounded border border-gray-200">
+            <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="bg-gray-100 text-gray-600">
-                  <th className="px-4 py-3 font-medium">用户组成员</th>
-                  <th className="px-4 py-3 font-medium">联系手机号/邮箱</th>
-                  <th className="px-4 py-3 font-medium">用户 ID</th>
+                  <th className="px-4 py-3 font-medium">用户组成员或部门</th>
+                  <th className="px-4 py-3 font-medium">域账号</th>
+                  <th className="px-4 py-3 font-medium">员工编号</th>
                   <th className="px-4 py-3 font-medium">部门</th>
-                  <th className="px-4 py-3 font-medium">岗位</th>
-                  {isManual && <th className="px-4 py-3 font-medium">操作</th>}
+                  <th className="px-4 py-3 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody>
-                {selectedGroup.members.map(member => (
-                  <tr key={member.userId} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-4"><div className="flex items-center gap-3"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#eef4ff] text-sm font-semibold text-[#2f75b5]">{member.name.slice(0, 1)}</div><span className="font-medium text-gray-900">{member.name}</span></div></td>
-                    <td className="px-4 py-4 text-gray-700">{member.phone}</td>
-                    <td className="px-4 py-4 text-gray-700">{member.userId}</td>
-                    <td className="px-4 py-4 text-gray-700">{member.department}</td>
-                    <td className="px-4 py-4 text-gray-700">{member.position}</td>
-                    {isManual && <td className="px-4 py-4"><button onClick={() => handleRemoveMember(member.userId)} className="text-[#2f75b5] hover:underline">移除</button></td>}
-                  </tr>
-                ))}
-                {selectedGroup.members.length === 0 && <tr><td className="px-4 py-12 text-center text-gray-400" colSpan={isManual ? 6 : 5}>暂无成员</td></tr>}
+                {selectedGroup.members
+                  .filter(member => {
+                    const kw = memberKeyword.trim();
+                    if (!kw) return true;
+                    return memberSearchType === 'member'
+                      ? [member.name, member.domainAccount || '', member.employeeNo || ''].some(value => value.includes(kw))
+                      : (member.kind === 'department' ? member.name : member.department).includes(kw);
+                  })
+                  .map(member => {
+                  const isDept = member.kind === 'department';
+                  return (
+                    <tr key={member.userId} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs ${isDept ? 'bg-gray-100 text-gray-500' : 'rounded-full bg-[#eef4ff] font-semibold text-[#2f75b5]'}`}>
+                            {isDept ? <FolderTree size={15} /> : member.name.slice(0, 1)}
+                          </div>
+                          <span className="font-medium text-gray-900">{member.name}</span>
+                          {isDept && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">部门</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">{isDept ? '-' : (member.domainAccount || '-')}</td>
+                      <td className="px-4 py-3 text-gray-700">{isDept ? '-' : (member.employeeNo || '-')}</td>
+                      <td className="px-4 py-3 text-gray-700">{isDept ? '-' : member.department}</td>
+                      <td className="px-4 py-3">
+                        {isManual ? <button onClick={() => setRemoveConfirm({ name: member.name, userId: member.userId })} className="text-[#2f75b5] hover:underline">移除</button> : <span className="text-xs text-gray-400">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {selectedGroup.members.filter(member => {
+                  const kw = memberKeyword.trim();
+                  if (!kw) return true;
+                  return memberSearchType === 'member'
+                    ? [member.name, member.domainAccount || '', member.employeeNo || ''].some(value => value.includes(kw))
+                    : (member.kind === 'department' ? member.name : member.department).includes(kw);
+                }).length === 0 && <tr><td className="px-4 py-10 text-center text-gray-400" colSpan={5}>{memberKeyword ? '未找到匹配项' : '暂无成员'}</td></tr>}
               </tbody>
             </table>
           </div>
         </section>
       </div>
+
+      {/* 用户组详情侧滑抽屉 */}
+      {detailGroup && (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/35" onMouseDown={(event) => { if (event.target === event.currentTarget) setDetailGroupId(null); }}>
+          <div className="flex h-full w-full max-w-[680px] flex-col bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+              <div className="min-w-0">
+                <h3 className="truncate text-lg font-semibold text-gray-900">{detailGroup.name}</h3>
+                <p className="mt-1 text-xs text-gray-500">{detailGroup.source === 'manual' ? '手动管理' : '系统同步 · 只读'} · 更新于 {detailGroup.updatedAt}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {detailGroup.source === 'manual' && (
+                  <>
+                    <button
+                      onClick={() => { setEditName(detailGroup.name); setEditDescription(detailGroup.description); setEditFeatures(detailGroup.features || ''); setEditMemberScope(detailGroup.memberScope || ''); setEditingGroup(true); }}
+                      className="inline-flex h-9 items-center gap-1.5 rounded border border-[#2f75b5] bg-white px-4 text-sm font-medium text-[#2f75b5] hover:bg-blue-50"
+                    >
+                      <PencilLine size={15} />编辑用户组
+                    </button>
+                    <button
+                      onClick={() => { setDeleteOpen(true); setDeleteAck(false); }}
+                      className="inline-flex h-9 items-center gap-1.5 rounded border border-red-300 bg-white px-4 text-sm font-medium text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 size={15} />删除用户组
+                    </button>
+                  </>
+                )}
+                <button type="button" aria-label="关闭详情" onClick={() => setDetailGroupId(null)} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
+              </div>
+            </div>
+
+            {/* 基本信息（与新增字段一致 + 适用功能/适用成员范围） */}
+            <div className="border-b border-gray-100 px-6 py-4">
+              {editingGroup && detailGroup.source === 'manual' ? (
+                <div className="space-y-4">
+                  <label className="block text-sm text-gray-700">
+                    <span>用户组名称 <span className="text-red-500">*</span></span>
+                    <input value={editName} onChange={(event) => setEditName(event.target.value)} maxLength={50} className="mt-1.5 h-9 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
+                  </label>
+                  <label className="block text-sm text-gray-700">
+                    <span>用户组描述</span>
+                    <textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={500} rows={2} className="mt-1.5 w-full resize-y rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#2f75b5]" />
+                  </label>
+                  <div className="text-sm text-gray-700">
+                    <span>适用功能（可多选）</span>
+                    <div className="mt-1.5 space-y-1.5 rounded border border-gray-200 bg-gray-50/60 px-3 py-2.5">
+                      {USER_GROUP_FEATURE_POOL.map(feature => {
+                        const checked = editFeatures.split(' / ').filter(Boolean).includes(feature.name);
+                        return (
+                          <label key={feature.name} className="flex cursor-pointer items-center gap-2.5 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={(event) => {
+                                const current = editFeatures.split(' / ').filter(Boolean);
+                                setEditFeatures(event.target.checked
+                                  ? [...current, feature.name].join(' / ')
+                                  : current.filter(item => item !== feature.name).join(' / '));
+                              }}
+                              className="h-4 w-4 accent-[#2f75b5]"
+                            />
+                            <span className="font-medium text-gray-800">{feature.name}</span>
+                            <span className="text-xs text-gray-400">{feature.description}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <label className="block text-sm text-gray-700">
+                    <span>适用成员范围</span>
+                    <input value={editMemberScope} onChange={(event) => setEditMemberScope(event.target.value)} placeholder="如：全员 / 指定部门（××部）" className="mt-1.5 h-9 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
+                  </label>
+                  <div className="flex justify-end gap-2 pt-1">
+                    <button onClick={() => setEditingGroup(false)} className="h-9 rounded border border-gray-300 bg-white px-4 text-sm text-gray-700 hover:bg-gray-50">取消</button>
+                    <button
+                      onClick={() => {
+                        if (!editName.trim()) { showToast('请输入用户组名称'); return; }
+                        setGroups(current => current.map(group => group.id === detailGroup.id
+                          ? { ...group, name: editName.trim(), description: editDescription.trim(), features: editFeatures.trim(), memberScope: editMemberScope.trim(), updatedAt: '2026-07-01 11:00' }
+                          : group));
+                        setEditingGroup(false);
+                        showToast('用户组信息已保存');
+                      }}
+                      className="h-9 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f]"
+                    >保存</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                    <div><p className="text-xs text-gray-500">用户组名称</p><p className="mt-1 font-medium text-gray-900">{detailGroup.name}</p></div>
+                    <div><p className="text-xs text-gray-500">用户组所属分组</p><p className="mt-1 text-gray-700">{detailGroup.source === 'manual' ? '手动管理' : '系统同步'}</p></div>
+                    <div className="col-span-2"><p className="text-xs text-gray-500">用户组描述</p><p className="mt-1 leading-6 text-gray-700">{detailGroup.description || '—'}</p></div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-semibold text-gray-500">适用功能与范围</p>
+                    <table className="w-full border-collapse text-left text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 text-xs text-gray-500">
+                          <th className="border border-gray-200 px-3 py-2 font-medium">适用功能</th>
+                          <th className="border border-gray-200 px-3 py-2 font-medium">适用范围</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(detailGroup.features ? detailGroup.features.split(' / ') : []).map(feature => {
+                          const pool = USER_GROUP_FEATURE_POOL.find(item => item.name === feature);
+                          return (
+                            <tr key={feature}>
+                              <td className="border border-gray-200 px-3 py-2 font-medium text-gray-800">{feature}</td>
+                              <td className="border border-gray-200 px-3 py-2 text-gray-600">{pool?.scope || '—'}</td>
+                            </tr>
+                          );
+                        })}
+                        {(!detailGroup.features || detailGroup.features.split(' / ').length === 0) && <tr><td className="border border-gray-200 px-3 py-4 text-center text-gray-400" colSpan={2}>暂未授权功能</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {createOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateOpen(false); }}>
@@ -1015,25 +1244,72 @@ function UserGroupManagement() {
                 <span>用户组所属分组</span>
                 <select value="manual" disabled className="mt-2 h-10 w-full rounded border border-gray-300 bg-gray-50 px-3 text-gray-700"><option value="manual">手动管理</option></select>
               </label>
-              <label className="block text-sm text-gray-700">
-                <span>适用范围</span>
-                <select value={createScope} onChange={(event) => { setCreateScope(event.target.value as UserGroupScope); setCreateScopeTarget(''); setCreateError(''); }} className="mt-2 h-10 w-full rounded border border-gray-300 bg-white px-3 outline-none focus:border-[#2f75b5]">
-                  <option value="全员">全员</option>
-                  <option value="指定部门">指定部门</option>
-                  <option value="指定人员">指定人员</option>
-                </select>
-              </label>
-              {createScope !== '全员' && (
-                <label className="block text-sm text-gray-700">
-                  <span>{createScope === '指定部门' ? '适用部门' : '适用人员'} <span className="text-red-500">*</span></span>
-                  <input value={createScopeTarget} onChange={(event) => { setCreateScopeTarget(event.target.value); setCreateError(''); }} placeholder={createScope === '指定部门' ? '请输入部门名称' : '请输入人员姓名'} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
-                </label>
-              )}
               {createError && <p role="alert" className="text-sm text-red-600">{createError}</p>}
             </div>
             <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
               <button type="button" onClick={() => setCreateOpen(false)} className="h-9 rounded border border-gray-300 px-4 text-gray-700 hover:bg-gray-50">取消</button>
               <button type="button" onClick={handleConfirmAddGroup} className="h-9 rounded bg-[#2f75b5] px-4 font-medium text-white hover:bg-[#28669f]">确认</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 移除成员/部门确认 */}
+      {removeConfirm && selectedGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div role="dialog" aria-modal="true" className="w-full max-w-sm rounded bg-white shadow-xl">
+            <div className="px-6 py-5">
+              <p className="text-sm leading-6 text-gray-800">是否确认将“{removeConfirm.name}”移出用户组“{selectedGroup.name}”？</p>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button type="button" onClick={() => setRemoveConfirm(null)} className="h-9 rounded border border-gray-300 bg-white px-4 text-sm text-gray-700 hover:bg-gray-50">取消</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = removeConfirm;
+                  setRemoveConfirm(null);
+                  setGroups(current => current.map(group => group.id === selectedGroup.id
+                    ? { ...group, members: group.members.filter(member => member.userId !== target.userId), updatedAt: '2026-07-01 11:10' }
+                    : group));
+                  showToast(`已将“${target.name}”移出用户组`);
+                }}
+                className="h-9 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f]"
+              >确认移除</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 删除用户组确认 */}
+      {deleteOpen && detailGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div role="dialog" aria-modal="true" className="w-full max-w-md rounded bg-white shadow-xl">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h3 className="text-base font-semibold text-gray-900">确认删除该用户组？</h3>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm leading-6 text-gray-600">请注意：删除后，系统会逐步清除组内成员并删除用户组。此操作不可逆，删除后的用户组无法恢复。</p>
+              <label className="mt-5 flex cursor-pointer items-start gap-2.5 rounded border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <input type="checkbox" checked={deleteAck} onChange={(event) => setDeleteAck(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#2f75b5]" />
+                <span>我已知晓此操作的风险，并确认要删除</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button type="button" onClick={() => { setDeleteOpen(false); setDeleteAck(false); }} className="h-9 rounded border border-gray-300 bg-white px-4 text-sm text-gray-700 hover:bg-gray-50">取消</button>
+              <button
+                type="button"
+                disabled={!deleteAck}
+                onClick={() => {
+                  const deletedId = detailGroup.id;
+                  setGroups(current => current.filter(group => group.id !== deletedId));
+                  setDeleteOpen(false);
+                  setDeleteAck(false);
+                  setDetailGroupId(null);
+                  if (selectedGroupId === deletedId) setSelectedGroupId(groups.find(group => group.id !== deletedId)?.id || '');
+                  showToast('用户组已删除');
+                }}
+                className="h-9 rounded bg-red-600 px-4 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >删除用户组</button>
             </div>
           </div>
         </div>
@@ -2633,6 +2909,279 @@ function TemplatePreviewCard({ accent = 'bg-red-500' }: { accent?: string }) {
   );
 }
 
+// ===== PPT 模板管理 =====
+type PptTemplateRecord = {
+  id: string;
+  name: string;
+  /** 模板压缩包文件名 */
+  packageFile: string;
+  /** 缩略图渐变（示意） */
+  thumbAccent: string;
+  updater: string;
+  updatedAt: string;
+};
+
+const initialPptTemplates: PptTemplateRecord[] = [
+  { id: 'ppt-tpl-1', name: '吉祥主题', packageFile: 'juneyao-theme-v1.zip', thumbAccent: 'from-[#d51f5c] to-[#f3c6d8]', updater: MAIN_USER_NAME, updatedAt: '2026-10-08 14:20' },
+  { id: 'ppt-tpl-2', name: '吉祥IT主题', packageFile: 'juneyao-it-v2.zip', thumbAccent: 'from-[#2563eb] to-[#bfdbfe]', updater: MAIN_USER_NAME, updatedAt: '2026-10-08 14:22' },
+  { id: 'ppt-tpl-3', name: 'IT项目立项主题', packageFile: 'it-project-v1.zip', thumbAccent: 'from-[#059669] to-[#a7f3d0]', updater: MAIN_USER_NAME, updatedAt: '2026-10-09 09:10' },
+];
+
+function PptTemplateManagement() {
+  const [templates, setTemplates] = useState<PptTemplateRecord[]>(initialPptTemplates);
+  const [templateName, setTemplateName] = useState('');
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PptTemplateRecord | null>(null);
+  const [deleteAck, setDeleteAck] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formPackage, setFormPackage] = useState('');
+  const [formError, setFormError] = useState('');
+  const [toast, setToast] = useState('');
+
+  const isCreating = editingTemplateId === '__new__';
+  const editingTemplate = isCreating
+    ? { id: '__new__', name: '新增PPT模板', packageFile: '', thumbAccent: 'from-[#d51f5c] to-[#f3c6d8]', updater: MAIN_USER_NAME, updatedAt: '刚刚' }
+    : templates.find(item => item.id === editingTemplateId) || templates[0];
+  const filteredRows = templates.filter((item) => item.name.includes(templateName.trim()) || item.packageFile.includes(templateName.trim()));
+
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(''), 2200);
+  };
+
+  const handleOpenEditor = (id: string) => {
+    setEditingTemplateId(id);
+    setFormError('');
+    if (id === '__new__') {
+      setFormName('');
+      setFormPackage('');
+    } else {
+      const item = templates.find(t => t.id === id);
+      setFormName(item?.name || '');
+      setFormPackage(item?.packageFile || '');
+    }
+  };
+
+  const handleSave = () => {
+    const name = formName.trim();
+    if (!name) { setFormError('请输入模板名称'); return; }
+    if (!formPackage.trim()) { setFormError('请上传模板压缩包'); return; }
+    if (isCreating) {
+      if (templates.some(item => item.name === name)) { setFormError('模板名称已存在'); return; }
+      const accentPool = ['from-[#d51f5c] to-[#f3c6d8]', 'from-[#2563eb] to-[#bfdbfe]', 'from-[#059669] to-[#a7f3d0]'];
+      setTemplates(current => [{ id: `ppt-tpl-${Date.now()}`, name, packageFile: formPackage.trim(), thumbAccent: accentPool[current.length % accentPool.length], updater: MAIN_USER_NAME, updatedAt: '刚刚' }, ...current]);
+      showToast('PPT模板已新增');
+    } else {
+      setTemplates(current => current.map(item => item.id === editingTemplateId
+        ? { ...item, name, packageFile: formPackage.trim(), updatedAt: '刚刚' }
+        : item));
+      showToast('PPT模板已更新');
+    }
+    setEditingTemplateId(null);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    const targetId = deleteTarget.id;
+    setTemplates(current => current.filter(item => item.id !== targetId));
+    setDeleteTarget(null);
+    setDeleteAck(false);
+    showToast('PPT模板已删除');
+  };
+
+  // ===== 编辑/新增态：整页表单（对齐公文模板管理 Console 范式） =====
+  if (editingTemplateId) {
+    return (
+      <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] pt-3 text-sm text-gray-800">
+        <AdminTabs active={isCreating ? '新增模板' : '编辑模板'} />
+        <div className="bg-white px-8 py-4">
+          <div className="mb-5 text-sm text-gray-500">
+            首页 <span className="mx-2">/</span> AI辅助功能 <span className="mx-2">/</span> PPT模板管理 <span className="mx-2">/</span>
+            <span className="text-gray-800">{isCreating ? '新增模板' : '编辑模板'}</span>
+          </div>
+          <button
+            onClick={() => setEditingTemplateId(null)}
+            className="rounded border border-gray-300 bg-white px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            返回
+          </button>
+        </div>
+
+        <div className="p-5">
+          <div className="bg-white p-6">
+            <div className="mb-5 border-b border-gray-100 pb-3 text-base font-semibold text-gray-900">模板信息</div>
+            <div className="grid min-w-0 gap-6 xl:grid-cols-[220px_minmax(0,1fr)]">
+              <div>
+                <div className="mb-2 text-sm text-gray-700">缩略图</div>
+                <div className={`relative flex aspect-video w-full max-w-[200px] items-center justify-center overflow-hidden rounded border border-gray-200 bg-gradient-to-br ${editingTemplate.thumbAccent}`}>
+                  <div className="text-sm font-semibold tracking-wide text-white/95">{formName.trim() || editingTemplate.name}</div>
+                  <span className="absolute bottom-1 right-1 rounded bg-black/25 px-1 py-0.5 text-[9px] text-white">16:9</span>
+                </div>
+                <p className="mt-1.5 text-xs text-gray-400">按模板名称自动生成</p>
+              </div>
+
+              <div className="space-y-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="w-24 text-right text-gray-700"><span className="text-red-500">*</span> 模板名称:</span>
+                  <input
+                    value={formName}
+                    onChange={(event) => { setFormName(event.target.value); setFormError(''); }}
+                    placeholder="请输入模板名称"
+                    className="h-9 w-full max-w-[360px] rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-start gap-2">
+                  <span className="mt-2 w-24 text-right text-gray-700"><span className="text-red-500">*</span> 模板上传:</span>
+                  <div className="flex-1 max-w-[360px]">
+                    {formPackage ? (
+                      <div className="flex items-center gap-3 rounded border border-gray-300 bg-gray-50 px-3 py-2">
+                        <FileArchive size={16} className="flex-shrink-0 text-[#2f75b5]" />
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-gray-800">{formPackage}</div>
+                          <div className="text-xs text-gray-400">.zip 压缩包</div>
+                        </div>
+                        <button onClick={() => setFormPackage('')} className="flex-shrink-0 text-gray-400 hover:text-red-500"><X size={16} /></button>
+                      </div>
+                    ) : (
+                      <label className="flex h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed border-gray-300 bg-gray-50 hover:border-[#2f75b5] hover:bg-blue-50/30">
+                        <Upload size={18} className="text-gray-400" />
+                        <span className="text-sm text-gray-500">上传模板压缩包（.zip）</span>
+                        <input
+                          type="file"
+                          accept=".zip,application/zip"
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0];
+                            if (file) { setFormPackage(file.name); setFormError(''); }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                {formError && <p role="alert" className="pl-26 text-sm text-red-600" style={{ paddingLeft: '104px' }}>{formError}</p>}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-gray-100 pt-4">
+              <button onClick={() => setEditingTemplateId(null)} className="rounded border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50">取消</button>
+              <button onClick={handleSave} className="rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">保存</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="pb-7 pt-2 text-center text-xs text-gray-500">
+          数据AI辅助生成，请谨慎识别
+        </div>
+      </div>
+    );
+  }
+
+  // ===== 列表态（对齐公文模板管理 Console 范式） =====
+  return (
+    <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] pt-3 text-sm text-gray-800">
+      {toast && (
+        <div className="fixed right-8 top-20 z-50 flex items-center gap-2 rounded bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
+          <CheckCircle2 size={16} className="text-green-300" />
+          {toast}
+        </div>
+      )}
+      <AdminTabs active="PPT模板管理" />
+      <div className="bg-white px-8 py-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2">
+            <span className="text-gray-800">模板名称</span>
+            <input
+              value={templateName}
+              onChange={(event) => setTemplateName(event.target.value)}
+              placeholder="请输入模板名称"
+              className="h-9 w-[min(18rem,calc(100vw-20rem))] min-w-0 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"
+            />
+          </label>
+          <div className="ml-auto flex gap-2">
+            <button className="rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">查询</button>
+            <button onClick={() => setTemplateName('')} className="rounded border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50">重置</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-5">
+        <div className="bg-white p-5">
+          <button onClick={() => handleOpenEditor('__new__')} className="mb-4 inline-flex items-center gap-1.5 rounded bg-[#2f75b5] px-4 py-2 font-medium text-white hover:bg-[#28669f]">
+            <Plus size={15} />
+            新增模板
+          </button>
+          <div className="w-full overflow-x-auto">
+            <table className="min-w-[760px] w-full table-fixed border-collapse text-left">
+              <thead>
+                <tr className="bg-gray-50 text-gray-900">
+                  <th className="px-3 py-3 font-medium">模板名称</th>
+                  <th className="px-3 py-3 font-medium">模板压缩包</th>
+                  <th className="px-3 py-3 font-medium">更新人</th>
+                  <th className="px-3 py-3 font-medium">更新时间</th>
+                  <th className="px-3 py-3 font-medium">操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRows.map((item) => (
+                  <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-5 w-8 shrink-0 rounded bg-gradient-to-br ${item.thumbAccent}`} />
+                        <span className="truncate text-gray-800">{item.name}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-gray-600">{item.packageFile}</td>
+                    <td className="px-3 py-3 text-gray-600">{item.updater}</td>
+                    <td className="px-3 py-3 text-gray-600">{item.updatedAt}</td>
+                    <td className="px-3 py-3">
+                      <button onClick={() => handleOpenEditor(item.id)} className="mr-4 text-[#2f75b5] hover:underline">编辑</button>
+                      <button onClick={() => { setDeleteTarget(item); setDeleteAck(false); }} className="text-[#2f75b5] hover:underline">删除</button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredRows.length === 0 && (
+                  <tr>
+                    <td className="px-3 py-10 text-center text-gray-400" colSpan={5}>暂无模板数据</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="pb-7 pt-2 text-center text-xs text-gray-500">
+        数据AI辅助生成，请谨慎识别
+      </div>
+
+      {/* 删除确认 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
+          <div role="dialog" aria-modal="true" className="w-full max-w-md rounded bg-white shadow-xl">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h3 className="text-base font-semibold text-gray-900">确认删除该PPT模板？</h3>
+            </div>
+            <div className="px-6 py-5">
+              <p className="text-sm leading-6 text-gray-600">请注意：删除后，使用该模板生成的 PPT 不受影响，但新建 PPT 将无法再选择「{deleteTarget.name}」模板。此操作不可逆。</p>
+              <label className="mt-5 flex cursor-pointer items-start gap-2.5 rounded border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <input type="checkbox" checked={deleteAck} onChange={(event) => setDeleteAck(event.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#2f75b5]" />
+                <span>我已知晓此操作的风险，并确认要删除</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button type="button" onClick={() => { setDeleteTarget(null); setDeleteAck(false); }} className="h-9 rounded border border-gray-300 bg-white px-4 text-sm text-gray-700 hover:bg-gray-50">取消</button>
+              <button type="button" disabled={!deleteAck} onClick={handleConfirmDelete} className="h-9 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f] disabled:cursor-not-allowed disabled:opacity-40">删除模板</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DocumentTemplateManagement() {
   const [selectedId, setSelectedId] = useState(documentTemplateRows[0].id);
   const selectedTemplate = documentTemplateRows.find(item => item.id === selectedId) || documentTemplateRows[0];
@@ -3432,6 +3981,7 @@ export default function Admin() {
           {/* 无选中菜单时显示欢迎页 */}
           {!activeMenu && !activeSubMenu ? (
             <div className={`${activeSubMenu === 'ai-template' ? 'max-w-7xl' : 'max-w-4xl'} mx-auto`}>
+            {activeSubMenu === 'ppt-template' && <PptTemplateManagement />}
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12">
                 <div className="text-center">
                   {/* 插图区域 */}
@@ -3528,6 +4078,7 @@ export default function Admin() {
                     </div>
                   )}
                   {activeSubMenu === 'ai-template' && <DocumentTemplateManagementConsole />}
+                  {activeSubMenu === 'ppt-template' && <PptTemplateManagement />}
                 </div>
               )}
 

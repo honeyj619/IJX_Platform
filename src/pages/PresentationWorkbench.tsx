@@ -53,6 +53,10 @@ interface SavedPresentation {
   updatedAt: string;
   updatedDate: string;
   finalReady: boolean;
+  /** 生成失败标记 */
+  failed?: boolean;
+  /** 失败发生的时间戳（ms）；超过 1 天的失败项不再展示 */
+  failedAt?: number;
 }
 
 const acceptedExtensions = ["txt", "md", "markdown", "pdf", "xlsx", "xls", "docx"];
@@ -67,10 +71,20 @@ const contentGenerationSteps = [
   { title: "应用模板样式", detail: ["按新模板重排页面版式", "替换配色与字体规范"] },
 ];
 
+/** 列表排序用时间：优先失败时间戳，其次 updatedDate（YYYY-MM-DD），同日以 id 中时间戳（新生成）优先 */
+const toDate = (dateStr: string, failedAt?: number, id?: string): number => {
+  if (failedAt) return failedAt;
+  const t = Date.parse(dateStr);
+  if (!Number.isNaN(t)) return t;
+  const idNum = id?.startsWith("ppt-") ? Number(id.slice(4)) : 0;
+  return idNum || 0;
+};
+
 const initialHistory: SavedPresentation[] = [
   { id: "annual-summary", title: "2026年度数字化建设总结", mode: "AI智能生成", template: "吉祥品牌", pages: 12, updatedAt: "今天 14:20", updatedDate: "2026-09-26", finalReady: true },
   { id: "project-report", title: "如意空间项目阶段汇报", mode: "文档生成PPT", template: "简约商务", pages: 8, updatedAt: "昨天 16:10", updatedDate: "2026-09-25", finalReady: false },
   { id: "research-share", title: "智能办公应用研究分享", mode: "AI智能生成", template: "清新学术", pages: 15, updatedAt: "9月20日", updatedDate: "2026-09-20", finalReady: true },
+  { id: "failed-fresh", title: "IT部门季度复盘（生成失败）", mode: "AI智能生成", template: "吉祥IT主题", pages: 10, updatedAt: "今天 20:15", updatedDate: "2026-10-10", finalReady: false, failed: true, failedAt: Date.now() - 3 * 3600 * 1000 },
 ];
 
 const createOutline = (variant = 0): OutlinePage[] => presentationSlides.map((slide, index) => ({
@@ -135,13 +149,17 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
   const resolvedTitle = title.trim() || prompt.trim().replace(/^(请|帮我|生成|做一份|制作)/, "").slice(0, 32) || "未命名演示文稿";
   const selectedSlide = slides.find((slide) => slide.id === selectedSlideId) || slides[0];
   const contentStage = stage === "contentGenerating" || stage === "contentReview";
-  const filteredHistory = useMemo(() => history.filter((item) => (
-    item.title.toLowerCase().includes(historySearch.trim().toLowerCase())
-    
-    && (historyTemplate === "全部" || item.template === historyTemplate)
-    && (!historyStartDate || item.updatedDate >= historyStartDate)
-    && (!historyEndDate || item.updatedDate <= historyEndDate)
-  )), [history, historyEndDate, historyMode, historySearch, historyStartDate, historyTemplate]);
+  const filteredHistory = useMemo(() => history.filter((item) => {
+    // 生成失败项：超过 1 天不再展示
+    if (item.failed && item.failedAt && Date.now() - item.failedAt > 24 * 3600 * 1000) return false;
+    return (
+      item.title.toLowerCase().includes(historySearch.trim().toLowerCase())
+
+      && (historyTemplate === "全部" || item.template === historyTemplate)
+      && (!historyStartDate || item.updatedDate >= historyStartDate)
+      && (!historyEndDate || item.updatedDate <= historyEndDate)
+    );
+  }).sort((a, b) => toDate(b.updatedDate, b.failedAt, b.id) - toDate(a.updatedDate, a.failedAt, a.id)), [history, historyEndDate, historyMode, historySearch, historyStartDate, historyTemplate]);
 
   useEffect(() => {
     if (!toast) return;
@@ -330,6 +348,29 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
     setToast("大纲已下载");
   };
 
+  // 失败 PPT 重新生成：走与生成 PPT 一致的步骤动画，完成后恢复为正常条目
+  const handleRegenerateFailed = (item: SavedPresentation) => {
+    setTitle(item.title.replace(/（生成失败）/, ''));
+    setTemplate(item.template);
+    setWorkspaceTab("current");
+    setRegenerating(true);
+    setActiveGenerationStep(0);
+    setExpandedGenerationStep(0);
+    window.setTimeout(() => {
+      setRegenerating(false);
+      const nextSlides = outlineToSlides(outline);
+      setSlides(nextSlides);
+      setSelectedSlideId(nextSlides[0]?.id || 1);
+      setStage("contentReview");
+      setFinalFileStatus("idle");
+      // 清除失败态并刷新时间
+      setHistory((current) => current.map((value) => value.id === item.id
+        ? { ...value, failed: false, failedAt: undefined, title: value.title.replace(/（生成失败）/, ''), updatedAt: "刚刚", updatedDate: "2026-10-10" }
+        : value));
+      setToast("PPT已重新生成");
+    }, contentGenerationSteps.length * 650 + 900);
+  };
+
   const openHistoryItem = (item: SavedPresentation) => {
     setTitle(item.title);
     setPrompt(`根据历史记录继续完善《${item.title}》的PPT内容。`);
@@ -425,7 +466,9 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
       </div></div>{renderAttachmentPanel(false)}<div className={`rounded-lg border p-3 ${finalFileStatus === "ready" ? "border-green-200 bg-green-50" : "border-gray-200 bg-white"}`}><div className="flex items-start gap-3"><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${finalFileStatus === "ready" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{finalFileStatus === "generating" ? <LoaderCircle size={16} className="animate-spin" /> : finalFileStatus === "ready" ? <CheckCircle2 size={16} /> : <FileText size={16} />}</span><div><div className={`text-sm font-medium ${finalFileStatus === "ready" ? "text-green-800" : "text-gray-800"}`}>{finalFileStatus === "generating" ? "正在生成最终PPT文件" : finalFileStatus === "ready" ? "最终PPT文件已生成" : "待生成最终PPT文件"}</div><p className="mt-1 text-xs leading-5 text-gray-500">{finalFileStatus === "ready" ? "可下载演示文件或继续编辑。" : "确认PPT内容无误后生成最终文件。"}</p></div></div></div></div>;
   };
 
-  const renderHistoryPanel = () => <div className="space-y-3"><div className="rounded-lg border border-gray-200 bg-white p-3"><div className="relative"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="搜索PPT文件名" className="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:bg-white" /></div><div className="mt-3 grid grid-cols-2 gap-2"><select value={historyTemplate} onChange={(event) => setHistoryTemplate(event.target.value)} className="h-8 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs"><option>全部</option>{presentationTemplates.map((item) => <option key={item}>{item}</option>)}</select></div><div className="mt-2 grid grid-cols-2 gap-2"><input type="date" value={historyStartDate} onChange={(event) => setHistoryStartDate(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px]" /><input type="date" value={historyEndDate} onChange={(event) => setHistoryEndDate(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px]" /></div></div>{filteredHistory.map((item) => <div key={item.id} role="button" tabIndex={0} onClick={() => openHistoryItem(item)} onKeyDown={(event) => { if (event.key === "Enter") openHistoryItem(item); }} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm hover:border-theme-200"><div className="flex items-start gap-3"><span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-700"><Presentation size={17} /></span><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-gray-800">{item.title}</div><div className="mt-2 flex flex-wrap gap-1"><span className="rounded bg-theme-50 px-2 py-0.5 text-[11px] text-theme-700">{item.mode}</span><span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{item.pages}页</span><span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{item.updatedAt}</span></div></div></div><div className="mt-3 grid grid-cols-2 gap-2">{item.finalReady ? <button type="button" onClick={(event) => { event.stopPropagation(); setToast("PPT文件下载已开始"); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-theme-100 bg-theme-50 py-1.5 text-xs font-medium text-theme-700"><Download size={13} />下载</button> : <div className="flex items-center justify-center rounded-lg bg-gray-50 py-1.5 text-xs text-gray-400">待生成</div>}<button type="button" onClick={(event) => { event.stopPropagation(); setConfirmAction({ title: "删除PPT", message: `确定删除《${item.title}》吗？`, onConfirm: () => setHistory((current) => current.filter((value) => value.id !== item.id)) }); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-100 bg-red-50 py-1.5 text-xs text-red-600"><Trash2 size={13} />删除</button></div></div>)}{filteredHistory.length === 0 && <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-8 text-center text-sm text-gray-400">未找到匹配的PPT</div>}</div>;
+  const renderHistoryPanel = () => <div className="space-y-3"><div className="rounded-lg border border-gray-200 bg-white p-3"><div className="relative"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="搜索PPT文件名" className="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:bg-white" /></div><div className="mt-3 grid grid-cols-2 gap-2"><select value={historyTemplate} onChange={(event) => setHistoryTemplate(event.target.value)} className="h-8 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs"><option>全部</option>{presentationTemplates.map((item) => <option key={item}>{item}</option>)}</select></div><div className="mt-2 grid grid-cols-2 gap-2"><input type="date" value={historyStartDate} onChange={(event) => setHistoryStartDate(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px]" /><input type="date" value={historyEndDate} onChange={(event) => setHistoryEndDate(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px]" /></div></div>{filteredHistory.map((item) => <div key={item.id} role="button" tabIndex={0} onClick={() => openHistoryItem(item)} onKeyDown={(event) => { if (event.key === "Enter") openHistoryItem(item); }} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm hover:border-theme-200"><div className="flex items-start gap-3"><span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-700"><Presentation size={17} /></span><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-gray-800">{item.title}</div><div className="mt-2 flex flex-wrap gap-1"><span className="rounded bg-theme-50 px-2 py-0.5 text-[11px] text-theme-700">{item.mode}</span><span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{item.pages}页</span><span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{item.updatedAt}</span>{item.failed && <span className="rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">生成失败</span>}</div></div></div><div className="mt-3 grid grid-cols-2 gap-2">{item.failed ? (
+                      <button type="button" onClick={(event) => { event.stopPropagation(); handleRegenerateFailed(item); }} className="inline-flex items-center justify-center gap-1 rounded-lg bg-theme-600 py-1.5 text-xs font-semibold text-white hover:bg-theme-700"><RefreshCw size={13} />重新生成</button>
+                    ) : item.finalReady ? <button type="button" onClick={(event) => { event.stopPropagation(); setToast("PPT文件下载已开始"); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-theme-100 bg-theme-50 py-1.5 text-xs font-medium text-theme-700"><Download size={13} />下载</button> : <div className="flex items-center justify-center rounded-lg bg-gray-50 py-1.5 text-xs text-gray-400">待生成</div>}<button type="button" onClick={(event) => { event.stopPropagation(); setConfirmAction({ title: "删除PPT", message: `确定删除《${item.title}》吗？`, onConfirm: () => setHistory((current) => current.filter((value) => value.id !== item.id)) }); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-100 bg-red-50 py-1.5 text-xs text-red-600"><Trash2 size={13} />删除</button></div></div>)}{filteredHistory.length === 0 && <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-8 text-center text-sm text-gray-400">未找到匹配的PPT</div>}</div>;
 
   const renderBottomActions = () => {
     if (workspaceTab === "mine") return <button type="button" onClick={() => setWorkspaceTab("current")} className="w-full rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white">返回当前PPT</button>;

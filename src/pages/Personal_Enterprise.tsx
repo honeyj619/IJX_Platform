@@ -304,6 +304,40 @@ const defaultDataCardDisplayCounts: Record<StatKey, number> = {
   progress: 2,
 };
 
+/** 7 日内点击频率：id → {count, updatedAt}；窗口外记录清零 */
+type ClickFreqMap = Record<string, { count: number; updatedAt: number }>;
+const CLICK_FREQ_KEY = 'portalClickFrequency7d';
+const CLICK_WINDOW_MS = 7 * 24 * 3600 * 1000;
+
+const readClickFreq = (): ClickFreqMap => {
+  try {
+    const saved = localStorage.getItem(CLICK_FREQ_KEY);
+    if (!saved) return {};
+    const parsed = JSON.parse(saved) as ClickFreqMap;
+    const now = Date.now();
+    const valid: ClickFreqMap = {};
+    Object.entries(parsed).forEach(([id, entry]) => {
+      if (entry && now - entry.updatedAt <= CLICK_WINDOW_MS && entry.count > 0) valid[id] = entry;
+    });
+    return valid;
+  } catch { return {}; }
+};
+
+const recordClickFreq = (id: string): ClickFreqMap => {
+  const map = readClickFreq();
+  const prev = map[id] || { count: 0, updatedAt: Date.now() };
+  map[id] = { count: prev.count + 1, updatedAt: Date.now() };
+  localStorage.setItem(CLICK_FREQ_KEY, JSON.stringify(map));
+  return map;
+};
+
+/** 按点击频次降序稳定排序（无记录保持原顺序） */
+const sortByFreq = <T,>(items: T[], getId: (item: T) => string, freq: ClickFreqMap): T[] =>
+  items
+    .map((item, index) => ({ item, index, count: freq[getId(item)]?.count || 0 }))
+    .sort((a, b) => b.count - a.count || a.index - b.index)
+    .map(entry => entry.item);
+
 const commonFeatures: CommonFeature[] = [
   { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', category: '办公协同', openMode: 'auto', path: '/web_client/business' },
   { id: 'work-report', name: '工作汇报', icon: <FileText size={17} />, tone: 'bg-pink-50 text-pink-700', category: '办公协同', openMode: 'auto', path: '/web_client/work-report' },
@@ -724,6 +758,21 @@ export default function Personal_Enterprise() {
       return [];
     }
   });
+    // 数据卡片排序（展示键序，持久化）
+  const [statOrder, setStatOrder] = useState<StatKey[]>(() => {
+    const saved = localStorage.getItem('dashboardStatOrder');
+    if (!saved) return [];
+    try { return JSON.parse(saved) as StatKey[]; } catch { return []; }
+  });
+  useEffect(() => {
+    localStorage.setItem('dashboardStatOrder', JSON.stringify(statOrder));
+  }, [statOrder]);
+  // 编辑布局：拖拽排序
+  const [draggingLayout, setDraggingLayout] = useState<{ list: 'data' | 'app'; id: string } | null>(null);
+  // 添加官方卡片面板（分类目标）
+  const [addingCategory, setAddingCategory] = useState<'data' | 'app' | null>(null);
+  const [pendingAdds, setPendingAdds] = useState<string[]>([]);
+
   const [hiddenStatKeys, setHiddenStatKeys] = useState<StatKey[]>(() => {
     const saved = localStorage.getItem('hiddenDashboardStats');
     if (!saved) return [];
@@ -791,6 +840,12 @@ export default function Personal_Enterprise() {
       return defaultTrackedItems;
     }
   });
+  // 7 日点击频次（常用系统/常用功能排序依据）
+  const [clickFreq, setClickFreq] = useState<ClickFreqMap>(() => readClickFreq());
+  const handleClickTracked = (id: string) => {
+    setClickFreq(recordClickFreq(id));
+  };
+
   const [pinnedFeatureIds, setPinnedFeatureIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('pinnedCommonFeatures');
     if (!saved) return defaultPinnedFeatureIds;
@@ -946,7 +1001,7 @@ export default function Personal_Enterprise() {
     .sort((a, b) => a.order - b.order);
 
   // 过滤显示的系统
-  const displayedSystems = systems.filter(sys => selectedSystems.includes(sys.id));
+  const displayedSystems = sortByFreq(systems.filter(sys => selectedSystems.includes(sys.id)), sys => sys.id, clickFreq);
   const systemPickerSearch = systemPickerKeyword.trim().toLowerCase();
   const featurePickerSearch = featurePickerKeyword.trim().toLowerCase();
   const systemPickerSections = systemPickerCategories
@@ -1039,7 +1094,7 @@ export default function Personal_Enterprise() {
     .filter(item => !hiddenStatKeys.includes(item.key));
   const activeStat = visibleStats.find(item => item.key === activeStatKey) || visibleStats[0] || dashboardStats[0];
   const activeTone = statToneMap[activeStat.color];
-  const pinnedFeatures = commonFeatures.filter(feature => pinnedFeatureIds.includes(feature.id));
+  const pinnedFeatures = sortByFreq(commonFeatures.filter(feature => pinnedFeatureIds.includes(feature.id)), feature => feature.id, clickFreq);
   const activeDuty = dutySchedule[dutyDayOffset];
   const displayedDutyItems = activeDuty.items.filter(item => {
     const keyword = dutyKeyword.trim();
@@ -1052,6 +1107,53 @@ export default function Personal_Enterprise() {
     checked: !hiddenStatKeys.includes(stat.key),
     onToggle: () => setHiddenStatKeys(prev => prev.includes(stat.key) ? prev.filter(item => item !== stat.key) : [...prev, stat.key]),
   }));
+  // 编辑布局列表（排序后）：数据卡按 statOrder，应用卡按 card.order
+  const orderedDataLayout = (() => {
+    const base = dashboardStats.map(stat => ({
+      id: stat.key as string,
+      name: stat.title,
+      description: stat.summary,
+      checked: !hiddenStatKeys.includes(stat.key),
+      onToggle: () => setHiddenStatKeys(prev => prev.includes(stat.key) ? prev.filter(item => item !== stat.key) : [...prev, stat.key]),
+    }));
+    if (statOrder.length === 0) return base;
+    return [...base].sort((a, b) => {
+      const ai = statOrder.indexOf(a.id as StatKey), bi = statOrder.indexOf(b.id as StatKey);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
+  })();
+
+  const orderedAppLayout = [...cards]
+    .filter(card => ['documents', 'calendar', 'systems', 'officeApps', 'duty', 'courses'].includes(card.id))
+    .sort((a, b) => a.order - b.order)
+    .map(card => ({
+      id: card.id,
+      name: card.name,
+      description: card.id === 'officeApps' ? '工作汇报、航班动态等入口' : card.id === 'duty' ? '公司值班岗位与人员' : '门户应用卡片',
+      checked: card.visible,
+      onToggle: () => toggleCard(card.id),
+    }));
+
+  // 拖拽落点重排
+  const handleLayoutDrop = (list: 'data' | 'app', targetId: string) => {
+    if (!draggingLayout || draggingLayout.list !== list || draggingLayout.id === targetId) return;
+    const sourceList = list === 'data' ? orderedDataLayout : orderedAppLayout;
+    const ids = sourceList.map(item => item.id);
+    const from = ids.indexOf(draggingLayout.id);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    if (list === 'data') {
+      setStatOrder(ids as StatKey[]);
+    } else {
+      setCards(prev => prev.map(card => {
+        const index = ids.indexOf(card.id);
+        return index >= 0 ? { ...card, order: index } : card;
+      }));
+    }
+    setDraggingLayout(null);
+  };
+
   const appLayoutOptions = cards
     .filter(card => ['documents', 'calendar', 'systems', 'officeApps', 'duty', 'courses'].includes(card.id))
     .map(card => ({
@@ -1576,13 +1678,7 @@ export default function Personal_Enterprise() {
     if (card.id === 'documents') {
       return (
         <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-xl flex items-center justify-center">
-                <FileText size={20} className="text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-800">今日未读文档</h3>
-            </div>
+          <div className="mb-4 flex items-center justify-end">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">5条</span>
               <button
@@ -1725,13 +1821,7 @@ export default function Personal_Enterprise() {
     if (card.id === 'systems') {
       return (
         <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-700 rounded-xl flex items-center justify-center">
-                <Layout size={20} className="text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-800">常用系统</h3>
-            </div>
+          <div className="flex items-center justify-end mb-4">
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 bg-amber-50 text-amber-700 text-sm font-medium rounded-full">{displayedSystems.length}个</span>
               <button
@@ -1748,7 +1838,7 @@ export default function Personal_Enterprise() {
             {displayedSystems.map(sys => (
               <button
                 key={sys.id}
-                onClick={() => handleSystemClick(sys)}
+                onClick={() => { handleClickTracked(sys.id); handleSystemClick(sys); }}
                 className="group flex min-w-0 flex-col items-center gap-2 rounded-xl border border-transparent px-2 py-2.5 transition-all duration-300 hover:border-gray-100 hover:bg-gray-50"
               >
                 <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${sys.bgColor || 'bg-blue-500'} text-white shadow-sm transition-shadow group-hover:shadow-md`}>
@@ -1765,15 +1855,7 @@ export default function Personal_Enterprise() {
     if (card.id === 'officeApps') {
       return (
         <div className="group relative rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-lg">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-600 to-pink-800 text-white">
-                <ClipboardList size={20} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-800">常用功能</h3>
-              </div>
-            </div>
+          <div className="mb-3 flex items-center justify-end">
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-pink-50 px-3 py-1 text-sm font-medium text-pink-700">{pinnedFeatures.length}个</span>
               <button
@@ -1790,7 +1872,7 @@ export default function Personal_Enterprise() {
             {pinnedFeatures.map(feature => (
               <button
                 key={feature.id}
-                onClick={() => handleFeatureClick(feature)}
+                onClick={() => { handleClickTracked(feature.id); handleFeatureClick(feature); }}
                 className="group/app flex min-w-0 flex-col items-center gap-2 rounded-xl border border-transparent px-2 py-2.5 transition-all duration-300 hover:border-gray-100 hover:bg-gray-50"
               >
                 <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${feature.tone}`}>
@@ -1807,13 +1889,7 @@ export default function Personal_Enterprise() {
     if (card.id === 'courses') {
       return (
         <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-700 rounded-xl flex items-center justify-center">
-                <FileText size={20} className="text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-800">临期课程</h3>
-            </div>
+          <div className="mb-4 flex items-center justify-end">
             <div className="flex items-center gap-2">
               <button className="text-sm font-medium text-pink-700 hover:text-pink-900 transition-colors">查看全部</button>
               <CardHeaderActions menuId={menuId} menuKey="courses" onEdit={(event) => { event.stopPropagation(); showJumpTip('临期课程配置'); }} onToggleMenu={toggleMenu} />
@@ -1869,22 +1945,9 @@ export default function Personal_Enterprise() {
       {/* 主内容区域 */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         {personalView === 'dashboard' && (
-          <div className="grid grid-flow-row-dense grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-12" onDragOver={handlePortalGridDragOver} onDrop={handlePortalGridDrop}>
+          <div className="grid grid-flow-row-dense grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-12">
             {visibleCards.map(card => (
-              <PortalCardShell
-                key={card.id}
-                card={card}
-                dragging={draggingCardId === card.id}
-                dragOver={dragOverCardId === card.id && draggingCardId !== card.id}
-                onDragStart={(id) => {
-                  setDraggingCardId(id);
-                  setDragOverCardId(null);
-                }}
-                onDragEnd={() => {
-                  setDraggingCardId(null);
-                  setDragOverCardId(null);
-                }}
-              >
+              <PortalCardShell key={card.id} card={card}>
                 {renderPortalCard(card)}
               </PortalCardShell>
             ))}
@@ -2413,31 +2476,43 @@ export default function Personal_Enterprise() {
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-pink-700 to-pink-500 text-white shadow-lg shadow-pink-900/10">
                     <TrendingUp size={20} />
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-lg font-bold text-gray-900">数据卡片</h3>
-                    <p className="text-sm text-gray-500">统计与明细列表等数据类组件</p>
+                    <p className="text-sm text-gray-500">已勾选的卡片可拖动排序，点击卡片切换勾选</p>
                   </div>
+                  <button
+                    onClick={() => { setAddingCategory('data'); setPendingAdds([]); }}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-pink-700 px-3.5 py-2 text-sm font-semibold text-white hover:bg-pink-800"
+                  >
+                    <Plus size={15} />添加
+                  </button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {dataLayoutOptions.map(item => (
-                    <button
+                  {orderedDataLayout.filter(item => item.checked).map(item => (
+                    <div
                       key={item.id}
-                      onClick={item.onToggle}
-                      className={`group flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
-                        item.checked ? 'border-pink-200 bg-pink-50/70 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
-                      }`}
+                      draggable
+                      onDragStart={() => setDraggingLayout({ list: 'data', id: item.id })}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => handleLayoutDrop('data', item.id)}
+                      className={`group flex cursor-grab items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all active:cursor-grabbing ${
+                        draggingLayout?.id === item.id ? 'opacity-40' : ''
+                      } ${item.checked ? 'border-pink-200 bg-pink-50/70 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'}`}
                     >
-                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                        item.checked ? 'bg-pink-700 text-white' : 'bg-gray-100 text-gray-400 group-hover:text-gray-500'
-                      }`}>
-                        {item.checked ? <CheckCircle2 size={18} /> : <Layout size={18} />}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-gray-900">{item.name}</span>
-                        <span className="mt-1 block truncate text-xs text-gray-500">{item.description}</span>
-                      </span>
-                      <span className={`h-5 w-5 rounded-full border ${item.checked ? 'border-pink-700 bg-pink-700' : 'border-gray-200 bg-white'}`} />
-                    </button>
+                      <GripVertical size={16} className="shrink-0 text-gray-300 group-hover:text-gray-400" />
+                      <button onClick={item.onToggle} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                          item.checked ? 'bg-pink-700 text-white' : 'bg-gray-100 text-gray-400 group-hover:text-gray-500'
+                        }`}>
+                          {item.checked ? <CheckCircle2 size={18} /> : <Layout size={18} />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-gray-900">{item.name}</span>
+                          <span className="mt-1 block truncate text-xs text-gray-500">{item.description}</span>
+                        </span>
+                      </button>
+                      <span className={`h-5 w-5 shrink-0 rounded-full border ${item.checked ? 'border-pink-700 bg-pink-700' : 'border-gray-200 bg-white'}`} />
+                    </div>
                   ))}
                 </div>
               </section>
@@ -2447,31 +2522,43 @@ export default function Personal_Enterprise() {
                   <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500 to-orange-400 text-white shadow-lg shadow-amber-900/10">
                     <ClipboardList size={20} />
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h3 className="text-lg font-bold text-gray-900">应用卡片</h3>
-                    <p className="text-sm text-gray-500">常用系统、常用功能、公司值班、文档和课程等入口</p>
+                    <p className="text-sm text-gray-500">已勾选的卡片可拖动排序，点击卡片切换勾选</p>
                   </div>
+                  <button
+                    onClick={() => { setAddingCategory('app'); setPendingAdds([]); }}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3.5 py-2 text-sm font-semibold text-white hover:bg-amber-600"
+                  >
+                    <Plus size={15} />添加
+                  </button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {appLayoutOptions.map(item => (
-                    <button
+                  {orderedAppLayout.filter(item => item.checked).map(item => (
+                    <div
                       key={item.id}
-                      onClick={item.onToggle}
-                      className={`group flex items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all ${
-                        item.checked ? 'border-amber-200 bg-amber-50/70 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
-                      }`}
+                      draggable
+                      onDragStart={() => setDraggingLayout({ list: 'app', id: item.id })}
+                      onDragOver={(event) => event.preventDefault()}
+                      onDrop={() => handleLayoutDrop('app', item.id)}
+                      className={`group flex cursor-grab items-center gap-3 rounded-2xl border px-4 py-3 text-left transition-all active:cursor-grabbing ${
+                        draggingLayout?.id === item.id ? 'opacity-40' : ''
+                      } ${item.checked ? 'border-amber-200 bg-amber-50/70 shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'}`}
                     >
-                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                        item.checked ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:text-gray-500'
-                      }`}>
-                        {item.checked ? <CheckCircle2 size={18} /> : <Layout size={18} />}
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-gray-900">{item.name}</span>
-                        <span className="mt-1 block truncate text-xs text-gray-500">{item.description}</span>
-                      </span>
-                      <span className={`h-5 w-5 rounded-full border ${item.checked ? 'border-amber-500 bg-amber-500' : 'border-gray-200 bg-white'}`} />
-                    </button>
+                      <GripVertical size={16} className="shrink-0 text-gray-300 group-hover:text-gray-400" />
+                      <button onClick={item.onToggle} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                          item.checked ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400 group-hover:text-gray-500'
+                        }`}>
+                          {item.checked ? <CheckCircle2 size={18} /> : <Layout size={18} />}
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-semibold text-gray-900">{item.name}</span>
+                          <span className="mt-1 block truncate text-xs text-gray-500">{item.description}</span>
+                        </span>
+                      </button>
+                      <span className={`h-5 w-5 shrink-0 rounded-full border ${item.checked ? 'border-amber-500 bg-amber-500' : 'border-gray-200 bg-white'}`} />
+                    </div>
                   ))}
                 </div>
               </section>
@@ -2488,6 +2575,63 @@ export default function Personal_Enterprise() {
           </div>
         </div>
       )}
+      {/* 添加官方卡片面板 */}
+      {addingCategory && (
+        <div className="fixed inset-0 z-[65] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="flex max-h-[80vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h3 className="text-base font-bold text-gray-900">添加{addingCategory === 'data' ? '数据卡片' : '应用卡片'}</h3>
+                <p className="mt-1 text-sm text-gray-500">以下为未被选择的官方卡片，勾选后确认加入</p>
+              </div>
+              <button onClick={() => setAddingCategory(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100"><X size={18} /></button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+              <div className="grid gap-2.5 sm:grid-cols-2">
+                {(addingCategory === 'data' ? orderedDataLayout : orderedAppLayout).filter(item => !item.checked).map(item => {
+                  const pending = pendingAdds.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setPendingAdds(prev => pending ? prev.filter(id => id !== item.id) : [...prev, item.id])}
+                      className={`flex items-center gap-3 rounded-xl border px-3.5 py-3 text-left transition-all ${
+                        pending ? 'border-pink-300 bg-pink-50' : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${pending ? 'bg-pink-700 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                        {pending ? <CheckCircle2 size={16} /> : <Plus size={16} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-gray-900">{item.name}</span>
+                        <span className="mt-0.5 block truncate text-xs text-gray-500">{item.description}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-4 text-center text-xs text-gray-400">仅展示当前分类下未被选择的官方卡片</p>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => { setAddingCategory(null); setPendingAdds([]); }} className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">取消</button>
+              <button
+                onClick={() => {
+                  if (pendingAdds.length > 0) {
+                    pendingAdds.forEach(id => {
+                      const item = (addingCategory === 'data' ? orderedDataLayout : orderedAppLayout).find(entry => entry.id === id);
+                      item?.onToggle();
+                    });
+                  }
+                  setAddingCategory(null);
+                  setPendingAdds([]);
+                }}
+                disabled={pendingAdds.length === 0}
+                className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800 disabled:cursor-not-allowed disabled:opacity-50"
+              >确认添加（{pendingAdds.length}）</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {(activeDialog === 'cardRequest' || activeDialog === 'featureRequest') && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 px-4 py-6">
           <div className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl">
@@ -4534,37 +4678,23 @@ function MyItemDetailView({ item, onBack, focusTaskId, focusActionId, onSubmitRe
   );
 }
 
-function PortalCardShell({ card, dragging, dragOver, onDragStart, onDragEnd, children }: {
+function PortalCardShell({ card, children }: {
   card: CardConfig;
-  dragging: boolean;
-  dragOver: boolean;
-  onDragStart: (id: CardType) => void;
-  onDragEnd: () => void;
   children: React.ReactNode;
 }) {
   const spanClass = card.id === 'stats' || card.id === 'documents'
     ? 'md:col-span-2 xl:col-span-8'
     : 'md:col-span-1 xl:col-span-4';
+  const hideOuterTitle = card.id === 'stats'; // 数据统计区不属单一卡片，标题由内部承载
 
   return (
-    <div
-      data-portal-card-id={card.id}
-      className={`${spanClass} group/card relative transition-all duration-200 ${dragging ? 'opacity-50' : ''} ${dragOver ? 'rounded-3xl ring-2 ring-pink-300 ring-offset-4 ring-offset-pink-50' : ''}`}
-    >
-      <div
-        draggable
-        onDragStart={(event: React.DragEvent<HTMLDivElement>) => {
-          event.dataTransfer.effectAllowed = 'move';
-          event.dataTransfer.setData('text/plain', card.id);
-          onDragStart(card.id);
-        }}
-        onDragEnd={onDragEnd}
-        title="拖动调整卡片位置"
-        className="absolute left-1/2 top-0 z-30 hidden -translate-x-1/2 -translate-y-1/2 cursor-grab items-center gap-1 rounded-full border border-pink-100 bg-white px-3 py-1 text-xs font-medium text-pink-700 shadow-lg shadow-pink-900/5 transition active:cursor-grabbing group-hover/card:flex"
-      >
-        <GripVertical size={13} />
-        <span>拖动</span>
-      </div>
+    <div data-portal-card-id={card.id} className={`${spanClass} group/card relative`}>
+      {!hideOuterTitle && (
+        <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-gray-800">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-500 shadow-sm ring-1 ring-gray-100">{card.icon}</span>
+          {card.name}
+        </h3>
+      )}
       {children}
     </div>
   );
