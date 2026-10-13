@@ -20,6 +20,17 @@ export interface GanttStage {
   status: 'done' | 'doing' | 'todo';
   progress: number;
   taskSummary: string;
+  subStages?: GanttSubStage[];
+}
+
+export interface GanttSubStage {
+  id: string;
+  name: string;
+  start: string;
+  end: string;
+  status: 'done' | 'doing' | 'todo' | 'delayed';
+  progress: number;
+  owner: string;
 }
 
 export interface WeeklyWorkItem {
@@ -67,6 +78,7 @@ export interface ProjectWeeklyData {
   manager: string;
   itManager: string;
   currentStage: string;
+  currentSubStage: string;
   /** 项目周，如 33 */
   weekNumber: number;
   /** 汇报周期，如 2026-08-03 ~ 2026-08-09 */
@@ -128,8 +140,15 @@ export const buildProjectWeeklyData = (params: {
     { id: 'st-2', name: '阶段二 · 系统设计', start: '06-08', end: '07-03', status: 'done', progress: 100, taskSummary: '3项任务 全部完成' },
     { id: 'st-3', name: '阶段三 · 原型与UI设计', start: '06-29', end: '07-17', status: 'done', progress: 100, taskSummary: '3项任务 全部完成' },
     {
-      id: 'st-4', name: '阶段四 · 开发实施', start: '07-06', end: '08-21', status: 'doing',
+      id: 'st-4', name: '阶段四 · 开发实施', start: '07-06', end: '09-30', status: 'doing',
       progress: params.progress, taskSummary: `${Math.max(Math.round((params.progress / 100) * 16), 8)}项完成 · ${Math.max(4 - Math.round((params.progress - 85) / 5), 1)}项进行中`,
+      subStages: [
+        { id: 'st-4-1', name: '功能开发（机票、酒店、预订、退订）', start: '07-06', end: '07-31', status: 'delayed', progress: 86, owner: '蒋涵-后' },
+        { id: 'st-4-2', name: '机票与酒店接口联调', start: '08-01', end: '08-21', status: 'doing', progress: 68, owner: '蒋涵-后' },
+        { id: 'st-4-3', name: '小程序渠道上线', start: '08-22', end: '08-31', status: 'doing', progress: 52, owner: '蒋涵-后' },
+        { id: 'st-4-4', name: 'PC 版本上线', start: '09-01', end: '09-15', status: 'todo', progress: 0, owner: '蒋涵-后' },
+        { id: 'st-4-5', name: '其他资源及产品迭代上线', start: '09-16', end: '09-30', status: 'todo', progress: 0, owner: '蒋涵-后' },
+      ],
     },
     { id: 'st-5', name: '阶段五 · 联调测试', start: '08-22', end: '09-11', status: 'todo', progress: 0, taskSummary: '待启动' },
     { id: 'st-6', name: '阶段六 · 上线交付', start: '09-12', end: '09-30', status: 'todo', progress: 0, taskSummary: '待启动' },
@@ -145,6 +164,7 @@ export const buildProjectWeeklyData = (params: {
     manager: '诸葛亮',
     itManager: '司马懿',
     currentStage: '开发实施',
+    currentSubStage: '机票与酒店接口联调',
     weekNumber: params.weekNumber ?? 33,
     period: params.period ?? '2026-08-03 ~ 2026-08-09',
     healthLight,

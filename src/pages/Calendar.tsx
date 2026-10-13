@@ -109,6 +109,15 @@ export default function Calendar() {
   const [isRoomDragging, setIsRoomDragging] = useState(false);
   const [dragSelection, setDragSelection] = useState<RoomSelection | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+
+  // 支持从个人门户“新增日程”直达创建弹窗，并清理参数避免刷新后重复打开。
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('create') === '1') {
+      setDragSelection({ roomId: '6407', startSlot: 4, endSlot: 5 });
+      setBookingModalOpen(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
   const [roomPickerOpen, setRoomPickerOpen] = useState(false);
   const [repeatMode, setRepeatMode] = useState('不重复');
   const [customRepeatOpen, setCustomRepeatOpen] = useState(false);
@@ -715,7 +724,7 @@ export default function Calendar() {
                           )}
                         </div>
                         <div className="space-y-1.5">
-                          {dateEvents.slice(0, 3).map((event) => (
+                          {dateEvents.map((event) => (
                             <div
                               key={event.id}
                               className={`text-xs px-2 py-1.5 rounded-lg truncate ${event.type === 'meeting' ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400' : event.type === 'business' ? 'bg-theme-50 dark:bg-theme-900/20 text-theme-700 dark:text-theme-300' : event.type === 'vacation' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400' : 'bg-slate-100 dark:bg-gray-700 text-slate-600 dark:text-slate-300'}`}
@@ -723,9 +732,6 @@ export default function Calendar() {
                               {event.title}
                             </div>
                           ))}
-                          {dateEvents.length > 3 && (
-                            <div className="text-xs text-slate-400 dark:text-slate-500 px-2">+{dateEvents.length - 3} 更多</div>
-                          )}
                         </div>
                       </div>
                     );

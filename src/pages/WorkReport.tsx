@@ -8,7 +8,6 @@ import {
   Download,
   Eye,
   FileText,
-  FolderKanban,
   History,
   MessageSquareText,
   PenLine,
@@ -39,6 +38,12 @@ import {
   type ReportSendRecord,
   type ReportSendReceipt,
 } from '../data/reportSendRecords';
+import {
+  createReportBusinessKey,
+  getSavedReportRecords,
+  subscribeSavedReports,
+  type SavedReportRecord,
+} from '../data/savedReports';
 
 type WorkReportView = 'write' | 'reports' | 'sent' | 'stats';
 
@@ -248,7 +253,9 @@ export default function WorkReport() {
   const [selectedObjectiveId] = useState('o3');
   const [toast, setToast] = useState('');
   const [sendRecords, setSendRecords] = useState(getReportSendRecords);
+  const [savedReports, setSavedReports] = useState(getSavedReportRecords);
   const [selectedSendRecord, setSelectedSendRecord] = useState<ReportSendRecord | null>(null);
+  const [selectedSavedRecord, setSelectedSavedRecord] = useState<SavedReportRecord | null>(null);
   const [resendToast, setResendToast] = useState('');
   const [resending, setResending] = useState(false);
 
@@ -269,6 +276,7 @@ export default function WorkReport() {
   };
 
   useEffect(() => subscribeReportSendRecords(() => setSendRecords(getReportSendRecords())), []);
+  useEffect(() => subscribeSavedReports(() => setSavedReports(getSavedReportRecords())), []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -502,7 +510,7 @@ export default function WorkReport() {
 
         {(activeView === 'reports' || activeView === 'sent') && (
           <div className="min-h-0 flex-1">
-            <ReportsView sendRecords={sendRecords} onSelectSendRecord={setSelectedSendRecord} />
+            <ReportsView savedReports={savedReports} sendRecords={sendRecords} onSelectSavedRecord={setSelectedSavedRecord} onSelectSendRecord={setSelectedSendRecord} />
           </div>
         )}
 
@@ -542,6 +550,9 @@ export default function WorkReport() {
             }, 900);
           }}
         />
+      )}
+      {selectedSavedRecord && (
+        <SavedReportRecordDetail record={selectedSavedRecord} onClose={() => setSelectedSavedRecord(null)} />
       )}
       {resendToast && (
         <div className="fixed bottom-16 left-1/2 z-[95] -translate-x-1/2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl">{resendToast}<button type="button" onClick={() => setResendToast('')} className="ml-3 text-emerald-100 hover:text-white">×</button></div>
@@ -910,13 +921,16 @@ function StatNumberCard({ title, value, desc, tone }: { title: string; value: st
 }
 
 function ReportsView({
+  savedReports,
   sendRecords,
+  onSelectSavedRecord,
   onSelectSendRecord,
 }: {
+  savedReports: SavedReportRecord[];
   sendRecords: ReportSendRecord[];
+  onSelectSavedRecord: (record: SavedReportRecord) => void;
   onSelectSendRecord: (record: ReportSendRecord) => void;
 }) {
-  const navigate = useNavigate();
   const [selectedReport, setSelectedReport] = useState<typeof reportHistory[number] | null>(null);
   const [commentDraft, setCommentDraft] = useState('');
   const [reportTypeFilter, setReportTypeFilter] = useState<'all' | 'work' | 'project'>('all');
@@ -924,6 +938,10 @@ function ReportsView({
   const [scopeFilter, setScopeFilter] = useState<'received' | 'managed'>('received');
   const [projectKeyword, setProjectKeyword] = useState('');
   const [healthFilter, setHealthFilter] = useState<'all' | 'green' | 'yellow' | 'red'>('all');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [personFilter, setPersonFilter] = useState('all');
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
   const [commentsByReport, setCommentsByReport] = useState<Record<number, typeof reportHistory[number]['comments']>>(
@@ -932,6 +950,19 @@ function ReportsView({
 
   const normalizedKeyword = keyword.trim().toLowerCase();
   const projectKw = projectKeyword.trim().toLowerCase();
+  const personOptions = [...new Set([
+    ...savedReports.map(record => record.sender),
+    ...sendRecords.map(record => record.sender),
+    ...reportHistory.map(report => report.person),
+  ])];
+  const inDateRange = (value: string) => {
+    const date = value.slice(0, 10);
+    return (!startDate || date >= startDate) && (!endDate || date <= endDate);
+  };
+  const formatProjectPeriod = (record: ReportSendRecord) => {
+    const range = record.period.replace(/\s*(?:至|~)\s*/, '-');
+    return `第${record.weeklyData?.weekNumber ?? '-'}周（${range}）`;
+  };
   const visibleSendRecords = sendRecords.filter(record => {
     // 范围：我收到的（收件人/抄送含我或我发送） / 我管理的（项目汇报且我是项目负责人/成员或发送人）
     const received = record.sender === MAIN_USER_NAME
@@ -943,6 +974,9 @@ function ReportsView({
         || record.projectMembers.includes(MAIN_USER_NAME));
     if (scopeFilter === 'received' ? !received : !managed) return false;
     if (reportTypeFilter !== 'all' && (reportTypeFilter === 'work' ? record.reportType !== '工作汇报' : record.reportType !== '项目汇报')) return false;
+    if (!inDateRange(record.sentAt)) return false;
+    if (personFilter !== 'all' && record.sender !== personFilter) return false;
+    if (unreadOnly && !record.receipts.some(receipt => !receipt.read)) return false;
     // 项目汇报 + 项目关键词：按项目名称 / 编号模糊匹配
     if (projectKw && record.reportType === '项目汇报') {
       const hay = `${record.projectName || ''} ${record.projectCode || ''}`.toLowerCase();
@@ -954,18 +988,54 @@ function ReportsView({
     return [record.title, record.sender, record.projectName || '', record.period]
       .some(value => value.toLowerCase().includes(normalizedKeyword));
   });
-  const totalSendRecords = visibleSendRecords.length;
-  const totalPages = Math.max(1, Math.ceil(totalSendRecords / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pagedSendRecords = visibleSendRecords.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const sentReportKeys = new Set(sendRecords.map(record => record.reportKey || createReportBusinessKey(record)));
+  const visibleSavedReports = savedReports.filter(record => {
+    if (sentReportKeys.has(record.reportKey)) return false;
+    const received = record.sender === MAIN_USER_NAME
+      || record.reportTo.includes(MAIN_USER_NAME)
+      || record.copyTo.includes(MAIN_USER_NAME);
+    const managed = record.reportType === '项目汇报'
+      && (record.sender === MAIN_USER_NAME
+        || record.projectOwner === MAIN_USER_NAME
+        || record.projectMembers.includes(MAIN_USER_NAME));
+    if (scopeFilter === 'received' ? !received : !managed) return false;
+    if (reportTypeFilter !== 'all' && (reportTypeFilter === 'work' ? record.reportType !== '工作汇报' : record.reportType !== '项目汇报')) return false;
+    if (!inDateRange(record.savedAt)) return false;
+    if (personFilter !== 'all' && record.sender !== personFilter) return false;
+    if (unreadOnly) return false;
+    if (projectKw && record.reportType === '项目汇报') {
+      const hay = `${record.projectName || ''} ${record.projectCode || ''}`.toLowerCase();
+      if (!hay.includes(projectKw)) return false;
+    }
+    if (!normalizedKeyword) return true;
+    return [record.title, record.sender, record.projectName || '', record.period]
+      .some(value => value.toLowerCase().includes(normalizedKeyword));
+  });
   const visibleWorkReports = reportTypeFilter === 'project' ? [] : reportHistory.filter(report => (
-    !normalizedKeyword || [report.title, report.person, report.type, ...report.reportTo]
-      .some(value => value.toLowerCase().includes(normalizedKeyword))
+    inDateRange(report.date)
+    && (personFilter === 'all' || report.person === personFilter)
+    && (!unreadOnly || report.unread)
+    && (!normalizedKeyword || [report.title, report.person, report.type, ...report.reportTo]
+      .some(value => value.toLowerCase().includes(normalizedKeyword)))
   ));
-  const groupedReports = visibleWorkReports.reduce<Record<string, typeof reportHistory>>((groups, report) => {
-    groups[report.groupDate] = [...(groups[report.groupDate] || []), report];
+  const combinedRows = [
+    ...visibleSavedReports.map(record => ({ kind: 'saved' as const, id: record.id, timestamp: record.savedAt, record })),
+    ...visibleSendRecords.map(record => ({ kind: 'send' as const, id: record.id, timestamp: record.sentAt, record })),
+    ...visibleWorkReports.map(report => ({ kind: 'history' as const, id: `history-${report.id}`, timestamp: report.date, report })),
+  ].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  const totalRows = combinedRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRows / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedRows = combinedRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+  const groupedRows = pagedRows.reduce<Record<string, typeof pagedRows>>((groups, row) => {
+    const date = row.timestamp.slice(0, 10);
+    groups[date] = [...(groups[date] || []), row];
     return groups;
   }, {});
+  const formatDateHeading = (date: string) => {
+    const [year, month, day] = date.split('-');
+    return `${year}年${month}月${day}日`;
+  };
 
   const addComment = () => {
     if (!selectedReport || !commentDraft.trim()) return;
@@ -987,7 +1057,7 @@ function ReportsView({
         <div className="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-5">
           <div>
             <h2 className="text-lg font-bold text-gray-900">看汇报</h2>
-            <p className="mt-1 text-sm text-gray-500">按日期查看汇报内容、关联 OKR、已读情况和评论反馈</p>
+            <p className="mt-1 text-sm text-gray-500">按日期统一查看项目汇报、工作汇报、已读情况和评论反馈</p>
           </div>
           <div className="flex items-center gap-2">
             <button className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">
@@ -999,35 +1069,35 @@ function ReportsView({
 
         <div className="shrink-0 border-b border-gray-100 px-6 py-4">
           <div className="grid gap-3 lg:grid-cols-[180px_260px_minmax(180px,1fr)_86px]">
-            <select value={reportTypeFilter} onChange={event => setReportTypeFilter(event.target.value as 'all' | 'work' | 'project')} className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 outline-none hover:border-pink-200 focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
+            <select value={reportTypeFilter} onChange={event => { setReportTypeFilter(event.target.value as 'all' | 'work' | 'project'); setPage(1); }} className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 outline-none hover:border-pink-200 focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
               <option value="all">全部汇报</option>
               <option value="work">工作汇报</option>
               <option value="project">项目汇报</option>
             </select>
-            <div className="grid h-10 grid-cols-[1fr_24px_1fr] items-center rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-400">
-              <span>开始日期</span>
+            <div className="grid h-10 grid-cols-[1fr_18px_1fr] items-center rounded-lg border border-gray-200 bg-white px-2 text-sm text-gray-400">
+              <input type="date" value={startDate} onChange={event => { setStartDate(event.target.value); setPage(1); }} aria-label="开始日期" className="min-w-0 bg-transparent px-1 text-xs text-gray-600 outline-none" />
               <span className="text-center">~</span>
-              <span>结束日期</span>
+              <input type="date" value={endDate} onChange={event => { setEndDate(event.target.value); setPage(1); }} aria-label="结束日期" className="min-w-0 bg-transparent px-1 text-xs text-gray-600 outline-none" />
             </div>
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input value={keyword} onChange={event => setKeyword(event.target.value)} className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100" placeholder="搜索人员、项目或汇报内容" />
+              <input value={keyword} onChange={event => { setKeyword(event.target.value); setPage(1); }} className="h-10 w-full rounded-lg border border-gray-200 pl-9 pr-3 text-sm outline-none focus:border-pink-300 focus:ring-2 focus:ring-pink-100" placeholder="搜索人员、项目或汇报内容" />
             </div>
             <label className="flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-200 text-sm text-gray-600">
-              <input type="checkbox" className="h-4 w-4 rounded border-gray-300 text-pink-700 focus:ring-pink-500" />
+              <input type="checkbox" checked={unreadOnly} onChange={event => { setUnreadOnly(event.target.checked); setPage(1); }} className="h-4 w-4 rounded border-gray-300 text-pink-700 focus:ring-pink-500" />
               未读
             </label>
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-[200px_minmax(200px,1fr)]">
-            <select value={scopeFilter} onChange={event => setScopeFilter(event.target.value as 'received' | 'managed')} className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 outline-none hover:border-pink-200 focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
+            <select value={scopeFilter} onChange={event => { setScopeFilter(event.target.value as 'received' | 'managed'); setPage(1); }} className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 outline-none hover:border-pink-200 focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
               <option value="received">我收到的</option>
               <option value="managed">我管理的</option>
             </select>
             <div className="flex items-center gap-3">
-              <button className="flex h-10 flex-1 items-center justify-between rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-500 hover:border-pink-200">
-                <span>请选择人员</span>
-                <ChevronRight size={15} className="rotate-90 text-gray-300" />
-              </button>
+              <select value={personFilter} onChange={event => { setPersonFilter(event.target.value); setPage(1); }} className="h-10 flex-1 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-600 outline-none hover:border-pink-200 focus:border-pink-300 focus:ring-2 focus:ring-pink-100">
+                <option value="all">全部人员</option>
+                {personOptions.map(person => <option key={person} value={person}>{person}</option>)}
+              </select>
               {reportTypeFilter === 'project' && (
                 <>
                   <div className="relative h-10 flex-1">
@@ -1051,120 +1121,77 @@ function ReportsView({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5 scrollbar-hover">
-          {visibleSendRecords.length > 0 && (
-            <section className="mb-8">
+        <div className="min-h-0 flex-1 overflow-auto px-6 py-5 scrollbar-hover">
+          {Object.entries(groupedRows).map(([date, rows]) => (
+            <section key={date} className="mb-8 max-xl:min-w-[1140px] last:mb-0">
               <div className="mb-3 flex items-center gap-2">
                 <span className="h-5 w-1 rounded-full bg-pink-700" />
-                <h3 className="font-bold text-gray-800">汇报发送</h3>
-                <span className="rounded-full bg-gray-50 px-2 py-0.5 text-xs text-gray-500">共 {totalSendRecords} 条</span>
+                <h3 className="font-bold text-gray-800">{formatDateHeading(date)}</h3>
+                <span className="rounded-full bg-gray-50 px-2 py-0.5 text-xs text-gray-500">{rows.length} 条</span>
               </div>
-              <div className="overflow-hidden rounded-xl border border-gray-100">
-                <div className="grid grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 max-xl:min-w-[1140px]">
+              <div className="rounded-xl border border-gray-100">
+                <div className="sticky top-0 z-10 grid grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] rounded-t-xl border-b border-gray-100 bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 shadow-[0_1px_0_rgba(229,231,235,0.7)]">
                   <div>人员</div>
                   <div>汇报类型</div>
                   <div>汇报内容</div>
-                  <div>关联OKR</div>
+                  <div>汇报周期</div>
                   <div>汇报对象</div>
                   <div>已读情况</div>
                   <div>发送</div>
                   <div>评论</div>
                 </div>
-                <div className="overflow-x-auto">
-                  {pagedSendRecords.map(record => {
-                    const light = record.healthLight ? getHealthLightMeta(record.healthLight) : null;
-                    const readCount = record.receipts.filter(receipt => receipt.read).length;
-                    return (
-                      <button
-                        key={record.id}
-                        type="button"
-                        onClick={() => onSelectSendRecord(record)}
-                        className="grid w-full grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] items-center border-t border-gray-100 px-4 py-4 text-left transition hover:bg-pink-50/40 max-xl:min-w-[1140px]"
-                      >
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-100 to-pink-100 text-sm font-bold text-pink-700">{record.sender.slice(0, 1)}</div>
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-gray-900">{record.sender}</div>
-                            <div className="truncate text-xs text-gray-400">{record.projectCode || record.reportType}</div>
+                <div>
+                  {rows.map(row => {
+                    if (row.kind === 'send') {
+                      const { record } = row;
+                      const light = record.healthLight ? getHealthLightMeta(record.healthLight) : null;
+                      const readCount = record.receipts.filter(receipt => receipt.read).length;
+                      return (
+                        <button key={row.id} type="button" onClick={() => onSelectSendRecord(record)} className="grid w-full grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] items-center border-t border-gray-100 px-4 py-4 text-left transition first:border-t-0 hover:bg-pink-50/40">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-100 text-sm font-bold text-pink-700">{record.sender.slice(0, 1)}</div>
+                            <div className="min-w-0"><div className="truncate text-sm font-semibold text-gray-900">{record.sender}</div><div className="truncate text-xs text-gray-400">{record.projectCode || record.reportType}</div></div>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-sm text-gray-700">
-                          {record.reportType === '项目汇报' ? <FolderKanban size={15} className="text-pink-700" /> : <FileText size={15} className="text-pink-700" />}
-                          {record.reportType}
-                        </div>
-                        <div className="min-w-0 pr-4">
-                          <div className="mb-1 truncate text-sm font-medium text-gray-900">{record.title}</div>
-                          <div className="mt-1 flex items-center gap-2 text-xs text-gray-400">
-                            <span>{record.period}</span>
-                            {light && <span className={`inline-flex items-center gap-1 font-semibold ${light.text}`}><span className={`h-1.5 w-1.5 rounded-full ${light.dot}`} />{light.label}</span>}
+                          <div className="text-sm text-gray-700">{record.reportType}</div>
+                          <div className="min-w-0 pr-4"><div className="mb-1 truncate text-sm font-medium text-gray-900">{record.title}</div>{light && <span className={`inline-flex items-center gap-1 text-xs font-semibold ${light.text}`}><span className={`h-1.5 w-1.5 rounded-full ${light.dot}`} />{light.label}</span>}</div>
+                          <div className="pr-3 text-sm leading-5 text-gray-600">{record.reportType === '项目汇报' ? formatProjectPeriod(record) : record.sentAt.slice(0, 10)}</div>
+                          <div className="truncate text-sm text-gray-600">{record.reportTo.join('、')}</div>
+                          <div className="text-sm text-gray-600">{readCount}/{record.receipts.length} 已读</div>
+                          <div><span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${record.result === '发送成功' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>{record.result === '发送成功' ? '已发送' : '发送失败'}</span></div>
+                          <div className="inline-flex items-center gap-1 text-sm text-gray-600"><MessageSquareText size={15} className="text-gray-400" />-</div>
+                        </button>
+                      );
+                    }
+                    if (row.kind === 'saved') {
+                      const { record } = row;
+                      const light = record.weeklyData ? getHealthLightMeta(record.weeklyData.healthLight) : null;
+                      const range = record.period.replace(/\s*(?:至|~)\s*/, '-');
+                      const displayPeriod = record.reportType === '项目汇报'
+                        ? `第${record.weeklyData?.weekNumber ?? '-'}周（${range}）`
+                        : record.savedAt.slice(0, 10);
+                      return (
+                        <button key={row.id} type="button" onClick={() => onSelectSavedRecord(record)} className="grid w-full grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] items-center border-t border-gray-100 px-4 py-4 text-left transition first:border-t-0 hover:bg-pink-50/40">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pink-100 text-sm font-bold text-pink-700">{record.sender.slice(0, 1)}</div>
+                            <div className="min-w-0"><div className="truncate text-sm font-semibold text-gray-900">{record.sender}</div><div className="truncate text-xs text-gray-400">{record.projectCode || record.reportType}</div></div>
                           </div>
-                        </div>
-                        <div className="text-sm text-gray-400">—</div>
-                        <div className="truncate text-sm text-gray-600">{record.reportTo.join('、')}</div>
-                        <div className="text-sm text-gray-600">{readCount}/{record.receipts.length} 已读</div>
-                        <div>
-                          <span className={`rounded-full px-2 py-1 text-[11px] font-semibold ${record.result === '发送成功' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>{record.result === '发送成功' ? '已发送' : '发送失败'}</span>
-                        </div>
-                        <div className="inline-flex items-center gap-1 text-sm text-gray-600">
-                          <MessageSquareText size={15} className="text-gray-400" />
-                          -
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </section>
-          )}
-          {totalSendRecords > 0 && (
-            <div className="mb-8 flex items-center justify-between gap-3">
-              <p className="text-xs text-gray-500">共 {totalSendRecords} 条</p>
-              <div className="flex items-center gap-1">
-                <button type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40" title="上一页">‹</button>
-                {Array.from({ length: totalPages }, (_, index) => index + 1).map(pageNo => (
-                  <button
-                    key={pageNo}
-                    type="button"
-                    onClick={() => setPage(pageNo)}
-                    className={`h-8 min-w-8 rounded-lg px-2 text-sm font-semibold transition-colors ${pageNo === safePage ? 'bg-pink-700 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-                  >
-                    {pageNo}
-                  </button>
-                ))}
-                <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40" title="下一页">›</button>
-              </div>
-            </div>
-          )}
-          {Object.entries(groupedReports).map(([date, reports]) => (
-            <section key={date} className="mb-8 last:mb-0">
-              <div className="mb-3 flex items-center gap-2">
-                <span className="h-5 w-1 rounded-full bg-pink-700" />
-                <h3 className="font-bold text-gray-800">{date}</h3>
-                <span className="rounded-full bg-gray-50 px-2 py-0.5 text-xs text-gray-500">{reports.length} 条</span>
-              </div>
-              <div className="overflow-hidden rounded-xl border border-gray-100">
-                <div className="grid grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700 max-xl:min-w-[1140px]">
-                  <div>人员</div>
-                  <div>汇报类型</div>
-                  <div>汇报内容</div>
-                  <div>关联OKR</div>
-                  <div>汇报对象</div>
-                  <div>已读情况</div>
-                  <div>发送</div>
-                  <div>评论</div>
-                </div>
-                <div className="overflow-x-auto">
-                  {reports.map(report => {
+                          <div className="text-sm text-gray-700">{record.reportType}</div>
+                          <div className="min-w-0 pr-4"><div className="mb-1 truncate text-sm font-medium text-gray-900">{record.title}</div>{light && <span className={`inline-flex items-center gap-1 text-xs font-semibold ${light.text}`}><span className={`h-1.5 w-1.5 rounded-full ${light.dot}`} />{light.label}</span>}</div>
+                          <div className="pr-3 text-sm leading-5 text-gray-600">{displayPeriod}</div>
+                          <div className="truncate text-sm text-gray-600">{record.reportTo.join('、') || '—'}</div>
+                          <div className="text-sm text-gray-400">—</div>
+                          <div><span className="rounded-full bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">已保存</span></div>
+                          <div className="text-sm text-gray-400">—</div>
+                        </button>
+                      );
+                    }
+                    const { report } = row;
                     const comments = commentsByReport[report.id] || [];
                     const readCount = report.readReceipts.filter(item => item.read).length;
-                    const relatedOkrs = report.okrIds
-                      .map(okrId => okrObjectives.find(objective => objective.id === okrId))
-                      .filter(Boolean) as typeof okrObjectives;
-                    const relatedKrTitles = relatedOkrs.flatMap(objective => objective.keyResults.map(result => result.title)).slice(0, 3);
                     const summary = Object.values(report.content)[0]?.thisWeek || '';
                     return (
                       <div
-                        key={report.id}
+                        key={row.id}
                         role="button"
                         tabIndex={0}
                         onClick={() => setSelectedReport(report)}
@@ -1174,7 +1201,7 @@ function ReportsView({
                             setSelectedReport(report);
                           }
                         }}
-                        className="grid w-full cursor-pointer grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] items-center border-t border-gray-100 px-4 py-4 text-left transition hover:bg-pink-50/40 max-xl:min-w-[1140px]"
+                        className="grid w-full cursor-pointer grid-cols-[180px_132px_minmax(200px,1fr)_200px_140px_100px_80px_92px] items-center border-t border-gray-100 px-4 py-4 text-left transition first:border-t-0 hover:bg-pink-50/40"
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-pink-100 to-pink-100 text-sm font-bold text-pink-700">
@@ -1191,20 +1218,7 @@ function ReportsView({
                           <div className="mb-1 truncate text-sm font-medium text-gray-900">{report.title}</div>
                           <p className="line-clamp-2 text-sm leading-6 text-gray-600">{summary}</p>
                         </div>
-                        <div className="min-w-0 pr-3">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              navigate(`/web_client/okr?objective=${report.okrIds[0]}`);
-                            }}
-                            className="block w-full text-left hover:text-pink-900"
-                            title={relatedKrTitles.join('；')}
-                          >
-                            <span className="mb-1 inline-flex rounded-full bg-pink-50 px-2 py-0.5 text-[11px] font-semibold text-pink-800">2026 年 4 月 - 6 月</span>
-                            <span className="line-clamp-2 text-sm font-medium leading-5 text-gray-800">{relatedKrTitles.join('；')}</span>
-                          </button>
-                        </div>
+                        <div className="pr-3 text-sm leading-5 text-gray-600">{report.date.slice(0, 10)}</div>
                         <div className="truncate text-sm text-gray-600">{report.reportTo.join('、')}</div>
                         <div className="text-sm text-gray-600">{readCount}/{report.readReceipts.length} 已读</div>
                         <div className="text-sm text-gray-400">—</div>
@@ -1219,7 +1233,17 @@ function ReportsView({
               </div>
             </section>
           ))}
-          {visibleSendRecords.length === 0 && Object.keys(groupedReports).length === 0 && (
+          {totalRows > 0 && (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs text-gray-500">共 {totalRows} 条</p>
+              <div className="flex items-center gap-1">
+                <button type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40" title="上一页">‹</button>
+                {Array.from({ length: totalPages }, (_, index) => index + 1).map(pageNo => <button key={pageNo} type="button" onClick={() => setPage(pageNo)} className={`h-8 min-w-8 rounded-lg px-2 text-sm font-semibold ${pageNo === safePage ? 'bg-pink-700 text-white' : 'border border-gray-200 text-gray-600 hover:bg-gray-50'}`}>{pageNo}</button>)}
+                <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)} className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40" title="下一页">›</button>
+              </div>
+            </div>
+          )}
+          {totalRows === 0 && (
             <div className="py-16 text-center text-sm text-gray-400">暂无符合条件的汇报</div>
           )}
         </div>
@@ -1371,6 +1395,29 @@ function ReportsView({
   );
 }
 
+
+function SavedReportRecordDetail({ record, onClose }: { record: SavedReportRecord; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-gray-950/35 px-4 py-6" onClick={onClose}>
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
+        <header className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-6 py-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-xl font-bold text-gray-950">{record.title}</h3>
+              <span className="rounded-full bg-pink-50 px-2.5 py-1 text-xs font-semibold text-pink-800">{record.reportType}</span>
+              <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">已保存</span>
+            </div>
+            <p className="mt-2 text-sm text-gray-500">{record.sender} · 保存于 {record.savedAt} · {record.period}</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700" title="关闭"><X size={18} /></button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-6 py-5 scrollbar-hover">
+          <div className="mx-auto max-w-4xl" dangerouslySetInnerHTML={{ __html: record.htmlContent }} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ReportSendRecordDetail({ record, onClose, onResend, resending = false }: { record: ReportSendRecord; onClose: () => void; onResend?: () => void; resending?: boolean }) {
   const light = record.healthLight ? getHealthLightMeta(record.healthLight) : null;

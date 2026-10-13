@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -43,6 +44,17 @@ import {
 } from '../data/reportSendRecords';
 import ProjectWeeklyReport, { REPORT_SECTION_COUNT as sectionCount } from '../components/ProjectWeeklyReport';
 import ContactPicker from '../components/ContactPicker';
+import {
+  clearActiveSavedReport,
+  createReportBusinessKey,
+  createSavedReportId,
+  getActiveSavedReport,
+  getSavedReportRecords,
+  hashReportContent,
+  subscribeSavedReports,
+  upsertSavedReportRecords,
+  type SavedReportRecord,
+} from '../data/savedReports';
 
 type AdvisorStage = 'empty' | 'confirming' | 'generating' | 'draft' | 'dispatching' | 'sending' | 'submitted' | 'failed';
 type AdvisorReportKind = 'personal' | 'project';
@@ -204,7 +216,10 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   const [toast, setToast] = useState('');
   const [historySearch, setHistorySearch] = useState('');
   const [sendRecords, setSendRecords] = useState(getReportSendRecords);
+  const [savedReports, setSavedReports] = useState(getSavedReportRecords);
+  const [savedContentHash, setSavedContentHash] = useState('');
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [showProjectSendConfirm, setShowProjectSendConfirm] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   // 演示：模拟发送失败（原型验证失败场景用）
   const [simulateFail, setSimulateFail] = useState(false);
@@ -261,6 +276,38 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
 
   const sourceLabel = sourceLabels[source] || sourceLabels['ruyi-zone'];
   useEffect(() => subscribeReportSendRecords(() => setSendRecords(getReportSendRecords())), []);
+  useEffect(() => subscribeSavedReports(() => setSavedReports(getSavedReportRecords())), []);
+
+  useEffect(() => {
+    const saved = getActiveSavedReport();
+    if (!saved || initialPrompt || contextId) return;
+    setMode('report');
+    setPeriod(saved.period);
+    setSelectedSourceIds(sourceCatalog.filter(item => saved.sourceLabels.includes(item.name)).map(item => item.id));
+    if (saved.weeklyData) {
+      setReportKind('project');
+      setWeeklyData(saved.weeklyData);
+      setOverallDescription(saved.weeklyData.overallDescription);
+      setSelectedProjectIds(saved.projectId ? [saved.projectId] : []);
+      setActiveProjectId(saved.projectId || '');
+      setDispatch(current => ({ ...current, recipients: saved.reportTo, cc: saved.copyTo }));
+    } else if (saved.personalSnapshot) {
+      setReportKind('personal');
+      setDraft({ title: saved.title, ...saved.personalSnapshot });
+    }
+    setSavedContentHash(saved.contentHash);
+    const sent = getReportSendRecords().find(record => (
+      (record.reportKey || createReportBusinessKey(record)) === saved.reportKey
+    ));
+    if (sent) {
+      setReceipts(sent.receipts
+        .filter(receipt => receipt.channel === '邮件' || receipt.channel === '企业微信')
+        .map(receipt => ({ channel: receipt.channel as SendReceipt['channel'], target: receipt.target, time: receipt.time, success: receipt.success })));
+      setStage('submitted');
+    } else {
+      setStage('draft');
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (stage !== 'generating') return;
@@ -320,8 +367,121 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     .filter(item => selectedSourceIds.includes(item.id))
     .map(item => item.name);
 
+  const buildCurrentProjectData = (project: (typeof projectOptions)[number]) => {
+    if (weeklyData?.projectId === project.id) {
+      return { ...weeklyData, overallDescription, projectCode: project.code };
+    }
+    return {
+      ...buildProjectWeeklyData({
+        projectId: project.id,
+        projectName: project.name,
+        teamName: project.teamName,
+        progress: project.progress,
+        riskLevel: project.riskLevel,
+        latestReport: project.latestReport,
+        period,
+      }),
+      projectCode: project.code,
+    };
+  };
+
+  const currentReportKeys = mode === 'report' && reportKind === 'project'
+    ? selectedProjects.map(project => createReportBusinessKey({
+        sender: MAIN_USER_NAME,
+        reportType: '项目汇报',
+        period,
+        projectId: project.id,
+        projectName: project.name,
+      }))
+    : mode === 'report'
+      ? [createReportBusinessKey({ sender: MAIN_USER_NAME, reportType: '工作汇报', period })]
+      : [];
+  const currentContentHash = mode !== 'report'
+    ? ''
+    : reportKind === 'project'
+      ? (() => {
+          const hashes = selectedProjects.map(project => hashReportContent(buildCurrentProjectData(project)));
+          return hashes.length === 1 ? hashes[0] : hashReportContent(hashes);
+        })()
+      : hashReportContent(activeDraft);
+  const hasUnsavedChanges = Boolean(currentContentHash) && savedContentHash !== currentContentHash;
+  const isCurrentReportSealed = currentReportKeys.length > 0 && currentReportKeys.some(reportKey => (
+    sendRecords.some(record => (record.reportKey || createReportBusinessKey(record)) === reportKey)
+  ));
+
+  const saveCurrentReports = () => {
+    if (mode !== 'report') return;
+    if (isCurrentReportSealed) {
+      showToast('该周期汇报已提交封版，不能覆盖');
+      return;
+    }
+    if (reportKind === 'project') {
+      if (!weeklyData || selectedProjects.length === 0 || overallDescription.trim().length === 0 || overallDescription.length > 1000) {
+        showToast(overallDescription.trim().length === 0 ? '请先填写总体进展描述' : '请检查汇报内容');
+        return;
+      }
+      const now = formatReportRecordTime();
+      const records: SavedReportRecord[] = selectedProjects.map(project => {
+        const data = buildCurrentProjectData(project);
+        const reportKey = createReportBusinessKey({ sender: MAIN_USER_NAME, reportType: '项目汇报', period, projectId: project.id, projectName: project.name });
+        const existing = savedReports.find(record => record.reportKey === reportKey);
+        const projectItem = workItems.find(item => item.id === project.id);
+        return {
+          id: existing?.id || createSavedReportId(),
+          reportKey,
+          reportType: '项目汇报',
+          title: `${project.name}项目汇报`,
+          sender: MAIN_USER_NAME,
+          savedAt: now,
+          period,
+          projectId: project.id,
+          projectCode: project.code,
+          projectName: project.name,
+          projectOwner: projectItem?.owner,
+          projectMembers: projectItem?.members || [],
+          reportTo: dispatch.recipients,
+          copyTo: dispatch.cc,
+          sourceLabels: selectedDataSourceLabels(),
+          contentHash: hashReportContent(data),
+          htmlContent: renderToStaticMarkup(<ProjectWeeklyReport data={data} filled description={data.overallDescription} readOnly />),
+          weeklyData: data,
+        };
+      });
+      upsertSavedReportRecords(records);
+    } else {
+      const reportKey = currentReportKeys[0];
+      const existing = savedReports.find(record => record.reportKey === reportKey);
+      const snapshot = { summary: activeDraft.summary, completed: activeDraft.completed, risks: activeDraft.risks, nextPlan: activeDraft.nextPlan, support: activeDraft.support };
+      const htmlContent = renderToStaticMarkup(
+        <article className="space-y-4">
+          <h1 className="text-xl font-bold">{activeDraft.title}</h1>
+          {Object.entries(snapshot).map(([key, value]) => <section key={key}><p className="whitespace-pre-wrap">{value}</p></section>)}
+        </article>,
+      );
+      upsertSavedReportRecords([{
+        id: existing?.id || createSavedReportId(),
+        reportKey,
+        reportType: '工作汇报',
+        title: activeDraft.title || '工作汇报',
+        sender: MAIN_USER_NAME,
+        savedAt: formatReportRecordTime(),
+        period,
+        projectMembers: [],
+        reportTo: splitRecipientNames(reportTo),
+        copyTo: splitRecipientNames(copyTo),
+        sourceLabels: selectedDataSourceLabels(),
+        contentHash: hashReportContent(activeDraft),
+        htmlContent,
+        personalSnapshot: snapshot,
+      }]);
+    }
+    setSavedContentHash(currentContentHash);
+    showToast('汇报已保存，可继续提交');
+  };
+
   const persistPersonalSendRecord = () => {
     const sentAt = formatReportRecordTime();
+    const saved = savedReports.find(record => record.reportKey === currentReportKeys[0]);
     const reportTargets = splitRecipientNames(reportTo);
     const copyTargets = splitRecipientNames(copyTo);
     const receipts: ReportSendReceipt[] = [...reportTargets, ...copyTargets].map(target => ({
@@ -333,6 +493,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     }));
     appendReportSendRecords([{
       id: createReportSendRecordId('advisor-work'),
+      reportKey: currentReportKeys[0],
       reportType: '工作汇报',
       title: activeDraft.title || '工作汇报',
       sender: MAIN_USER_NAME,
@@ -345,7 +506,8 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       result: deriveSendResult(receipts),
       receipts,
       sourceLabels: selectedDataSourceLabels(),
-      personalSnapshot: { ...activeDraft },
+      htmlContent: saved?.htmlContent,
+      personalSnapshot: saved?.personalSnapshot || { ...activeDraft },
     }]);
   };
 
@@ -359,7 +521,9 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       .map(receipt => receipt.channel))] as ReportSendChannel[];
     const records = selectedProjects.map(project => {
       const projectItem = workItems.find(item => item.id === project.id);
-      const generatedData = weeklyData?.projectId === project.id
+      const reportKey = createReportBusinessKey({ sender: MAIN_USER_NAME, reportType: '项目汇报', period, projectId: project.id, projectName: project.name });
+      const saved = savedReports.find(record => record.reportKey === reportKey);
+      const generatedData = saved?.weeklyData || (weeklyData?.projectId === project.id
         ? { ...weeklyData, overallDescription, projectCode: project.code }
         : {
             ...buildProjectWeeklyData({
@@ -372,9 +536,10 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               period,
             }),
             projectCode: project.code,
-          };
+          });
       return {
         id: createReportSendRecordId(`advisor-${project.id}`),
+        reportKey,
         reportType: '项目汇报' as const,
         title: `${project.name}项目汇报`,
         sender: MAIN_USER_NAME,
@@ -392,6 +557,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
         result: deriveSendResult(receiptRecords),
         receipts: receiptRecords,
         sourceLabels: selectedDataSourceLabels(),
+        htmlContent: saved?.htmlContent,
         weeklyData: generatedData,
       };
     });
@@ -443,6 +609,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     setActiveProjectId('');
     setWeeklyData(null);
     setReceipts([]);
+    setSavedContentHash('');
     setStage('generating');
   };
 
@@ -467,6 +634,8 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     setUploadError('');
     setShowSubmitConfirm(false);
     setShowRegenerateConfirm(false);
+    setSavedContentHash('');
+    clearActiveSavedReport();
   };
 
   const handleFiles = (files: FileList | null) => {
@@ -491,6 +660,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   };
 
   const updateDraft = (field: keyof ReportDraft, value: string) => {
+    setSavedContentHash('');
     if (activeProjectId) {
       setProjectDrafts(current => ({
         ...current,
@@ -502,6 +672,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   };
 
   const updateActiveDraft = (updater: (current: ReportDraft) => ReportDraft) => {
+    setSavedContentHash('');
     if (activeProjectId) {
       setProjectDrafts(current => ({
         ...current,
@@ -773,12 +944,16 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               </section>
             )}
 
-            {/* 完整周报预览：仅"整体项目进展"可编辑（FR-05） */}
+            {/* 完整周报预览：仅"总体进展描述"可编辑（FR-05） */}
             <ProjectWeeklyReport
               data={weeklyData}
               filled
               description={overallDescription}
-              onDescriptionChange={setOverallDescription}
+              readOnly={isCurrentReportSealed}
+              onDescriptionChange={value => {
+                setOverallDescription(value);
+                setSavedContentHash('');
+              }}
             />
           </div>
         </div>
@@ -902,6 +1077,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     const canConfirm = recipientsValid && (!showWecom || dispatch.wecom.length > 0);
 
     const executeSend = () => {
+      setShowProjectSendConfirm(false);
       setStage('sending');
       const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
       // 发送结果全员一致：仅演示开关触发失败
@@ -1045,7 +1221,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                 <button
                   type="button"
                   disabled={!canConfirm}
-                  onClick={executeSend}
+                  onClick={() => setShowProjectSendConfirm(true)}
                   className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${canConfirm ? 'bg-theme-600 text-white hover:bg-theme-700' : 'cursor-not-allowed bg-gray-200 text-gray-400'}`}
                 >
                   确认发送
@@ -1054,6 +1230,30 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
             </div>
           </div>
         </div>
+
+        {showProjectSendConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/45 px-4" onClick={() => setShowProjectSendConfirm(false)}>
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl" onClick={event => event.stopPropagation()}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-950">再次确认发送</h3>
+                  <p className="mt-1 text-sm leading-6 text-gray-500">发送后将生成发送记录，并通知所选汇报对象。</p>
+                </div>
+                <button type="button" onClick={() => setShowProjectSendConfirm(false)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" title="关闭"><X size={18} /></button>
+              </div>
+              <div className="mt-5 space-y-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <p><span className="text-gray-400">项目：</span>{weeklyData.projectName}</p>
+                <p><span className="text-gray-400">汇报周期：</span>第 {weeklyData.weekNumber} 周（{period}）</p>
+                <p><span className="text-gray-400">邮件接收：</span>{dispatch.recipients.length} 人{dispatch.cc.length > 0 ? `，抄送 ${dispatch.cc.length} 人` : ''}</p>
+                {showWecom && <p><span className="text-gray-400">企微接收：</span>{dispatch.wecom.length} 人</p>}
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button type="button" onClick={() => setShowProjectSendConfirm(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回检查</button>
+                <button type="button" onClick={executeSend} className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700">确认并发送</button>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* 邮件长图全图预览弹窗：点击效果预览中的长图打开 */}
       {showFullImage && (
@@ -1071,7 +1271,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                 <div className="bg-gradient-to-r from-gray-800 to-gray-700 px-5 py-4 text-white">
                   <p className="text-base font-bold">{weeklyData.projectName}</p>
                   <p className="mt-1.5 text-xs text-gray-300">项目周第 {weeklyData.weekNumber} 周 · 汇报周期 {weeklyData.period}</p>
-                  <p className="mt-1 text-[10px] text-gray-400">当前阶段：{weeklyData.currentStage} · 整体进度 {weeklyData.overallProgress}%</p>
+                  <p className="mt-1 text-[10px] text-gray-400">当前阶段：{weeklyData.currentStage} · 子阶段：{weeklyData.currentSubStage || '—'} · 整体进度 {weeklyData.overallProgress}%</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 bg-white p-4">
                   {weeklyData.stats.map(stat => (
@@ -1082,7 +1282,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                   ))}
                 </div>
                 <div className="border-t border-gray-100 bg-white px-4 py-3">
-                  <p className="text-xs font-bold text-gray-700">整体项目进展</p>
+                  <p className="text-xs font-bold text-gray-700">总体进展描述</p>
                   <p className="mt-1.5 text-xs leading-6 text-gray-600">{overallDescription || weeklyData.overallDescription}</p>
                 </div>
                 <div className="border-t border-gray-100 bg-white px-4 py-3">
@@ -1209,7 +1409,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
         <div className="space-y-4 px-4 py-4">
           <section>
             <div className="flex items-center justify-between"><p className="text-sm font-bold text-gray-900">{mode === 'report' ? '汇报要求' : '洞察条件'}</p><span className="rounded bg-theme-50 px-2 py-1 text-[11px] font-semibold text-theme-700">可编辑</span></div>
-            <label className="mt-4 block text-xs font-semibold text-gray-500">需求描述
+            <label className="mt-4 block text-xs font-semibold text-gray-500">总体进展描述
               <textarea value={prompt} onChange={event => setPrompt(event.target.value)} rows={6} placeholder={mode === 'report' ? '描述汇报对象、关注重点和输出要求' : '描述需要分析的范围、问题和关注重点'} className="mt-2 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal leading-6 text-gray-700 outline-none focus:border-theme-300 focus:ring-2 focus:ring-theme-100" />
             </label>
           </section>
@@ -1357,13 +1557,13 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
 
           {!requirementEditing || stage !== 'draft' ? (
             <div className="mt-2 space-y-2">
-              <div className="rounded-lg bg-gray-50 px-3 py-2.5"><p className="text-[11px] text-gray-400">需求描述</p><p className="mt-1 whitespace-pre-wrap text-xs leading-6 text-gray-700">{prompt || '—'}</p></div>
+              <div className="rounded-lg bg-gray-50 px-3 py-2.5"><p className="text-[11px] text-gray-400">总体进展描述</p><p className="mt-1 whitespace-pre-wrap text-xs leading-6 text-gray-700">{prompt || '—'}</p></div>
               {mode === 'report' && <div className="rounded-lg bg-gray-50 px-3 py-2.5"><p className="text-[11px] text-gray-400">汇报类型</p><p className="mt-1 text-xs font-semibold text-gray-700">{reportKind === 'project' ? '项目汇报' : '个人汇报'}</p></div>}
               <div className="rounded-lg bg-gray-50 px-3 py-2.5"><p className="text-[11px] text-gray-400">时间范围</p><p className="mt-1 text-xs font-semibold text-gray-700">{period}</p></div>
             </div>
           ) : (
             <>
-              <label className="mt-2 block text-xs font-semibold text-gray-500">需求描述
+              <label className="mt-2 block text-xs font-semibold text-gray-500">总体进展描述
                 <textarea value={prompt} onChange={event => setPrompt(event.target.value)} rows={5} className="mt-1.5 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm font-normal leading-6 text-gray-700 outline-none focus:border-theme-300 focus:ring-2 focus:ring-theme-100" placeholder="调整需求后，点击下方重新生成" />
               </label>
               {mode === 'report' && (
@@ -1462,7 +1662,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           <footer className="grid shrink-0 grid-cols-3 items-center gap-3 border-t border-gray-200 bg-white px-4 py-2">
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
               {stage === 'generating' || stage === 'sending' ? <Loader2 size={12} className="animate-spin text-theme-600" /> : <CheckCircle2 size={12} className="text-emerald-500" />}
-              {stage === 'generating' ? '生成中…' : stage === 'sending' ? '发送中…' : stage === 'submitted' ? '已发送' : reportKind === 'project' && mode === 'report' && stage === 'draft' ? '草稿待确认' : '已就绪'}
+              {stage === 'generating' ? '生成中…' : stage === 'sending' ? '发送中…' : stage === 'submitted' ? '已提交' : mode === 'report' && stage === 'draft' ? (hasUnsavedChanges ? '有未保存内容' : '已保存') : '已就绪'}
             </div>
             <div className="truncate text-center text-[11px] text-gray-400">内容AI辅助生成，请谨慎识别</div>
             <div className="flex items-center justify-end gap-2 text-xs text-gray-500">
@@ -1489,10 +1689,13 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               </div>
             ) : stage === 'draft' && mode === 'report' && reportKind === 'project' ? (
               <div className="space-y-2">
-                <p className="text-center text-[11px] leading-4 text-gray-400">{weeklyData && overallDescription.trim().length === 0 ? '「整体项目进展」为必填项，填写后才能发送' : weeklyData && overallDescription.length > 1000 ? '进展描述超出 1000 字上限' : '确认汇报内容无误后发送'}</p>
-                <button onClick={() => setStage('dispatching')} disabled={!weeklyData || overallDescription.trim().length === 0 || overallDescription.length > 1000} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={15} />确认并提交</button>
+                <p className="text-center text-[11px] leading-4 text-gray-400">{isCurrentReportSealed ? '该周期汇报已提交封版' : weeklyData && overallDescription.trim().length === 0 ? '「总体进展描述」为必填项' : weeklyData && overallDescription.length > 1000 ? '进展描述超出 1000 字上限' : hasUnsavedChanges ? '请先保存当前汇报，保存后才可提交' : '内容已保存，可以提交'}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={saveCurrentReports} disabled={isCurrentReportSealed || !hasUnsavedChanges || !weeklyData || overallDescription.trim().length === 0 || overallDescription.length > 1000} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-white px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"><Save size={15} />保存</button>
+                  <button type="button" onClick={() => setStage('dispatching')} disabled={isCurrentReportSealed || hasUnsavedChanges || !savedContentHash || !weeklyData || overallDescription.trim().length === 0 || overallDescription.length > 1000} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={15} />提交</button>
+                </div>
               </div>
-            ) : stage === 'draft' && mode === 'report' ? <div className="space-y-2">{returnTo && <button onClick={handleWriteBack} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-100"><ArrowLeft size={15} />回填原页面</button>}<button onClick={() => setShowSubmitConfirm(true)} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700"><Send size={15} />确认并提交</button></div> : stage === 'draft' && mode === 'insight' ? <div className="grid grid-cols-2 gap-2"><button onClick={() => showToast('洞察结果已复制')} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600"><Copy size={15} />复制结果</button><button onClick={() => showToast('洞察结果已保存')} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white"><Save size={15} />保存洞察</button></div> : <button onClick={() => resetWorkspace(mode)} disabled={stage === 'generating' || stage === 'sending'} className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">新建{mode === 'report' ? '汇报' : '洞察'}</button>}
+            ) : stage === 'draft' && mode === 'report' ? <div className="space-y-2">{returnTo && <button onClick={handleWriteBack} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-100"><ArrowLeft size={15} />回填原页面</button>}<div className="grid grid-cols-2 gap-2"><button type="button" onClick={saveCurrentReports} disabled={isCurrentReportSealed || !hasUnsavedChanges} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-white px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"><Save size={15} />保存</button><button type="button" onClick={() => setShowSubmitConfirm(true)} disabled={isCurrentReportSealed || hasUnsavedChanges || !savedContentHash} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={15} />提交</button></div></div> : stage === 'draft' && mode === 'insight' ? <div className="grid grid-cols-2 gap-2"><button onClick={() => showToast('洞察结果已复制')} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600"><Copy size={15} />复制结果</button><button onClick={() => showToast('洞察结果已保存')} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white"><Save size={15} />保存洞察</button></div> : <button onClick={() => resetWorkspace(mode)} disabled={stage === 'generating' || stage === 'sending'} className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">新建{mode === 'report' ? '汇报' : '洞察'}</button>}
 
           </footer>
         </aside>

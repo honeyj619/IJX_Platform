@@ -24,6 +24,7 @@ export type PersonalReportSnapshot = {
 
 export type ReportSendRecord = {
   id: string;
+  reportKey?: string;
   reportType: ReportRecordType;
   title: string;
   sender: string;
@@ -41,6 +42,7 @@ export type ReportSendRecord = {
   result: ReportSendResult;
   receipts: ReportSendReceipt[];
   sourceLabels: string[];
+  htmlContent?: string;
   weeklyData?: ProjectWeeklyData;
   personalSnapshot?: PersonalReportSnapshot;
 };
@@ -124,10 +126,47 @@ const parseRecords = (value: string | null): ReportSendRecord[] | null => {
   }
 };
 
+const hydrateProjectWeeklyRecord = (record: ReportSendRecord): ReportSendRecord => {
+  if (record.reportType !== '项目汇报' || !record.weeklyData) return record;
+  const current = record.weeklyData;
+  const baseline = buildProjectWeeklyData({
+    projectId: record.projectId || current.projectId,
+    projectName: record.projectName || current.projectName,
+    teamName: '',
+    progress: current.overallProgress,
+    riskLevel: record.healthLight === 'red' ? '风险' : record.healthLight === 'yellow' ? '关注' : '正常',
+    latestReport: current.overallDescription,
+    weekNumber: current.weekNumber,
+    period: current.period,
+  });
+  const currentSubStage = current.stages
+    .flatMap(stage => stage.subStages || [])
+    .some(subStage => subStage.name === current.currentSubStage)
+    ? current.currentSubStage
+    : baseline.currentSubStage;
+  return {
+    ...record,
+    weeklyData: {
+      ...current,
+      currentSubStage,
+      stages: current.stages.map(stage => {
+        const baselineStage = baseline.stages.find(item => item.id === stage.id);
+        if (stage.subStages?.length || !baselineStage) return stage;
+        return {
+          ...baselineStage,
+          progress: stage.progress,
+          status: stage.status,
+          taskSummary: stage.taskSummary,
+        };
+      }),
+    },
+  };
+};
+
 export const getReportSendRecords = (): ReportSendRecord[] => {
   if (!canUseStorage()) return seedRecords;
   const stored = parseRecords(window.localStorage.getItem(STORAGE_KEY_V2));
-  if (stored) return stored;
+  if (stored) return stored.map(hydrateProjectWeeklyRecord);
   window.localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(seedRecords));
   return seedRecords;
 };

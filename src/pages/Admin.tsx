@@ -14,7 +14,7 @@ import {
 import NavigationConfig from '../components/NavigationConfig';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import ContactPicker from '../components/ContactPicker';
-import { contactDirectory, findContactByName } from '../data/contactDirectory';
+import { contactDirectory, contactGroups, findContactByName } from '../data/contactDirectory';
 import {
   TRUSTED_ROUTE_DICTIONARY_NAME,
   TRUSTED_ROUTE_DICTIONARY_TYPE,
@@ -807,13 +807,10 @@ function UserGroupManagement() {
   const [lastSyncTime, setLastSyncTime] = useState('2026-07-01 09:30');
   // 侧滑详情打开的用户组 id（null 关闭）
   const [detailGroupId, setDetailGroupId] = useState<string | null>(null);
-  // 通讯录选人（当前详情组待添加的名单）
-  const [pickerNames, setPickerNames] = useState<string[]>([]);
   // 详情内搜索：类型（成员/部门）与关键词
   const [memberSearchType, setMemberSearchType] = useState<'member' | 'department'>('member');
   const [memberKeyword, setMemberKeyword] = useState('');
   const detailGroup = groups.find(group => group.id === detailGroupId) || null;
-  const [pickerOpen, setPickerOpen] = useState(false);
   // 移除成员确认（name+userId）
   const [removeConfirm, setRemoveConfirm] = useState<{ name: string; userId: string } | null>(null);
   // 删除确认弹框与风险勾选
@@ -825,8 +822,6 @@ function UserGroupManagement() {
   const [editDescription, setEditDescription] = useState('');
   const [editFeatures, setEditFeatures] = useState('');
   const [editMemberScope, setEditMemberScope] = useState('');
-  const handleOpenPickerRef = useRef<() => void>(null);
-  handleOpenPickerRef.current = () => setPickerOpen(true);
   const selectedGroup = groups.find(group => group.id === selectedGroupId) || groups[0];
   const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim()));
   const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim()));
@@ -893,29 +888,49 @@ function UserGroupManagement() {
     showToast('用户组信息已保存');
   };
 
-  // 通讯录确认选人 → 批量写入当前详情组（去重）
-  const handleConfirmPickMembers = () => {
-    if (!detailGroup) return;
-    const existing = new Set(detailGroup.members.map(member => member.name));
-    const additions: UserGroupMember[] = pickerNames
+  // 通讯录确认选择后，批量写入当前用户组（人员与部门均按名称去重）。
+  const handleAddDirectoryItems = (names: string[]) => {
+    const existing = new Set(selectedGroup.members.map(member => member.name));
+    const additions: UserGroupMember[] = names
       .filter(name => !existing.has(name))
       .map(name => {
+        const isDepartment = contactGroups.includes(name);
+        if (isDepartment) {
+          return {
+            name,
+            phone: '-',
+            userId: `dept-${contactGroups.indexOf(name) + 1}`,
+            department: '-',
+            position: '-',
+            kind: 'department' as const,
+            domainAccount: '-',
+            employeeNo: '-',
+          };
+        }
         const contact = findContactByName(name);
+        const directoryIndex = Math.max(0, contactDirectory.findIndex(item => item.name === name));
         return {
           name,
           phone: contact?.email || `${name.replace(/\s/g, '').toLowerCase()}@juneyao.com`,
           userId: contact?.id || `new-${name}`,
           department: contact?.department || '信息管理部',
           position: contact?.title || '成员',
+          kind: 'person' as const,
+          domainAccount: contact?.email.split('@')[0] || '-',
+          employeeNo: `HO00-${String(directoryIndex + 10).padStart(8, '0')}`,
         };
       });
-    if (additions.length === 0) { setPickerNames([]); return; }
-    setGroups(current => current.map(group => group.id === detailGroup.id
-      ? { ...group, members: [...group.members, ...additions], updatedAt: '2026-07-01 10:45' }
+    if (additions.length === 0) {
+      showToast('所选用户或部门已在当前用户组中');
+      return;
+    }
+    setGroups(current => current.map(group => group.id === selectedGroup.id
+      ? { ...group, members: [...group.members, ...additions], updatedAt: '2026-10-13 11:00' }
       : group
     ));
-    setPickerNames([]);
-    showToast(`已添加 ${additions.length} 名成员`);
+    const departmentCount = additions.filter(item => item.kind === 'department').length;
+    const peopleCount = additions.length - departmentCount;
+    showToast(`已添加 ${peopleCount} 名用户${departmentCount > 0 ? `、${departmentCount} 个部门` : ''}`);
   };
 
   const handleRemoveMember = (userId: string) => {
@@ -946,7 +961,6 @@ function UserGroupManagement() {
         onClick={(event) => {
           event.stopPropagation();
           setDetailGroupId(group.id);
-          setPickerNames([]);
           setMemberKeyword('');
           setMemberSearchType('member');
           setEditingGroup(false);
@@ -1042,6 +1056,16 @@ function UserGroupManagement() {
                 className="h-9 w-full rounded border border-gray-300 pl-9 pr-3 text-sm outline-none focus:border-[#2f75b5]"
               />
             </div>
+            {isManual && (
+              <ContactPicker
+                selected={[]}
+                onChange={handleAddDirectoryItems}
+                disabledNames={selectedGroup.members.map(member => member.name)}
+                selectionMode="people-and-departments"
+                triggerVariant="button"
+                triggerLabel="新增用户"
+              />
+            )}
           </div>
 
           {/* 成员列表（人员 + 部门条目，按搜索过滤） */}

@@ -691,9 +691,18 @@ export default function Personal_Enterprise() {
   const [cards, setCards] = useState<CardConfig[]>(() => {
     const saved = localStorage.getItem('dashboardCards');
     if (!saved) return initialCards;
-    const savedCards = JSON.parse(saved) as CardConfig[];
-    const mergedCards = initialCards.map(card => savedCards.find(savedCard => savedCard.id === card.id) || card);
-    return mergedCards.sort((a, b) => a.order - b.order);
+    try {
+      const savedCards = JSON.parse(saved) as CardConfig[];
+      if (!Array.isArray(savedCards)) return initialCards;
+      // 以 initialCards 为基（icon 等 JSX 字段不可序列化），仅回填可持久化字段
+      const mergedCards = initialCards.map(card => {
+        const savedCard = savedCards.find(entry => entry?.id === card.id);
+        return savedCard ? { ...card, visible: savedCard.visible ?? card.visible, order: typeof savedCard.order === 'number' ? savedCard.order : card.order } : card;
+      });
+      return mergedCards.sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+    } catch {
+      return initialCards;
+    }
   });
   
   // 系统选择状态
@@ -749,6 +758,22 @@ export default function Personal_Enterprise() {
     };
   });
   const [configuringStatKey, setConfiguringStatKey] = useState<StatKey>('approval');
+  // 未读文档展示数量
+  const [documentsDisplayCount, setDocumentsDisplayCount] = useState<number>(() => {
+    const saved = localStorage.getItem('documentsDisplayCount');
+    const parsed = saved ? Number(saved) : NaN;
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 4;
+  });
+  useEffect(() => { localStorage.setItem('documentsDisplayCount', String(documentsDisplayCount)); }, [documentsDisplayCount]);
+  // 临期课程展示数量
+  const [coursesDisplayCount, setCoursesDisplayCount] = useState<number>(() => {
+    const saved = localStorage.getItem('coursesDisplayCount');
+    const parsed = saved ? Number(saved) : NaN;
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : 3;
+  });
+  useEffect(() => { localStorage.setItem('coursesDisplayCount', String(coursesDisplayCount)); }, [coursesDisplayCount]);
+  // 通用展示数量编辑目标（documents/courses）
+  const [countEditTarget, setCountEditTarget] = useState<'documents' | 'courses' | null>(null);
   const [customTodos, setCustomTodos] = useState<TodoItem[]>(() => {
     const saved = localStorage.getItem('customDashboardTodos');
     if (!saved) return [];
@@ -762,7 +787,10 @@ export default function Personal_Enterprise() {
   const [statOrder, setStatOrder] = useState<StatKey[]>(() => {
     const saved = localStorage.getItem('dashboardStatOrder');
     if (!saved) return [];
-    try { return JSON.parse(saved) as StatKey[]; } catch { return []; }
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.filter((k): k is StatKey => typeof k === 'string') : [];
+    } catch { return []; }
   });
   useEffect(() => {
     localStorage.setItem('dashboardStatOrder', JSON.stringify(statOrder));
@@ -864,7 +892,7 @@ export default function Personal_Enterprise() {
     const saved = localStorage.getItem('selectedSystems');
     if (!saved) return defaultSystemIds;
     const parsed = JSON.parse(saved) as string[];
-    const valid = parsed.filter(id => businessSystems.some(system => system.id === id));
+    const valid = Array.isArray(parsed) ? parsed.filter(id => typeof id === 'string' && businessSystems.some(system => system.id === id)) : [];
     if (localStorage.getItem(selectedSystemsPresetKey) === '1') {
       return valid.length > 0 ? valid : defaultSystemIds;
     }
@@ -1639,6 +1667,91 @@ export default function Personal_Enterprise() {
     showToast('已提交申请流程');
   }, [showToast]);
 
+  // 标题栏右侧功能操作组（统一规范）：更多=跳转详情页（三点icon）；编辑=配置卡片（设置icon，按卡片能力）
+  const portalCardActions = (cardId: CardType): React.ReactNode => {
+    // 编辑入口按卡片类型分发
+    let editAction: React.ReactNode = null;
+    switch (cardId) {
+      case 'stats':
+        // stats 是组合卡：编辑=当前激活数据卡的展示数量（dataCardConfig）
+        editAction = (
+          <button
+            onClick={() => { setConfiguringStatKey(activeStatKey); setActiveDialog('dataCardConfig'); }}
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            title="编辑展示数量"
+          >
+            <Settings size={16} />
+          </button>
+        );
+        break;
+      case 'systems':
+        editAction = (
+          <button onClick={() => setActiveDialog('commonSystems')} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700" title="编辑常用系统">
+            <Settings size={16} />
+          </button>
+        );
+        break;
+      case 'officeApps':
+        editAction = (
+          <button onClick={() => setActiveDialog('commonFeatures')} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700" title="编辑常用功能">
+            <Settings size={16} />
+          </button>
+        );
+        break;
+      case 'documents':
+        editAction = (
+          <button onClick={() => setCountEditTarget('documents')} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700" title="编辑展示数量">
+            <Settings size={16} />
+          </button>
+        );
+        break;
+      case 'courses':
+        editAction = (
+          <button onClick={() => setCountEditTarget('courses')} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700" title="编辑展示数量">
+            <Settings size={16} />
+          </button>
+        );
+        break;
+      default:
+        editAction = null;
+    }
+
+    // 更多=跳转对应详情页
+    const moreTargets: Partial<Record<CardType, string>> = {
+      stats: '门户-数据卡片详情',
+      documents: '门户-文档中心',
+      calendar: '门户-日历',
+      systems: '业务系统列表',
+      officeApps: '门户-常用功能',
+      duty: '公司值班页面',
+      courses: '临期课程列表',
+    };
+
+    return (
+      <>
+        {editAction}
+        {cardId === 'calendar' && (
+          <button
+            onClick={() => navigate('/web_client/calendar?create=1')}
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            title="新增日程"
+          >
+            <Plus size={16} />
+          </button>
+        )}
+        {cardId !== 'calendar' && (
+          <button
+            onClick={() => showJumpTip(moreTargets[cardId] || '详情页')}
+            className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            title="更多"
+          >
+            <MoreHorizontal size={16} />
+          </button>
+        )}
+      </>
+    );
+  };
+
   const renderPortalCard = (card: CardConfig) => {
     if (card.id === 'stats') {
       return (
@@ -1678,23 +1791,13 @@ export default function Personal_Enterprise() {
     if (card.id === 'documents') {
       return (
         <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-          <div className="mb-4 flex items-center justify-end">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-purple-50 text-purple-700 text-sm font-medium rounded-full">5条</span>
-              <button
-                onClick={() => showJumpTip('门户-文档中心')}
-                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                title="更多"
-              >
-                <MoreHorizontal size={16} />
-              </button>
-            </div>
-          </div>
           <div className="space-y-2">
-            <DocumentItem title="关于明确公司领导分工工作和工作接替顺序的通知" time="2026-05-20 09:25:07" />
-            <DocumentItem title="关于发布浦东-伊宁、浦东-喀什新开航线评估结果的通知" time="2026-05-20 09:20:05" />
-            <DocumentItem title="关于做好2026年上半年工作总结和下半年工作计划的通知" time="2026-05-19 13:10:09" />
-            <DocumentItem title="关于发布《上海吉祥航空股份有限公司安全警示教育长效机制（试行）》的通知" time="2026-05-19 10:12:34" />
+            {[
+              { title: '关于明确公司领导分工工作和工作接替顺序的通知', time: '2026-05-20 09:25:07' },
+              { title: '关于发布浦东-伊宁、浦东-喀什新开航线评估结果的通知', time: '2026-05-20 09:20:05' },
+              { title: '关于做好2026年上半年工作总结和下半年工作计划的通知', time: '2026-05-19 13:10:09' },
+              { title: '关于发布《上海吉祥航空股份有限公司安全警示教育长效机制（试行）》的通知', time: '2026-05-19 10:12:34' },
+            ].slice(0, documentsDisplayCount).map(doc => <DocumentItem key={doc.title} title={doc.title} time={doc.time} />)}
           </div>
         </div>
       );
@@ -1703,21 +1806,6 @@ export default function Personal_Enterprise() {
     if (card.id === 'calendar') {
       return (
         <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-pink-600 to-pink-800 rounded-xl flex items-center justify-center">
-                <CalendarIcon size={20} className="text-white" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-800">2026年5月</h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-pink-50 rounded-xl transition-colors">
-                <Plus size={18} className="text-pink-700" />
-              </button>
-              <CardHeaderActions menuId={menuId} menuKey="calendar" onEdit={(event) => { event.stopPropagation(); showJumpTip('周历配置'); }} onToggleMenu={toggleMenu} />
-            </div>
-          </div>
-
           <div className="grid grid-cols-7 gap-1 text-center mb-6">
             {['日', '一', '二', '三', '四', '五', '六'].map(day => (
               <div key={day} className="text-xs font-semibold text-gray-400 py-2">{day}</div>
@@ -1758,25 +1846,6 @@ export default function Personal_Enterprise() {
     if (card.id === 'duty') {
       return (
         <div className="group relative rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-lg">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-700 to-pink-900 text-white">
-                <Bell size={19} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-800">今日值班</h3>
-                <p className="text-xs text-gray-500">{activeDuty.date} · {activeDuty.label}</p>
-              </div>
-            </div>
-            <button
-              onClick={() => showJumpTip('公司值班页面')}
-              className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-              title="更多"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-          </div>
-
           <div className="mb-3 flex items-center gap-2">
             <button
               onClick={() => setDutyDayOffset(prev => (prev === -1 ? -1 : ((prev as number) - 1) as keyof typeof dutySchedule))}
@@ -1821,19 +1890,6 @@ export default function Personal_Enterprise() {
     if (card.id === 'systems') {
       return (
         <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-          <div className="flex items-center justify-end mb-4">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-amber-50 text-amber-700 text-sm font-medium rounded-full">{displayedSystems.length}个</span>
-              <button
-                onClick={() => setActiveDialog('commonSystems')}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                title="设置常用系统"
-              >
-                <Settings size={18} className="text-gray-400" />
-              </button>
-            </div>
-          </div>
-
           <div className="grid grid-cols-4 gap-2">
             {displayedSystems.map(sys => (
               <button
@@ -1855,19 +1911,6 @@ export default function Personal_Enterprise() {
     if (card.id === 'officeApps') {
       return (
         <div className="group relative rounded-2xl border border-gray-100 bg-white p-5 shadow-sm transition-shadow duration-300 hover:shadow-lg">
-          <div className="mb-3 flex items-center justify-end">
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-pink-50 px-3 py-1 text-sm font-medium text-pink-700">{pinnedFeatures.length}个</span>
-              <button
-                onClick={() => setActiveDialog('commonFeatures')}
-                className="rounded-xl p-2 transition-colors hover:bg-gray-100"
-                title="设置常用功能"
-              >
-                <Settings size={18} className="text-gray-400" />
-              </button>
-            </div>
-          </div>
-
           <div className="grid grid-cols-3 gap-2">
             {pinnedFeatures.map(feature => (
               <button
@@ -1889,16 +1932,12 @@ export default function Personal_Enterprise() {
     if (card.id === 'courses') {
       return (
         <div className="group relative bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-lg transition-shadow duration-300">
-          <div className="mb-4 flex items-center justify-end">
-            <div className="flex items-center gap-2">
-              <button className="text-sm font-medium text-pink-700 hover:text-pink-900 transition-colors">查看全部</button>
-              <CardHeaderActions menuId={menuId} menuKey="courses" onEdit={(event) => { event.stopPropagation(); showJumpTip('临期课程配置'); }} onToggleMenu={toggleMenu} />
-            </div>
-          </div>
           <div className="space-y-3">
-            <CourseItem title="上海吉祥航空股份有限公司IT质量指标评估标准V6.0" time="5节课 · 10积分" color="blue" />
-            <CourseItem title="民航华东地区2026年行业管理工作报告的通知" time="1节课 · 10积分" color="purple" />
-            <CourseItem title="王金董事长在公司2026年工作会议上的重要讲话" time="1节课 · 10积分" color="pink" />
+            {[
+              { title: '上海吉祥航空股份有限公司IT质量指标评估标准V6.0', time: '5节课 · 10积分', color: 'blue' },
+              { title: '民航华东地区2026年行业管理工作报告的通知', time: '1节课 · 10积分', color: 'purple' },
+              { title: '王金董事长在公司2026年工作会议上的重要讲话', time: '1节课 · 10积分', color: 'pink' },
+            ].slice(0, coursesDisplayCount).map(course => <CourseItem key={course.title} title={course.title} time={course.time} color={course.color} />)}
           </div>
         </div>
       );
@@ -1947,7 +1986,7 @@ export default function Personal_Enterprise() {
         {personalView === 'dashboard' && (
           <div className="grid grid-flow-row-dense grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-12">
             {visibleCards.map(card => (
-              <PortalCardShell key={card.id} card={card}>
+              <PortalCardShell key={card.id} card={card} actions={portalCardActions(card.id)}>
                 {renderPortalCard(card)}
               </PortalCardShell>
             ))}
@@ -2302,6 +2341,39 @@ export default function Personal_Enterprise() {
               <button onClick={() => setActiveDialog(null)} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">
                 保存
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 未读文档/临期课程 展示数量 */}
+      {countEditTarget && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 px-4 py-6">
+          <div className="w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">编辑{countEditTarget === 'documents' ? '未读文档' : '临期课程'}</h2>
+                <p className="mt-1 text-sm text-gray-500">设置卡片最多展示的数据数量</p>
+              </div>
+              <button onClick={() => setCountEditTarget(null)} className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-800"><X size={20} /></button>
+            </div>
+            <div className="p-6">
+              <label className="text-sm font-medium text-gray-700">最多展示</label>
+              <select
+                value={countEditTarget === 'documents' ? documentsDisplayCount : coursesDisplayCount}
+                onChange={(event) => {
+                  const value = Number(event.target.value);
+                  if (countEditTarget === 'documents') setDocumentsDisplayCount(value);
+                  else setCoursesDisplayCount(value);
+                }}
+                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-pink-400"
+              >
+                {[1, 2, 3, 4, 5, 6].map(count => <option key={count} value={count}>{count} 条</option>)}
+              </select>
+              <p className="mt-3 text-xs text-gray-500">配置只影响卡片预览数量，点击"更多"可查看全部。</p>
+            </div>
+            <div className="flex justify-end border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button onClick={() => setCountEditTarget(null)} className="rounded-lg bg-pink-700 px-5 py-2 text-sm font-semibold text-white hover:bg-pink-800">保存</button>
             </div>
           </div>
         </div>
@@ -4678,8 +4750,10 @@ function MyItemDetailView({ item, onBack, focusTaskId, focusActionId, onSubmitRe
   );
 }
 
-function PortalCardShell({ card, children }: {
+function PortalCardShell({ card, actions, children }: {
   card: CardConfig;
+  /** 标题栏右侧功能操作组（随标题外置） */
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const spanClass = card.id === 'stats' || card.id === 'documents'
@@ -4690,10 +4764,13 @@ function PortalCardShell({ card, children }: {
   return (
     <div data-portal-card-id={card.id} className={`${spanClass} group/card relative`}>
       {!hideOuterTitle && (
-        <h3 className="mb-3 flex items-center gap-2 text-lg font-bold text-gray-800">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-500 shadow-sm ring-1 ring-gray-100">{card.icon}</span>
-          {card.name}
-        </h3>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-500 shadow-sm ring-1 ring-gray-100">{card.icon}</span>
+            {card.name}
+          </h3>
+          <div className="flex shrink-0 items-center gap-2">{actions}</div>
+        </div>
       )}
       {children}
     </div>
@@ -4860,17 +4937,17 @@ function StatsDetailPanel({ activeStat, tone, approvals, approvalTotal, todos, t
       <div className="flex items-center gap-2">
         <button
           onClick={() => onEdit(activeStat.key)}
-          className="inline-flex items-center gap-2 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
+          className="rounded-lg border border-white/70 bg-white p-1.5 text-gray-400 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-700"
+          title="编辑展示数量"
         >
-          <Settings size={15} />
-          展示数量
+          <Settings size={16} />
         </button>
         <button
           onClick={() => onMore(activeStat.key)}
-          className="inline-flex items-center gap-1 rounded-lg border border-white/70 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:text-pink-700"
+          className="rounded-lg border border-white/70 bg-white p-1.5 text-gray-400 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-700"
+          title="更多"
         >
-          更多
-          <ChevronRight size={15} />
+          <MoreHorizontal size={16} />
         </button>
       </div>
     );

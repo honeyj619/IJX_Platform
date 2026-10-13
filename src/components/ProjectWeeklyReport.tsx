@@ -16,7 +16,7 @@ interface ProjectWeeklyReportProps {
   readOnly?: boolean;
 }
 
-const sectionOrder = ['hero', 'info', 'stats', 'progress', 'summary', 'gantt', 'works', 'tables'];
+const sectionOrder = ['hero', 'info', 'stats', 'progress', 'summary', 'tables', 'gantt', 'works'];
 
 /** 周报区块总数（骨架点亮动画用） */
 export const REPORT_SECTION_COUNT = sectionOrder.length;
@@ -115,7 +115,7 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
               项目周第 <span className="font-semibold text-gray-800">{data.weekNumber}</span> 周 · 汇报周期：
               <span className="font-semibold text-gray-800">{data.period}</span>
             </p>
-            <p className="mt-1 text-xs text-gray-400">当前阶段：{data.currentStage}</p>
+            <p className="mt-1 text-xs text-gray-400">当前阶段：{data.currentStage} · 子阶段：{data.currentSubStage || '—'}</p>
           </div>
           <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${light.bg} ${light.text}`}>
             <span className={`h-2.5 w-2.5 rounded-full ${light.dot}`} />
@@ -134,6 +134,8 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
           <ReadOnlyField label="项目发起人" value={data.sponsor} />
           <ReadOnlyField label="项目经理" value={data.manager} />
           <ReadOnlyField label="IT项目经理" value={data.itManager} />
+          <ReadOnlyField label="项目阶段" value={data.currentStage} />
+          <ReadOnlyField label="项目子阶段" value={data.currentSubStage || '—'} />
         </div>
       </section>
 
@@ -181,11 +183,11 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
         </div>
       </section>
 
-      {/* 整体项目进展：唯一可编辑字段（BR-05） */}
+      {/* 总体进展描述：唯一可编辑字段（BR-05） */}
       <section className="rounded-xl border border-theme-200 bg-white px-6 py-5 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900">
-            整体项目进展
+            总体进展描述
             {!readOnly && (
               <span className="inline-flex items-center gap-1 rounded bg-theme-50 px-1.5 py-0.5 text-[11px] font-semibold text-theme-700">
                 <PencilLine size={11} />必填 · 可编辑
@@ -205,13 +207,42 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
               const next = event.target.value.slice(0, MAX_DESCRIPTION + 50);
               onDescriptionChange?.(next);
             }}
-            placeholder="请描述本周整体进展（必填，发送前需填写，最多 1000 字）"
+            placeholder="请描述项目总体进展（必填，发送前需填写，最多 1000 字）"
             className={`min-h-[120px] w-full resize-y rounded-lg border px-4 py-3 text-sm leading-7 outline-none transition-colors ${
               overLimit ? 'border-red-300 bg-red-50/40' : emptyDescription ? 'border-dashed border-amber-300 bg-amber-50/30' : 'border-dashed border-theme-300 bg-theme-50/40'
             } text-gray-700 focus:border-theme-400 focus:bg-white focus:ring-2 focus:ring-theme-100`}
           />
         )}
       </section>
+
+      {/* 问题 / 风险 / 变更置于阶段信息之前 */}
+      {([
+        { key: 'issue', title: '问题列表', icon: '问题', count: data.issues.length, header: ['ID', '问题名称', '类型', '结果', '计划解决日期', '指派给'], rows: data.issues.map(i => [i.id, i.name, i.type, i.result, i.planDate, i.assignee]) },
+        { key: 'risk', title: '风险列表', icon: '风险', count: data.risks.length, header: ['ID', '风险名称', '类型', '状态', '计划关闭日期', '指派给'], rows: data.risks.map(r => [r.id, r.name, r.type, r.status, r.closeDate, r.assignee]) },
+        { key: 'change', title: '变更列表', icon: '变更', count: data.changes.length, header: ['ID', '标题', '变更类型', '变更等级', '审批状态'], rows: data.changes.map(c => [c.id, c.title, c.changeType, c.level, c.approval]) },
+      ] as const).map(table => (
+        <section key={table.key} className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
+          <h3 className="mb-3 text-sm font-bold text-gray-900">{table.icon} · {table.title}<span className="ml-2 text-xs font-normal text-gray-400">共 {table.count} 条</span></h3>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-xs" title="该字段由禅道数据自动生成，不可编辑">
+              <thead>
+                <tr className="border-b border-gray-100 text-gray-400">
+                  {table.header.map(cell => <th key={cell} className="px-3 py-2 font-medium">{cell}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {table.rows.length === 0 ? (
+                  <tr><td colSpan={table.header.length} className="px-3 py-6 text-center text-gray-300">暂无记录</td></tr>
+                ) : table.rows.map((row, ri) => (
+                  <tr key={ri} className="border-b border-gray-50 text-gray-700 last:border-0">
+                    {row.map((cell, ci) => <td key={ci} className="px-3 py-2.5">{cell || '—'}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
 
       {/* 详细阶段甘特图（按阶段分解任务，对齐 PC 周报模板） */}
       <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -226,16 +257,16 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
         <div className="pb-2">
           {/* 时间轴表头：月份 + 周 双层 */}
           <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start">
-            <div className="px-4 py-3 text-xs font-bold text-gray-900">阶段 / 任务</div>
+            <div className="px-4 py-3 text-xs font-bold text-gray-900">阶段 / 子阶段</div>
             <div className="border-b border-gray-200">
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                {[{ n: '6月', span: 4 }, { n: '7月', span: 4 }, { n: '8月', span: 5 }, { n: '9月', span: 4 }].map(mo => (
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(122, minmax(0, 1fr))' }}>
+                {[{ n: '6月', span: 30 }, { n: '7月', span: 31 }, { n: '8月', span: 31 }, { n: '9月', span: 30 }].map(mo => (
                   <div key={mo.n} style={{ gridColumn: `span ${mo.span}` }} className="border-r border-gray-100 py-2 text-center text-xs font-semibold text-gray-600 last:border-r-0">{mo.n}</div>
                 ))}
               </div>
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(17, 1fr)' }}>
-                {Array.from({ length: 17 }, (_, i) => (
-                  <div key={i} className="border-r border-gray-100/60 py-1.5 text-center text-[11px] text-gray-400 last:border-r-0">W{i + 1}</div>
+              <div className="grid" style={{ gridTemplateColumns: 'repeat(122, minmax(0, 1fr))' }}>
+                {Array.from({ length: 18 }, (_, i) => (
+                  <div key={i} style={{ gridColumn: `span ${i === 17 ? 3 : 7}` }} className="border-r border-gray-100/60 py-1.5 text-center text-[11px] text-gray-400 last:border-r-0">W{i + 1}</div>
                 ))}
               </div>
             </div>
@@ -245,42 +276,61 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
           <div>
             {data.stages.map((stage, idx) => {
               const collapsed = collapsedStages.has(stage.id);
+              const hasSubStages = Boolean(stage.subStages?.length);
               const toNum = (s: string) => {
                 const [, mm, dd] = s.split('-').map(Number);
                 return (new Date(2026, mm - 1, dd).getTime() - new Date(2026, 5, 1).getTime()) / 86400000;
               };
-              const TOTAL = (new Date(2026, 8, 30).getTime() - new Date(2026, 5, 1).getTime()) / 86400000;
+              const TOTAL = ((new Date(2026, 8, 30).getTime() - new Date(2026, 5, 1).getTime()) / 86400000) + 1;
               const a = toNum(stage.start), b = toNum(stage.end);
               const left = (a / TOTAL) * 100, width = ((b - a + 1) / TOTAL) * 100;
-              const nowLeft = (new Date(2026, 7, 13).getTime() - new Date(2026, 5, 1).getTime()) / 86400000 / TOTAL * 100;
               const valTxt = stage.status === 'doing' ? `进行中 · ${stage.progress}%` : stage.status === 'done' ? '100%' : '待开始';
+              const isCurrentStage = stage.name.includes(data.currentStage);
               return (
-                <div key={stage.id} className="grid grid-cols-[300px_minmax(0,1fr)] border-b border-gray-100 last:border-b-0" style={{ minHeight: collapsed ? 46 : 58 }}>
-                  <button type="button" onClick={() => toggleStage(stage.id)} className="flex flex-col justify-center gap-0.5 px-4 py-2.5 text-left hover:bg-gray-50/60">
-                    <span className="flex items-center gap-2 text-[13px] font-semibold text-gray-700">
-                      {collapsed ? <ChevronRight size={13} className="shrink-0 text-gray-400" /> : <ChevronDown size={13} className="shrink-0 text-gray-400" />}
-                      <span className="before:inline-block before:h-1.5 before:w-1.5 before:rounded-full before:content-['']">{stage.name}</span>
-                    </span>
-                    <span className="pl-[21px] text-[11.5px] text-gray-400">{stage.start} ~ {stage.end} · {stage.taskSummary}</span>
-                  </button>
-                  <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #f1f5f9 1px, transparent 1px)', backgroundSize: 'calc(100%/17) 100%' }}>
-                    {/* 今日线 */}
-                    <div className="absolute inset-y-0 z-10 w-0.5" style={{ left: `${nowLeft}%`, background: 'repeating-linear-gradient(0deg, #ffd166 0 4px, transparent 4px 8px)' }}>
-                      <span className="absolute -left-[5px] -top-0.5 h-3 w-3 rounded-full bg-[#ffd166] shadow-[0_0_8px_rgba(255,209,102,.75)]" />
+                <div key={stage.id} className="border-b border-gray-100 last:border-b-0">
+                  <div className={`grid min-h-[58px] grid-cols-[300px_minmax(0,1fr)] ${isCurrentStage ? 'bg-theme-50/70' : 'bg-gray-50/40'}`}>
+                    <button type="button" onClick={() => hasSubStages && toggleStage(stage.id)} className={`flex flex-col justify-center gap-0.5 px-4 py-2.5 text-left ${hasSubStages ? 'hover:bg-gray-100/70' : 'cursor-default'}`}>
+                      <span className="flex items-center gap-2 text-[13px] font-semibold text-gray-800">
+                        {hasSubStages ? (collapsed ? <ChevronRight size={13} className="shrink-0 text-gray-400" /> : <ChevronDown size={13} className="shrink-0 text-gray-400" />) : <span className="w-[13px]" />}
+                        <span className="rounded border border-theme-200 bg-theme-50 px-1.5 py-0.5 text-[10px] font-semibold text-theme-700">阶段</span>
+                        <span className="truncate">{stage.name.replace(/^阶段[一二三四五六七八九十]+ · /, '')}</span>
+                        {isCurrentStage && <span className="shrink-0 rounded bg-theme-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">当前阶段</span>}
+                      </span>
+                      <span className="pl-[21px] text-[11.5px] text-gray-400">{stage.start} ~ {stage.end}</span>
+                    </button>
+                    <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #e5e7eb 1px, transparent 1px)', backgroundSize: 'calc(700%/122) 100%' }}>
+                      <div
+                        className={`absolute top-[13px] flex h-8 items-center rounded-md px-3 text-xs font-semibold text-white ${stage.status === 'todo' ? 'border-[1.5px] border-dashed border-gray-300 !bg-transparent !text-gray-400' : stage.status === 'doing' ? 'shadow-md ring-2 ring-theme-200' : 'shadow-sm'}`}
+                        style={{ left: `${left}%`, width: `${width}%`, background: stage.status === 'todo' ? undefined : `linear-gradient(90deg, var(--theme-${[300, 400, 500, 500, 600, 700][idx] ?? 700}), var(--theme-${[400, 500, 600, 600, 700, 700][idx] ?? 700}))` }}
+                      >
+                        <span>{stage.start} ~ {stage.end}</span>
+                        <span className="ml-auto pl-2 text-[11.5px] opacity-95">{valTxt}</span>
+                      </div>
                     </div>
-                    {/* 阶段横条 */}
-                    <div
-                      className={`absolute top-[13px] flex h-8 items-center rounded-md px-3 text-xs font-medium tracking-wide text-white ${stage.status === 'todo' ? 'border-[1.5px] border-dashed border-gray-300 !bg-transparent !text-gray-400' : stage.status === 'doing' ? 'shadow-md ring-2 ring-theme-200' : 'shadow-sm'}`}
-                      style={{ left: `${left}%`, width: `${width}%`, background: stage.status === 'todo' ? undefined : `linear-gradient(90deg, var(--theme-${[300, 400, 500, 500, 600, 700][idx] ?? 700}), var(--theme-${[400, 500, 600, 600, 700, 700][idx] ?? 700}))` }}
-                    >
-                      <span>{stage.start} ~ {stage.end}</span>
-                      <span className="ml-auto pl-2 text-[11.5px] opacity-95">{valTxt}</span>
-                    </div>
-                    {/* 展开态：阶段下任务摘要条 */}
-                    {!collapsed && (
-                      <div className="absolute bottom-1 left-2 right-2 truncate text-[10.5px] text-gray-400">{stage.taskSummary} · 状态：{stage.status === 'done' ? '已完成' : stage.status === 'doing' ? '进行中' : '待开始'}</div>
-                    )}
                   </div>
+                  {hasSubStages && !collapsed && stage.subStages?.map(subStage => {
+                    const subLeft = (toNum(subStage.start) / TOTAL) * 100;
+                    const subWidth = ((toNum(subStage.end) - toNum(subStage.start) + 1) / TOTAL) * 100;
+                    const subStatus = subStage.status === 'done' ? '已完成' : subStage.status === 'doing' ? '进行中' : subStage.status === 'delayed' ? '已延期' : '未开始';
+                    const isCurrentSubStage = subStage.name === data.currentSubStage;
+                    return (
+                      <div key={subStage.id} className={`grid min-h-[50px] grid-cols-[300px_minmax(0,1fr)] border-t border-gray-100 ${isCurrentSubStage ? 'bg-theme-50/40' : 'bg-white'}`}>
+                        <div className="flex flex-col justify-center py-2 pl-12 pr-4 text-left">
+                          <p className={`truncate text-xs ${isCurrentSubStage ? 'font-semibold text-theme-800' : 'font-medium text-gray-700'}`}>{subStage.name}</p>
+                          <p className="mt-0.5 text-[10px] text-gray-400">{subStage.start} ~ {subStage.end}</p>
+                        </div>
+                        <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #f1f5f9 1px, transparent 1px)', backgroundSize: 'calc(700%/122) 100%' }}>
+                          <div
+                            className={`absolute top-[10px] flex h-7 items-center rounded px-2 text-[10px] font-medium ${subStage.status === 'todo' ? 'border border-dashed border-gray-300 bg-white text-gray-400' : subStage.status === 'delayed' ? 'bg-red-500 text-white' : 'bg-theme-500 text-white'} ${isCurrentSubStage ? 'ring-2 ring-theme-200' : ''}`}
+                            style={{ left: `${subLeft}%`, width: `${subWidth}%` }}
+                          >
+                            <span className="truncate">{subStage.start} ~ {subStage.end}</span>
+                            <span className="ml-auto pl-2">{subStatus}{subStage.progress > 0 ? ` · ${subStage.progress}%` : ''}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -294,7 +344,6 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: 'linear-gradient(90deg, var(--theme-400), var(--theme-500))' }} />已完成</span>
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm ring-1 ring-theme-200" style={{ background: 'linear-gradient(90deg, var(--theme-500), var(--theme-600))' }} />进行中</span>
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm border-[1.5px] border-dashed border-gray-400" />待开始</span>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: 'repeating-linear-gradient(90deg,#ffd166 0 3px,#fff 3px 6px)' }} />今日（2026-08-13）</span>
         </div>
       </section>
 
@@ -328,36 +377,7 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
         </div>
       </section>
 
-      {/* 问题 / 风险 / 变更 三表 */}
-      {([
-        { key: 'issue', title: '问题列表', icon: '📋', count: data.issues.length, header: ['ID', '问题名称', '类型', '结果', '计划解决日期', '指派给'], rows: data.issues.map(i => [i.id, i.name, i.type, i.result, i.planDate, i.assignee]) },
-        { key: 'risk', title: '风险列表', icon: '⚠️', count: data.risks.length, header: ['ID', '风险名称', '类型', '状态', '计划关闭日期', '指派给'], rows: data.risks.map(r => [r.id, r.name, r.type, r.status, r.closeDate, r.assignee]) },
-        { key: 'change', title: '变更列表', icon: '🔄', count: data.changes.length, header: ['ID', '标题', '变更类型', '变更等级', '审批状态'], rows: data.changes.map(c => [c.id, c.title, c.changeType, c.level, c.approval]) },
-      ] as const).map(table => (
-        <section key={table.key} className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-bold text-gray-900">{table.icon} {table.title}<span className="ml-2 text-xs font-normal text-gray-400">共 {table.count} 条</span></h3>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-xs" title="该字段由禅道数据自动生成，不可编辑">
-              <thead>
-                <tr className="border-b border-gray-100 text-gray-400">
-                  {table.header.map(cell => <th key={cell} className="px-3 py-2 font-medium">{cell}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {table.rows.length === 0 ? (
-                  <tr><td colSpan={table.header.length} className="px-3 py-6 text-center text-gray-300">暂无记录</td></tr>
-                ) : table.rows.map((row, ri) => (
-                  <tr key={ri} className="border-b border-gray-50 text-gray-700 last:border-0">
-                    {row.map((cell, ci) => <td key={ci} className="px-3 py-2.5">{cell || '—'}</td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ))}
-
-      <p className="text-center text-xs text-gray-300">数据来源：禅道项目数据 · 生成于 {new Date().toLocaleDateString('zh-CN')} · 仅「整体项目进展」可编辑</p>
+      <p className="text-center text-xs text-gray-300">数据来源：禅道项目数据 · 生成于 {new Date().toLocaleDateString('zh-CN')} · 仅「总体进展描述」可编辑</p>
     </div>
   );
 }
