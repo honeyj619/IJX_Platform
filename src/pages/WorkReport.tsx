@@ -28,6 +28,7 @@ import { buildAdvisorUrl } from '../data/advisor';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import ProjectWeeklyReport from '../components/ProjectWeeklyReport';
 import ContactPicker from '../components/ContactPicker';
+import ReportSendFlow from '../components/ReportSendFlow';
 import { contactDirectory } from '../data/contactDirectory';
 import { workItems } from '../data/workItems';
 import { getHealthLightMeta } from '../data/projectWeeklyReport';
@@ -268,15 +269,8 @@ export default function WorkReport() {
   // 详情弹框：保存 / 提交（与参谋师工作台一致）
   const [detailSaving, setDetailSaving] = useState(false);
   const [detailSubmitConfirm, setDetailSubmitConfirm] = useState<SavedReportRecord | null>(null);
-  // 二级确认：再次确认发送（与参谋师一致）
-  const [detailSendReconfirm, setDetailSendReconfirm] = useState(false);
-  // 发送确认页可编辑收件人
-  const [detailReportTo, setDetailReportTo] = useState('');
-  const [detailCopyTo, setDetailCopyTo] = useState('');
   // 详情内编辑的最新内容（保存/提交时使用）
   const [detailEditData, setDetailEditData] = useState<{ description: string; nextWorks: string[] } | null>(null);
-  // 企微补充分发（黄/红灯项目）：固定接收人之外可加
-  const [detailWecomExtra, setDetailWecomExtra] = useState<string[]>([]);
 
   // 与参谋师一致的企微固定接收人规则：项目经理/承接处室经理/IT经理/接总/任总/孔丰汇/全体项目管理工程师
   const detailRequiredWecom = (() => {
@@ -287,7 +281,6 @@ export default function WorkReport() {
     return [...new Set([wd.manager, project?.owner || '', wd.itManager, '接总', '任总', '孔丰汇', ...pme].filter(Boolean))];
   })();
   const detailShowWecom = detailSubmitConfirm?.weeklyData ? detailSubmitConfirm.weeklyData.healthLight !== 'green' : false;
-  const detailWecomRecipients = [...new Set([...detailRequiredWecom, ...detailWecomExtra])];
   // 导入上次收件人（与参谋师一致）：本人 + 同汇报类型 + 同项目 的最近一次发送记录
   const detailPreviousRecord = detailSubmitConfirm
     ? [...sendRecords]
@@ -298,17 +291,6 @@ export default function WorkReport() {
             : true))
         .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0] || null
     : null;
-  const importDetailPreviousRecipients = () => {
-    if (!detailPreviousRecord || !detailSubmitConfirm) {
-      showToast('未找到该汇报人、项目和汇报类型的历史发送记录');
-      return;
-    }
-    setDetailReportTo([...new Set(detailPreviousRecord.reportTo)].join('、'));
-    setDetailCopyTo([...new Set(detailPreviousRecord.copyTo)].join('、'));
-    const prevWecom = detailPreviousRecord.receipts.filter(r => r.channel === '企业微信').map(r => r.target);
-    setDetailWecomExtra([...new Set(prevWecom)].filter(name => !detailRequiredWecom.includes(name)));
-    showToast('已导入上次收件人');
-  };
 
   useEffect(() => {
     if (!resendToast) return;
@@ -620,159 +602,59 @@ export default function WorkReport() {
               showToast('汇报已保存');
             }, 600);
           }}
-          onSubmit={() => { setDetailReportTo(selectedSavedRecord.reportTo.join('、')); setDetailCopyTo(selectedSavedRecord.copyTo.join('、')); setDetailWecomExtra([]); setDetailSendReconfirm(false); setDetailSubmitConfirm(selectedSavedRecord); }}
+          onSubmit={() => setDetailSubmitConfirm(selectedSavedRecord)}
         />
       )}
 
-      {/* 一级：工作汇报发送确认页（与参谋师一致：收件人编辑 + 预览摘要 + 确认发送） */}
+      {/* 发送确认流（共享组件：一级确认 + 二级再次确认） */}
       {detailSubmitConfirm && (
-        <div className="fixed inset-0 z-[92] flex items-center justify-center bg-gray-950/40 px-4 py-6">
-          <div className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-6 py-4">
-              <div>
-                <h3 className="text-lg font-bold text-gray-950">工作汇报发送确认</h3>
-                <p className="mt-1 text-xs text-gray-500">{detailSubmitConfirm.title} · {detailSubmitConfirm.period}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={importDetailPreviousRecipients}
-                  disabled={!detailPreviousRecord}
-                  className="inline-flex h-7 shrink-0 items-center gap-1 px-1.5 text-xs font-medium text-theme-700 hover:text-theme-800 disabled:cursor-not-allowed disabled:text-gray-300"
-                  title={detailPreviousRecord ? '按汇报人、项目和汇报类型导入最近一次收件人' : '暂无符合条件的历史发送记录'}
-                >
-                  <UserPlus size={13} />导入上次收件人
-                </button>
-                <button type="button" onClick={() => setDetailSubmitConfirm(null)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="返回编辑"><X size={18} /></button>
-              </div>
-            </div>
-            <div className="scrollbar-hover min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
-              <section>
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-800">汇报对象</p>
-                  <span className="text-[11px] text-gray-400">多个对象以顿号分隔</span>
-                </div>
-                <input
-                  value={detailReportTo}
-                  onChange={event => setDetailReportTo(event.target.value)}
-                  placeholder="请输入汇报对象，如：接总、任总"
-                  className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-theme-400"
-                />
-              </section>
-              <section>
-                <p className="mb-2 text-sm font-semibold text-gray-800">抄送对象</p>
-                <input
-                  value={detailCopyTo}
-                  onChange={event => setDetailCopyTo(event.target.value)}
-                  placeholder="请输入抄送对象，可为空"
-                  className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-theme-400"
-                />
-              </section>
-              {/* 企业微信分区：仅黄/红灯项目周报（与参谋师一致） */}
-              {detailShowWecom && (
-                <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
-                  <p className="flex items-center gap-2 text-sm font-bold text-gray-900">
-                    <MessageSquareText size={15} className="text-amber-600" />企业微信
-                    <span className="text-xs font-normal text-amber-700">项目{detailSubmitConfirm!.weeklyData!.healthLight === 'yellow' ? '黄灯（关注）' : '红灯（风险）'}，需通过企微渠道提醒干系人</span>
-                  </p>
-                  <div className="mt-3 text-xs font-semibold text-gray-500">
-                    <p className="mb-1.5">企微接收人（成员 / 群） <span className="text-red-500">*</span></p>
-                    <ContactPicker
-                      selected={detailWecomRecipients}
-                      onChange={next => setDetailWecomExtra(next.filter(name => !detailRequiredWecom.includes(name)))}
-                      kind="wecom"
-                      placeholder="搜索成员姓名"
-                      lockedNames={detailRequiredWecom}
-                    />
-                    <span className="mt-2 block text-[11px] font-normal leading-5 text-amber-700">固定推送：业务项目经理、承接处室经理、IT项目经理、接总、任总、孔丰汇及全部项目管理工程师；可增加其他人员，固定人员不可删除。</span>
-                  </div>
-                </section>
-              )}
-              {!detailShowWecom && detailSubmitConfirm?.weeklyData && (
-                <p className="rounded-lg bg-gray-50 px-4 py-3 text-xs leading-5 text-gray-400">当前项目为绿灯（正常），仅通过 PC 门户渠道分发，不展示企业微信分区。</p>
-              )}
-              <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <p className="text-xs font-semibold text-gray-600">发送内容摘要</p>
-                <div className="mt-2 space-y-1.5 text-sm text-gray-700">
-                  <p><span className="text-gray-400">标题：</span>{detailSubmitConfirm.title}</p>
-                  <p><span className="text-gray-400">类型：</span>{detailSubmitConfirm.reportType} · 通道：PC门户</p>
-                  <p><span className="text-gray-400">发送人：</span>{detailSubmitConfirm.sender}</p>
-                </div>
-              </section>
-            </div>
-            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
-              <button type="button" onClick={() => setDetailSubmitConfirm(null)} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回编辑</button>
-              <button
-                type="button"
-                disabled={!detailReportTo.trim() || (detailShowWecom && detailWecomRecipients.length === 0)}
-                onClick={() => setDetailSendReconfirm(true)}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-theme-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Send size={15} />确认发送
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 二级：再次确认发送（与参谋师一致） */}
-      {detailSubmitConfirm && detailSendReconfirm && (
-        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-gray-950/30 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-gray-950">再次确认发送</h3>
-                <p className="mt-1 text-sm leading-6 text-gray-500">发送后将生成发送记录，并通知所选汇报对象。</p>
-              </div>
-              <button type="button" onClick={() => setDetailSendReconfirm(false)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" title="关闭"><X size={18} /></button>
-            </div>
-            <div className="mt-5 space-y-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
-              <p><span className="text-gray-400">标题：</span>{detailSubmitConfirm.title}</p>
-              <p><span className="text-gray-400">汇报周期：</span>{detailSubmitConfirm.period}</p>
-              <p><span className="text-gray-400">汇报接收：</span>{splitRecipientNames(detailReportTo).length} 人{splitRecipientNames(detailCopyTo).length > 0 ? `，抄送 ${splitRecipientNames(detailCopyTo).length} 人` : ''}{detailShowWecom ? `；企微 ${detailWecomRecipients.length} 人` : ''}</p>
-            </div>
-            <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setDetailSendReconfirm(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回检查</button>
-              <button
-                type="button"
-                onClick={() => {
-                  const target = detailSubmitConfirm;
-                  const sentAt = formatReportRecordTime();
-                  const reportTargets = splitRecipientNames(detailReportTo);
-                  const copyTargets = splitRecipientNames(detailCopyTo);
-                  const receipts: ReportSendReceipt[] = [...reportTargets, ...copyTargets].map(name => ({ channel: 'PC门户' as const, target: name, time: sentAt, success: true, read: false }));
-                  if (detailShowWecom) detailWecomRecipients.forEach(name => receipts.push({ channel: '企业微信' as const, target: name, time: sentAt, success: true, read: false }));
-                  appendReportSendRecords([{
-                    id: createReportSendRecordId('work-report-detail'),
-                    reportKey: target.reportKey,
-                    reportType: target.reportType,
-                    title: target.title,
-                    sender: target.sender,
-                    sentAt,
-                    period: target.period,
-                    projectMembers: target.projectMembers,
-                    channels: detailShowWecom ? ['PC门户', '企业微信'] : ['PC门户'],
-                    reportTo: reportTargets,
-                    copyTo: copyTargets,
-                    result: deriveSendResult(receipts),
-                    receipts,
-                    sourceLabels: target.sourceLabels,
-                    personalSnapshot: target.personalSnapshot,
-                  }]);
-                  const remaining = getSavedReportRecords().filter(item => item.reportKey !== target.reportKey);
-                  upsertSavedReportRecords(remaining);
-                  setSavedReports(remaining);
-                  setDetailSendReconfirm(false);
-                  setDetailSubmitConfirm(null);
-                  setSelectedSavedRecord(null);
-                  setActiveView('sent');
-                  showToast('汇报已提交并写入发送记录');
-                }}
-                className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700"
-              >确认并发送</button>
-            </div>
-          </div>
-        </div>
+        <ReportSendFlow
+          open
+          meta={{
+            title: detailSubmitConfirm.title,
+            reportType: detailSubmitConfirm.reportType,
+            sender: detailSubmitConfirm.sender,
+            period: detailSubmitConfirm.period,
+            projectId: detailSubmitConfirm.projectId,
+            projectName: detailSubmitConfirm.projectName,
+            healthLight: detailSubmitConfirm.weeklyData?.healthLight,
+          }}
+          primaryChannel="PC门户"
+          requiredWecomRecipients={detailRequiredWecom}
+          previousRecord={detailPreviousRecord}
+          onClose={() => setDetailSubmitConfirm(null)}
+          onConfirmSend={({ reportTo, copyTo, wecomRecipients }) => {
+            const target = detailSubmitConfirm;
+            const sentAt = formatReportRecordTime();
+            const receipts: ReportSendReceipt[] = [...reportTo, ...copyTo].map(name => ({ channel: 'PC门户' as const, target: name, time: sentAt, success: true, read: false }));
+            wecomRecipients.forEach(name => receipts.push({ channel: '企业微信' as const, target: name, time: sentAt, success: true, read: false }));
+            appendReportSendRecords([{
+              id: createReportSendRecordId('work-report-detail'),
+              reportKey: target.reportKey,
+              reportType: target.reportType,
+              title: target.title,
+              sender: target.sender,
+              sentAt,
+              period: target.period,
+              projectMembers: target.projectMembers,
+              channels: wecomRecipients.length > 0 ? ['PC门户', '企业微信'] : ['PC门户'],
+              reportTo,
+              copyTo,
+              result: deriveSendResult(receipts),
+              receipts,
+              sourceLabels: target.sourceLabels,
+              personalSnapshot: target.personalSnapshot,
+              ...(target.projectId ? { projectId: target.projectId, projectName: target.projectName } : {}),
+            }]);
+            const remaining = getSavedReportRecords().filter(item => item.reportKey !== target.reportKey);
+            upsertSavedReportRecords(remaining);
+            setSavedReports(remaining);
+            setDetailSubmitConfirm(null);
+            setSelectedSavedRecord(null);
+            setActiveView('sent');
+            showToast('汇报已提交并写入发送记录');
+          }}
+        />
       )}
       {resendToast && (
         <div className="fixed bottom-16 left-1/2 z-[95] -translate-x-1/2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl">{resendToast}<button type="button" onClick={() => setResendToast('')} className="ml-3 text-emerald-100 hover:text-white">×</button></div>

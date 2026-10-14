@@ -46,6 +46,7 @@ import {
 } from '../data/reportSendRecords';
 import ProjectWeeklyReport, { REPORT_SECTION_COUNT as sectionCount } from '../components/ProjectWeeklyReport';
 import ContactPicker from '../components/ContactPicker';
+import ReportSendFlow from '../components/ReportSendFlow';
 import {
   clearActiveSavedReport,
   createReportBusinessKey,
@@ -1287,28 +1288,45 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           </div>
         </div>
 
-        {showProjectSendConfirm && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-950/45 px-4" onClick={() => setShowProjectSendConfirm(false)}>
-            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl" onClick={event => event.stopPropagation()}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-950">再次确认发送</h3>
-                  <p className="mt-1 text-sm leading-6 text-gray-500">发送后将生成发送记录，并通知所选汇报对象。</p>
-                </div>
-                <button type="button" onClick={() => setShowProjectSendConfirm(false)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" title="关闭"><X size={18} /></button>
-              </div>
-              <div className="mt-5 space-y-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
-                <p><span className="text-gray-400">项目：</span>{weeklyData.projectName}</p>
-                <p><span className="text-gray-400">汇报周期：</span>第 {weeklyData.weekNumber} 周（{period}）</p>
-                <p><span className="text-gray-400">邮件接收：</span>{dispatch.recipients.length} 人{dispatch.cc.length > 0 ? `，抄送 ${dispatch.cc.length} 人` : ''}</p>
-                {showWecom && <p><span className="text-gray-400">企微接收：</span>{wecomRecipients.length} 人（含 {requiredWecomRecipients.length} 名固定推送人）</p>}
-              </div>
-              <div className="mt-6 flex justify-end gap-3">
-                <button type="button" onClick={() => setShowProjectSendConfirm(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回检查</button>
-                <button type="button" onClick={executeSend} className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700">确认并发送</button>
-              </div>
-            </div>
-          </div>
+{showProjectSendConfirm && (
+          <ReportSendFlow
+            open
+            meta={{
+              title: `${weeklyData.projectName}第${weeklyData.weekNumber}周项目周报`,
+              reportType: '项目汇报',
+              sender: MAIN_USER_NAME,
+              period,
+              projectId: weeklyData.projectId,
+              projectName: weeklyData.projectName,
+              healthLight: weeklyData.healthLight,
+            }}
+            primaryChannel="邮件"
+            requiredWecomRecipients={requiredWecomRecipients}
+            previousRecord={previousRecipientRecord}
+            recipients={{ reportTo: dispatch.recipients, copyTo: dispatch.cc, wecomExtra: dispatch.wecom }}
+            onRecipientsChange={next => setDispatch(current => ({ ...current, recipients: next.reportTo, cc: next.copyTo, wecom: next.wecomExtra }))}
+            onClose={() => setShowProjectSendConfirm(false)}
+            reconfirmExtra={({ wecomRecipients: wc }) => (
+              <>
+                <p><span className="text-gray-400">项目：</span>{weeklyData.projectName}（第 {weeklyData.weekNumber} 周）</p>
+                {showWecom && <p><span className="text-gray-400">企微接收：</span>{wc.length} 人（含 {requiredWecomRecipients.length} 名固定推送人）</p>}
+              </>
+            )}
+            onConfirmSend={({ wecomRecipients: wc }) => {
+              setShowProjectSendConfirm(false);
+              setStage('sending');
+              const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+              const anyFail = simulateFail;
+              const next: SendReceipt[] = dispatch.recipients.map(target => ({ channel: '邮件', target, time, success: !anyFail }));
+              dispatch.cc.forEach(target => next.push({ channel: '邮件', target, time, success: !anyFail }));
+              if (showWecom) wc.forEach(target => next.push({ channel: '企业微信', target, time, success: !anyFail }));
+              window.setTimeout(() => {
+                persistProjectSendRecords(next, formatReportRecordTime());
+                setReceipts(next);
+                setStage('submitted');
+              }, 900);
+            }}
+          />
         )}
 
       {/* 邮件长图全图预览弹窗：点击效果预览中的长图打开 */}
