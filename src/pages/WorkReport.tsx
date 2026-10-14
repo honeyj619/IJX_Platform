@@ -1,5 +1,6 @@
 ﻿import { useMemo, useState } from 'react';
 import {
+  UserPlus,
   ArrowLeft,
   BarChart3,
   ChevronRight,
@@ -18,13 +19,17 @@ import {
   Target,
   X,
   Plus,
-  Trash2, RefreshCw,
+  Trash2,
+  RefreshCw,
 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { buildAdvisorUrl } from '../data/advisor';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import ProjectWeeklyReport from '../components/ProjectWeeklyReport';
+import ContactPicker from '../components/ContactPicker';
+import { contactDirectory } from '../data/contactDirectory';
+import { workItems } from '../data/workItems';
 import { getHealthLightMeta } from '../data/projectWeeklyReport';
 import {
   appendReportSendRecords,
@@ -268,6 +273,42 @@ export default function WorkReport() {
   // 发送确认页可编辑收件人
   const [detailReportTo, setDetailReportTo] = useState('');
   const [detailCopyTo, setDetailCopyTo] = useState('');
+  // 详情内编辑的最新内容（保存/提交时使用）
+  const [detailEditData, setDetailEditData] = useState<{ description: string; nextWorks: string[] } | null>(null);
+  // 企微补充分发（黄/红灯项目）：固定接收人之外可加
+  const [detailWecomExtra, setDetailWecomExtra] = useState<string[]>([]);
+
+  // 与参谋师一致的企微固定接收人规则：项目经理/承接处室经理/IT经理/接总/任总/孔丰汇/全体项目管理工程师
+  const detailRequiredWecom = (() => {
+    const wd = detailSubmitConfirm?.weeklyData;
+    if (!wd) return [];
+    const project = workItems.find(item => item.id === wd.projectId);
+    const pme = contactDirectory.filter(person => person.title === '项目管理工程师').map(person => person.name);
+    return [...new Set([wd.manager, project?.owner || '', wd.itManager, '接总', '任总', '孔丰汇', ...pme].filter(Boolean))];
+  })();
+  const detailShowWecom = detailSubmitConfirm?.weeklyData ? detailSubmitConfirm.weeklyData.healthLight !== 'green' : false;
+  const detailWecomRecipients = [...new Set([...detailRequiredWecom, ...detailWecomExtra])];
+  // 导入上次收件人（与参谋师一致）：本人 + 同汇报类型 + 同项目 的最近一次发送记录
+  const detailPreviousRecord = detailSubmitConfirm
+    ? [...sendRecords]
+        .filter(record => record.sender === detailSubmitConfirm.sender
+          && record.reportType === detailSubmitConfirm.reportType
+          && (detailSubmitConfirm.projectId
+            ? record.projectId === detailSubmitConfirm.projectId || (!record.projectId && record.projectName === detailSubmitConfirm.projectName)
+            : true))
+        .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0] || null
+    : null;
+  const importDetailPreviousRecipients = () => {
+    if (!detailPreviousRecord || !detailSubmitConfirm) {
+      showToast('未找到该汇报人、项目和汇报类型的历史发送记录');
+      return;
+    }
+    setDetailReportTo([...new Set(detailPreviousRecord.reportTo)].join('、'));
+    setDetailCopyTo([...new Set(detailPreviousRecord.copyTo)].join('、'));
+    const prevWecom = detailPreviousRecord.receipts.filter(r => r.channel === '企业微信').map(r => r.target);
+    setDetailWecomExtra([...new Set(prevWecom)].filter(name => !detailRequiredWecom.includes(name)));
+    showToast('已导入上次收件人');
+  };
 
   useEffect(() => {
     if (!resendToast) return;
@@ -563,14 +604,15 @@ export default function WorkReport() {
       )}
       {selectedSavedRecord && (
         <SavedReportRecordDetail
-          record={savedReports.find(item => item.reportKey === selectedSavedRecord.reportKey) || selectedSavedRecord}
+          record={(() => { const base = savedReports.find(item => item.reportKey === selectedSavedRecord.reportKey) || selectedSavedRecord; return base; })()}
           saving={detailSaving}
-          onClose={() => setSelectedSavedRecord(null)}
+          onEditChange={setDetailEditData}
+          onClose={() => { setSelectedSavedRecord(null); setDetailEditData(null); }}
           onSave={() => {
             setDetailSaving(true);
             window.setTimeout(() => {
               const updated = getSavedReportRecords().map(item => item.reportKey === selectedSavedRecord.reportKey
-                ? { ...item, savedAt: formatReportRecordTime() }
+                ? { ...item, savedAt: formatReportRecordTime(), ...(item.weeklyData && detailEditData ? { weeklyData: { ...item.weeklyData, overallDescription: detailEditData.description, nextWeekWorks: detailEditData.nextWorks } } : {}) }
                 : item);
               upsertSavedReportRecords(updated);
               setSavedReports(getSavedReportRecords());
@@ -578,7 +620,7 @@ export default function WorkReport() {
               showToast('汇报已保存');
             }, 600);
           }}
-          onSubmit={() => { setDetailReportTo(selectedSavedRecord.reportTo.join('、')); setDetailCopyTo(selectedSavedRecord.copyTo.join('、')); setDetailSendReconfirm(false); setDetailSubmitConfirm(selectedSavedRecord); }}
+          onSubmit={() => { setDetailReportTo(selectedSavedRecord.reportTo.join('、')); setDetailCopyTo(selectedSavedRecord.copyTo.join('、')); setDetailWecomExtra([]); setDetailSendReconfirm(false); setDetailSubmitConfirm(selectedSavedRecord); }}
         />
       )}
 
@@ -591,7 +633,18 @@ export default function WorkReport() {
                 <h3 className="text-lg font-bold text-gray-950">工作汇报发送确认</h3>
                 <p className="mt-1 text-xs text-gray-500">{detailSubmitConfirm.title} · {detailSubmitConfirm.period}</p>
               </div>
-              <button type="button" onClick={() => setDetailSubmitConfirm(null)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="返回编辑"><X size={18} /></button>
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={importDetailPreviousRecipients}
+                  disabled={!detailPreviousRecord}
+                  className="inline-flex h-7 shrink-0 items-center gap-1 px-1.5 text-xs font-medium text-theme-700 hover:text-theme-800 disabled:cursor-not-allowed disabled:text-gray-300"
+                  title={detailPreviousRecord ? '按汇报人、项目和汇报类型导入最近一次收件人' : '暂无符合条件的历史发送记录'}
+                >
+                  <UserPlus size={13} />导入上次收件人
+                </button>
+                <button type="button" onClick={() => setDetailSubmitConfirm(null)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="返回编辑"><X size={18} /></button>
+              </div>
             </div>
             <div className="scrollbar-hover min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
               <section>
@@ -615,6 +668,29 @@ export default function WorkReport() {
                   className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-theme-400"
                 />
               </section>
+              {/* 企业微信分区：仅黄/红灯项目周报（与参谋师一致） */}
+              {detailShowWecom && (
+                <section className="rounded-lg border border-amber-200 bg-amber-50/50 p-4">
+                  <p className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                    <MessageSquareText size={15} className="text-amber-600" />企业微信
+                    <span className="text-xs font-normal text-amber-700">项目{detailSubmitConfirm!.weeklyData!.healthLight === 'yellow' ? '黄灯（关注）' : '红灯（风险）'}，需通过企微渠道提醒干系人</span>
+                  </p>
+                  <div className="mt-3 text-xs font-semibold text-gray-500">
+                    <p className="mb-1.5">企微接收人（成员 / 群） <span className="text-red-500">*</span></p>
+                    <ContactPicker
+                      selected={detailWecomRecipients}
+                      onChange={next => setDetailWecomExtra(next.filter(name => !detailRequiredWecom.includes(name)))}
+                      kind="wecom"
+                      placeholder="搜索成员姓名"
+                      lockedNames={detailRequiredWecom}
+                    />
+                    <span className="mt-2 block text-[11px] font-normal leading-5 text-amber-700">固定推送：业务项目经理、承接处室经理、IT项目经理、接总、任总、孔丰汇及全部项目管理工程师；可增加其他人员，固定人员不可删除。</span>
+                  </div>
+                </section>
+              )}
+              {!detailShowWecom && detailSubmitConfirm?.weeklyData && (
+                <p className="rounded-lg bg-gray-50 px-4 py-3 text-xs leading-5 text-gray-400">当前项目为绿灯（正常），仅通过 PC 门户渠道分发，不展示企业微信分区。</p>
+              )}
               <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
                 <p className="text-xs font-semibold text-gray-600">发送内容摘要</p>
                 <div className="mt-2 space-y-1.5 text-sm text-gray-700">
@@ -628,7 +704,7 @@ export default function WorkReport() {
               <button type="button" onClick={() => setDetailSubmitConfirm(null)} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回编辑</button>
               <button
                 type="button"
-                disabled={!detailReportTo.trim()}
+                disabled={!detailReportTo.trim() || (detailShowWecom && detailWecomRecipients.length === 0)}
                 onClick={() => setDetailSendReconfirm(true)}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-theme-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -653,7 +729,7 @@ export default function WorkReport() {
             <div className="mt-5 space-y-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
               <p><span className="text-gray-400">标题：</span>{detailSubmitConfirm.title}</p>
               <p><span className="text-gray-400">汇报周期：</span>{detailSubmitConfirm.period}</p>
-              <p><span className="text-gray-400">汇报接收：</span>{splitRecipientNames(detailReportTo).length} 人{splitRecipientNames(detailCopyTo).length > 0 ? `，抄送 ${splitRecipientNames(detailCopyTo).length} 人` : ''}</p>
+              <p><span className="text-gray-400">汇报接收：</span>{splitRecipientNames(detailReportTo).length} 人{splitRecipientNames(detailCopyTo).length > 0 ? `，抄送 ${splitRecipientNames(detailCopyTo).length} 人` : ''}{detailShowWecom ? `；企微 ${detailWecomRecipients.length} 人` : ''}</p>
             </div>
             <div className="mt-6 flex justify-end gap-3">
               <button type="button" onClick={() => setDetailSendReconfirm(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回检查</button>
@@ -665,6 +741,7 @@ export default function WorkReport() {
                   const reportTargets = splitRecipientNames(detailReportTo);
                   const copyTargets = splitRecipientNames(detailCopyTo);
                   const receipts: ReportSendReceipt[] = [...reportTargets, ...copyTargets].map(name => ({ channel: 'PC门户' as const, target: name, time: sentAt, success: true, read: false }));
+                  if (detailShowWecom) detailWecomRecipients.forEach(name => receipts.push({ channel: '企业微信' as const, target: name, time: sentAt, success: true, read: false }));
                   appendReportSendRecords([{
                     id: createReportSendRecordId('work-report-detail'),
                     reportKey: target.reportKey,
@@ -674,7 +751,7 @@ export default function WorkReport() {
                     sentAt,
                     period: target.period,
                     projectMembers: target.projectMembers,
-                    channels: ['PC门户'],
+                    channels: detailShowWecom ? ['PC门户', '企业微信'] : ['PC门户'],
                     reportTo: reportTargets,
                     copyTo: copyTargets,
                     result: deriveSendResult(receipts),
@@ -1539,7 +1616,19 @@ function ReportsView({
 }
 
 
-function SavedReportRecordDetail({ record, onClose, onSave, onSubmit, saving }: { record: SavedReportRecord; onClose: () => void; onSave: () => void; onSubmit: () => void; saving?: boolean }) {
+function SavedReportRecordDetail({ record, onClose, onSave, onSubmit, saving, onEditChange }: { record: SavedReportRecord; onClose: () => void; onSave: (edit?: { description: string; nextWorks: string[] }) => void; onSubmit: (edit?: { description: string; nextWorks: string[] } | null) => void; saving?: boolean; onEditChange?: (edit: { description: string; nextWorks: string[] }) => void }) {
+  // 与参谋师一致：weeklyData 模式下 总体进展描述 / 未来1周工作计划 可编辑
+  const [editDescription, setEditDescription] = useState(record.weeklyData?.overallDescription || '');
+  const [editNextWorks, setEditNextWorks] = useState<string[]>(record.weeklyData?.nextWeekWorks || []);
+  useEffect(() => {
+    if (record.weeklyData && onEditChange) {
+      onEditChange({ description: editDescription, nextWorks: editNextWorks });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editDescription, editNextWorks]);
+  const recordDirty = record.weeklyData
+    ? (editDescription !== (record.weeklyData.overallDescription || '') || JSON.stringify(editNextWorks) !== JSON.stringify(record.weeklyData.nextWeekWorks || []))
+    : false;
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-gray-950/35 px-4 py-6" onClick={onClose}>
       <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
@@ -1555,20 +1644,31 @@ function SavedReportRecordDetail({ record, onClose, onSave, onSubmit, saving }: 
           <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 hover:bg-gray-50 hover:text-gray-700" title="关闭"><X size={18} /></button>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-6 py-5 scrollbar-hover">
-          <div className="mx-auto max-w-4xl" dangerouslySetInnerHTML={{ __html: record.htmlContent }} />
+          {record.weeklyData ? (
+            <ProjectWeeklyReport
+              data={{ ...record.weeklyData, nextWeekWorks: editNextWorks }}
+              filled
+              description={editDescription}
+              onDescriptionChange={setEditDescription}
+              onNextWeekWorksChange={setEditNextWorks}
+              editState={recordDirty ? 'unsaved' : 'saved'}
+            />
+          ) : (
+            <div className="mx-auto max-w-4xl" dangerouslySetInnerHTML={{ __html: record.htmlContent }} />
+          )}
         </div>
         <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">
           <button
             type="button"
-            onClick={onSave}
-            disabled={saving}
+            onClick={() => onSave()}
+            disabled={saving || recordDirty === false && Boolean(record.weeklyData) && (record.weeklyData.overallDescription || '') === editDescription && JSON.stringify(record.weeklyData.nextWeekWorks || []) === JSON.stringify(editNextWorks)}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-white px-4 py-2.5 text-sm font-semibold text-theme-700 transition-colors hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"
           >
             <Save size={15} />保存
           </button>
           <button
             type="button"
-            onClick={onSubmit}
+            onClick={() => onSubmit(recordDirty ? { description: editDescription, nextWorks: editNextWorks } : null)}
             disabled={saving}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
           >

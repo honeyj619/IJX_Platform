@@ -1,4 +1,6 @@
 import type { ProjectWeeklyData } from './projectWeeklyReport';
+import { buildProjectWeeklyData } from './projectWeeklyReport';
+import { workItems } from './workItems';
 import type { PersonalReportSnapshot, ReportRecordType } from './reportSendRecords';
 
 export type SavedReportRecord = {
@@ -38,6 +40,42 @@ export const SAVED_REPORTS_EVENT = 'ijx-saved-reports-change';
 const canUseStorage = () => typeof window !== 'undefined' && Boolean(window.localStorage);
 
 /** 演示种子：首次使用且无任何已保存记录时注入一条，便于查看详情与保存/提交流程 */
+const buildSeedSavedReports = (): SavedReportRecord[] => {
+  // 选取一个"关注"状态项目构造黄灯周报（演示企微分区触发条件），另保留一条个人汇报
+  const project = workItems.find(item => item.riskLevel === '关注') || workItems[0];
+  const weeklyData = buildProjectWeeklyData({
+    projectId: project.id,
+    projectName: project.title,
+    teamName: project.teamName,
+    progress: project.progress,
+    riskLevel: project.riskLevel,
+    latestReport: project.latestReport,
+    weekNumber: 41,
+    period: '2026-10-12 ~ 2026-10-16',
+  });
+  const projectRecord: SavedReportRecord = {
+    id: 'seed-saved-project-41',
+    reportKey: JSON.stringify(['梁吉力', '项目汇报', project.title, '2026-10-12~2026-10-16']),
+    reportType: '项目汇报',
+    title: `${project.title}第41周项目周报`,
+    sender: '梁吉力',
+    savedAt: '2026-10-14 09:40',
+    period: '2026-10-12 至 2026-10-16',
+    projectId: project.id,
+    projectCode: project.id.toUpperCase(),
+    projectName: project.title,
+    projectOwner: project.owner,
+    projectMembers: [],
+    reportTo: ['接总'],
+    copyTo: ['任总'],
+    sourceLabels: ['禅道项目数据'],
+    contentHash: 'seedproj41',
+    htmlContent: '',
+    weeklyData: { ...weeklyData, healthLight: weeklyData.healthLight === 'green' ? 'yellow' : weeklyData.healthLight },
+  };
+  return [projectRecord];
+};
+
 const SEED_SAVED_REPORT: SavedReportRecord = {
   id: 'seed-saved-report-1',
   reportKey: JSON.stringify(['梁吉力', '工作汇报', '', '2026-10-12至2026-10-16']),
@@ -74,7 +112,7 @@ export const ensureSeedSavedReport = () => {
       if (Array.isArray(parsed) && parsed.length > 0) return;
     } catch { /* 落入下方注入 */ }
   }
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify([SEED_SAVED_REPORT]));
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(buildSeedSavedReports()));
 };
 
 export const createReportBusinessKey = ({ sender, reportType, period, projectId, projectName }: ReportKeyInput) => JSON.stringify([
