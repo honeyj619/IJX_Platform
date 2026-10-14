@@ -40,6 +40,7 @@ import {
 } from '../data/reportSendRecords';
 import {
   createReportBusinessKey,
+  ensureSeedSavedReport,
   getSavedReportRecords,
   upsertSavedReportRecords,
   subscribeSavedReports,
@@ -254,7 +255,7 @@ export default function WorkReport() {
   const [selectedObjectiveId] = useState('o3');
   const [toast, setToast] = useState('');
   const [sendRecords, setSendRecords] = useState(getReportSendRecords);
-  const [savedReports, setSavedReports] = useState(getSavedReportRecords);
+  const [savedReports, setSavedReports] = useState(() => { ensureSeedSavedReport(); return getSavedReportRecords(); });
   const [selectedSendRecord, setSelectedSendRecord] = useState<ReportSendRecord | null>(null);
   const [selectedSavedRecord, setSelectedSavedRecord] = useState<SavedReportRecord | null>(null);
   const [resendToast, setResendToast] = useState('');
