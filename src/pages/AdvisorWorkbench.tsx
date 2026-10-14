@@ -25,11 +25,13 @@ import {
   Search,
   Send,
   Sparkles,
+  UserPlus,
   X,
 } from 'lucide-react';
 import { type AdvisorMode, type AdvisorSource } from '../data/advisor';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import { workItems } from '../data/workItems';
+import { contactDirectory } from '../data/contactDirectory';
 import { buildProjectWeeklyData, getHealthLightMeta, type ProjectWeeklyData } from '../data/projectWeeklyReport';
 import {
   appendReportSendRecords,
@@ -73,6 +75,21 @@ type SendReceipt = {
 };
 
 const MAIN_USER_EMAIL = 'jili.liang@juneyaoair.com';
+const FIXED_WE_COM_LEADERS = ['接总', '任总', '孔丰汇'];
+
+const getRequiredWecomRecipients = (data: ProjectWeeklyData) => {
+  const project = workItems.find(item => item.id === data.projectId);
+  const projectManagementEngineers = contactDirectory
+    .filter(person => person.title === '项目管理工程师')
+    .map(person => person.name);
+  return [...new Set([
+    data.manager,
+    project?.owner || '',
+    data.itManager,
+    ...FIXED_WE_COM_LEADERS,
+    ...projectManagementEngineers,
+  ].filter(Boolean))];
+};
 type GenerationStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 type ReportDraft = {
@@ -944,14 +961,19 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               </section>
             )}
 
-            {/* 完整周报预览：仅"总体进展描述"可编辑（FR-05） */}
+            {/* 完整周报预览：总体进展描述与未来1周工作计划可编辑（FR-05） */}
             <ProjectWeeklyReport
               data={weeklyData}
               filled
               description={overallDescription}
               readOnly={isCurrentReportSealed}
+              editState={savedContentHash && !hasUnsavedChanges ? 'saved' : 'unsaved'}
               onDescriptionChange={value => {
                 setOverallDescription(value);
+                setSavedContentHash('');
+              }}
+              onNextWeekWorksChange={value => {
+                setWeeklyData(current => current ? { ...current, nextWeekWorks: value } : current);
                 setSavedContentHash('');
               }}
             />
@@ -1072,9 +1094,33 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     if (!weeklyData) return renderReportDraft();
     const light = getHealthLightMeta(weeklyData.healthLight);
     const showWecom = weeklyData.healthLight !== 'green';
+    const requiredWecomRecipients = showWecom ? getRequiredWecomRecipients(weeklyData) : [];
+    const wecomRecipients = [...new Set([...requiredWecomRecipients, ...dispatch.wecom])];
+    const previousRecipientRecord = [...sendRecords]
+      .filter(record => record.sender === MAIN_USER_NAME
+        && record.reportType === '项目汇报'
+        && (record.projectId === weeklyData.projectId || (!record.projectId && record.projectName === weeklyData.projectName)))
+      .sort((a, b) => b.sentAt.localeCompare(a.sentAt))[0];
     // 通讯录选人：不录入邮箱，选中即可（发件人固定当前用户）
     const recipientsValid = dispatch.recipients.length > 0;
-    const canConfirm = recipientsValid && (!showWecom || dispatch.wecom.length > 0);
+    const canConfirm = recipientsValid && (!showWecom || wecomRecipients.length > 0);
+
+    const importPreviousRecipients = () => {
+      if (!previousRecipientRecord) {
+        showToast('未找到该汇报人、项目和汇报类型的历史发送记录');
+        return;
+      }
+      const previousWecomRecipients = previousRecipientRecord.receipts
+        .filter(receipt => receipt.channel === '企业微信')
+        .map(receipt => receipt.target);
+      setDispatch(current => ({
+        ...current,
+        recipients: [...new Set(previousRecipientRecord.reportTo)],
+        cc: [...new Set(previousRecipientRecord.copyTo)],
+        wecom: [...new Set([...requiredWecomRecipients, ...previousWecomRecipients])],
+      }));
+      showToast('已导入上次收件人');
+    };
 
     const executeSend = () => {
       setShowProjectSendConfirm(false);
@@ -1084,7 +1130,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       const anyFail = simulateFail;
       const next: SendReceipt[] = dispatch.recipients.map(target => ({ channel: '邮件', target, time, success: !anyFail }));
       dispatch.cc.forEach(target => next.push({ channel: '邮件', target, time, success: !anyFail }));
-      if (showWecom) dispatch.wecom.forEach(target => next.push({ channel: '企业微信', target, time, success: !anyFail }));
+      if (showWecom) wecomRecipients.forEach(target => next.push({ channel: '企业微信', target, time, success: !anyFail }));
       window.setTimeout(() => {
         persistProjectSendRecords(next, formatReportRecordTime());
         setReceipts(next);
@@ -1106,14 +1152,23 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           <div className="flex max-h-[min(680px,calc(100%-32px))] w-full max-w-xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="shrink-0 border-b border-gray-100 px-6 py-5">
               <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-gray-950">工作汇报发送确认</h3>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                    <span>{period}</span>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${light.bg} ${light.text}`}><span className={`h-1.5 w-1.5 rounded-full ${light.dot}`} />{light.label}</span>
-                  </div>
+                <h3 className="text-lg font-bold text-gray-950">工作汇报发送确认</h3>
+                <button type="button" onClick={() => setStage('draft')} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="返回编辑"><X size={18} /></button>
+              </div>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <span>{period}</span>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${light.bg} ${light.text}`}><span className={`h-1.5 w-1.5 rounded-full ${light.dot}`} />{light.label}</span>
                 </div>
-                <button type="button" onClick={() => setStage('draft')} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="返回编辑"><X size={18} /></button>
+                <button
+                  type="button"
+                  onClick={importPreviousRecipients}
+                  disabled={!previousRecipientRecord}
+                  className="inline-flex h-7 shrink-0 items-center gap-1 px-1.5 text-xs font-medium text-theme-700 hover:text-theme-800 disabled:cursor-not-allowed disabled:text-gray-300"
+                  title={previousRecipientRecord ? '按汇报人、项目和汇报类型导入最近一次收件人' : '暂无符合条件的历史发送记录'}
+                >
+                  <UserPlus size={13} />导入上次收件人
+                </button>
               </div>
             </div>
 
@@ -1194,12 +1249,13 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                   <div className="mt-3 text-xs font-semibold text-gray-500">
                     <p className="mb-1.5">企微接收人（成员 / 群） <span className="text-red-500">*</span></p>
                     <ContactPicker
-                      selected={dispatch.wecom}
-                      onChange={next => setDispatch(current => ({ ...current, wecom: next }))}
+                      selected={wecomRecipients}
+                      onChange={next => setDispatch(current => ({ ...current, wecom: [...new Set([...requiredWecomRecipients, ...next])] }))}
                       kind="wecom"
                       placeholder="搜索成员姓名"
+                      lockedNames={requiredWecomRecipients}
                     />
-                    {dispatch.wecom.length === 0 && <span className="mt-1 block text-xs font-normal text-red-500">黄/红灯项目必须选择企微接收人</span>}
+                    <span className="mt-2 block text-[11px] font-normal leading-5 text-amber-700">固定推送：业务项目经理、承接处室经理、IT项目经理、接总、任总、孔丰汇及全部项目管理工程师；可增加其他人员，固定人员不可删除。</span>
                   </div>
                 </section>
               )}
@@ -1210,7 +1266,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
 
             <div className="flex shrink-0 items-center justify-between gap-3 border-t border-gray-100 bg-white px-6 py-4">
               <div className="flex min-w-0 flex-col gap-1.5">
-                <p className="text-xs leading-5 text-gray-500">{showWecom ? `邮件 ${dispatch.recipients.length} 人 + 企微 ${dispatch.wecom.length} 人` : `邮件 ${dispatch.recipients.length} 人`}</p>
+                <p className="text-xs leading-5 text-gray-500">{showWecom ? `邮件 ${dispatch.recipients.length} 人 + 企微 ${wecomRecipients.length} 人` : `邮件 ${dispatch.recipients.length} 人`}</p>
                 <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-gray-400">
                   <input type="checkbox" checked={simulateFail} onChange={event => setSimulateFail(event.target.checked)} className="h-3 w-3 accent-red-500" />
                   模拟发送失败（演示失败场景）
@@ -1245,7 +1301,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                 <p><span className="text-gray-400">项目：</span>{weeklyData.projectName}</p>
                 <p><span className="text-gray-400">汇报周期：</span>第 {weeklyData.weekNumber} 周（{period}）</p>
                 <p><span className="text-gray-400">邮件接收：</span>{dispatch.recipients.length} 人{dispatch.cc.length > 0 ? `，抄送 ${dispatch.cc.length} 人` : ''}</p>
-                {showWecom && <p><span className="text-gray-400">企微接收：</span>{dispatch.wecom.length} 人</p>}
+                {showWecom && <p><span className="text-gray-400">企微接收：</span>{wecomRecipients.length} 人（含 {requiredWecomRecipients.length} 名固定推送人）</p>}
               </div>
               <div className="mt-6 flex justify-end gap-3">
                 <button type="button" onClick={() => setShowProjectSendConfirm(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回检查</button>

@@ -12,6 +12,9 @@ interface ProjectWeeklyReportProps {
   litIndex?: number;
   description: string;
   onDescriptionChange?: (value: string) => void;
+  onNextWeekWorksChange?: (value: string[]) => void;
+  /** 当前草稿是否已保存，用于提示保存后仍可继续编辑 */
+  editState?: 'unsaved' | 'saved';
   /** 只读模式（发送后查看） */
   readOnly?: boolean;
 }
@@ -83,7 +86,7 @@ const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
 );
 
 /** 项目周报渲染组件（浅色企业风，1:1 对齐 PC 周报模板结构） */
-export default function ProjectWeeklyReport({ data, filled, litIndex = -1, description, onDescriptionChange, readOnly = false }: ProjectWeeklyReportProps) {
+export default function ProjectWeeklyReport({ data, filled, litIndex = -1, description, onDescriptionChange, onNextWeekWorksChange, editState = 'unsaved', readOnly = false }: ProjectWeeklyReportProps) {
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
   const light = data ? getHealthLightMeta(data.healthLight) : null;
 
@@ -123,6 +126,20 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
           </span>
         </div>
       </section>
+
+      {!readOnly && (
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-theme-200 bg-theme-50/70 px-5 py-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-theme-700 shadow-sm"><PencilLine size={16} /></span>
+            <div>
+              <p className="text-sm font-bold text-gray-900">当前汇报支持继续编辑</p>
+              <p className="mt-0.5 text-xs leading-5 text-gray-500">
+                {editState === 'saved' ? '汇报已保存，仍可修改总体进展描述和未来1周工作计划；修改后请重新保存。' : '可修改总体进展描述和未来1周工作计划，完成后请保存。'}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 项目基本信息 */}
       <section className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
@@ -364,20 +381,48 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
             ))}
           </ol>
         </div>
-        <div className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
-          <h3 className="mb-3 text-sm font-bold text-gray-900">未来1周工作计划<span className="ml-2 text-xs font-normal text-gray-400">共 {data.nextWeekWorks.length} 项</span></h3>
-          <ol className="space-y-2" title="该字段由禅道数据自动生成，不可编辑">
-            {data.nextWeekWorks.map((plan, index) => (
-              <li key={plan} className="flex items-center gap-3 rounded-lg bg-gray-50/60 px-3 py-2">
-                <span className="w-5 shrink-0 text-right text-xs text-gray-400">{index + 1}</span>
-                <span className="min-w-0 flex-1 text-xs text-gray-700">{plan}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
+        <section className={`rounded-xl bg-white px-6 py-5 shadow-sm ${readOnly ? 'border border-gray-200' : 'border-2 border-theme-300 ring-4 ring-theme-50'}`}>
+          <h3 className="mb-3 flex items-center text-sm font-bold text-gray-900">
+            未来1周工作计划
+            <span className="ml-2 text-xs font-normal text-gray-400">共 {data.nextWeekWorks.filter(Boolean).length} 项</span>
+            {!readOnly && <span className="ml-auto inline-flex items-center gap-1 rounded bg-theme-100 px-2 py-1 text-[11px] font-semibold text-theme-700"><PencilLine size={11} />{editState === 'saved' ? '已保存 · 可继续编辑' : '编辑后需保存'}</span>}
+          </h3>
+          {!readOnly && <p className="mb-3 text-xs text-gray-500">直接在下方逐行编辑；按回车新增一项，序号会自动连续生成。</p>}
+          {readOnly ? (
+            <ol className="space-y-2">
+              {data.nextWeekWorks.filter(Boolean).map((plan, index) => (
+                <li key={`${index}-${plan}`} className="flex items-center gap-3 rounded-lg bg-gray-50/60 px-3 py-2">
+                  <span className="w-5 shrink-0 text-right text-xs text-gray-400">{index + 1}</span>
+                  <span className="min-w-0 flex-1 text-xs text-gray-700">{plan}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <div className="relative overflow-hidden rounded-lg border border-theme-300 bg-theme-50/40 focus-within:border-theme-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-theme-100">
+              <div className="pointer-events-none absolute bottom-3 left-3 top-3 w-5 text-right text-xs leading-7 text-gray-400" aria-hidden="true">
+                {data.nextWeekWorks.map((_, index) => <div key={index}>{index + 1}</div>)}
+              </div>
+              <textarea
+                value={data.nextWeekWorks.join('\n')}
+                onChange={event => onNextWeekWorksChange?.(event.target.value.split(/\r?\n/).slice(0, 30))}
+                onBlur={() => {
+                  const normalized = data.nextWeekWorks.map(item => item.trim()).filter(Boolean);
+                  const next = normalized.length > 0 ? normalized : [''];
+                  const changed = next.length !== data.nextWeekWorks.length
+                    || next.some((item, index) => item !== data.nextWeekWorks[index]);
+                  if (changed) onNextWeekWorksChange?.(next);
+                }}
+                rows={Math.max(3, data.nextWeekWorks.length)}
+                placeholder="每行填写一项工作计划，换行后自动编号"
+                className="block w-full resize-none bg-transparent py-3 pl-12 pr-3 text-xs leading-7 text-gray-700 outline-none"
+                style={{ height: `${Math.max(108, data.nextWeekWorks.length * 28 + 24)}px` }}
+              />
+            </div>
+          )}
+        </section>
       </section>
 
-      <p className="text-center text-xs text-gray-300">数据来源：禅道项目数据 · 生成于 {new Date().toLocaleDateString('zh-CN')} · 仅「总体进展描述」可编辑</p>
+      <p className="text-center text-xs text-gray-300">数据来源：禅道项目数据 · 生成于 {new Date().toLocaleDateString('zh-CN')} · 「总体进展描述」与「未来1周工作计划」可编辑</p>
     </div>
   );
 }

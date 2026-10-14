@@ -8,6 +8,8 @@ interface ContactPickerProps {
   kind?: 'member' | 'wecom';
   placeholder?: string;
   disabledNames?: string[];
+  /** 已选且不可移除的成员，例如系统规则要求的固定接收人 */
+  lockedNames?: string[];
   selectionMode?: 'people' | 'people-and-departments';
   triggerVariant?: 'field' | 'button';
   triggerLabel?: string;
@@ -22,6 +24,7 @@ export default function ContactPicker({
   kind = 'member',
   placeholder = '点击选择通讯录成员',
   disabledNames = [],
+  lockedNames = [],
   selectionMode = 'people',
   triggerVariant = 'field',
   triggerLabel = '选择通讯录',
@@ -32,6 +35,7 @@ export default function ContactPicker({
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   const disabledSet = useMemo(() => new Set(disabledNames), [disabledNames]);
+  const lockedSet = useMemo(() => new Set(lockedNames), [lockedNames]);
   const allowDepartments = selectionMode === 'people-and-departments';
   const visibleGroups = useMemo(() => {
     const kw = keyword.trim();
@@ -48,16 +52,16 @@ export default function ContactPicker({
   }, [allowDepartments, keyword]);
 
   const openPicker = () => {
-    setDraft(selected);
+    setDraft([...new Set([...lockedNames, ...selected])]);
     setKeyword('');
     setOpen(true);
   };
   const closePicker = () => {
-    setDraft(selected);
+    setDraft([...new Set([...lockedNames, ...selected])]);
     setOpen(false);
   };
   const confirmPicker = () => {
-    onChange(draft);
+    onChange([...new Set([...lockedNames, ...draft])]);
     setOpen(false);
   };
   const toggleGroup = (group: string) => {
@@ -69,7 +73,7 @@ export default function ContactPicker({
     });
   };
   const toggleName = (name: string) => {
-    if (disabledSet.has(name)) return;
+    if (disabledSet.has(name) || lockedSet.has(name)) return;
     setDraft(current => current.includes(name) ? current.filter(item => item !== name) : [...current, name]);
   };
   const toggleItem = (node: DirectoryNode) => toggleName(node.name);
@@ -137,11 +141,12 @@ export default function ContactPicker({
                             {members.map(person => {
                               const isSelected = draft.includes(person.name);
                               const isDisabled = disabledSet.has(person.name);
+                              const isLocked = lockedSet.has(person.name);
                               return (
-                                <button key={person.id} type="button" disabled={isDisabled} onClick={() => toggleItem(person)} title={isDisabled ? '该用户已在当前用户组或其他收件字段中' : undefined} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors ${isSelected ? 'bg-theme-50' : isDisabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-gray-50'}`}>
+                                <button key={person.id} type="button" disabled={isDisabled} onClick={() => toggleItem(person)} title={isLocked ? '系统固定推送人，不可移除' : isDisabled ? '该用户已在当前用户组或其他收件字段中' : undefined} className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors ${isSelected ? 'bg-theme-50' : isDisabled ? 'cursor-not-allowed opacity-40' : 'hover:bg-gray-50'}`}>
                                   <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold ${isSelected ? 'bg-theme-600 text-white' : 'bg-gray-100 text-gray-500'}`}>{person.name.slice(0, 1)}</span>
                                   <span className="min-w-0 flex-1"><span className="block truncate font-medium text-gray-800">{person.name}</span><span className="block truncate text-[10px] text-gray-400">{person.title}</span></span>
-                                  {isSelected && <Check size={13} className="text-theme-600" />}
+                                  {isLocked ? <span className="rounded bg-amber-50 px-1 py-0.5 text-[9px] font-semibold text-amber-700">固定</span> : isSelected && <Check size={13} className="text-theme-600" />}
                                 </button>
                               );
                             })}
@@ -157,17 +162,22 @@ export default function ContactPicker({
               <div className="flex min-h-0 flex-col bg-gray-50/50 max-sm:hidden">
                 <div className="flex shrink-0 items-center justify-between px-4 py-3">
                   <span className="text-xs font-semibold text-gray-600">已选 {draft.length} 项</span>
-                  {draft.length > 0 && <button type="button" onClick={() => setDraft([])} className="text-[11px] text-gray-400 hover:text-red-500">清空</button>}
+                  {draft.length > lockedNames.length && <button type="button" onClick={() => setDraft([...lockedNames])} className="text-[11px] text-gray-400 hover:text-red-500">清空可选项</button>}
                 </div>
                 <div className="scrollbar-hover min-h-0 flex-1 space-y-1.5 overflow-y-auto px-3 pb-4">
                   {draft.length === 0 && <div className="px-2 py-8 text-center text-xs text-gray-300">尚未选择</div>}
                   {draft.map(name => {
                     const isDepartment = contactGroups.includes(name);
+                    const isLocked = lockedSet.has(name);
                     return (
                       <div key={name} className="flex items-center gap-2 rounded-lg bg-white px-2.5 py-2 shadow-sm">
                         <span className={`flex h-6 w-6 shrink-0 items-center justify-center text-[10px] font-semibold ${isDepartment ? 'rounded-md bg-gray-100 text-gray-500' : 'rounded-full bg-theme-100 text-theme-700'}`}>{isDepartment ? <FolderTree size={13} /> : name.slice(0, 1)}</span>
                         <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-800">{name}</span>
-                        <button type="button" onClick={() => toggleName(name)} className="shrink-0 rounded p-0.5 text-gray-300 hover:bg-red-50 hover:text-red-500" title="移除"><X size={12} /></button>
+                        {isLocked ? (
+                          <span className="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">固定</span>
+                        ) : (
+                          <button type="button" onClick={() => toggleName(name)} className="shrink-0 rounded p-0.5 text-gray-300 hover:bg-red-50 hover:text-red-500" title="移除"><X size={12} /></button>
+                        )}
                       </div>
                     );
                   })}
