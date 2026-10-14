@@ -44,6 +44,15 @@ interface ContactPickerProps {
 
 type DirectoryNode = ContactPerson;
 
+/** 解析搜索关键词：支持顿号/逗号/空格分隔多个人名，返回去重词表 */
+const parseKeywords = (raw: string): string[] => raw.trim()
+  .split(/[、，,\s]+/)
+  .map(word => word.trim())
+  .filter(Boolean);
+
+/** 多关键词匹配：任一关键词命中即返回 true（人员批量查询）；单关键词保持原有语义（姓名/部门/职务/邮箱模糊） */
+const matchAnyKeyword = (text: string, keywords: string[]): boolean => keywords.some(word => text.includes(word));
+
 const kindLabel: Record<ContactSelectionKind, string> = {
   person: '人员',
   department: '部门',
@@ -102,23 +111,23 @@ export default function ContactPicker({
   const lockedIdSet = useMemo(() => new Set(lockedIds), [lockedIds]);
 
   const visibleGroups = useMemo(() => {
-    const kw = keyword.trim();
+    const keywords = parseKeywords(keyword);
     return contactGroups
       .map(group => ({
         group,
         members: contactDirectory.filter(person => {
           if (person.department !== group) return false;
-          if (!kw || group.includes(kw)) return true;
-          return person.name.includes(kw) || person.title.includes(kw) || person.email.includes(kw);
+          if (keywords.length === 0 || matchAnyKeyword(group, keywords)) return true;
+          return matchAnyKeyword(person.name, keywords) || matchAnyKeyword(person.title, keywords) || matchAnyKeyword(person.email, keywords);
         }),
       }))
-      .filter(({ group, members }) => members.length > 0 || (allowDepartments && group.includes(kw)));
+      .filter(({ group, members }) => members.length > 0 || (allowDepartments && keywords.length > 0 && matchAnyKeyword(group, keywords)));
   }, [allowDepartments, keyword]);
 
   const visibleUserGroups = useMemo(() => {
-    const kw = keyword.trim();
-    if (!kw) return userGroups;
-    return userGroups.filter(group => group.name.includes(kw) || group.description.includes(kw));
+    const keywords = parseKeywords(keyword);
+    if (keywords.length === 0) return userGroups;
+    return userGroups.filter(group => matchAnyKeyword(group.name, keywords) || matchAnyKeyword(group.description, keywords));
   }, [keyword, userGroups]);
 
   const openPicker = () => {
@@ -150,7 +159,7 @@ export default function ContactPicker({
     setDraft(current => current.includes(name) ? current.filter(item => item !== name) : [...current, name]);
   };
   const toggleItem = (node: DirectoryNode) => toggleName(node.name);
-  const expandedFor = (group: string) => keyword.trim() ? true : expandedGroups.has(group);
+  const expandedFor = (group: string) => parseKeywords(keyword).length > 0 ? true : expandedGroups.has(group);
 
   // ===== 结构化模式操作 =====
   const findDraftItem = (id: string) => structuredDraft.find(item => item.id === id);
@@ -161,12 +170,13 @@ export default function ContactPicker({
       : [...current, item]);
   };
   const currentTabVisibleDirectorySelections = (): ContactSelection[] => {
+    const keywords = parseKeywords(keyword);
     const result: ContactSelection[] = [];
     if (allowDepartments) visibleGroups.forEach(({ group, members }) => {
-      if (group.includes(keyword.trim()) || !keyword.trim()) result.push({ id: `dept:${group}`, kind: 'department', name: group, note: `${members.length} 人` });
+      if (keywords.length === 0 || matchAnyKeyword(group, keywords)) result.push({ id: `dept:${group}`, kind: 'department', name: group, note: `${members.length} 人` });
     });
     if (allowPersons) contactDirectory.forEach(person => {
-      if (!keyword.trim() || person.name.includes(keyword.trim()) || person.department.includes(keyword.trim())) result.push({ id: `person:${person.id}`, kind: 'person', name: person.name, note: person.title });
+      if (keywords.length === 0 || matchAnyKeyword(person.name, keywords) || matchAnyKeyword(person.department, keywords)) result.push({ id: `person:${person.id}`, kind: 'person', name: person.name, note: person.title });
     });
     return result;
   };
@@ -244,10 +254,13 @@ export default function ContactPicker({
             <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_260px] overflow-hidden max-sm:grid-cols-1">
               <div className="flex min-h-0 flex-col border-r border-gray-100 max-sm:border-r-0">
                 <div className="shrink-0 px-4 pt-4">
+                  {parseKeywords(keyword).length > 1 && (
+                    <p className="mb-2 text-[10px] text-gray-400">已按 {parseKeywords(keyword).length} 个关键词搜索，命中 {visibleGroups.reduce((sum, entry) => sum + entry.members.length, 0)} 人</p>
+                  )}
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input value={keyword} onChange={event => setKeyword(event.target.value)} placeholder={activeTab === 'user-groups' ? '搜索用户组名称或描述' : '搜索姓名、部门、职务或邮箱'} className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:border-theme-300 focus:bg-white" autoFocus />
+                      <input value={keyword} onChange={event => setKeyword(event.target.value)} placeholder={activeTab === 'user-groups' ? '搜索用户组名称或描述，支持多词' : '搜索姓名/部门/职务/邮箱，多人用顿号或空格分隔'} className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:border-theme-300 focus:bg-white" autoFocus />
                     </div>
                     {structured && (
                       <button type="button" onClick={selectAllVisible} className="h-8 shrink-0 rounded-lg border border-gray-200 px-3 text-[11px] font-medium text-gray-600 hover:border-theme-300 hover:text-theme-700">全选</button>
