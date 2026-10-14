@@ -288,6 +288,8 @@ const initialSavedDocuments = [
   },
 ];
 
+import RuyiWorkbenchShell from '../components/RuyiWorkbenchShell';
+
 export default function DocumentEditor({ docType, docTitle, docLength, docContent, attachments = [], documentMode = "writing", validationFileName = "", validationIssues = defaultValidationIssues, startInRequirements = false, startInOutline = false, embedded = false, onRemoveAttachment, onBack }: DocumentEditorProps) {
   const [currentDocumentMode, setCurrentDocumentMode] = useState<DocumentMode>(documentMode);
   const [content, setContent] = useState(documentMode === "validation" ? validationSampleContent : startInRequirements || startInOutline ? '' : sampleContent);
@@ -872,17 +874,24 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     <div className={`flex ${embedded ? 'h-full' : 'h-screen'} bg-gray-50`}>
       {/* 左侧编辑区 */}
       <div className="flex-1 flex flex-col border-r border-gray-200 bg-white">
-        {/* 顶部工具栏 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50">
-          <div className="flex items-center gap-3">
-            <button 
+        {/* 顶部：统一骨架顶栏 */}
+        <div className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-100 bg-gray-50 px-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
               onClick={onBack}
-              className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-600 transition-colors hover:bg-gray-200"
+              title="返回如意空间"
             >
-              <ArrowLeft size={18} className="text-gray-600" />
+              <ArrowLeft size={18} />
             </button>
-            <div className="flex items-center gap-3">
-              <span className="font-medium text-gray-900">{requirementTitle || '未命名文档'}</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <button type="button" onClick={onBack} className="transition-colors hover:text-theme-700 hover:underline">如意空间</button>
+                <span className="text-gray-300">/</span>
+                <span className="text-gray-600">公文工作台</span>
+              </div>
+              <div className="truncate text-sm font-semibold text-gray-900">{requirementTitle || '未命名文档'}</div>
             </div>
           </div>
         </div>
@@ -978,7 +987,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       </div>
 
       {/* 右侧当前公文信息 */}
-      <div className="w-80 flex flex-col bg-gray-50 border-l border-gray-200 h-full">
+      <div className="w-80 max-w-[320px] max-lg:w-[300px] flex flex-col bg-gray-50 border-l border-gray-200 h-full">
         <div className="border-b border-gray-200 bg-white px-4 pb-3 pt-4">
           <div className="mb-3 flex items-center justify-between gap-2 text-theme-700">
             <div className="flex items-center gap-2">

@@ -1703,8 +1703,8 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-[#f6f7f9] text-gray-900">
       {toast && <div className="fixed left-1/2 top-20 z-[90] -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-xl">{toast}</div>}
-      <header className="flex h-16 shrink-0 items-center gap-4 border-b border-gray-200 bg-white px-4 md:px-6">
-        <div className="flex min-w-0 items-center gap-3"><button onClick={handleBack} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:border-theme-200 hover:bg-theme-50 hover:text-theme-700" title="返回"><ArrowLeft size={17} /></button><div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-theme-600 text-white"><Bot size={19} /></div><div className="min-w-0"><h1 className="truncate text-base font-bold text-gray-950">如意参谋师</h1><p className="truncate text-xs text-gray-400">统一汇报生成与工作洞察</p></div></div>
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
+        <div className="flex min-w-0 items-center gap-3"><button onClick={handleBack} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200" title="返回如意空间"><ArrowLeft size={18} /></button><div className="min-w-0"><div className="flex items-center gap-1.5 text-xs text-gray-500"><button type="button" onClick={handleBack} className="transition-colors hover:text-theme-700 hover:underline">如意空间</button><span className="text-gray-300">/</span><span className="text-gray-600">参谋师工作台</span></div><div className="truncate text-sm font-semibold text-gray-900">{draft.title || '汇报工作台'}</div></div></div>
         <button onClick={() => navigate('/web_client/work-report')} className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-600 hover:border-theme-200 hover:bg-theme-50 hover:text-theme-700" title="查看工作汇报页面">
           <FolderKanban size={15} />
           所有汇报
@@ -1728,7 +1728,6 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                   {weeklyData.healthLight === 'green' ? '绿灯' : weeklyData.healthLight === 'yellow' ? '黄灯' : '红灯'}
                 </span>
               )}
-              <span>{period}</span>
             </div>
           </footer>
         </main>
