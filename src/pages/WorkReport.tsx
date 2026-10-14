@@ -41,6 +41,7 @@ import {
 import {
   createReportBusinessKey,
   getSavedReportRecords,
+  upsertSavedReportRecords,
   subscribeSavedReports,
   type SavedReportRecord,
 } from '../data/savedReports';
@@ -258,6 +259,14 @@ export default function WorkReport() {
   const [selectedSavedRecord, setSelectedSavedRecord] = useState<SavedReportRecord | null>(null);
   const [resendToast, setResendToast] = useState('');
   const [resending, setResending] = useState(false);
+  // 详情弹框：保存 / 提交（与参谋师工作台一致）
+  const [detailSaving, setDetailSaving] = useState(false);
+  const [detailSubmitConfirm, setDetailSubmitConfirm] = useState<SavedReportRecord | null>(null);
+  // 二级确认：再次确认发送（与参谋师一致）
+  const [detailSendReconfirm, setDetailSendReconfirm] = useState(false);
+  // 发送确认页可编辑收件人
+  const [detailReportTo, setDetailReportTo] = useState('');
+  const [detailCopyTo, setDetailCopyTo] = useState('');
 
   useEffect(() => {
     if (!resendToast) return;
@@ -552,7 +561,140 @@ export default function WorkReport() {
         />
       )}
       {selectedSavedRecord && (
-        <SavedReportRecordDetail record={selectedSavedRecord} onClose={() => setSelectedSavedRecord(null)} />
+        <SavedReportRecordDetail
+          record={savedReports.find(item => item.reportKey === selectedSavedRecord.reportKey) || selectedSavedRecord}
+          saving={detailSaving}
+          onClose={() => setSelectedSavedRecord(null)}
+          onSave={() => {
+            setDetailSaving(true);
+            window.setTimeout(() => {
+              const updated = getSavedReportRecords().map(item => item.reportKey === selectedSavedRecord.reportKey
+                ? { ...item, savedAt: formatReportRecordTime() }
+                : item);
+              upsertSavedReportRecords(updated);
+              setSavedReports(getSavedReportRecords());
+              setDetailSaving(false);
+              showToast('汇报已保存');
+            }, 600);
+          }}
+          onSubmit={() => { setDetailReportTo(selectedSavedRecord.reportTo.join('、')); setDetailCopyTo(selectedSavedRecord.copyTo.join('、')); setDetailSendReconfirm(false); setDetailSubmitConfirm(selectedSavedRecord); }}
+        />
+      )}
+
+      {/* 一级：工作汇报发送确认页（与参谋师一致：收件人编辑 + 预览摘要 + 确认发送） */}
+      {detailSubmitConfirm && (
+        <div className="fixed inset-0 z-[92] flex items-center justify-center bg-gray-950/40 px-4 py-6">
+          <div className="flex max-h-[86vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-100 px-6 py-4">
+              <div>
+                <h3 className="text-lg font-bold text-gray-950">工作汇报发送确认</h3>
+                <p className="mt-1 text-xs text-gray-500">{detailSubmitConfirm.title} · {detailSubmitConfirm.period}</p>
+              </div>
+              <button type="button" onClick={() => setDetailSubmitConfirm(null)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="返回编辑"><X size={18} /></button>
+            </div>
+            <div className="scrollbar-hover min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-gray-800">汇报对象</p>
+                  <span className="text-[11px] text-gray-400">多个对象以顿号分隔</span>
+                </div>
+                <input
+                  value={detailReportTo}
+                  onChange={event => setDetailReportTo(event.target.value)}
+                  placeholder="请输入汇报对象，如：接总、任总"
+                  className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-theme-400"
+                />
+              </section>
+              <section>
+                <p className="mb-2 text-sm font-semibold text-gray-800">抄送对象</p>
+                <input
+                  value={detailCopyTo}
+                  onChange={event => setDetailCopyTo(event.target.value)}
+                  placeholder="请输入抄送对象，可为空"
+                  className="h-10 w-full rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-theme-400"
+                />
+              </section>
+              <section className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                <p className="text-xs font-semibold text-gray-600">发送内容摘要</p>
+                <div className="mt-2 space-y-1.5 text-sm text-gray-700">
+                  <p><span className="text-gray-400">标题：</span>{detailSubmitConfirm.title}</p>
+                  <p><span className="text-gray-400">类型：</span>{detailSubmitConfirm.reportType} · 通道：PC门户</p>
+                  <p><span className="text-gray-400">发送人：</span>{detailSubmitConfirm.sender}</p>
+                </div>
+              </section>
+            </div>
+            <div className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button type="button" onClick={() => setDetailSubmitConfirm(null)} className="rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回编辑</button>
+              <button
+                type="button"
+                disabled={!detailReportTo.trim()}
+                onClick={() => setDetailSendReconfirm(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-theme-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Send size={15} />确认发送
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 二级：再次确认发送（与参谋师一致） */}
+      {detailSubmitConfirm && detailSendReconfirm && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-gray-950/30 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-950">再次确认发送</h3>
+                <p className="mt-1 text-sm leading-6 text-gray-500">发送后将生成发送记录，并通知所选汇报对象。</p>
+              </div>
+              <button type="button" onClick={() => setDetailSendReconfirm(false)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" title="关闭"><X size={18} /></button>
+            </div>
+            <div className="mt-5 space-y-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <p><span className="text-gray-400">标题：</span>{detailSubmitConfirm.title}</p>
+              <p><span className="text-gray-400">汇报周期：</span>{detailSubmitConfirm.period}</p>
+              <p><span className="text-gray-400">汇报接收：</span>{splitRecipientNames(detailReportTo).length} 人{splitRecipientNames(detailCopyTo).length > 0 ? `，抄送 ${splitRecipientNames(detailCopyTo).length} 人` : ''}</p>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setDetailSendReconfirm(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">返回检查</button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = detailSubmitConfirm;
+                  const sentAt = formatReportRecordTime();
+                  const reportTargets = splitRecipientNames(detailReportTo);
+                  const copyTargets = splitRecipientNames(detailCopyTo);
+                  const receipts: ReportSendReceipt[] = [...reportTargets, ...copyTargets].map(name => ({ channel: 'PC门户' as const, target: name, time: sentAt, success: true, read: false }));
+                  appendReportSendRecords([{
+                    id: createReportSendRecordId('work-report-detail'),
+                    reportKey: target.reportKey,
+                    reportType: target.reportType,
+                    title: target.title,
+                    sender: target.sender,
+                    sentAt,
+                    period: target.period,
+                    projectMembers: target.projectMembers,
+                    channels: ['PC门户'],
+                    reportTo: reportTargets,
+                    copyTo: copyTargets,
+                    result: deriveSendResult(receipts),
+                    receipts,
+                    sourceLabels: target.sourceLabels,
+                    personalSnapshot: target.personalSnapshot,
+                  }]);
+                  const remaining = getSavedReportRecords().filter(item => item.reportKey !== target.reportKey);
+                  upsertSavedReportRecords(remaining);
+                  setSavedReports(remaining);
+                  setDetailSendReconfirm(false);
+                  setDetailSubmitConfirm(null);
+                  setSelectedSavedRecord(null);
+                  setActiveView('sent');
+                  showToast('汇报已提交并写入发送记录');
+                }}
+                className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700"
+              >确认并发送</button>
+            </div>
+          </div>
+        </div>
       )}
       {resendToast && (
         <div className="fixed bottom-16 left-1/2 z-[95] -translate-x-1/2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xl">{resendToast}<button type="button" onClick={() => setResendToast('')} className="ml-3 text-emerald-100 hover:text-white">×</button></div>
@@ -1396,7 +1538,7 @@ function ReportsView({
 }
 
 
-function SavedReportRecordDetail({ record, onClose }: { record: SavedReportRecord; onClose: () => void }) {
+function SavedReportRecordDetail({ record, onClose, onSave, onSubmit, saving }: { record: SavedReportRecord; onClose: () => void; onSave: () => void; onSubmit: () => void; saving?: boolean }) {
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-gray-950/35 px-4 py-6" onClick={onClose}>
       <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
@@ -1414,6 +1556,24 @@ function SavedReportRecordDetail({ record, onClose }: { record: SavedReportRecor
         <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-6 py-5 scrollbar-hover">
           <div className="mx-auto max-w-4xl" dangerouslySetInnerHTML={{ __html: record.htmlContent }} />
         </div>
+        <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-white px-4 py-2.5 text-sm font-semibold text-theme-700 transition-colors hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"
+          >
+            <Save size={15} />保存
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={saving}
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Send size={15} />提交
+          </button>
+        </footer>
       </div>
     </div>
   );
