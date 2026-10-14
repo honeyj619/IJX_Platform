@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   Paperclip, Send, Sparkles, Clock, Bookmark, Calendar, Menu, X, Brain, Code,
   FileText as FileTextIcon, PresentationIcon, Languages, Building2, MonitorCog,
@@ -841,22 +841,6 @@ export default function RuYiZone() {
       setMobileMenuOpen(false);
     }
   };
-
-  useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth;
-      const useSecondaryDrawer = width < 1024;
-      setIsMobile(useSecondaryDrawer);
-      setShowSidebar(width >= 1024);
-      if (!useSecondaryDrawer) {
-        setMobileMenuOpen(false);
-      }
-    };
-
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   const previewTemplate = documentTemplates.find(t => t.id === previewTemplateId) || documentTemplates[0];
   const filteredPreviewTemplates = documentTemplates.filter((template) => (

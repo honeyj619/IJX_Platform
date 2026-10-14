@@ -1,4 +1,4 @@
-﻿import { ReactNode, useEffect, useState, useRef } from 'react';
+﻿import { ReactNode, useEffect, useState, useRef, type CSSProperties } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   MessagesSquare,
@@ -10,7 +10,6 @@ import {
   X,
   XCircle,
   Search,
-  Menu,
   ChevronRight,
   ChevronLeft,
   Plus,
@@ -21,7 +20,7 @@ import { create } from 'zustand';
 import { useThemeStore } from '../store/themeStore';
 import { useLayoutStore } from '../store/layoutStore';
 import { UserMenu } from './UserMenu';
-import { BREAKPOINTS, SIDEBAR } from '../constants/layout';
+import { SIDEBAR, WEB_CLIENT_MIN_WIDTH } from '../constants/layout';
 import { getDemoPerson, getInitialsAvatar } from '../data/people';
 import { openPortalLink } from '../utils/linkOpening';
 
@@ -124,7 +123,7 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { pages, addPage, removePage, removeAllPages } = usePagesStore();
   const { mode, skin } = useThemeStore();
-  const { showNavigation, toggleNavigation, isResponsive, setIsResponsive } = useLayoutStore();
+  const { showNavigation, toggleNavigation } = useLayoutStore();
   
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -134,7 +133,6 @@ export default function Layout({ children }: LayoutProps) {
   const [showAddLinkPopup, setShowAddLinkPopup] = useState(false);
   const [linkLabel, setLinkLabel] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
-  const hasCheckedResponsiveRef = useRef(false);
   const [customNavLinks, setCustomNavLinks] = useState<CustomNavLink[]>(() => {
     const saved = localStorage.getItem('customNavigationLinks');
     if (!saved) return [];
@@ -192,29 +190,6 @@ export default function Layout({ children }: LayoutProps) {
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDragging, showNavigation, sidebarWidth, toggleNavigation]);
-  
-  // 响应式检测 - 简化版本
-  useEffect(() => {
-    const checkResponsive = () => {
-      const width = window.innerWidth;
-      const isNarrow = width <= BREAKPOINTS.TABLET;
-      setIsResponsive(isNarrow);
-
-      // 首次进入平板或更窄视口时收起导航，为主工作区保留空间。
-      if (!hasCheckedResponsiveRef.current) {
-        hasCheckedResponsiveRef.current = true;
-        if (isNarrow && showNavigation) {
-          setIsManuallyCollapsed(true);
-          toggleNavigation();
-        }
-      }
-    };
-    
-    checkResponsive();
-    window.addEventListener('resize', checkResponsive);
-    
-    return () => window.removeEventListener('resize', checkResponsive);
-  }, [setIsResponsive, showNavigation, toggleNavigation]);
   
   useEffect(() => {
     const applyTheme = () => {
@@ -274,19 +249,11 @@ export default function Layout({ children }: LayoutProps) {
   };
 
   return (
-    <div className="client-app-shell flex h-screen w-full gap-2 overflow-hidden p-2 bg-[var(--ui-surface-page)]">
-      {/* 响应式侧边栏遮罩 - 移动端 */}
-      {isResponsive && showNavigation && (
-        <div 
-          className="fixed inset-0 bg-black/40 z-40"
-          onClick={() => {
-            setIsManuallyCollapsed(true);
-            toggleNavigation();
-          }}
-        />
-      )}
-      
-      {/* 左侧导航栏 - 简化响应式逻辑 */}
+    <div
+      className="client-app-shell flex h-screen w-full gap-2 overflow-hidden p-2 bg-[var(--ui-surface-page)]"
+      style={{ '--ui-client-min-width': `${WEB_CLIENT_MIN_WIDTH}px` } as CSSProperties}
+    >
+      {/* 左侧导航栏 */}
       <div 
         className={`
           client-navigation-shell flex flex-col overflow-hidden transition-all duration-300 ease-in-out
@@ -294,15 +261,6 @@ export default function Layout({ children }: LayoutProps) {
         `}
         style={{ 
           width: showNavigation ? `${sidebarWidth}px` : SIDEBAR.COLLAPSED,
-          // 响应式模式下处理侧边栏位置
-          ...(isResponsive && {
-            position: 'fixed',
-            left: 8,
-            top: 8,
-            height: 'calc(100vh - 16px)',
-            zIndex: 50,
-            transform: showNavigation ? 'translateX(0)' : 'translateX(-100%)'
-          })
         }}
       >
         <div className={`${showNavigation ? 'p-4 space-y-4' : 'p-2 pt-3 space-y-3 flex flex-col items-center'}`}>
@@ -523,43 +481,24 @@ export default function Layout({ children }: LayoutProps) {
         </div>
       </div>
 
-      {/* 拖动条 - 左侧导航栏 (仅在非响应式模式下显示) */}
-      {!isResponsive && (
-        <div
-          className={`fixed top-0 w-1 h-full cursor-col-resize z-[55] group transition-opacity ${
-            isDragging ? 'bg-theme-300' : 'hover:bg-theme-300'
-          } ${!showNavigation && !isDragging ? 'opacity-0' : 'opacity-100'}`}
-          style={{ left: `${(showNavigation ? sidebarWidth : SIDEBAR.COLLAPSED_WIDTH) + 8}px` }}
-          onMouseDown={handleMouseDown}
-        >
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <div className="w-1 h-16 bg-[var(--ui-brand-primary)]/50 rounded-full"></div>
-          </div>
+      {/* 拖动条 - 左侧导航栏 */}
+      <div
+        className={`fixed top-0 w-1 h-full cursor-col-resize z-[55] group transition-opacity ${
+          isDragging ? 'bg-theme-300' : 'hover:bg-theme-300'
+        } ${!showNavigation && !isDragging ? 'opacity-0' : 'opacity-100'}`}
+        style={{ left: `${(showNavigation ? sidebarWidth : SIDEBAR.COLLAPSED_WIDTH) + 8}px` }}
+        onMouseDown={handleMouseDown}
+      >
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="w-1 h-16 bg-[var(--ui-brand-primary)]/50 rounded-full"></div>
         </div>
-      )}
+      </div>
 
       {/* 主内容区域 */}
       <div 
         className={`client-main-shell flex-1 overflow-hidden flex flex-col h-full min-w-0 transition-all duration-300 ${isMessagePage ? '' : 'rounded-xl border border-white/60 bg-white dark:bg-gray-900'}`}
         style={{ height: '100%' }}
       >
-        {/* 移动端顶部导航栏 - 包含菜单按钮 */}
-        {isResponsive && (
-          <div className="h-14 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between px-4 shrink-0">
-            <button 
-              onClick={() => {
-                setIsManuallyCollapsed(false);
-                toggleNavigation();
-              }}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              <Menu size={24} className="text-gray-700 dark:text-gray-300" />
-            </button>
-            <span className="font-semibold text-gray-900 dark:text-white">工作空间</span>
-            <div className="w-10"></div> {/* 占位，保持居中 */}
-          </div>
-        )}
-
         <div className={`flex-1 min-h-0 ${isMessagePage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           {children}
         </div>

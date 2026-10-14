@@ -63,11 +63,21 @@ body {
 }
 
 .client-app-shell {
+  /* Web Client 最小宽度：低于该宽度时由最外层 .web-client-viewport 横向滚动 */
+  min-width: var(--ui-client-min-width, 1024px);
   background-color: var(--ui-surface-page);
   background-image: url('./assets/client-background.png');
   background-position: left top;
   background-repeat: no-repeat;
   background-size: cover;
+}
+
+/* Web Client 最外层视口：固定视口，横向滚动唯一来源 */
+.web-client-viewport {
+  width: 100vw;
+  height: 100vh;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .client-navigation-shell {

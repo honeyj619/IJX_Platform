@@ -987,7 +987,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       </div>
 
       {/* 右侧当前公文信息 */}
-      <div className="w-80 max-w-[320px] max-lg:w-[300px] flex flex-col bg-gray-50 border-l border-gray-200 h-full">
+      <div className="flex h-full w-80 max-w-[320px] flex-col border-l border-gray-200 bg-gray-50">
         <div className="border-b border-gray-200 bg-white px-4 pb-3 pt-4">
           <div className="mb-3 flex items-center justify-between gap-2 text-theme-700">
             <div className="flex items-center gap-2">

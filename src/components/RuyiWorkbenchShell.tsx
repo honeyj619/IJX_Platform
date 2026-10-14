@@ -99,8 +99,8 @@ export default function RuyiWorkbenchShell({
         </footer>
       </section>
 
-      {/* 右侧栏：桌面 320px / 中等 300px，独立滚动，底部主操作 */}
-      <aside className="flex h-full w-80 max-w-[320px] flex-shrink-0 flex-col border-l border-gray-200 bg-gray-50 max-lg:w-[300px]">
+      {/* 右侧栏：固定 320px（Web Client 最小宽度保证），独立滚动，底部主操作 */}
+      <aside className="flex h-full w-80 max-w-[320px] flex-shrink-0 flex-col border-l border-gray-200 bg-gray-50">
         <div className="border-b border-gray-200 bg-white px-4 pb-3 pt-4">{sidebarHeader}</div>
         <div className="scrollbar-hover min-h-0 flex-1 overflow-y-auto p-4">{sidebarContent}</div>
         <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4">{sidebarFooter}</div>

@@ -42,6 +42,43 @@ function shouldShowMobileView(width: number, height: number): boolean {
   return true; // 普通手机 → 移动模式
 }
 
+// 客户端路由前缀：/web_client 及其会重定向到 web_client 的旧路由
+const CLIENT_ROUTE_PREFIXES = [
+  '/web_client',
+  '/enterprise',
+  '/assistant',
+  '/process',
+  '/ekb',
+  '/profile',
+  '/agent-square',
+  '/ruyi-zone',
+  '/presentation',
+  '/calendar',
+  '/business',
+  '/work-report',
+  '/work-items',
+  '/okr',
+  '/settings',
+];
+
+function getPathWithoutBase(pathname: string): string {
+  const base = import.meta.env.BASE_URL;
+  if (base && base !== '/') {
+    const trimmedBase = base.replace(/\/+$/, '');
+    if (pathname.startsWith(trimmedBase)) {
+      const rest = pathname.slice(trimmedBase.length);
+      return rest.startsWith('/') ? rest : `/${rest}`;
+    }
+  }
+  return pathname;
+}
+
+function isClientRoutePath(pathname: string): boolean {
+  const path = getPathWithoutBase(pathname);
+  if (path === '/') return true;
+  return CLIENT_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
 export default function App() {
   const [isMobile, setIsMobile] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -101,31 +138,36 @@ export default function App() {
   }
 
   const isDownloadPage = window.location.pathname.includes('/download');
+  const isClientPage = isClientRoutePath(window.location.pathname);
 
-  if (isMobile && !isDownloadPage) {
+  // 客户端页面不再显示移动端提示（含 / 及会重定向到 web_client 的旧路由）；
+  // /admin 和 /download 保留原有行为。
+  if (isMobile && !isDownloadPage && !isClientPage) {
     return <MobileDevicePrompt />;
   }
 
   const webClientRoutes = (
-    <Layout>
-      <Routes>
-        <Route index element={<Home />} />
-        <Route path="enterprise" element={<Enterprise />} />
-        <Route path="assistant" element={<Assistant />} />
-        <Route path="process" element={<Process />} />
-        <Route path="ekb" element={<EKB />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="agent-square" element={<AgentSquarePage />} />
-        <Route path="ruyi-zone/*" element={<RuYiZone />} />
-        <Route path="presentation" element={<Navigate to="/web_client/ruyi-zone/presentation" replace />} />
-        <Route path="calendar" element={<Calendar />} />
-        <Route path="business" element={<Business />} />
-        <Route path="work-report" element={<WorkReport />} />
-        <Route path="work-items" element={<Navigate to="/web_client/enterprise" replace />} />
-        <Route path="okr" element={<OkrModule />} />
-        <Route path="settings" element={<SettingsPage />} />
-      </Routes>
-    </Layout>
+    <div className="web-client-viewport">
+      <Layout>
+        <Routes>
+          <Route index element={<Home />} />
+          <Route path="enterprise" element={<Enterprise />} />
+          <Route path="assistant" element={<Assistant />} />
+          <Route path="process" element={<Process />} />
+          <Route path="ekb" element={<EKB />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="agent-square" element={<AgentSquarePage />} />
+          <Route path="ruyi-zone/*" element={<RuYiZone />} />
+          <Route path="presentation" element={<Navigate to="/web_client/ruyi-zone/presentation" replace />} />
+          <Route path="calendar" element={<Calendar />} />
+          <Route path="business" element={<Business />} />
+          <Route path="work-report" element={<WorkReport />} />
+          <Route path="work-items" element={<Navigate to="/web_client/enterprise" replace />} />
+          <Route path="okr" element={<OkrModule />} />
+          <Route path="settings" element={<SettingsPage />} />
+        </Routes>
+      </Layout>
+    </div>
   );
 
   return (

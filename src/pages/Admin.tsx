@@ -13,8 +13,23 @@ import {
 } from 'lucide-react';
 import NavigationConfig from '../components/NavigationConfig';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
-import ContactPicker from '../components/ContactPicker';
+import {
+  USER_GROUP_FEATURE_POOL,
+  createUserGroup,
+  deleteUserGroup,
+  getUserGroups,
+  removeGroupMember,
+  subscribeUserGroups,
+  syncUserGroups,
+  updateUserGroup,
+  appendGroupMembers,
+  type UserGroupMember,
+  type UserGroupRecord,
+  type UserGroupSource,
+} from '../data/userGroups';
+import type { UserGroupScope } from '../data/userGroups';
 import { contactDirectory, contactGroups, findContactByName } from '../data/contactDirectory';
+import ContactPicker, { type ContactSelection } from '../components/ContactPicker';
 import {
   TRUSTED_ROUTE_DICTIONARY_NAME,
   TRUSTED_ROUTE_DICTIONARY_TYPE,
@@ -134,6 +149,7 @@ const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
   'system-nav': { menu: 'system', subMenu: 'system-nav' },
   'system-dictionary': { menu: 'system', subMenu: 'system-dictionary' },
   'user-groups': { menu: 'system', subMenu: 'system-user-groups' },
+  'app-management': { menu: 'system', subMenu: 'app-management' },
 };
 
 const adminTheme = {
@@ -661,48 +677,6 @@ function ReportTemplateManagement() {
 
 
 
-type UserGroupSource = 'manual' | 'sync';
-type UserGroupScope = '全员' | '指定部门' | '指定人员';
-
-type UserGroupMember = {
-  name: string;
-  phone: string;
-  userId: string;
-  department: string;
-  position: string;
-  /** 条目类型：人员 / 部门 */
-  kind?: 'person' | 'department';
-  /** 域账号（人员必填，部门为 -） */
-  domainAccount?: string;
-  /** 员工编号（人员必填，部门为 -） */
-  employeeNo?: string;
-};
-
-type UserGroupRecord = {
-  id: string;
-  name: string;
-  source: UserGroupSource;
-  description: string;
-  scope?: UserGroupScope;
-  scopeTarget?: string;
-  /** 适用功能（如：项目工作台、流程审批） */
-  features?: string;
-  /** 适用成员范围（全员/指定部门/指定人员的展示值） */
-  memberScope?: string;
-  updatedAt: string;
-  owner: string;
-  members: UserGroupMember[];
-};
-
-/** 用户组可授权功能池（适用功能可选值，scope 为默认适用范围） */
-const USER_GROUP_FEATURE_POOL = [
-  { name: '工作门户 · 协同功能', description: '门户待办、跨部门协同与常用应用入口', scope: '全员' },
-  { name: '工作汇报', description: '项目周报/汇报的生成与分发', scope: '信息管理部' },
-  { name: '流程审批', description: '发起与审批 OA 流程', scope: '信息管理部' },
-  { name: '知识库', description: '知识文档的阅读与贡献权限', scope: '全员' },
-  { name: 'AI 公文创作', description: 'AI 辅助公文写作灰度', scope: '信息管理部 / 数字化中心' },
-  { name: '如意空间', description: '如意助手与智能体工作台', scope: '全员' },
-];
 
 const initialUserGroups: UserGroupRecord[] = [
   {
@@ -792,7 +766,8 @@ const initialUserGroups: UserGroupRecord[] = [
 ];
 
 function UserGroupManagement() {
-  const [groups, setGroups] = useState<UserGroupRecord[]>(initialUserGroups);
+  const [groups, setGroups] = useState<UserGroupRecord[]>(getUserGroups);
+  useEffect(() => subscribeUserGroups(() => setGroups(getUserGroups())), []);
   const [selectedGroupId, setSelectedGroupId] = useState(initialUserGroups[0].id);
   const [keyword, setKeyword] = useState('');
   const [syncOpen, setSyncOpen] = useState(false);
@@ -1792,7 +1767,11 @@ function TrustedRouteDictionaryManagement() {
 
 type AppPortalTab = 'App员工工作台' | 'App外部人员工作台' | 'PC工作台';
 type ManagedAppSource = '系统内置' | '管理员创建' | '流程审批' | '业务系统';
-type ManagedAppRange = '全员可用' | '指定部门' | '指定用户组' | '指定人员';
+type ManagedAppRange = '全员可用' | '部分成员';
+
+/** 旧范围值 → 新范围值迁移（演示数据统一） */
+const LEGACY_RANGE_MAP: Record<string, ManagedAppRange> = { '指定部门': '部分成员', '指定用户组': '部分成员', '指定人员': '部分成员' };
+const normalizeAppRange = (range: string): ManagedAppRange => LEGACY_RANGE_MAP[range] ?? (range === '部分成员' ? '部分成员' : '全员可用');
 type ManagedAppStatus = '启用' | '停用';
 type ManagedAppOpenMode = 'auto' | 'browser' | 'native';
 type AppEditorMode = 'create' | 'config';
@@ -1820,11 +1799,13 @@ type ManagedAppRecord = {
   openMode?: ManagedAppOpenMode;
   iconTone: string;
   sort: number;
+  /** 可用范围目标（部分成员时的人员/部门/用户组） */
+  rangeTargets?: ContactSelection[];
 };
 
 const appPortalTabs: AppPortalTab[] = ['App员工工作台', 'App外部人员工作台', 'PC工作台'];
 const appCategories = ['全部', '协同办公', '综合服务', '员工服务', '数据服务', 'AI助手', '数据卡片', '应用卡片', '常用功能', '财务系统', '人力系统', '综合系统', '运行系统', '营销系统'];
-const appRanges: Array<'全部' | ManagedAppRange> = ['全部', '全员可用', '指定部门', '指定用户组', '指定人员'];
+const appRanges: Array<'全部' | ManagedAppRange> = ['全部', '全员可用', '部分成员'];
 const appOpenModeLabels: Record<ManagedAppOpenMode, string> = {
   auto: '自动判断',
   browser: '电脑浏览器打开',
@@ -1871,7 +1852,7 @@ const initialManagedApps: ManagedAppRecord[] = [
     source: '流程审批',
     developerCompany: '吉祥航空信息管理部',
     developerEmail: 'it-service@juneyaoair.com',
-    range: '指定部门',
+    range: '部分成员',
     status: '启用',
     groupId: 'app-employee',
     entryUrl: '/web_client/business',
@@ -2415,7 +2396,8 @@ const initialManagedApps: ManagedAppRecord[] = [
     source: '系统内置',
     developerCompany: '吉祥航空数据平台组',
     developerEmail: 'data@juneyaoair.com',
-    range: '指定部门',
+    range: '部分成员',
+    rangeTargets: [{ id: 'dept:信息管理部', kind: 'department', name: '信息管理部', note: undefined }],
     status: '停用',
     groupId: 'app-data',
     entryUrl: '/web_client/work-report',
@@ -2431,7 +2413,8 @@ const initialManagedApps: ManagedAppRecord[] = [
     source: '流程审批',
     developerCompany: '吉祥航空客服中心',
     developerEmail: 'service@juneyaoair.com',
-    range: '指定用户组',
+    range: '部分成员',
+    rangeTargets: [{ id: 'group:middle-layer', kind: 'user-group', name: '中坚层', note: '系统同步' }],
     status: '启用',
     groupId: 'external-service',
     entryUrl: '/web_client/business',
@@ -2473,6 +2456,11 @@ function ApplicationManagement() {
   const [appKeyword, setAppKeyword] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('全部');
   const [rangeFilter, setRangeFilter] = useState<'全部' | ManagedAppRange>('全部');
+  // 可用范围目标草稿（部分成员）
+  const [rangeTargetsDraft, setRangeTargetsDraft] = useState<ContactSelection[]>([]);
+  // 用户组实时数据（引用失效检测）
+  const [userGroupsLive, setUserGroupsLive] = useState<UserGroupRecord[]>(getUserGroups);
+  useEffect(() => subscribeUserGroups(() => setUserGroupsLive(getUserGroups())), []);
   const [sortingGroups, setSortingGroups] = useState(false);
   const [toast, setToast] = useState('');
   const [editorMode, setEditorMode] = useState<AppEditorMode | null>(null);
@@ -2491,7 +2479,7 @@ function ApplicationManagement() {
   const filteredApps = apps
     .filter(app => !selectedGroup || app.groupId === selectedGroup.id)
     .filter(app => categoryFilter === '全部' || app.category === categoryFilter)
-    .filter(app => rangeFilter === '全部' || app.range === rangeFilter)
+    .filter(app => rangeFilter === '全部' || normalizeAppRange(app.range) === rangeFilter)
     .filter(app => {
       const keyword = appKeyword.trim().toLowerCase();
       return !keyword || app.name.toLowerCase().includes(keyword) || app.appId.toLowerCase().includes(keyword);
@@ -2520,11 +2508,13 @@ function ApplicationManagement() {
       groupId: selectedGroup?.id || portalGroups[0]?.id || 'app-service',
       sort: apps.length + 1,
     });
+    setRangeTargetsDraft([]);
     setEditorMode('create');
   };
 
   const openConfigApp = (app: ManagedAppRecord) => {
-    setAppDraft({ ...app, openMode: resolveManagedAppOpenMode(app) });
+    setAppDraft({ ...app, openMode: resolveManagedAppOpenMode(app), range: normalizeAppRange(app.range) });
+    setRangeTargetsDraft(app.rangeTargets || []);
     setEditorMode('config');
   };
 
@@ -2533,12 +2523,19 @@ function ApplicationManagement() {
       showToast('请输入应用名称');
       return;
     }
+    const normalizedRange = normalizeAppRange(appDraft.range);
+    if (normalizedRange === '部分成员') {
+      if (rangeTargetsDraft.length === 0) { showToast('请选择可用范围（至少一项）'); return; }
+      const invalid = rangeTargetsDraft.filter(item => item.kind === 'user-group' && !userGroupsLive.some(group => group.id === item.id.replace(/^group:/, '')));
+      if (invalid.length > 0) { showToast('存在已失效的用户组，请移除或重新选择'); return; }
+    }
+    const nextRangeTargets = normalizedRange === '部分成员' ? rangeTargetsDraft : [];
     if (editorMode === 'create') {
-      setApps(current => [{ ...appDraft, name: appDraft.name.trim() }, ...current]);
+      setApps(current => [{ ...appDraft, name: appDraft.name.trim(), range: normalizedRange, rangeTargets: nextRangeTargets }, ...current]);
       showToast('应用已创建');
     }
     if (editorMode === 'config') {
-      setApps(current => current.map(app => app.id === appDraft.id ? { ...appDraft, name: appDraft.name.trim() } : app));
+      setApps(current => current.map(app => app.id === appDraft.id ? { ...appDraft, name: appDraft.name.trim(), range: normalizedRange, rangeTargets: nextRangeTargets } : app));
       showToast('应用配置已保存');
     }
     setEditorMode(null);
@@ -2768,7 +2765,7 @@ function ApplicationManagement() {
                       <span className={`rounded px-2.5 py-1 text-xs font-medium ${
                         app.range === '全员可用' ? 'bg-blue-50 text-[#2f75b5]' : 'bg-amber-50 text-amber-700'
                       }`}>
-                        {app.range}
+                        {normalizeAppRange(app.range)}
                       </span>
                     </td>
                     <td className="px-4 py-4">
@@ -2864,11 +2861,39 @@ function ApplicationManagement() {
                     <option value="停用">停用</option>
                   </select>
                 </label>
-                <label className="block text-sm text-gray-700">可用范围
-                  <select value={appDraft.range} onChange={(event) => setAppDraft(prev => ({ ...prev, range: event.target.value as ManagedAppRange }))} className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
-                    {appRanges.filter(range => range !== '全部').map(range => <option key={range} value={range}>{range}</option>)}
+                <div className="text-sm text-gray-700">
+                  <span>可用范围</span>
+                  <select
+                    value={normalizeAppRange(appDraft.range) === '部分成员' ? '部分成员' : '全员可用'}
+                    onChange={(event) => {
+                      const value = event.target.value as ManagedAppRange;
+                      setAppDraft(prev => ({ ...prev, range: value }));
+                      if (value === '全员可用') setRangeTargetsDraft([]);
+                    }}
+                    className="mt-2 h-10 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"
+                  >
+                    <option value="全员可用">全员可用</option>
+                    <option value="部分成员">部分成员</option>
                   </select>
-                </label>
+                  {normalizeAppRange(appDraft.range) === '部分成员' && (
+                    <div className="mt-2">
+                      <ContactPicker
+                        selections={rangeTargetsDraft}
+                        onSelectionsChange={setRangeTargetsDraft}
+                        tabs={['directory', 'user-groups']}
+                        allowedKinds={['person', 'department', 'user-group']}
+                        defaultTab="directory"
+                        placeholder="点击选择人员、部门或用户组"
+                      />
+                      {(() => {
+                        const invalidGroups = rangeTargetsDraft.filter(item => item.kind === 'user-group' && !userGroupsLive.some(group => group.id === item.id.replace(/^group:/, '')));
+                        return invalidGroups.length > 0 ? (
+                          <p className="mt-1.5 text-xs text-red-600">用户组「{invalidGroups.map(item => item.name).join('、')}」已被删除（已失效），请移除或重新选择后再保存。</p>
+                        ) : null;
+                      })()}
+                    </div>
+                  )}
+                </div>
               </div>
               <label className="mt-4 block text-sm text-gray-700">描述
                 <textarea value={appDraft.description} onChange={(event) => setAppDraft(prev => ({ ...prev, description: event.target.value }))} rows={3} className="mt-2 w-full resize-none rounded border border-gray-300 px-3 py-2 outline-none focus:border-[#2f75b5]" />

@@ -141,7 +141,7 @@ export default function Enterprise() {
       ) : (
         <div className="relative">
           {/* Banner 轮播区域 */}
-          <div className="relative w-full h-[320px] md:h-[380px] lg:h-[420px] overflow-hidden">
+          <div className="relative h-[420px] w-full overflow-hidden">
             {/* 背景渐变 */}
             <div className="absolute inset-0 bg-gradient-to-br from-pink-200/60 via-purple-200/50 to-pink-300/60" />
             <div className="absolute inset-0 bg-gradient-to-r from-pink-100/40 via-transparent to-purple-100/40" />
@@ -159,7 +159,7 @@ export default function Enterprise() {
               <img 
                 src="https://api.dicebear.com/7.x/shapes/svg?seed=airplane&backgroundColor=transparent"
                 alt="飞机"
-                className="w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 object-contain opacity-80"
+                className="h-64 w-64 object-contain opacity-80"
               />
             </div>
             
@@ -174,15 +174,15 @@ export default function Enterprise() {
             {/* Banner 内容 */}
             <div className="absolute inset-0 flex items-center justify-center z-10">
               <div className="text-center">
-                <div className="text-7xl md:text-8xl lg:text-9xl font-bold text-pink-800/80 tracking-wider mb-2">
+                <div className="mb-2 text-9xl font-bold tracking-wider text-pink-800/80">
                   2025
                 </div>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-pink-900/90 tracking-widest mb-4">
+                <h1 className="mb-4 text-5xl font-bold tracking-widest text-pink-900/90">
                   可持续发展报告
                 </h1>
                 <div className="flex items-center justify-center gap-4">
                   <div className="h-px w-16 bg-pink-400/60" />
-                  <p className="text-lg md:text-xl text-pink-800/80 font-medium">
+                  <p className="text-xl font-medium text-pink-800/80">
                     上海吉祥航空股份有限公司
                   </p>
                   <div className="h-px w-16 bg-pink-400/60" />
@@ -265,9 +265,9 @@ export default function Enterprise() {
             </div>
 
             {/* 文件中心和我的日程 */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-3 gap-6">
               {/* 文件中心 */}
-              <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden">
+              <div className="col-span-2 overflow-hidden rounded-xl bg-white shadow-sm dark:bg-gray-800">
                 <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">

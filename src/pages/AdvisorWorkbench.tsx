@@ -804,7 +804,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   const renderEmptyState = () => (
     <div className="relative h-full">
       {/* 周报骨架预览：让"产物"先行，状态说明直接铺在页面上 */}
-      <div className="h-full overflow-y-auto px-5 py-6 md:px-8">
+      <div className="h-full overflow-y-auto px-8 py-6">
         <div className="pointer-events-none max-w-4xl">
           <ProjectWeeklyReport data={null} filled={false} litIndex={-1} description="" />
         </div>
@@ -822,7 +822,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   const renderConfirming = () => (
     <div className="relative h-full">
       {/* 需求确认态：主区展示实时周报预览（带待生成水印），底部提示条 */}
-      <div className="h-full overflow-y-auto px-5 py-6 md:px-8">
+      <div className="h-full overflow-y-auto px-8 py-6">
         <div className="relative max-w-4xl">
           <ProjectWeeklyReport data={null} filled={false} litIndex={0} description="" />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -852,7 +852,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   const renderGenerating = () => (
     <div className="relative h-full">
       {/* 生成中：周报骨架逐区块点亮，步骤进度在右侧工作台面板（同 AI PPT） */}
-      <div className="h-full overflow-y-auto px-5 py-6 md:px-8">
+      <div className="h-full overflow-y-auto px-8 py-6">
         <div className="pointer-events-none max-w-4xl">
           <ProjectWeeklyReport data={null} filled={false} litIndex={Math.min(generationStep + 2, sectionCount)} description="" />
         </div>
@@ -883,7 +883,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       const overall = failedChannels.length === 0 ? 'success' : failedChannels.length === Object.keys(channelGroups).length ? 'fail' : 'partial';
       const sendTime = receipts[0]?.time || '';
       return (
-        <div className="h-full overflow-y-auto px-5 py-6 md:px-8">
+        <div className="h-full overflow-y-auto px-8 py-6">
           <div className="mx-auto max-w-3xl space-y-4">
             <section className={`rounded-xl border px-6 py-6 text-center shadow-sm ${overall === 'success' ? 'border-gray-200 bg-white' : 'border-red-100 bg-red-50/40'}`}>
               <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${overall === 'success' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
@@ -939,7 +939,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
 
     return (
       <div className="flex h-full flex-col">
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 md:px-8">
+        <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
           <div className="mx-auto max-w-4xl pb-6">
             {/* 多项目切换 */}
             {selectedProjects.length > 1 && (
@@ -1057,14 +1057,14 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
         <div className="flex items-center gap-2"><span className="rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">洞察已生成</span><span className="text-xs text-gray-400">{period} · {reportType}</span></div>
         <h2 className="mt-2 text-xl font-bold text-gray-950">工作进展与风险洞察</h2>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-4 gap-3">
         {[['进行中任务', '12', '3项本周到期'], ['平均进度', '68%', '较上周 +9%'], ['风险事项', '3', '1项需要协调'], ['未提交汇报', '2', '已识别责任人']].map(([label, value, detail], index) => (
           <div key={label} className="border border-gray-200 bg-white px-4 py-4">
             <p className="text-xs font-semibold text-gray-500">{label}</p><p className={`mt-2 text-2xl font-bold ${index === 2 || index === 3 ? 'text-amber-700' : 'text-gray-950'}`}>{value}</p><p className="mt-1 text-xs text-gray-400">{detail}</p>
           </div>
         ))}
       </div>
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)_320px] gap-4">
         <section className="border border-gray-200 bg-white">
           <div className="border-b border-gray-100 px-5 py-4"><h3 className="font-bold text-gray-950">重点结论</h3></div>
           <div className="space-y-5 px-5 py-5 text-sm leading-7 text-gray-700">
@@ -1142,7 +1142,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     return (
       <div className="relative h-full">
         {/* 背景保留周报预览（只读） */}
-        <div className="h-full overflow-y-auto px-5 py-6 opacity-60 md:px-8">
+        <div className="h-full overflow-y-auto px-8 py-6 opacity-60">
           <div className="mx-auto max-w-4xl">
             <ProjectWeeklyReport data={weeklyData} filled description={overallDescription} readOnly />
           </div>
@@ -1729,7 +1729,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
         </button>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
         <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hover">{renderMain()}</div>
           {/* 底部状态条（对齐 PPT 工作台） */}
@@ -1749,7 +1749,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
             </div>
           </footer>
         </main>
-        <aside className="flex w-full shrink-0 flex-col border-t border-gray-200 bg-white lg:h-full lg:w-[320px] lg:border-l lg:border-t-0">
+        <aside className="flex w-[320px] shrink-0 flex-col border-l border-gray-200 bg-white h-full">
           <div className="flex h-12 shrink-0 items-center border-b border-gray-100 px-4"><span className="text-sm font-semibold text-gray-900">当前参谋需求</span></div>
           <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hover">{renderCurrentSidebar()}</div>
           <footer className="shrink-0 border-t border-gray-100 bg-white p-3">

@@ -17,6 +17,9 @@ export const SIDEBAR = {
   MAX_DRAG_WIDTH: 320,
 } as const;
 
+/** Web 客户端最小宽度 — 低于该宽度不再重排，由最外层 viewport 横向滚动 */
+export const WEB_CLIENT_MIN_WIDTH = 1024;
+
 /** 响应式断点（用于 JS 条件判断） */
 export const BREAKPOINTS = {
   /** 移动端门禁 — 低于此宽度显示 MobileDevicePrompt */
