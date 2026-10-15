@@ -104,6 +104,13 @@ const redirectOnlyPaths = new Set(['/presentation', '/work-items']);
 
 const WEB_CLIENT_BASE = '/web_client';
 const clientPath = (path: string) => path === '/' ? WEB_CLIENT_BASE : `${WEB_CLIENT_BASE}${path}`;
+/** 页面路径标准化：去掉非根路径末尾的 /，使 /web_client 与 /web_client/ 等价 */
+const normalizePagePath = (path: string) => {
+  if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
+  return path;
+};
+const isMainNavPath = (path: string, navPathList: string[]) => navPathList.some(target => normalizePagePath(path) === normalizePagePath(target));
+
 const stripClientBase = (path: string) => {
   if (path === WEB_CLIENT_BASE) return '/';
   return path.startsWith(`${WEB_CLIENT_BASE}/`) ? path.slice(WEB_CLIENT_BASE.length) : path;
@@ -227,14 +234,21 @@ export default function Layout({ children }: LayoutProps) {
     openPortalLink({ url, label, mode: 'auto', navigate });
   };
   
+  // 清理会话内已误加入的主导航页面（历史会话/旧逻辑残留）
   useEffect(() => {
-    const currentPath = location.pathname;
+    const stale = pages.filter(page => isMainNavPath(page.path, navPaths));
+    if (stale.length > 0) stale.forEach(page => removePage(page.path));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const currentPath = normalizePagePath(location.pathname);
     const clientRelativePath = stripClientBase(currentPath);
     // 重定向兼容路径不记录，避免跳转中间态显示为原始路径
     if (redirectOnlyPaths.has(clientRelativePath)) return;
     const pageTitle = pageTitles[clientRelativePath] || currentPath;
     
-    if (pageTitle && !navPaths.includes(currentPath)) {
+    if (pageTitle && !isMainNavPath(currentPath, navPaths)) {
       addPage({ title: pageTitle, path: currentPath });
     }
   }, [location.pathname, addPage, navPaths]);
@@ -243,7 +257,7 @@ export default function Layout({ children }: LayoutProps) {
     e.stopPropagation();
     removePage(path);
     
-    if (location.pathname === path) {
+    if (normalizePagePath(location.pathname) === normalizePagePath(path)) {
       navigate(WEB_CLIENT_BASE);
     }
   };
@@ -295,7 +309,7 @@ export default function Layout({ children }: LayoutProps) {
                 icon={item.icon}
                 label={item.label}
                 to={item.to}
-                active={!('external' in item && item.external) && location.pathname === item.to}
+                active={!('external' in item && item.external) && normalizePagePath(location.pathname) === normalizePagePath(item.to)}
                 collapsed={!showNavigation}
                 badge={item.badge}
                 badgeTitle={item.badgeTitle}
@@ -312,11 +326,11 @@ export default function Layout({ children }: LayoutProps) {
               <div className="h-px bg-[var(--ui-border)] my-4"></div>
               <div className="flex items-center justify-between text-sm font-semibold text-[var(--ui-text-title)] mb-2">
                 <span>打开的页面</span>
-                {pages.filter(page => !navPaths.includes(page.path)).length > 0 && (
+                {pages.filter(page => !isMainNavPath(page.path, navPaths)).length > 0 && (
                   <button
                     onClick={() => {
                       removeAllPages();
-                      if (!navPaths.includes(location.pathname)) {
+                      if (!isMainNavPath(location.pathname, navPaths)) {
                         navigate(WEB_CLIENT_BASE);
                       }
                     }}
@@ -328,7 +342,7 @@ export default function Layout({ children }: LayoutProps) {
                 )}
               </div>
               <div className="space-y-1">
-                {pages.filter(page => !navPaths.includes(page.path)).length === 0 ? (
+                {pages.filter(page => !isMainNavPath(page.path, navPaths)).length === 0 ? (
                   <div className="px-3 py-3 rounded-lg text-[var(--ui-text-weak)] text-sm">
                     暂无打开的页面
                   </div>
@@ -366,13 +380,13 @@ export default function Layout({ children }: LayoutProps) {
           {!showNavigation && (
             <div className="flex flex-col items-center mt-4">
               <div className="h-px bg-[var(--ui-border)] w-8 mb-4"></div>
-              {pages.filter(page => !navPaths.includes(page.path)).length > 0 ? (
+              {pages.filter(page => !isMainNavPath(page.path, navPaths)).length > 0 ? (
                 <div
                   className="relative flex flex-col items-center py-1"
-                  title={`${pages.filter(page => !navPaths.includes(page.path)).length} 个打开的页面`}
+                  title={`${pages.filter(page => !isMainNavPath(page.path, navPaths)).length} 个打开的页面`}
                 >
                   <div className="w-10 h-10 rounded-lg bg-white/70 flex items-center justify-center text-sm font-semibold text-[var(--ui-text-body)]">
-                    {pages.filter(page => !navPaths.includes(page.path)).length}
+                    {pages.filter(page => !isMainNavPath(page.path, navPaths)).length}
                   </div>
                 </div>
               ) : null}
