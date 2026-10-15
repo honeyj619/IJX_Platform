@@ -5,6 +5,13 @@ import { Search, GripVertical, ChevronLeft } from 'lucide-react';
 import { Ticket, WalletCards, Plane, BadgeCheck, CheckSquare, ListTodo, BarChart3, UserPlus, Link2, Save, CircleDot, CircleCheckBig } from 'lucide-react';
 import { Landmark, Brain, Receipt, FileSignature, Calculator, Workflow, Users, LayoutDashboard, GraduationCap, Award, ClipboardCheck, Database, FileCheck, FolderKanban, Server, LineChart, Blocks, PieChart, Gauge, HardDrive, ShieldCheck, Truck, Hexagon, Shirt, Car, MessageSquare, Wrench, Fuel, BookMarked, Network, AlertTriangle, IterationCw, Shield, Clock, Zap, Volume2, Crown, Package, PackagePlus, Tag, Wallet, BarChart2, Activity, Globe, Smartphone, ShoppingBag, GitBranch, Phone, UserCheck, Repeat, Star, Briefcase, Sun, BookOpen, Paperclip, Send, Smile, AtSign, ImageIcon } from 'lucide-react';
 import { MAIN_USER_NAME, getDemoPerson, getPersonAvatar } from '../data/people';
+import {
+  getPcCards,
+  subscribePcCards,
+  canUserAccessCard,
+  PC_CARD_TEMPLATES,
+  type PcWorkbenchCardConfig,
+} from '../data/pcWorkbenchCards';
 import { workItems, WorkItem, WorkItemTask, WorkItemType } from '../data/workItems';
 import { buildAdvisorUrl } from '../data/advisor';
 import { openPortalLink, type LinkOpenMode } from '../utils/linkOpening';
@@ -687,23 +694,44 @@ export default function Personal_Enterprise() {
   const navigate = useNavigate();
   const location = useLocation();
   const handledAdvisorResult = useRef<string | null>(null);
-  // 卡片配置状态
-  const [cards, setCards] = useState<CardConfig[]>(() => {
+  // 用户偏好（仅 visible/order 持久化；icon 等 JSX 字段由 initialCards 提供）
+  const readCardPreference = (): Array<{ id: string; visible: boolean; order: number }> => {
     const saved = localStorage.getItem('dashboardCards');
-    if (!saved) return initialCards;
+    if (!saved) return [];
     try {
-      const savedCards = JSON.parse(saved) as CardConfig[];
-      if (!Array.isArray(savedCards)) return initialCards;
-      // 以 initialCards 为基（icon 等 JSX 字段不可序列化），仅回填可持久化字段
-      const mergedCards = initialCards.map(card => {
-        const savedCard = savedCards.find(entry => entry?.id === card.id);
-        return savedCard ? { ...card, visible: savedCard.visible ?? card.visible, order: typeof savedCard.order === 'number' ? savedCard.order : card.order } : card;
-      });
-      return mergedCards.sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+      const savedCards = JSON.parse(saved);
+      if (!Array.isArray(savedCards)) return [];
+      return savedCards
+        .filter((entry): entry is { id: string; visible?: boolean; order?: number } => Boolean(entry?.id))
+        .map(entry => ({ id: entry.id, visible: entry.visible ?? true, order: typeof entry.order === 'number' ? entry.order : 99 }));
     } catch {
-      return initialCards;
+      return [];
     }
-  });
+  };
+
+  // 卡片目录（后台配置）→ 过滤停用/无权限/未注册 → 与个人偏好合并
+  const [pcCardCatalog] = useState<PcWorkbenchCardConfig[]>(getPcCards);
+  useEffect(() => subscribePcCards(() => setCards(buildCardsFromCatalog())), []);
+
+  const buildCardsFromCatalog = (): CardConfig[] => {
+    const preference = readCardPreference();
+    return pcCardCatalog
+      .filter(card => card.enabled && canUserAccessCard(card, MAIN_USER_NAME))
+      .filter(card => PC_CARD_TEMPLATES.some(template => template.componentKey === card.componentKey))
+      .map(card => {
+        const base = initialCards.find(item => item.id === card.componentKey) ?? initialCards[0];
+        const pref = preference.find(item => item.id === card.componentKey);
+        return {
+          ...base,
+          name: card.title || base.name,
+          visible: pref ? pref.visible : card.defaultVisible,
+          order: pref ? pref.order : card.sort - 1,
+        } as CardConfig;
+      })
+      .sort((a, b) => a.order - b.order);
+  };
+
+  const [cards, setCards] = useState<CardConfig[]>(buildCardsFromCatalog);
   
   // 系统选择状态
   const [systems, setSystems] = useState<System[]>(() => {

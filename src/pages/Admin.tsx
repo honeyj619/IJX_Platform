@@ -30,6 +30,8 @@ import {
 import type { UserGroupScope } from '../data/userGroups';
 import { contactDirectory, contactGroups, findContactByName } from '../data/contactDirectory';
 import ContactPicker, { type ContactSelection } from '../components/ContactPicker';
+import DeviceManagement from '../components/admin/DeviceManagement';
+import PcWorkbenchAdmin from '../components/admin/PcWorkbenchAdmin';
 import {
   TRUSTED_ROUTE_DICTIONARY_NAME,
   TRUSTED_ROUTE_DICTIONARY_TYPE,
@@ -58,6 +60,7 @@ const menuItems: MenuItem[] = [
         label: '安全管理',
         icon: <Shield size={16} />,
         children: [
+          { id: 'device-management', label: '设备管理', icon: <Smartphone size={15} /> },
           { id: 'security-log', label: '操作日志', icon: <GitBranch size={15} /> },
           { id: 'security-audit', label: '安全审计', icon: <Shield size={15} /> },
         ]
@@ -150,6 +153,7 @@ const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
   'system-dictionary': { menu: 'system', subMenu: 'system-dictionary' },
   'user-groups': { menu: 'system', subMenu: 'system-user-groups' },
   'app-management': { menu: 'system', subMenu: 'app-management' },
+  'device-management': { menu: 'system', subMenu: 'device-management' },
 };
 
 const adminTheme = {
@@ -2602,6 +2606,11 @@ function ApplicationManagement() {
     }));
   };
 
+  // PC 工作台使用独立配置模型（卡片目录），与 APP 应用管理分离
+  if (activePortal === 'PC工作台') {
+    return <PcWorkbenchAdmin />;
+  }
+
   return (
     <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] pt-3 text-sm text-gray-800">
       {toast && (
@@ -4091,7 +4100,7 @@ export default function Admin() {
             </div>
           ) : (
             /* 根据选中菜单展示对应内容 */
-            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' || activeSubMenu === 'system-dictionary' || activeSubMenu === 'app-management' || activeSubMenu === 'version-list' || activeSubMenu === 'version-release' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
+            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' || activeSubMenu === 'system-dictionary' || activeSubMenu === 'app-management' || activeSubMenu === 'device-management' || activeSubMenu === 'version-list' || activeSubMenu === 'version-release' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
               {/* 面包屑导航 */}
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                 <span className="cursor-pointer hover:text-gray-700" onClick={() => { setActiveMenu(null); setActiveSubMenu(null); }}>首页</span>
@@ -4152,6 +4161,7 @@ export default function Admin() {
                   {activeSubMenu === 'system-external-user' && <ContentPlaceholder title="外部人员管理" icon="👥" />}
                   {activeSubMenu === 'system-user-groups' && <UserGroupManagement />}
                   {activeSubMenu === 'system-nav' && <NavigationConfig />}
+                  {activeSubMenu === 'device-management' && <DeviceManagement />}
                   {activeSubMenu === 'security-log' && <ContentPlaceholder title="操作日志" icon="📋" />}
                   {activeSubMenu === 'security-audit' && <ContentPlaceholder title="安全审计" icon="🔍" />}
                   {activeSubMenu === 'version-list' && <VersionManagement view="list" />}
