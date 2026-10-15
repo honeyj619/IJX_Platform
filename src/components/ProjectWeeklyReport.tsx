@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, PencilLine } from 'lucide-react';
 import { getHealthLightMeta, type ProjectWeeklyData } from '../data/projectWeeklyReport';
 
@@ -11,11 +11,14 @@ interface ProjectWeeklyReportProps {
   /** 生成中点亮的区块序号（0 起），-1 表示全部 */
   litIndex?: number;
   description: string;
-  onDescriptionChange?: (value: string) => void;
-  onNextWeekWorksChange?: (value: string[]) => void;
-  /** 当前草稿是否已保存，用于提示保存后仍可继续编辑 */
-  editState?: 'unsaved' | 'saved';
-  /** 只读模式（发送后查看） */
+  /** 分段编辑-编辑态上抛（编辑中=提交禁用） */
+  onEditingChange?: (editing: boolean) => void;
+  /** 分段编辑-保存描述（字段级） */
+  onDescriptionSave?: (value: string) => void;
+  /** 分段编辑-保存下周计划（字段级） */
+  onNextWeekWorksSave?: (value: string[]) => void;
+  /** 分段编辑：是否封版（已提交），封版不显示编辑按钮 */
+  sealed?: boolean;
   readOnly?: boolean;
 }
 
@@ -86,7 +89,7 @@ const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
 );
 
 /** 项目周报渲染组件（浅色企业风，1:1 对齐 PC 周报模板结构） */
-export default function ProjectWeeklyReport({ data, filled, litIndex = -1, description, onDescriptionChange, onNextWeekWorksChange, editState = 'unsaved', readOnly = false }: ProjectWeeklyReportProps) {
+export default function ProjectWeeklyReport({ data, filled, litIndex = -1, description, onEditingChange, onDescriptionSave, onNextWeekWorksSave, sealed = false, readOnly = false }: ProjectWeeklyReportProps) {
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
   const light = data ? getHealthLightMeta(data.healthLight) : null;
 
@@ -97,6 +100,36 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
   if (!filled || !data || !light) {
     return <ReportSkeleton litIndex={litIndex} />;
   }
+
+  // ===== 分段编辑状态：同时只允许一段处于编辑 =====
+  type SectionKey = 'description' | 'nextWeekWorks';
+  const [editingSection, setEditingSection] = useState<SectionKey | null>(null);
+  const [descDraft, setDescDraft] = useState(description);
+  const [worksDraft, setWorksDraft] = useState<string[]>(data.nextWeekWorks);
+  const sectionEditable = !readOnly && !sealed && Boolean(onDescriptionSave || onNextWeekWorksSave);
+
+  const startEdit = (key: SectionKey) => {
+    if (!sectionEditable) return;
+    if (key === 'description') setDescDraft(description);
+    else setWorksDraft(data.nextWeekWorks.filter(Boolean));
+    setEditingSection(key);
+  };
+  const cancelEdit = () => setEditingSection(null);
+
+  useEffect(() => { onEditingChange?.(editingSection !== null); }, [editingSection, onEditingChange]);
+
+  const saveDescription = () => {
+    const value = descDraft;
+    if (value.trim().length === 0 || value.length > MAX_DESCRIPTION) return;
+    onDescriptionSave?.(value);
+    setEditingSection(null);
+  };
+  const saveWorks = () => {
+    const normalized = worksDraft.map(item => item.trim()).filter(Boolean).slice(0, 30);
+    if (normalized.length === 0) return;
+    onNextWeekWorksSave?.(normalized);
+    setEditingSection(null);
+  };
 
   const toggleStage = (stageId: string) => {
     setCollapsedStages(current => {
@@ -126,20 +159,6 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
           </span>
         </div>
       </section>
-
-      {!readOnly && (
-        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-theme-200 bg-theme-50/70 px-5 py-3">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-theme-700 shadow-sm"><PencilLine size={16} /></span>
-            <div>
-              <p className="text-sm font-bold text-gray-900">当前汇报支持继续编辑</p>
-              <p className="mt-0.5 text-xs leading-5 text-gray-500">
-                {editState === 'saved' ? '汇报已保存，仍可修改总体进展描述和未来1周工作计划；修改后请重新保存。' : '可修改总体进展描述和未来1周工作计划，完成后请保存。'}
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* 项目基本信息 */}
       <section className="rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-sm">
@@ -200,35 +219,43 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
         </div>
       </section>
 
-      {/* 总体进展描述：唯一可编辑字段（BR-05） */}
-      <section className="rounded-xl border border-theme-200 bg-white px-6 py-5 shadow-sm">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900">
-            总体进展描述
-            {!readOnly && (
-              <span className="inline-flex items-center gap-1 rounded bg-theme-50 px-1.5 py-0.5 text-[11px] font-semibold text-theme-700">
-                <PencilLine size={11} />必填 · 可编辑
+      {/* 总体进展描述：分段编辑（默认只读，右上角编辑按钮） */}
+      <section className={`rounded-xl bg-white px-6 py-5 shadow-sm ${sectionEditable ? 'border border-theme-200' : 'border border-gray-200'}`}>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-bold text-gray-900">总体进展描述</h3>
+          <div className="flex items-center gap-2">
+            {editingSection === 'description' ? (
+              <span className={`text-xs font-semibold ${descDraft.length > MAX_DESCRIPTION || descDraft.trim().length === 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                {descDraft.trim().length === 0 ? '必填' : descDraft.length > MAX_DESCRIPTION ? `超限，请删减至 ${MAX_DESCRIPTION} 字以内` : `${descDraft.length} / ${MAX_DESCRIPTION} 字`}
               </span>
+            ) : (
+              <span className="text-xs text-gray-400">{description.length} 字</span>
             )}
-          </h3>
-          <span className={`text-xs font-semibold ${overLimit ? 'text-red-500' : emptyDescription ? 'text-amber-600' : 'text-gray-400'}`}>
-            {overLimit ? `已超出上限，请删减至 ${MAX_DESCRIPTION} 字以内` : `已输入 ${description.length} / ${MAX_DESCRIPTION} 字`}
-          </span>
+            {sectionEditable && editingSection !== 'description' && (
+              <button type="button" onClick={() => startEdit('description')} disabled={editingSection !== null} className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-600 transition-colors hover:border-theme-300 hover:text-theme-700 disabled:cursor-not-allowed disabled:opacity-40">
+                <PencilLine size={12} />编辑
+              </button>
+            )}
+          </div>
         </div>
-        {readOnly ? (
-          <p className="whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 text-sm leading-7 text-gray-700">{description}</p>
+        {editingSection === 'description' ? (
+          <div>
+            <textarea
+              autoFocus
+              value={descDraft}
+              onChange={event => setDescDraft(event.target.value.slice(0, MAX_DESCRIPTION + 50))}
+              placeholder="请描述项目总体进展（必填，最多 1000 字）"
+              className={`min-h-[120px] w-full resize-y rounded-lg border px-4 py-3 text-sm leading-7 outline-none transition-colors ${
+                descDraft.trim().length === 0 ? 'border-red-300 bg-red-50/40' : descDraft.length > MAX_DESCRIPTION ? 'border-red-300 bg-red-50/40' : 'border-theme-300 bg-theme-50/40'
+              } text-gray-700 focus:border-theme-400 focus:bg-white focus:ring-2 focus:ring-theme-100`}
+            />
+            <div className="mt-2 flex items-center justify-end gap-2">
+              <button type="button" onClick={cancelEdit} className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50">取消</button>
+              <button type="button" onClick={saveDescription} disabled={descDraft.trim().length === 0 || descDraft.length > MAX_DESCRIPTION} className="rounded-md bg-theme-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50">保存</button>
+            </div>
+          </div>
         ) : (
-          <textarea
-            value={description}
-            onChange={event => {
-              const next = event.target.value.slice(0, MAX_DESCRIPTION + 50);
-              onDescriptionChange?.(next);
-            }}
-            placeholder="请描述项目总体进展（必填，发送前需填写，最多 1000 字）"
-            className={`min-h-[120px] w-full resize-y rounded-lg border px-4 py-3 text-sm leading-7 outline-none transition-colors ${
-              overLimit ? 'border-red-300 bg-red-50/40' : emptyDescription ? 'border-dashed border-amber-300 bg-amber-50/30' : 'border-dashed border-theme-300 bg-theme-50/40'
-            } text-gray-700 focus:border-theme-400 focus:bg-white focus:ring-2 focus:ring-theme-100`}
-          />
+          <p className="whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 text-sm leading-7 text-gray-700">{description || '（暂无描述）'}</p>
         )}
       </section>
 
@@ -381,14 +408,39 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
             ))}
           </ol>
         </div>
-        <section className={`rounded-xl bg-white px-6 py-5 shadow-sm ${readOnly ? 'border border-gray-200' : 'border-2 border-theme-300 ring-4 ring-theme-50'}`}>
+        <section className={`rounded-xl bg-white px-6 py-5 shadow-sm ${sectionEditable ? 'border border-theme-200' : 'border border-gray-200'}`}>
           <h3 className="mb-3 flex items-center text-sm font-bold text-gray-900">
             未来1周工作计划
             <span className="ml-2 text-xs font-normal text-gray-400">共 {data.nextWeekWorks.filter(Boolean).length} 项</span>
-            {!readOnly && <span className="ml-auto inline-flex items-center gap-1 rounded bg-theme-100 px-2 py-1 text-[11px] font-semibold text-theme-700"><PencilLine size={11} />{editState === 'saved' ? '已保存 · 可继续编辑' : '编辑后需保存'}</span>}
+            {sectionEditable && editingSection !== 'nextWeekWorks' && (
+              <button type="button" onClick={() => startEdit('nextWeekWorks')} disabled={editingSection !== null} className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-600 transition-colors hover:border-theme-300 hover:text-theme-700 disabled:cursor-not-allowed disabled:opacity-40">
+                <PencilLine size={12} />编辑
+              </button>
+            )}
           </h3>
-          {!readOnly && <p className="mb-3 text-xs text-gray-500">直接在下方逐行编辑；按回车新增一项，序号会自动连续生成。</p>}
-          {readOnly ? (
+          {editingSection === 'nextWeekWorks' ? (
+            <div>
+              <p className="mb-2 text-xs text-gray-500">每行一项，换行自动连续编号；保存时清除空行，最多 30 项。</p>
+              <div className="relative overflow-hidden rounded-lg border border-theme-300 bg-theme-50/40 focus-within:border-theme-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-theme-100">
+                <div className="pointer-events-none absolute bottom-3 left-3 top-3 w-5 text-right text-xs leading-7 text-gray-400" aria-hidden="true">
+                  {worksDraft.map((_, index) => <div key={index}>{index + 1}</div>)}
+                </div>
+                <textarea
+                  autoFocus
+                  value={worksDraft.join('\n')}
+                  onChange={event => setWorksDraft(event.target.value.split(/\r?\n/).slice(0, 30))}
+                  rows={Math.max(3, worksDraft.length)}
+                  placeholder="每行填写一项工作计划，换行后自动编号"
+                  className="block w-full resize-none bg-transparent py-3 pl-12 pr-3 text-xs leading-7 text-gray-700 outline-none"
+                  style={{ height: `${Math.max(108, worksDraft.length * 28 + 24)}px` }}
+                />
+              </div>
+              <div className="mt-2 flex items-center justify-end gap-2">
+                <button type="button" onClick={cancelEdit} className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50">取消</button>
+                <button type="button" onClick={saveWorks} disabled={worksDraft.map(item => item.trim()).filter(Boolean).length === 0} className="rounded-md bg-theme-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50">保存</button>
+              </div>
+            </div>
+          ) : (
             <ol className="space-y-2">
               {data.nextWeekWorks.filter(Boolean).map((plan, index) => (
                 <li key={`${index}-${plan}`} className="flex items-center gap-3 rounded-lg bg-gray-50/60 px-3 py-2">
@@ -396,33 +448,13 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
                   <span className="min-w-0 flex-1 text-xs text-gray-700">{plan}</span>
                 </li>
               ))}
+              {data.nextWeekWorks.filter(Boolean).length === 0 && <li className="px-3 py-2 text-xs text-gray-300">（暂无计划）</li>}
             </ol>
-          ) : (
-            <div className="relative overflow-hidden rounded-lg border border-theme-300 bg-theme-50/40 focus-within:border-theme-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-theme-100">
-              <div className="pointer-events-none absolute bottom-3 left-3 top-3 w-5 text-right text-xs leading-7 text-gray-400" aria-hidden="true">
-                {data.nextWeekWorks.map((_, index) => <div key={index}>{index + 1}</div>)}
-              </div>
-              <textarea
-                value={data.nextWeekWorks.join('\n')}
-                onChange={event => onNextWeekWorksChange?.(event.target.value.split(/\r?\n/).slice(0, 30))}
-                onBlur={() => {
-                  const normalized = data.nextWeekWorks.map(item => item.trim()).filter(Boolean);
-                  const next = normalized.length > 0 ? normalized : [''];
-                  const changed = next.length !== data.nextWeekWorks.length
-                    || next.some((item, index) => item !== data.nextWeekWorks[index]);
-                  if (changed) onNextWeekWorksChange?.(next);
-                }}
-                rows={Math.max(3, data.nextWeekWorks.length)}
-                placeholder="每行填写一项工作计划，换行后自动编号"
-                className="block w-full resize-none bg-transparent py-3 pl-12 pr-3 text-xs leading-7 text-gray-700 outline-none"
-                style={{ height: `${Math.max(108, data.nextWeekWorks.length * 28 + 24)}px` }}
-              />
-            </div>
           )}
         </section>
       </section>
 
-      <p className="text-center text-xs text-gray-300">数据来源：禅道项目数据 · 生成于 {new Date().toLocaleDateString('zh-CN')} · 「总体进展描述」与「未来1周工作计划」可编辑</p>
+      <p className="text-center text-xs text-gray-300">数据来源：禅道项目数据 · 生成于 {new Date().toLocaleDateString('zh-CN')} · 「总体进展描述」与「未来1周工作计划」支持分段编辑</p>
     </div>
   );
 }

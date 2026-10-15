@@ -403,6 +403,61 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     };
   };
 
+  /** 分段编辑-保存描述：一次性更新预览/结构化数据/只读 HTML/记录/哈希（多项目仅覆盖当前选中项目） */
+  const saveFieldDescription = (value: string) => {
+    if (!weeklyData) return;
+    if (isCurrentReportSealed) { showToast('该周期汇报已提交封版，不能覆盖'); return; }
+    if (value.trim().length === 0 || value.length > 1000) { showToast('请检查总体进展描述（必填，最多 1000 字）'); return; }
+    const nextData = { ...weeklyData, overallDescription: value };
+    setOverallDescription(value);
+    setWeeklyData(nextData);
+    upsertFieldSavedRecords(nextData);
+  };
+
+  /** 分段编辑-保存未来1周工作计划 */
+  const saveFieldNextWorks = (value: string[]) => {
+    if (!weeklyData) return;
+    if (isCurrentReportSealed) { showToast('该周期汇报已提交封版，不能覆盖'); return; }
+    const nextData = { ...weeklyData, nextWeekWorks: value };
+    setWeeklyData(nextData);
+    upsertFieldSavedRecords(nextData);
+  };
+
+  /** 按最新周报数据重建记录（HTML 整体重生成，不拼接），覆盖同业务键记录 */
+  const upsertFieldSavedRecords = (nextData: ProjectWeeklyData) => {
+    const now = formatReportRecordTime();
+    const project = projectOptions.find(option => option.id === nextData.projectId);
+    const reportKey = createReportBusinessKey({ sender: MAIN_USER_NAME, reportType: '项目汇报', period, projectId: nextData.projectId, projectName: nextData.projectName });
+    const existing = savedReports.find(record => record.reportKey === reportKey);
+    const projectItem = workItems.find(item => item.id === nextData.projectId);
+    const record: SavedReportRecord = {
+      id: existing?.id || createSavedReportId(),
+      reportKey,
+      reportType: '项目汇报',
+      title: `${nextData.projectName}项目汇报`,
+      sender: MAIN_USER_NAME,
+      savedAt: now,
+      period,
+      projectId: nextData.projectId,
+      projectCode: project?.code,
+      projectName: nextData.projectName,
+      projectOwner: projectItem?.owner,
+      projectMembers: projectItem?.members || [],
+      reportTo: dispatch.recipients,
+      copyTo: dispatch.cc,
+      sourceLabels: selectedDataSourceLabels(),
+      contentHash: hashReportContent(nextData),
+      htmlContent: renderToStaticMarkup(<ProjectWeeklyReport data={nextData} filled description={nextData.overallDescription} readOnly />),
+      weeklyData: nextData,
+    };
+    upsertSavedReportRecords([record]);
+    // 同步保存哈希：若当前仅该项目（或多项目场景），按最新内容重算
+    const hashes = selectedProjects.map(item => item.id === nextData.projectId ? hashReportContent(nextData) : hashReportContent(buildCurrentProjectData(item)));
+    const nextHash = hashes.length === 1 ? hashes[0] : hashReportContent(hashes);
+    setSavedContentHash(nextHash);
+    showToast('内容已保存');
+  };
+
   const currentReportKeys = mode === 'report' && reportKind === 'project'
     ? selectedProjects.map(project => createReportBusinessKey({
         sender: MAIN_USER_NAME,
@@ -423,6 +478,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
         })()
       : hashReportContent(activeDraft);
   const hasUnsavedChanges = Boolean(currentContentHash) && savedContentHash !== currentContentHash;
+  const [fieldEditing, setFieldEditing] = useState(false);
   const isCurrentReportSealed = currentReportKeys.length > 0 && currentReportKeys.some(reportKey => (
     sendRecords.some(record => (record.reportKey || createReportBusinessKey(record)) === reportKey)
   ));
@@ -962,21 +1018,15 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               </section>
             )}
 
-            {/* 完整周报预览：总体进展描述与未来1周工作计划可编辑（FR-05） */}
+            {/* 完整周报预览：分段编辑（FR-05）——仅当前选中项目字段级保存 */}
             <ProjectWeeklyReport
               data={weeklyData}
               filled
               description={overallDescription}
-              readOnly={isCurrentReportSealed}
-              editState={savedContentHash && !hasUnsavedChanges ? 'saved' : 'unsaved'}
-              onDescriptionChange={value => {
-                setOverallDescription(value);
-                setSavedContentHash('');
-              }}
-              onNextWeekWorksChange={value => {
-                setWeeklyData(current => current ? { ...current, nextWeekWorks: value } : current);
-                setSavedContentHash('');
-              }}
+              sealed={isCurrentReportSealed}
+              onEditingChange={setFieldEditing}
+              onDescriptionSave={saveFieldDescription}
+              onNextWeekWorksSave={saveFieldNextWorks}
             />
           </div>
         </div>
@@ -1736,7 +1786,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           <footer className="grid shrink-0 grid-cols-3 items-center gap-3 border-t border-gray-200 bg-white px-4 py-2">
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
               {stage === 'generating' || stage === 'sending' ? <Loader2 size={12} className="animate-spin text-theme-600" /> : <CheckCircle2 size={12} className="text-emerald-500" />}
-              {stage === 'generating' ? '生成中…' : stage === 'sending' ? '发送中…' : stage === 'submitted' ? '已提交' : mode === 'report' && stage === 'draft' ? (hasUnsavedChanges ? '有未保存内容' : '已保存') : '已就绪'}
+              {stage === 'generating' ? '生成中…' : stage === 'sending' ? '发送中…' : stage === 'submitted' ? '已提交' : mode === 'report' && stage === 'draft' ? (fieldEditing ? '编辑中…' : hasUnsavedChanges ? '有未保存内容' : '已保存') : '已就绪'}
             </div>
             <div className="truncate text-center text-[11px] text-gray-400">内容AI辅助生成，请谨慎识别</div>
             <div className="flex items-center justify-end gap-2 text-xs text-gray-500">
@@ -1762,13 +1812,13 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               </div>
             ) : stage === 'draft' && mode === 'report' && reportKind === 'project' ? (
               <div className="space-y-2">
-                <p className="text-center text-[11px] leading-4 text-gray-400">{isCurrentReportSealed ? '该周期汇报已提交封版' : weeklyData && overallDescription.trim().length === 0 ? '「总体进展描述」为必填项' : weeklyData && overallDescription.length > 1000 ? '进展描述超出 1000 字上限' : hasUnsavedChanges ? '请先保存当前汇报，保存后才可提交' : '内容已保存，可以提交'}</p>
+                <p className="text-center text-[11px] leading-4 text-gray-400">{isCurrentReportSealed ? '该周期汇报已提交封版' : weeklyData && overallDescription.trim().length === 0 ? '「总体进展描述」为必填项' : weeklyData && overallDescription.length > 1000 ? '进展描述超出 1000 字上限' : hasUnsavedChanges ? '字段编辑中，完成后可提交' : '内容已保存，可以提交'}</p>
                 <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={saveCurrentReports} disabled={isCurrentReportSealed || !hasUnsavedChanges || !weeklyData || overallDescription.trim().length === 0 || overallDescription.length > 1000} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-white px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"><Save size={15} />保存</button>
-                  <button type="button" onClick={() => setStage('dispatching')} disabled={isCurrentReportSealed || hasUnsavedChanges || !savedContentHash || !weeklyData || overallDescription.trim().length === 0 || overallDescription.length > 1000} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={15} />提交</button>
+                  
+                  <button type="button" onClick={() => setStage('dispatching')} disabled={isCurrentReportSealed || fieldEditing || hasUnsavedChanges || !savedContentHash || !weeklyData || overallDescription.trim().length === 0 || overallDescription.length > 1000} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={15} />提交</button>
                 </div>
               </div>
-            ) : stage === 'draft' && mode === 'report' ? <div className="space-y-2">{returnTo && <button onClick={handleWriteBack} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-100"><ArrowLeft size={15} />回填原页面</button>}<div className="grid grid-cols-2 gap-2"><button type="button" onClick={saveCurrentReports} disabled={isCurrentReportSealed || !hasUnsavedChanges} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-white px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"><Save size={15} />保存</button><button type="button" onClick={() => setShowSubmitConfirm(true)} disabled={isCurrentReportSealed || hasUnsavedChanges || !savedContentHash} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={15} />提交</button></div></div> : stage === 'draft' && mode === 'insight' ? <div className="grid grid-cols-2 gap-2"><button onClick={() => showToast('洞察结果已复制')} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600"><Copy size={15} />复制结果</button><button onClick={() => showToast('洞察结果已保存')} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white"><Save size={15} />保存洞察</button></div> : <button onClick={() => resetWorkspace(mode)} disabled={stage === 'generating' || stage === 'sending'} className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">新建{mode === 'report' ? '汇报' : '洞察'}</button>}
+            ) : stage === 'draft' && mode === 'report' ? <div className="space-y-2">{returnTo && <button onClick={handleWriteBack} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-100"><ArrowLeft size={15} />回填原页面</button>}<div className="grid grid-cols-1 gap-2"><button type="button" onClick={() => setShowSubmitConfirm(true)} disabled={isCurrentReportSealed || fieldEditing || hasUnsavedChanges || !savedContentHash} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={15} />提交</button></div></div> : stage === 'draft' && mode === 'insight' ? <div className="grid grid-cols-2 gap-2"><button onClick={() => showToast('洞察结果已复制')} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600"><Copy size={15} />复制结果</button><button onClick={() => showToast('洞察结果已保存')} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white"><Save size={15} />保存洞察</button></div> : <button onClick={() => resetWorkspace(mode)} disabled={stage === 'generating' || stage === 'sending'} className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">新建{mode === 'report' ? '汇报' : '洞察'}</button>}
 
           </footer>
         </aside>

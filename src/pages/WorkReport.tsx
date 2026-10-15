@@ -1,3 +1,4 @@
+import { renderToStaticMarkup } from 'react-dom/server';
 ﻿import { useMemo, useState } from 'react';
 import {
   UserPlus,
@@ -47,6 +48,7 @@ import {
 import {
   createReportBusinessKey,
   ensureSeedSavedReport,
+  hashReportContent,
   getSavedReportRecords,
   upsertSavedReportRecords,
   subscribeSavedReports,
@@ -269,8 +271,6 @@ export default function WorkReport() {
   // 详情弹框：保存 / 提交（与参谋师工作台一致）
   const [detailSaving, setDetailSaving] = useState(false);
   const [detailSubmitConfirm, setDetailSubmitConfirm] = useState<SavedReportRecord | null>(null);
-  // 详情内编辑的最新内容（保存/提交时使用）
-  const [detailEditData, setDetailEditData] = useState<{ description: string; nextWorks: string[] } | null>(null);
 
   // 与参谋师一致的企微固定接收人规则：项目经理/承接处室经理/IT经理/接总/任总/孔丰汇/全体项目管理工程师
   const detailRequiredWecom = (() => {
@@ -588,19 +588,28 @@ export default function WorkReport() {
         <SavedReportRecordDetail
           record={(() => { const base = savedReports.find(item => item.reportKey === selectedSavedRecord.reportKey) || selectedSavedRecord; return base; })()}
           saving={detailSaving}
-          onEditChange={setDetailEditData}
-          onClose={() => { setSelectedSavedRecord(null); setDetailEditData(null); }}
-          onSave={() => {
+          onClose={() => setSelectedSavedRecord(null)}
+          onFieldSave={(field, value) => {
             setDetailSaving(true);
             window.setTimeout(() => {
-              const updated = getSavedReportRecords().map(item => item.reportKey === selectedSavedRecord.reportKey
-                ? { ...item, savedAt: formatReportRecordTime(), ...(item.weeklyData && detailEditData ? { weeklyData: { ...item.weeklyData, overallDescription: detailEditData.description, nextWeekWorks: detailEditData.nextWorks } } : {}) }
-                : item);
+              const updated = getSavedReportRecords().map(item => {
+                if (item.reportKey !== selectedSavedRecord.reportKey || !item.weeklyData) return item;
+                const nextWeekly = field === 'description'
+                  ? { ...item.weeklyData, overallDescription: String(value) }
+                  : { ...item.weeklyData, nextWeekWorks: value as string[] };
+                return {
+                  ...item,
+                  savedAt: formatReportRecordTime(),
+                  contentHash: hashReportContent(nextWeekly),
+                  htmlContent: renderToStaticMarkup(<ProjectWeeklyReport data={nextWeekly} filled description={nextWeekly.overallDescription} readOnly />),
+                  weeklyData: nextWeekly,
+                };
+              });
               upsertSavedReportRecords(updated);
               setSavedReports(getSavedReportRecords());
               setDetailSaving(false);
-              showToast('汇报已保存');
-            }, 600);
+              showToast('内容已保存');
+            }, 400);
           }}
           onSubmit={() => setDetailSubmitConfirm(selectedSavedRecord)}
         />
@@ -1498,19 +1507,9 @@ function ReportsView({
 }
 
 
-function SavedReportRecordDetail({ record, onClose, onSave, onSubmit, saving, onEditChange }: { record: SavedReportRecord; onClose: () => void; onSave: (edit?: { description: string; nextWorks: string[] }) => void; onSubmit: (edit?: { description: string; nextWorks: string[] } | null) => void; saving?: boolean; onEditChange?: (edit: { description: string; nextWorks: string[] }) => void }) {
-  // 与参谋师一致：weeklyData 模式下 总体进展描述 / 未来1周工作计划 可编辑
-  const [editDescription, setEditDescription] = useState(record.weeklyData?.overallDescription || '');
-  const [editNextWorks, setEditNextWorks] = useState<string[]>(record.weeklyData?.nextWeekWorks || []);
-  useEffect(() => {
-    if (record.weeklyData && onEditChange) {
-      onEditChange({ description: editDescription, nextWorks: editNextWorks });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editDescription, editNextWorks]);
-  const recordDirty = record.weeklyData
-    ? (editDescription !== (record.weeklyData.overallDescription || '') || JSON.stringify(editNextWorks) !== JSON.stringify(record.weeklyData.nextWeekWorks || []))
-    : false;
+function SavedReportRecordDetail({ record, onClose, onFieldSave, onSubmit, saving }: { record: SavedReportRecord; onClose: () => void; onFieldSave: (field: 'description' | 'nextWeekWorks', value: string | string[]) => void; onSubmit: () => void; saving?: boolean }) {
+  // 分段编辑：编辑态由 ProjectWeeklyReport 内部管理，本组件只做字段级保存与提交控制
+  const [fieldEditing, setFieldEditing] = useState(false);
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-gray-950/35 px-4 py-6" onClick={onClose}>
       <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={event => event.stopPropagation()}>
@@ -1528,30 +1527,23 @@ function SavedReportRecordDetail({ record, onClose, onSave, onSubmit, saving, on
         <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-6 py-5 scrollbar-hover">
           {record.weeklyData ? (
             <ProjectWeeklyReport
-              data={{ ...record.weeklyData, nextWeekWorks: editNextWorks }}
+              data={record.weeklyData}
               filled
-              description={editDescription}
-              onDescriptionChange={setEditDescription}
-              onNextWeekWorksChange={setEditNextWorks}
-              editState={recordDirty ? 'unsaved' : 'saved'}
+              description={record.weeklyData.overallDescription}
+              onEditingChange={setFieldEditing}
+              onDescriptionSave={value => onFieldSave('description', value)}
+              onNextWeekWorksSave={value => onFieldSave('nextWeekWorks', value)}
             />
           ) : (
             <div className="mx-auto max-w-4xl" dangerouslySetInnerHTML={{ __html: record.htmlContent }} />
           )}
         </div>
         <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-gray-100 bg-white px-6 py-4">
+          <span className="mr-auto text-xs text-gray-400">{fieldEditing ? '字段编辑中，保存后可提交' : '内容通过分段「编辑」按钮保存'}</span>
           <button
             type="button"
-            onClick={() => onSave()}
-            disabled={saving || recordDirty === false && Boolean(record.weeklyData) && (record.weeklyData.overallDescription || '') === editDescription && JSON.stringify(record.weeklyData.nextWeekWorks || []) === JSON.stringify(editNextWorks)}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-white px-4 py-2.5 text-sm font-semibold text-theme-700 transition-colors hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"
-          >
-            <Save size={15} />保存
-          </button>
-          <button
-            type="button"
-            onClick={() => onSubmit(recordDirty ? { description: editDescription, nextWorks: editNextWorks } : null)}
-            disabled={saving}
+            onClick={onSubmit}
+            disabled={saving || fieldEditing}
             className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Send size={15} />提交
