@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, ChevronRight, LayoutGrid, PencilLine, Plus, Search, Trash2, X } from 'lucide-react';
+import { CheckCircle2, ImageIcon, ChevronRight, LayoutGrid, PencilLine, Plus, Search, Trash2, X } from 'lucide-react';
 import ContactPicker, { type ContactSelection } from '../ContactPicker';
 import { getUserGroups, subscribeUserGroups, type UserGroupRecord } from '../../data/userGroups';
 import { MAIN_USER_NAME } from '../../data/people';
@@ -31,14 +31,21 @@ const defaultDraft = (templateComponentKey: string): CardDraft => {
     availability: 'all',
     rangeTargets: [],
     openMode: 'auto',
+    category: 'app' as PcCardCategory,
+    iconUrl: '',
     defaultVisible: true,
     enabled: true,
     sort: 99,
   };
 };
 
-/** 管理后台-PC 工作台：卡片分组 + 卡片目录（模板实例），与 APP 应用管理分离 */
-export default function PcWorkbenchAdmin() {
+type PortalTab = 'App员工工作台' | 'App外部人员工作台' | 'PC工作台';
+
+/** 卡片类型：数据卡片 / 应用卡片 */
+type PcCardCategory = 'data' | 'app';
+
+/** 管理后台-PC 工作台：卡片目录管理（应用管理内 Tab，可与 APP 工作台互切） */
+export default function PcWorkbenchAdmin({ activePortal, onPortalChange, appPortalTabs }: { activePortal: PortalTab; onPortalChange: (tab: PortalTab) => void; appPortalTabs: PortalTab[] }) {
   const [cards, setCards] = useState<PcWorkbenchCardConfig[]>(getPcCards);
   const [userGroupsLive, setUserGroupsLive] = useState<UserGroupRecord[]>(getUserGroups);
   const [toast, setToast] = useState('');
@@ -49,6 +56,8 @@ export default function PcWorkbenchAdmin() {
   const [draft, setDraft] = useState<CardDraft>(() => defaultDraft(PC_CARD_TEMPLATES[0].componentKey));
   const [isCreate, setIsCreate] = useState(false);
   const [rangeTargetsDraft, setRangeTargetsDraft] = useState<ContactSelection[]>([]);
+  const [iconFile, setIconFile] = useState<File | null>(null);
+  const [iconUrl, setIconUrl] = useState<string>('');
   const [groupManageOpen, setGroupManageOpen] = useState(false);
 
   useEffect(() => subscribePcCards(() => setCards(getPcCards())), []);
@@ -79,6 +88,8 @@ export default function PcWorkbenchAdmin() {
   const openCreate = () => {
     setDraft(defaultDraft(availableTemplates[0]?.componentKey ?? PC_CARD_TEMPLATES[0].componentKey));
     setRangeTargetsDraft([]);
+    setIconFile(null);
+    setIconUrl('');
     setIsCreate(true);
     setEditorMode('pick-template');
   };
@@ -86,6 +97,8 @@ export default function PcWorkbenchAdmin() {
   const openEdit = (card: PcWorkbenchCardConfig) => {
     setDraft({ ...card });
     setRangeTargetsDraft(card.rangeTargets);
+    setIconFile(null);
+    setIconUrl(card.iconUrl || '');
     setIsCreate(false);
     setEditorMode('edit');
   };
@@ -97,7 +110,8 @@ export default function PcWorkbenchAdmin() {
       const invalid = rangeTargetsDraft.filter(item => item.kind === 'user-group' && !userGroupsLive.some(group => group.id === item.id.replace(/^group:/, '')));
       if (invalid.length > 0) { showToast('存在已失效的用户组，请移除或重新选择'); return; }
     }
-    const next: PcWorkbenchCardConfig = { ...draft, title: draft.title.trim(), availability: draft.availability === 'all' ? 'all' : 'scoped', rangeTargets: draft.availability === 'all' ? [] : rangeTargetsDraft };
+    const nextIconUrl = iconFile ? URL.createObjectURL(iconFile) : iconUrl;
+    const next: PcWorkbenchCardConfig = { ...draft, title: draft.title.trim(), availability: draft.availability === 'all' ? 'all' : 'scoped', rangeTargets: draft.availability === 'all' ? [] : rangeTargetsDraft, iconUrl: nextIconUrl };
     upsertPcCards([next]);
     setEditorMode(null);
     showToast(isCreate ? '卡片已创建' : '卡片配置已保存');
@@ -108,32 +122,27 @@ export default function PcWorkbenchAdmin() {
   const templateName = (componentKey: string) => PC_CARD_TEMPLATES.find(template => template.componentKey === componentKey)?.name ?? `未知模板（${componentKey}）`;
 
   return (
-    <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] text-sm text-gray-800">
+    <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] pt-3 text-sm text-gray-800">
+      <AdminTabsBar />
+      <div className="bg-white px-8 py-5">
+        <div className="flex border-b border-gray-200">
+          {appPortalTabs.map(tab => (
+            <button
+              key={tab}
+              onClick={() => onPortalChange(tab)}
+              className={`mr-10 border-b-2 px-1 pb-3 text-base transition-colors ${activePortal === tab ? 'border-[#2f75b5] font-medium text-[#2f75b5]' : 'border-transparent text-gray-600 hover:text-[#2f75b5]'}`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
       {toast && (
         <div className="fixed right-8 top-20 z-50 flex items-center gap-2 rounded bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">
           <CheckCircle2 size={16} className="text-green-300" />
           {toast}
         </div>
       )}
-
-      <div className="bg-white px-8 py-5">
-        <div className="mb-4 text-sm text-gray-500">
-          首页 <span className="mx-2">/</span> 工作台 <span className="mx-2">/</span>
-          <span className="text-gray-800">PC工作台 · 卡片管理</span>
-        </div>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-[26px] font-semibold text-gray-900">PC工作台卡片</h2>
-            <p className="mt-2 text-sm text-gray-500">管理个人门户已注册的卡片实例：模板选择、标题覆盖、可用范围与入口配置。</p>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => setGroupManageOpen(true)} className="rounded border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">卡片分组</button>
-            <button onClick={openCreate} disabled={availableTemplates.length === 0} title={availableTemplates.length === 0 ? '全部模板均已配置（一个模板仅允许一个实例）' : undefined} className="inline-flex items-center gap-1 rounded bg-[#2f75b5] px-4 py-2 font-medium text-white hover:bg-[#28669f] disabled:cursor-not-allowed disabled:opacity-50">
-              <Plus size={16} />新增卡片
-            </button>
-          </div>
-        </div>
-      </div>
 
       <div className="p-5">
         <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -158,7 +167,7 @@ export default function PcWorkbenchAdmin() {
             <thead className="border-b border-gray-200 bg-gray-50 text-xs text-gray-500">
               <tr>
                 <th className="w-[240px] px-4 py-3 font-medium">卡片</th>
-                <th className="w-[140px] px-4 py-3 font-medium">组件模板</th>
+                <th className="w-[140px] px-4 py-3 font-medium">卡片类型</th>
                 <th className="w-[180px] px-4 py-3 font-medium">可用范围</th>
                 <th className="w-[90px] px-4 py-3 font-medium">默认展示</th>
                 <th className="w-[80px] px-4 py-3 font-medium">状态</th>
@@ -171,7 +180,7 @@ export default function PcWorkbenchAdmin() {
                 <tr key={card.id} className="border-b border-gray-100 hover:bg-gray-50/60">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ${card.icon.tone}`}><LayoutGrid size={16} /></div>
+                      {card.iconUrl ? <img src={card.iconUrl} alt={card.title} className="h-9 w-9 shrink-0 rounded-lg object-cover" /> : <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white ${card.icon.tone}`}><LayoutGrid size={16} /></div>}
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="truncate font-medium text-gray-900">{card.title}</span>
@@ -181,7 +190,7 @@ export default function PcWorkbenchAdmin() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-gray-700">{templateName(card.componentKey)}</td>
+                  <td className="px-4 py-4 text-gray-700">{card.category === 'data' ? '数据卡片' : '应用卡片'}</td>
                   <td className="px-4 py-4 text-gray-700">
                     {card.availability === 'all' ? '全员' : `部分成员（${card.rangeTargets.length} 项）`}
                   </td>
@@ -241,14 +250,20 @@ export default function PcWorkbenchAdmin() {
             <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-6 py-4">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">{isCreate ? '新增卡片' : '配置卡片'}</h3>
-                <p className="mt-1 text-xs text-gray-500">组件模板：{templateName(draft.componentKey)}（创建后不可修改）</p>
+                <p className="mt-1 text-xs text-gray-500">卡片类型：{draft.category === 'data' ? '数据卡片' : '应用卡片'} · 模板：{templateName(draft.componentKey)}</p>
               </div>
               <button onClick={() => setEditorMode(null)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button>
             </div>
             <div className="scrollbar-hover min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
               <section>
                 <p className="mb-2 text-xs font-semibold text-gray-500">基础信息</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="block text-sm text-gray-700">卡片类型
+                    <select value={draft.category === 'data' ? '数据卡片' : '应用卡片'} onChange={event => setDraft(prev => ({ ...prev, category: event.target.value === '数据卡片' ? 'data' : 'app' }))} className="mt-1.5 h-10 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]">
+                      <option value="数据卡片">数据卡片</option>
+                      <option value="应用卡片">应用卡片</option>
+                    </select>
+                  </label>
                   <label className="block text-sm text-gray-700">卡片标题
                     <input value={draft.title} onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="覆盖模板默认标题" className="mt-1.5 h-10 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
                   </label>
@@ -261,17 +276,20 @@ export default function PcWorkbenchAdmin() {
                 <label className="mt-3 block text-sm text-gray-700">卡片描述
                   <input value={draft.description} onChange={event => setDraft(prev => ({ ...prev, description: event.target.value }))} placeholder="用于后台列表与前台选择卡片时的辅助说明" className="mt-1.5 h-10 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
                 </label>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <label className="block text-sm text-gray-700">卡片图标（预设）
-                    <select value={draft.icon.preset} onChange={event => setDraft(prev => ({ ...prev, icon: { ...prev.icon, preset: event.target.value } }))} className="mt-1.5 h-10 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]">
-                      {['trending-up', 'file-text', 'calendar', 'layout', 'clipboard-list', 'bell'].map(name => <option key={name} value={name}>{name}</option>)}
-                    </select>
-                  </label>
-                  <label className="block text-sm text-gray-700">图标颜色
-                    <select value={draft.icon.tone} onChange={event => setDraft(prev => ({ ...prev, icon: { ...prev.icon, tone: event.target.value } }))} className="mt-1.5 h-10 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]">
-                      {['bg-pink-600', 'bg-purple-500', 'bg-indigo-500', 'bg-amber-500', 'bg-teal-500', 'bg-rose-500'].map(tone => <option key={tone} value={tone}>{tone.replace('bg-', '')}</option>)}
-                    </select>
-                  </label>
+                <div className="mt-3">
+                  <div className="text-sm text-gray-700">卡片图标</div>
+                  {iconUrl ? (
+                    <div className="relative mt-1.5 inline-block">
+                      <img src={iconUrl} alt="卡片图标" className="h-16 w-16 rounded-lg border border-gray-200 object-cover" />
+                      <button type="button" onClick={() => { setIconUrl(''); setIconFile(null); }} className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border border-gray-300 bg-white text-gray-500 hover:border-red-400 hover:text-red-500"><X size={12} /></button>
+                    </div>
+                  ) : (
+                    <label className="mt-1.5 flex h-16 w-16 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:border-[#2f75b5] hover:bg-blue-50/30">
+                      <ImageIcon size={16} className="text-gray-400" />
+                      <span className="mt-0.5 text-[10px] text-gray-500">上传图片</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={event => { const file = event.target.files?.[0]; if (file) { setIconFile(file); setIconUrl(URL.createObjectURL(file)); } }} />
+                    </label>
+                  )}
                 </div>
               </section>
 
@@ -285,14 +303,7 @@ export default function PcWorkbenchAdmin() {
                     <input value={draft.detailUrl ?? ''} onChange={event => setDraft(prev => ({ ...prev, detailUrl: event.target.value || undefined }))} placeholder="为空时隐藏右上角更多按钮" className="mt-1.5 h-10 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
                   </label>
                 </div>
-                <label className="mt-3 block text-sm text-gray-700">打开方式
-                  <select value={draft.openMode} onChange={event => setDraft(prev => ({ ...prev, openMode: event.target.value as 'auto' | 'browser' | 'native' }))} className="mt-1.5 h-10 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]">
-                    <option value="auto">自动判断</option>
-                    <option value="browser">外部浏览器打开</option>
-                    <option value="native">原生能力打开</option>
-                  </select>
-                </label>
-              </section>
+                </section>
 
               <section className="text-sm text-gray-700">
                 <p className="mb-2 text-xs font-semibold text-gray-500">发布配置</p>
@@ -371,6 +382,17 @@ export default function PcWorkbenchAdmin() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+function AdminTabsBar() {
+  return (
+    <div className="flex h-10 items-end gap-1 border-b border-gray-200 bg-gray-100 px-4">
+      <div className="flex h-10 items-center gap-2 border border-b-0 bg-white/80 px-5 text-sm text-gray-600"><span>首页</span><X size={13} className="text-gray-400" /></div>
+      <div className="flex h-10 items-center gap-2 border border-b-0 bg-white/80 px-5 text-sm text-gray-600"><span>系统管理</span><X size={13} className="text-gray-400" /></div>
+      <div className="flex h-10 items-center gap-2 border border-b-0 bg-white px-5 text-sm text-[#2f75b5]"><span>应用管理</span><X size={13} className="text-gray-400" /></div>
     </div>
   );
 }

@@ -16,6 +16,10 @@ export type PcWorkbenchCardConfig = {
   title: string;
   description: string;
   icon: CardIconConfig;
+  /** 上传图片图标 URL（优先展示） */
+  iconUrl?: string;
+  /** 卡片类型：数据卡片 / 应用卡片 */
+  category?: 'data' | 'app';
   groupId: string;
   availability: 'all' | 'scoped';
   rangeTargets: ContactSelection[];
@@ -71,7 +75,7 @@ const canUseStorage = () => typeof window !== 'undefined' && Boolean(window.loca
 
 /** 初始卡片目录：七张个人门户卡片（pc-stat-* 四条合并为一张"数据概览"） */
 const seedCards = (): PcWorkbenchCardConfig[] => [
-  { id: 'pc-card-stats', componentKey: 'stats', title: '数据概览', description: '流程审批、待办、事项进度等数据指标汇总', icon: { preset: 'trending-up', tone: 'bg-pink-600' }, groupId: 'pc-group-data', availability: 'all', rangeTargets: [], openMode: 'auto', defaultVisible: true, enabled: true, sort: 1 },
+  { id: 'pc-card-stats', componentKey: 'stats', title: '数据概览', description: '流程审批、待办、事项进度等数据指标汇总', icon: { preset: 'trending-up', tone: 'bg-pink-600' }, category: 'data', groupId: 'pc-group-data', availability: 'all', rangeTargets: [], openMode: 'auto', defaultVisible: true, enabled: true, sort: 1 },
   { id: 'pc-card-documents', componentKey: 'documents', title: '今日未读文档', description: '最新未读公文与通知列表', icon: { preset: 'file-text', tone: 'bg-purple-500' }, groupId: 'pc-group-work', availability: 'all', rangeTargets: [], detailUrl: '/web_client/business', openMode: 'auto', defaultVisible: true, enabled: true, sort: 2 },
   { id: 'pc-card-calendar', componentKey: 'calendar', title: '周历', description: '本周日程与会议安排', icon: { preset: 'calendar', tone: 'bg-pink-700' }, groupId: 'pc-group-core', availability: 'all', rangeTargets: [], detailUrl: '/web_client/calendar', openMode: 'auto', defaultVisible: true, enabled: true, sort: 3 },
   { id: 'pc-card-systems', componentKey: 'systems', title: '常用系统', description: '按使用频率排序的业务系统入口', icon: { preset: 'layout', tone: 'bg-amber-500' }, groupId: 'pc-group-work', availability: 'all', rangeTargets: [], openMode: 'auto', defaultVisible: true, enabled: true, sort: 4 },

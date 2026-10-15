@@ -2606,9 +2606,15 @@ function ApplicationManagement() {
     }));
   };
 
-  // PC 工作台使用独立配置模型（卡片目录），与 APP 应用管理分离
+  // PC 工作台使用独立配置模型（卡片目录），但仍渲染应用管理页签栏，可切回 APP 工作台
   if (activePortal === 'PC工作台') {
-    return <PcWorkbenchAdmin />;
+    return (
+      <PcWorkbenchAdmin
+        activePortal={activePortal}
+        onPortalChange={tab => setActivePortal(tab)}
+        appPortalTabs={appPortalTabs}
+      />
+    );
   }
 
   return (
