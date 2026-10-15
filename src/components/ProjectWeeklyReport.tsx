@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, PencilLine } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, PencilLine } from 'lucide-react';
 import { getHealthLightMeta, type ProjectWeeklyData } from '../data/projectWeeklyReport';
 
 const MAX_DESCRIPTION = 1000;
@@ -117,17 +117,26 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
   const cancelEdit = () => setEditingSection(null);
 
   useEffect(() => { onEditingChange?.(editingSection !== null); }, [editingSection, onEditingChange]);
+  // 字段保存二次确认（与系统确认弹窗一致的轻量样式）
+  const [saveConfirmSection, setSaveConfirmSection] = useState<SectionKey | null>(null);
+  const sectionTitle = (key: SectionKey) => key === 'description' ? '总体进展描述' : '未来1周工作计划';
 
   const saveDescription = () => {
-    const value = descDraft;
-    if (value.trim().length === 0 || value.length > MAX_DESCRIPTION) return;
-    onDescriptionSave?.(value);
-    setEditingSection(null);
+    if (descDraft.trim().length === 0 || descDraft.length > MAX_DESCRIPTION) return;
+    setSaveConfirmSection('description');
   };
   const saveWorks = () => {
-    const normalized = worksDraft.map(item => item.trim()).filter(Boolean).slice(0, 30);
-    if (normalized.length === 0) return;
-    onNextWeekWorksSave?.(normalized);
+    if (worksDraft.map(item => item.trim()).filter(Boolean).length === 0) return;
+    setSaveConfirmSection('nextWeekWorks');
+  };
+  const confirmFieldSave = () => {
+    if (saveConfirmSection === 'description') {
+      onDescriptionSave?.(descDraft);
+    } else if (saveConfirmSection === 'nextWeekWorks') {
+      const normalized = worksDraft.map(item => item.trim()).filter(Boolean).slice(0, 30);
+      onNextWeekWorksSave?.(normalized);
+    }
+    setSaveConfirmSection(null);
     setEditingSection(null);
   };
 
@@ -455,6 +464,29 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
       </section>
 
       <p className="text-center text-xs text-gray-300">数据来源：禅道项目数据 · 生成于 {new Date().toLocaleDateString('zh-CN')} · 「总体进展描述」与「未来1周工作计划」支持分段编辑</p>
+
+      {/* 字段保存二次确认（系统统一确认弹窗样式） */}
+      {saveConfirmSection && (
+        <div className="fixed inset-0 z-[95] flex items-center justify-center bg-gray-950/30 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-gray-950">确认保存修改</h3>
+                <p className="mt-1 text-sm leading-6 text-gray-500">保存后将更新汇报预览与工作汇报记录。</p>
+              </div>
+              <button type="button" onClick={() => setSaveConfirmSection(null)} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" title="关闭"><X size={18} /></button>
+            </div>
+            <div className="mt-5 space-y-2 rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+              <p><span className="text-gray-400">修改字段：</span>{sectionTitle(saveConfirmSection)}</p>
+              <p><span className="text-gray-400">变更说明：</span>{saveConfirmSection === 'description' ? `${descDraft.length} 字（保存后覆盖原描述）` : `${worksDraft.map(item => item.trim()).filter(Boolean).length} 项计划（保存后覆盖原计划）`}</p>
+            </div>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setSaveConfirmSection(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">取消</button>
+              <button type="button" onClick={confirmFieldSave} className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700">确认保存</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
