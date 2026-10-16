@@ -2606,16 +2606,6 @@ function ApplicationManagement() {
     }));
   };
 
-  // PC 工作台使用独立配置模型（卡片目录），但仍渲染应用管理页签栏，可切回 APP 工作台
-  if (activePortal === 'PC工作台') {
-    return (
-      <PcWorkbenchAdmin
-        activePortal={activePortal}
-        onPortalChange={tab => setActivePortal(tab)}
-        appPortalTabs={appPortalTabs}
-      />
-    );
-  }
 
   return (
     <div className="min-h-[calc(100vh-7rem)] w-full min-w-0 bg-[#eef1f5] pt-3 text-sm text-gray-800">
@@ -2650,6 +2640,9 @@ function ApplicationManagement() {
         </div>
       </div>
 
+      {activePortal === 'PC工作台' ? (
+        <PcWorkbenchAdmin />
+      ) : (
       <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-5 p-5 max-xl:grid-cols-1">
         <aside className="min-h-[640px] bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between gap-3">
@@ -2810,6 +2803,7 @@ function ApplicationManagement() {
           </div>
         </section>
       </div>
+      )}
 
       {groupDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">

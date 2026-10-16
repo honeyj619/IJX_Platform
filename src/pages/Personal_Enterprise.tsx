@@ -1,4 +1,4 @@
-﻿import { Bell, TrendingUp, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight, MoreHorizontal, RefreshCw, ExternalLink, Trash2, ClipboardList, Sparkles, Target } from 'lucide-react';
+﻿import { Bell, TrendingUp, LayoutGrid, FileText, Calendar as CalendarIcon, Settings, Edit3, Plus, X, CheckCircle2, Eye, EyeOff, Layout, Layers, ChevronRight, MoreHorizontal, RefreshCw, ExternalLink, Trash2, ClipboardList, Sparkles, Target } from 'lucide-react';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Search, GripVertical, ChevronLeft } from 'lucide-react';
@@ -9,15 +9,18 @@ import {
   getPcCards,
   subscribePcCards,
   canUserAccessCard,
-  PC_CARD_TEMPLATES,
+  findTemplate,
   type PcWorkbenchCardConfig,
+  type UserAccessContext,
 } from '../data/pcWorkbenchCards';
+import { findContactByName } from '../data/contactDirectory';
+import { getUserGroups } from '../data/userGroups';
 import { workItems, WorkItem, WorkItemTask, WorkItemType } from '../data/workItems';
 import { buildAdvisorUrl } from '../data/advisor';
 import { openPortalLink, type LinkOpenMode } from '../utils/linkOpening';
 
 // 定义卡片类型
-type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'officeApps' | 'duty' | 'courses';
+type CardType = 'stats' | 'process' | 'documents' | 'projects' | 'calendar' | 'systems' | 'officeApps' | 'duty' | 'courses' | 'link';
 
 // 卡片配置接口
 interface CardConfig {
@@ -26,6 +29,12 @@ interface CardConfig {
   icon: React.ReactNode;
   visible: boolean;
   order: number;
+  /** 目录卡片引用（组件卡=componentKey；应用入口卡=pc-card id，用 CardType 'link' 渲染） */
+  catalogId?: string;
+  /** 应用入口卡片配置（仅 link 卡） */
+  linkCard?: { entryUrl: string; detailUrl?: string; iconUrl?: string; description: string };
+  /** 后台覆盖的标题/图标（组件卡） */
+  override?: { title: string; iconUrl?: string; detailUrl?: string };
 }
 
 type System = {
@@ -709,29 +718,63 @@ export default function Personal_Enterprise() {
     }
   };
 
-  // 卡片目录（后台配置）→ 过滤停用/无权限/未注册 → 与个人偏好合并
-  const [pcCardCatalog] = useState<PcWorkbenchCardConfig[]>(getPcCards);
-  useEffect(() => subscribePcCards(() => setCards(buildCardsFromCatalog())), []);
+  // 卡片目录（后台配置，可更新：订阅自定义事件与跨标签 storage）→ 权限过滤 → 偏好合并
+  const [pcCardCatalog, setPcCardCatalog] = useState<PcWorkbenchCardConfig[]>(getPcCards);
+  useEffect(() => subscribePcCards(() => {
+    setPcCardCatalog(getPcCards());
+    setCards(buildCardsFromCatalog(getPcCards()));
+  }), []);
 
-  const buildCardsFromCatalog = (): CardConfig[] => {
+  // 当前用户访问上下文（人员 ID + 部门路径 + 用户组展开）
+  const buildAccessContext = (): UserAccessContext => {
+    const person = findContactByName(MAIN_USER_NAME);
+    const department = person?.department || '';
+    const departmentPaths = department ? department.split('/').map(part => part.trim()).filter(Boolean) : [];
+    return {
+      personId: person?.id || '',
+      name: MAIN_USER_NAME,
+      departmentPaths,
+      userGroups: getUserGroups().map(group => ({ id: group.id, name: group.name, members: group.members.map(member => ({ userId: member.userId, name: member.name, department: member.department, kind: member.kind })) })),
+    };
+  };
+
+  const buildCardsFromCatalog = (catalog: PcWorkbenchCardConfig[]): CardConfig[] => {
     const preference = readCardPreference();
-    return pcCardCatalog
-      .filter(card => card.enabled && canUserAccessCard(card, MAIN_USER_NAME))
-      .filter(card => PC_CARD_TEMPLATES.some(template => template.componentKey === card.componentKey))
+    const context = buildAccessContext();
+    return catalog
+      .filter(card => card.enabled && canUserAccessCard(card, context))
       .map(card => {
-        const base = initialCards.find(item => item.id === card.componentKey) ?? initialCards[0];
-        const pref = preference.find(item => item.id === card.componentKey);
+        // 偏好键：组件卡=componentKey（旧偏好兼容）；应用入口卡=卡片 ID
+        const prefKey = card.kind === 'component' ? card.componentKey : card.id;
+        const pref = preference.find(item => item.id === prefKey);
+        if (card.kind === 'component') {
+          if (!findTemplate(card.componentKey)) return null; // 未注册模板不渲染
+          const base = initialCards.find(item => item.id === card.componentKey) ?? initialCards[0];
+          return {
+            ...base,
+            name: card.title || base.name,
+            visible: pref ? pref.visible : card.defaultVisible,
+            order: pref ? pref.order : card.sort - 1,
+            catalogId: card.id,
+            override: { title: card.title, iconUrl: card.iconUrl || undefined, detailUrl: card.detailUrl || undefined },
+            __catalogDetail__: card.detailUrl || undefined,
+          } as CardConfig & { __catalogDetail__?: string };
+        }
         return {
-          ...base,
-          name: card.title || base.name,
+          id: 'link' as CardType,
+          name: card.title,
+          icon: <LayoutGrid size={20} />,
           visible: pref ? pref.visible : card.defaultVisible,
           order: pref ? pref.order : card.sort - 1,
+          catalogId: card.id,
+          linkCard: { entryUrl: card.entryUrl, detailUrl: card.detailUrl || undefined, iconUrl: card.iconUrl || undefined, description: card.description },
         } as CardConfig;
       })
+      .filter((card): card is CardConfig => card !== null)
       .sort((a, b) => a.order - b.order);
   };
 
-  const [cards, setCards] = useState<CardConfig[]>(buildCardsFromCatalog);
+  const [cards, setCards] = useState<CardConfig[]>(() => buildCardsFromCatalog(getPcCards()));
   
   // 系统选择状态
   const [systems, setSystems] = useState<System[]>(() => {
@@ -1744,8 +1787,9 @@ export default function Personal_Enterprise() {
         editAction = null;
     }
 
-    // 更多=跳转对应详情页
-    const moreTargets: Partial<Record<CardType, string>> = {
+    // 更多=跳转对应详情页（后台 detailUrl 优先，未配置回退模板默认/提示）
+    const backendDetail = pcCardCatalog.filter((entry): entry is Extract<PcWorkbenchCardConfig, { kind: 'component' }> => entry.kind === 'component').find(entry => entry.componentKey === cardId)?.detailUrl;
+    const fallbackTargets: Partial<Record<CardType, string>> = {
       stats: '门户-数据卡片详情',
       documents: '门户-文档中心',
       calendar: '门户-日历',
@@ -1754,6 +1798,7 @@ export default function Personal_Enterprise() {
       duty: '公司值班页面',
       courses: '临期课程列表',
     };
+    const moreTarget = backendDetail || fallbackTargets[cardId];
 
     return (
       <>
@@ -1769,7 +1814,13 @@ export default function Personal_Enterprise() {
         )}
         {cardId !== 'calendar' && (
           <button
-            onClick={() => showJumpTip(moreTargets[cardId] || '详情页')}
+            onClick={() => {
+              if (backendDetail) {
+                openPortalLink({ url: backendDetail, label: String(fallbackTargets[cardId] || '详情'), mode: 'auto', navigate });
+              } else {
+                showJumpTip(moreTarget || '详情页');
+              }
+            }}
             className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             title="更多"
           >
@@ -1780,7 +1831,48 @@ export default function Personal_Enterprise() {
     );
   };
 
+  // 应用入口卡片：图标+标题+描述，点击主体开主地址，更多图标开详情地址
+  const renderLinkCard = (card: CardConfig): React.ReactNode => {
+    const link = card.linkCard!;
+    return (
+      <button
+        type="button"
+        onClick={() => openPortalLink({ url: link.entryUrl, label: card.name, mode: 'auto', navigate })}
+        className="group/link relative flex h-full w-full flex-col items-start gap-3 rounded-2xl border border-gray-100 bg-white p-6 text-left shadow-sm transition-shadow duration-300 hover:shadow-lg"
+      >
+        {link.iconUrl ? (
+          <img src={link.iconUrl} alt={card.name} className="h-12 w-12 rounded-xl object-cover" />
+        ) : (
+          <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#2f75b5] text-white"><ChevronRight size={22} /></span>
+        )}
+        <span className="min-w-0">
+          <span className="block truncate text-lg font-bold text-gray-800 group-hover/link:text-[#2f75b5]">{card.name}</span>
+          <span className="mt-1 block truncate text-sm text-gray-500">{link.description || '应用入口'}</span>
+        </span>
+        {link.detailUrl && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={event => { event.stopPropagation(); openPortalLink({ url: link.detailUrl!, label: `${card.name} · 更多`, mode: 'auto', navigate }); }}
+            onKeyDown={event => { if (event.key === 'Enter') { event.stopPropagation(); openPortalLink({ url: link.detailUrl!, label: `${card.name} · 更多`, mode: 'auto', navigate }); } }}
+            className="absolute right-4 top-4 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            title="更多"
+          >
+            <MoreHorizontal size={16} />
+          </span>
+        )}
+      </button>
+    );
+  };
+
   const renderPortalCard = (card: CardConfig) => {
+    if (card.id === 'link' && card.linkCard) {
+      return (
+        <div data-portal-card-id={card.catalogId} className="group/card relative">
+          {renderLinkCard(card)}
+        </div>
+      );
+    }
     if (card.id === 'stats') {
       return (
         <div className="space-y-4">
@@ -4794,7 +4886,9 @@ function PortalCardShell({ card, actions, children }: {
       {!hideOuterTitle && (
         <div className="mb-3 flex items-center justify-between gap-3">
           <h3 className="flex items-center gap-2 text-lg font-bold text-gray-800">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-500 shadow-sm ring-1 ring-gray-100">{card.icon}</span>
+            {card.override?.iconUrl
+              ? <img src={card.override.iconUrl} alt={card.name} className="h-8 w-8 rounded-lg object-cover shadow-sm ring-1 ring-gray-100" />
+              : <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-500 shadow-sm ring-1 ring-gray-100">{card.icon}</span>}
             {card.name}
           </h3>
           <div className="flex shrink-0 items-center gap-2">{actions}</div>
