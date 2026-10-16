@@ -9,7 +9,6 @@ import {
   Link2Off,
   LogOut,
   Monitor,
-  RefreshCw,
   Search,
   ShieldCheck,
   Smartphone,
@@ -66,6 +65,22 @@ type DeviceUser = {
   employmentStatus: '在职' | '离职';
   accountStatus: '正常' | '停用';
   devices: UserDevice[];
+};
+
+type DeviceFilters = {
+  keyword: string;
+  department: string;
+  employmentStatus: string;
+  deviceOwnership: string;
+  deviceCondition: string;
+};
+
+const DEFAULT_FILTERS: DeviceFilters = {
+  keyword: '',
+  department: '全部',
+  employmentStatus: '全部',
+  deviceOwnership: '全部设备',
+  deviceCondition: '全部状态',
 };
 
 const initialUsers: DeviceUser[] = [
@@ -142,31 +157,33 @@ export default function DeviceManagement() {
   const [employmentStatus, setEmploymentStatus] = useState('全部');
   const [deviceOwnership, setDeviceOwnership] = useState('全部设备');
   const [deviceCondition, setDeviceCondition] = useState('全部状态');
+  const [appliedFilters, setAppliedFilters] = useState<DeviceFilters>(DEFAULT_FILTERS);
   const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; run: () => void } | null>(null);
   const [toast, setToast] = useState('');
 
   const selectedUser = users.find(user => user.id === selectedUserId) || null;
   const departments = useMemo(() => Array.from(new Set(users.map(user => user.department))), [users]);
   const filteredUsers = useMemo(() => {
-    const normalizedKeyword = keyword.trim().toLowerCase();
+    const normalizedKeyword = appliedFilters.keyword.trim().toLowerCase();
     return users.filter(user => {
       const matchesKeyword = !normalizedKeyword || [user.name, user.account, user.company, user.department, ...user.devices.flatMap(device => [device.name, device.model, device.identifier])].some(value => value.toLowerCase().includes(normalizedKeyword));
-      const matchesOwnership = deviceOwnership === '全部设备'
-        || (deviceOwnership === '拥有PC客户端' && deviceTypeCount(user, 'PC客户端') > 0)
-        || (deviceOwnership === '拥有移动APP' && deviceTypeCount(user, '移动APP') > 0)
-        || (deviceOwnership === '拥有网页浏览器' && deviceTypeCount(user, '网页浏览器') > 0)
-        || (deviceOwnership === '同时拥有客户端和APP' && deviceTypeCount(user, 'PC客户端') > 0 && deviceTypeCount(user, '移动APP') > 0);
-      const matchesCondition = deviceCondition === '全部状态'
-        || (deviceCondition === '存在在线设备' && onlineDeviceCount(user) > 0)
-        || (deviceCondition === '存在风险设备' && riskDeviceCount(user) > 0)
-        || (deviceCondition === '存在未绑定设备' && user.devices.some(device => !device.bound));
-      return matchesKeyword && (department === '全部' || user.department === department) && (employmentStatus === '全部' || user.employmentStatus === employmentStatus) && matchesOwnership && matchesCondition;
+      const matchesOwnership = appliedFilters.deviceOwnership === '全部设备'
+        || (appliedFilters.deviceOwnership === '拥有PC客户端' && deviceTypeCount(user, 'PC客户端') > 0)
+        || (appliedFilters.deviceOwnership === '拥有移动APP' && deviceTypeCount(user, '移动APP') > 0)
+        || (appliedFilters.deviceOwnership === '拥有网页浏览器' && deviceTypeCount(user, '网页浏览器') > 0)
+        || (appliedFilters.deviceOwnership === '同时拥有客户端和APP' && deviceTypeCount(user, 'PC客户端') > 0 && deviceTypeCount(user, '移动APP') > 0);
+      const matchesCondition = appliedFilters.deviceCondition === '全部状态'
+        || (appliedFilters.deviceCondition === '存在在线设备' && onlineDeviceCount(user) > 0)
+        || (appliedFilters.deviceCondition === '存在风险设备' && riskDeviceCount(user) > 0)
+        || (appliedFilters.deviceCondition === '存在未绑定设备' && user.devices.some(device => !device.bound));
+      return matchesKeyword
+        && (appliedFilters.department === '全部' || user.department === appliedFilters.department)
+        && (appliedFilters.employmentStatus === '全部' || user.employmentStatus === appliedFilters.employmentStatus)
+        && matchesOwnership
+        && matchesCondition;
     });
-  }, [department, deviceCondition, deviceOwnership, employmentStatus, keyword, users]);
+  }, [appliedFilters, users]);
 
-  const totalDevices = users.reduce((sum, user) => sum + user.devices.length, 0);
-  const totalOnline = users.reduce((sum, user) => sum + onlineDeviceCount(user), 0);
-  const totalRisk = users.reduce((sum, user) => sum + riskDeviceCount(user), 0);
   const allFilteredSelected = filteredUsers.length > 0 && filteredUsers.every(user => selectedUserIds.includes(user.id));
 
   const showToast = (message: string) => {
@@ -215,7 +232,10 @@ export default function DeviceManagement() {
     setEmploymentStatus('全部');
     setDeviceOwnership('全部设备');
     setDeviceCondition('全部状态');
+    setAppliedFilters(DEFAULT_FILTERS);
   };
+
+  const applyFilters = () => setAppliedFilters({ keyword: keyword.trim(), department, employmentStatus, deviceOwnership, deviceCondition });
 
   if (selectedUser) {
     const sessions = selectedUser.devices.flatMap(device => device.sessions.map(session => ({ ...session, deviceName: device.name, deviceType: device.type })));
@@ -312,23 +332,33 @@ export default function DeviceManagement() {
   return (
     <div className="min-h-[calc(100vh-9rem)] bg-[#eef1f5] text-sm text-gray-800">
       {toast && <div className="fixed right-8 top-20 z-[80] rounded bg-gray-900 px-4 py-2 text-white shadow-lg">{toast}</div>}
-      <header className="bg-white px-6 py-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-2xl font-semibold text-gray-900">设备管理</h2><p className="mt-1 text-gray-500">按人员统一查看移动 APP、PC 客户端与网页浏览器的登录状态和安全风险。</p></div><button type="button" onClick={() => showToast('人员与设备状态已刷新')} className="inline-flex h-9 items-center gap-1.5 rounded border border-gray-300 px-3 text-gray-700 hover:bg-gray-50"><RefreshCw size={15} />刷新状态</button></div></header>
+      <header className="bg-white px-6 py-5"><h2 className="text-2xl font-semibold text-gray-900">设备管理</h2><p className="mt-1 text-gray-500">按人员统一查看移动 APP、PC 客户端与网页浏览器的登录状态和安全风险。</p></header>
 
-      <div className="grid grid-cols-2 gap-4 p-5 pb-0 lg:grid-cols-4">{[{ label: '已纳管人员', value: users.length, icon: <UserRound size={18} />, tone: 'bg-blue-50 text-[#2f75b5]' }, { label: '设备总数', value: totalDevices, icon: <Laptop size={18} />, tone: 'bg-indigo-50 text-indigo-700' }, { label: '在线设备', value: totalOnline, icon: <CheckCircle2 size={18} />, tone: 'bg-emerald-50 text-emerald-700' }, { label: '风险设备', value: totalRisk, icon: <AlertTriangle size={18} />, tone: 'bg-red-50 text-red-700' }].map(item => <div key={item.label} className="flex items-center gap-3 bg-white p-4 shadow-sm"><span className={`flex h-10 w-10 items-center justify-center rounded ${item.tone}`}>{item.icon}</span><div><div className="text-xs text-gray-500">{item.label}</div><div className="mt-1 text-xl font-semibold text-gray-900">{item.value}</div></div></div>)}</div>
-
-      <div className="p-5"><section className="bg-white shadow-sm">
-        <div className="grid gap-3 border-b border-gray-100 p-5 md:grid-cols-2 xl:grid-cols-[minmax(260px,1.6fr)_repeat(4,minmax(140px,1fr))_auto]">
-          <label className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input value={keyword} onChange={event => setKeyword(event.target.value)} placeholder="姓名、账号、设备名称或标识" className="h-9 w-full rounded border border-gray-300 pl-9 pr-3 outline-none focus:border-[#2f75b5]" /></label>
-          <select value={department} onChange={event => setDepartment(event.target.value)} className="h-9 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"><option>全部</option>{departments.map(item => <option key={item}>{item}</option>)}</select>
-          <select value={employmentStatus} onChange={event => setEmploymentStatus(event.target.value)} className="h-9 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"><option>全部</option><option>在职</option><option>离职</option></select>
-          <select value={deviceOwnership} onChange={event => setDeviceOwnership(event.target.value)} className="h-9 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"><option>全部设备</option><option>拥有PC客户端</option><option>拥有移动APP</option><option>拥有网页浏览器</option><option>同时拥有客户端和APP</option></select>
-          <select value={deviceCondition} onChange={event => setDeviceCondition(event.target.value)} className="h-9 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"><option>全部状态</option><option>存在在线设备</option><option>存在风险设备</option><option>存在未绑定设备</option></select>
-          <button type="button" onClick={resetFilters} className="h-9 rounded border border-gray-300 px-4 text-gray-600 hover:bg-gray-50">重置</button>
-        </div>
+      <div className="space-y-4 p-5">
+        <section className="border border-gray-200 bg-white px-6 py-5">
+          <div className="grid grid-cols-[100px_minmax(220px,1.4fr)_100px_minmax(180px,1fr)_100px_minmax(180px,1fr)] items-center gap-4 max-xl:grid-cols-[100px_1fr]">
+            <span className="text-right text-sm text-gray-700 max-xl:text-left">关键词</span>
+            <input value={keyword} onChange={event => setKeyword(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') applyFilters(); }} placeholder="姓名、账号、设备名称或标识" className="h-10 rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
+            <span className="text-right text-sm text-gray-700 max-xl:text-left">部门</span>
+            <select value={department} onChange={event => setDepartment(event.target.value)} className="h-10 rounded border border-gray-300 bg-white px-3 text-sm outline-none focus:border-[#2f75b5]"><option>全部</option>{departments.map(item => <option key={item}>{item}</option>)}</select>
+            <span className="text-right text-sm text-gray-700 max-xl:text-left">在职情况</span>
+            <select value={employmentStatus} onChange={event => setEmploymentStatus(event.target.value)} className="h-10 rounded border border-gray-300 bg-white px-3 text-sm outline-none focus:border-[#2f75b5]"><option>全部</option><option>在职</option><option>离职</option></select>
+            <span className="text-right text-sm text-gray-700 max-xl:text-left">设备构成</span>
+            <select value={deviceOwnership} onChange={event => setDeviceOwnership(event.target.value)} className="h-10 rounded border border-gray-300 bg-white px-3 text-sm outline-none focus:border-[#2f75b5]"><option>全部设备</option><option>拥有PC客户端</option><option>拥有移动APP</option><option>拥有网页浏览器</option><option>同时拥有客户端和APP</option></select>
+            <span className="text-right text-sm text-gray-700 max-xl:text-left">设备状态</span>
+            <select value={deviceCondition} onChange={event => setDeviceCondition(event.target.value)} className="h-10 rounded border border-gray-300 bg-white px-3 text-sm outline-none focus:border-[#2f75b5]"><option>全部状态</option><option>存在在线设备</option><option>存在风险设备</option><option>存在未绑定设备</option></select>
+            <div className="col-span-2 flex items-center gap-3 max-xl:col-span-2">
+              <button type="button" onClick={applyFilters} className="h-10 rounded bg-[#2f75b5] px-5 text-sm font-medium text-white hover:bg-[#28669f]">查询</button>
+              <button type="button" onClick={resetFilters} className="h-10 rounded border border-gray-300 bg-white px-5 text-sm text-gray-600 hover:bg-gray-50">重置</button>
+            </div>
+          </div>
+        </section>
+        <section className="bg-white shadow-sm">
         <div className="flex min-h-12 items-center justify-between gap-3 border-b border-gray-100 px-5 py-2"><span className="text-xs text-gray-500">共 {filteredUsers.length} 人{selectedUserIds.length > 0 ? `，已选择 ${selectedUserIds.length} 人` : ''}</span>{selectedUserIds.length > 0 && <button type="button" onClick={() => logoutDevices(selectedUserIds)} className="inline-flex h-8 items-center gap-1 rounded border border-gray-300 px-3 text-xs text-gray-700 hover:bg-gray-50"><LogOut size={14} />批量退出全部设备</button>}</div>
         <div className="overflow-x-auto"><table className="w-full min-w-[1180px] text-left"><thead className="bg-gray-50 text-gray-600"><tr><th className="w-12 px-4 py-3"><input type="checkbox" checked={allFilteredSelected} onChange={event => setSelectedUserIds(event.target.checked ? filteredUsers.map(user => user.id) : [])} className="h-4 w-4 accent-[#2f75b5]" /></th><th className="px-4 py-3 font-medium">人员</th><th className="px-4 py-3 font-medium">公司 / 部门</th><th className="px-4 py-3 font-medium">在职情况</th><th className="px-4 py-3 font-medium">设备构成</th><th className="px-4 py-3 font-medium">在线设备</th><th className="px-4 py-3 font-medium">最后活跃</th><th className="px-4 py-3 font-medium">安全状态</th><th className="w-44 px-4 py-3 font-medium">操作</th></tr></thead><tbody className="divide-y divide-gray-100">{filteredUsers.map(user => { const riskCount = riskDeviceCount(user); return <tr key={user.id} className="hover:bg-[#f5f9fd]"><td className="px-4 py-4"><input type="checkbox" checked={selectedUserIds.includes(user.id)} onChange={event => setSelectedUserIds(current => event.target.checked ? [...current, user.id] : current.filter(id => id !== user.id))} className="h-4 w-4 accent-[#2f75b5]" /></td><td className="px-4 py-4"><div className="font-medium text-gray-900">{user.name}</div><div className="mt-1 text-xs text-gray-500">{user.account}</div></td><td className="px-4 py-4"><div className="text-gray-800">{user.company}</div><div className="mt-1 text-xs text-gray-500">{user.department}</div></td><td className="px-4 py-4"><span className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-700">{user.employmentStatus}</span></td><td className="px-4 py-4"><div className="font-medium">共 {user.devices.length} 台</div><div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-xs text-gray-500"><span>PC {deviceTypeCount(user, 'PC客户端')}</span><span>APP {deviceTypeCount(user, '移动APP')}</span><span>网页 {deviceTypeCount(user, '网页浏览器')}</span></div></td><td className="px-4 py-4"><span className="font-medium text-emerald-700">{onlineDeviceCount(user)}</span><span className="text-gray-400"> / {user.devices.length}</span></td><td className="px-4 py-4 text-gray-600">{latestActiveAt(user)}</td><td className="px-4 py-4">{riskCount > 0 ? <span className="inline-flex items-center gap-1 rounded bg-red-50 px-2 py-1 text-xs text-red-700"><AlertTriangle size={13} />{riskCount} 台风险</span> : <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-2 py-1 text-xs text-blue-700"><CheckCircle2 size={13} />全部合规</span>}</td><td className="px-4 py-4"><button type="button" onClick={() => { setSelectedUserId(user.id); setDetailTab('devices'); }} className="mr-4 text-[#2f75b5] hover:underline">详情</button><button type="button" disabled={onlineDeviceCount(user) === 0} onClick={() => logoutDevices([user.id])} className="text-[#2f75b5] hover:underline disabled:text-gray-300 disabled:no-underline">全部退出</button></td></tr>; })}{filteredUsers.length === 0 && <tr><td colSpan={9} className="px-4 py-16 text-center text-gray-400"><Search size={28} className="mx-auto mb-3 text-gray-300" />暂无匹配人员</td></tr>}</tbody></table></div>
         <div className="flex items-center justify-between border-t border-gray-100 px-5 py-4 text-sm text-gray-500"><span>共 {filteredUsers.length} 条</span><span>20 条/页</span></div>
-      </section></div>
+        </section>
+      </div>
       {confirmAction && <ConfirmDialog action={confirmAction} onClose={() => setConfirmAction(null)} />}
     </div>
   );
