@@ -3,6 +3,7 @@ import { X, ChevronDown, ChevronRight, PencilLine } from 'lucide-react';
 import { getHealthLightMeta, type ProjectWeeklyData } from '../data/projectWeeklyReport';
 
 const MAX_DESCRIPTION = 1000;
+type SectionKey = 'description' | 'nextWeekWorks';
 
 interface ProjectWeeklyReportProps {
   data: ProjectWeeklyData | null;
@@ -91,23 +92,24 @@ const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
 /** 项目周报渲染组件（浅色企业风，1:1 对齐 PC 周报模板结构） */
 export default function ProjectWeeklyReport({ data, filled, litIndex = -1, description, onEditingChange, onDescriptionSave, onNextWeekWorksSave, sealed = false, readOnly = false }: ProjectWeeklyReportProps) {
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
+  const [editingSection, setEditingSection] = useState<SectionKey | null>(null);
+  const [descDraft, setDescDraft] = useState(description);
+  const [worksDraft, setWorksDraft] = useState<string[]>(data?.nextWeekWorks ?? []);
+  const [saveConfirmSection, setSaveConfirmSection] = useState<SectionKey | null>(null);
   const light = data ? getHealthLightMeta(data.healthLight) : null;
 
   const trimmedLength = useMemo(() => description.trim().length, [description]);
   const overLimit = description.length > MAX_DESCRIPTION;
   const emptyDescription = trimmedLength === 0;
+  const sectionEditable = !readOnly && !sealed && Boolean(onDescriptionSave || onNextWeekWorksSave);
+
+  useEffect(() => { onEditingChange?.(editingSection !== null); }, [editingSection, onEditingChange]);
 
   if (!filled || !data || !light) {
     return <ReportSkeleton litIndex={litIndex} />;
   }
 
   // ===== 分段编辑状态：同时只允许一段处于编辑 =====
-  type SectionKey = 'description' | 'nextWeekWorks';
-  const [editingSection, setEditingSection] = useState<SectionKey | null>(null);
-  const [descDraft, setDescDraft] = useState(description);
-  const [worksDraft, setWorksDraft] = useState<string[]>(data.nextWeekWorks);
-  const sectionEditable = !readOnly && !sealed && Boolean(onDescriptionSave || onNextWeekWorksSave);
-
   const startEdit = (key: SectionKey) => {
     if (!sectionEditable) return;
     if (key === 'description') setDescDraft(description);
@@ -116,9 +118,7 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
   };
   const cancelEdit = () => setEditingSection(null);
 
-  useEffect(() => { onEditingChange?.(editingSection !== null); }, [editingSection, onEditingChange]);
   // 字段保存二次确认（与系统确认弹窗一致的轻量样式）
-  const [saveConfirmSection, setSaveConfirmSection] = useState<SectionKey | null>(null);
   const sectionTitle = (key: SectionKey) => key === 'description' ? '总体进展描述' : '未来1周工作计划';
 
   const saveDescription = () => {

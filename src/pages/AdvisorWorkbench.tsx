@@ -114,6 +114,8 @@ const projectOptions = workItems.map((item, index) => ({
   code: `PRJ-2026-${String(index + 1).padStart(3, '0')}`,
   name: item.title,
   owner: item.owner,
+  itManager: '司马懿',
+  itExecutionSubManager: item.assistant,
   teamName: item.teamName,
   progress: item.progress,
   status: item.status,
@@ -121,6 +123,10 @@ const projectOptions = workItems.map((item, index) => ({
   description: item.description,
   latestReport: item.latestReport,
 }));
+
+const getProjectLightLabel = (riskLevel: string) => (
+  riskLevel === '风险' ? '红灯' : riskLevel === '关注' ? '黄灯' : '绿灯'
+);
 
 const formatDate = (date: Date) => {
   const year = date.getFullYear();
@@ -177,7 +183,7 @@ const createProjectDraft = (project: (typeof projectOptions)[number]): ReportDra
   completed: `1. 已完成本周期项目进展与任务执行情况汇总。\n2. ${project.latestReport}\n3. 已同步${project.teamName}相关成员确认关键节点。`,
   risks: project.riskLevel === '正常'
     ? '当前未发现影响整体计划的重大风险，仍需持续关注跨团队协同和后续节点完成情况。'
-    : `当前项目风险等级为“${project.riskLevel}”，需要持续跟进关键任务、依赖事项和责任人反馈。`,
+    : `当前项目状态为“${getProjectLightLabel(project.riskLevel)}”，需要持续跟进关键任务、依赖事项和责任人反馈。`,
   nextPlan: `1. 跟进${project.name}未完成任务并确认责任人与截止时间。\n2. 完成下一阶段成果验收及问题闭环。\n3. 持续更新项目进度和风险状态。`,
   support: `请${project.teamName}协助确认下一阶段资源安排，并及时反馈跨部门依赖事项。`,
 });
@@ -266,7 +272,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   const filteredProjects = useMemo(() => {
     const keyword = projectKeyword.trim().toLowerCase();
     if (!keyword) return projectOptions;
-    return projectOptions.filter(project => [project.name, project.code, project.teamName, project.owner]
+    return projectOptions.filter(project => [project.name, project.code, project.itManager, project.itExecutionSubManager]
       .some(value => value.toLowerCase().includes(keyword)));
   }, [projectKeyword]);
   const selectedReports = useMemo(
@@ -653,7 +659,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       showToast('请至少选择一个数据源');
       return;
     }
-    // 项目汇报必选"项目管理平台"且至少选择 1 个项目（防止切类型后未联动）
+    // 项目汇报必选"项目管理平台"和一个项目（防止切类型后未联动）
     if (mode === 'report' && reportKind === 'project') {
       if (!selectedSourceIds.includes('projects')) {
         showToast('项目汇报必填："项目管理平台"数据来源不可取消');
@@ -820,15 +826,15 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   };
 
   const toggleProjectSelection = (projectId: string) => {
-    setProjectPickerSelection(current => current.includes(projectId)
-      ? current.filter(id => id !== projectId)
-      : [...current, projectId]);
+    setProjectPickerSelection(current => current[0] === projectId ? [] : [projectId]);
   };
 
   const confirmProjectSelection = () => {
-    setSelectedProjectIds(projectPickerSelection);
+    const nextSelection = projectPickerSelection.slice(0, 1);
+    setSelectedProjectIds(nextSelection);
     setShowProjectPicker(false);
-    showToast(`已选择 ${projectPickerSelection.length} 个项目`);
+    const selectedProject = projectOptions.find(project => project.id === nextSelection[0]);
+    showToast(selectedProject ? `已选择项目：${selectedProject.name}` : '已取消选择项目');
   };
 
   const openReportPicker = () => {
@@ -997,28 +1003,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       <div className="flex h-full flex-col">
         <div className="min-h-0 flex-1 overflow-y-auto px-8 py-6">
           <div className="mx-auto max-w-4xl pb-6">
-            {/* 多项目切换 */}
-            {selectedProjects.length > 1 && (
-              <section className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-gray-900">项目汇报</p>
-                    <p className="mt-0.5 text-xs text-gray-400">已生成 {selectedProjects.length} 份，选择项目查看对应汇报</p>
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-theme-700">{selectedProjects.findIndex(project => project.id === activeProjectId) + 1}/{selectedProjects.length}</span>
-                </div>
-                <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hover">
-                  {selectedProjects.map(project => (
-                    <button key={project.id} type="button" onClick={() => setActiveProjectId(project.id)}
-                      className={`shrink-0 rounded-md border px-3 py-2 text-left text-xs font-semibold transition-colors ${activeProjectId === project.id ? 'border-theme-300 bg-theme-50 text-theme-700' : 'border-gray-200 bg-white text-gray-600 hover:border-theme-200'}`}>
-                      {project.name}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* 完整周报预览：分段编辑（FR-05）——仅当前选中项目字段级保存 */}
+            {/* 完整周报预览：分段编辑（FR-05） */}
             <ProjectWeeklyReport
               data={weeklyData}
               filled
@@ -1036,31 +1021,6 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
 
   const renderReportDraft = () => (
     <div className="mx-auto w-full max-w-5xl px-5 py-6">
-      {selectedProjects.length > 0 && (
-        <section className="mb-4 border border-gray-200 bg-white px-4 py-3 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-bold text-gray-900">项目汇报</p>
-              <p className="mt-1 text-xs text-gray-400">已生成 {selectedProjects.length} 份，选择项目查看和编辑对应汇报</p>
-            </div>
-            <span className="shrink-0 text-xs font-semibold text-theme-700">
-              {Math.max(selectedProjects.findIndex(project => project.id === activeProjectId) + 1, 1)}/{selectedProjects.length}
-            </span>
-          </div>
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hover">
-            {selectedProjects.map(project => (
-              <button
-                key={project.id}
-                type="button"
-                onClick={() => setActiveProjectId(project.id)}
-                className={`shrink-0 rounded-md border px-3 py-2 text-left text-xs font-semibold transition-colors ${activeProjectId === project.id ? 'border-theme-300 bg-theme-50 text-theme-700' : 'border-gray-200 bg-white text-gray-600 hover:border-theme-200'}`}
-              >
-                {project.name}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2"><span className="rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">草稿已生成</span><span className="text-xs text-gray-400">{period}</span></div>
@@ -1606,11 +1566,11 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-[11px] font-semibold text-gray-700">已选项目 <span className="text-red-500">*</span></p>
-                            <p className="mt-0.5 text-[10px] text-gray-400">{selectedProjectIds.length > 0 ? `${selectedProjectIds.length} 个项目，将读取禅道数据生成汇报` : mode === 'report' && reportKind === 'project' ? '必填：项目汇报至少选择 1 个项目' : '尚未选择项目'}</p>
+                            <p className="mt-0.5 text-[10px] text-gray-400">{selectedProjectIds.length > 0 ? '已选择项目，将读取禅道数据生成汇报' : mode === 'report' && reportKind === 'project' ? '必填：请选择项目' : '尚未选择项目'}</p>
                           </div>
                           <button type="button" onClick={openProjectPicker} className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-semibold ${selectedProjectIds.length === 0 && mode === 'report' && reportKind === 'project' ? 'border-red-200 bg-red-50 text-red-600' : 'border-theme-200 bg-white text-theme-700 hover:bg-theme-50'}`}>选择项目</button>
                         </div>
-                        {selectedProjects.length > 0 && <div className="mt-2 space-y-1">{selectedProjects.map(project => <p key={project.id} className="truncate rounded bg-white px-2 py-1 text-[10px] text-gray-600">{project.name} · {project.riskLevel}</p>)}</div>}
+                        {selectedProjects.length > 0 && <div className="mt-2 space-y-1">{selectedProjects.map(project => <p key={project.id} className="truncate rounded bg-white px-2 py-1 text-[10px] text-gray-600">{project.name} · {getProjectLightLabel(project.riskLevel)}</p>)}</div>}
                       </div>
                     )}
                   </div>
@@ -1750,11 +1710,11 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-[11px] font-semibold text-gray-700">已选项目 {locked && <span className="text-red-500">*</span>}</p>
-                          <p className="mt-0.5 text-[10px] text-gray-400">{selectedProjectIds.length > 0 ? `${selectedProjectIds.length} 个项目，将读取禅道数据生成汇报` : locked ? '必填：项目汇报至少选择 1 个项目' : '尚未选择项目'}</p>
+                          <p className="mt-0.5 text-[10px] text-gray-400">{selectedProjectIds.length > 0 ? '已选择项目，将读取禅道数据生成汇报' : locked ? '必填：请选择项目' : '尚未选择项目'}</p>
                         </div>
                         <button type="button" onClick={openProjectPicker} disabled={disabled} className={`shrink-0 rounded-md border px-2 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-50 ${selectedProjectIds.length === 0 && locked ? 'border-red-200 bg-red-50 text-red-600' : 'border-theme-200 bg-white text-theme-700 hover:bg-theme-50'}`}>选择项目</button>
                       </div>
-                      {selectedProjects.length > 0 && <div className="mt-2 space-y-1">{selectedProjects.map(project => <p key={project.id} className="truncate rounded bg-white px-2 py-1 text-[10px] text-gray-600">{project.name} · {project.riskLevel}</p>)}</div>}
+                      {selectedProjects.length > 0 && <div className="mt-2 space-y-1">{selectedProjects.map(project => <p key={project.id} className="truncate rounded bg-white px-2 py-1 text-[10px] text-gray-600">{project.name} · {getProjectLightLabel(project.riskLevel)}</p>)}</div>}
                     </div>
                   )}
                 </div>
@@ -1804,7 +1764,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           <div className="min-h-0 flex-1 overflow-y-auto scrollbar-hover">{renderCurrentSidebar()}</div>
           <footer className="shrink-0 border-t border-gray-100 bg-white p-3">
             {stage === 'empty' ? (
-              <button onClick={startRequirementConfirmation} disabled={!prompt.trim() || (mode === 'report' && reportKind === 'project' && selectedProjectIds.length === 0) || (selectedSourceIds.includes('projects') && selectedProjectIds.length === 0)} className="w-full rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50" title={selectedSourceIds.includes('projects') && selectedProjectIds.length === 0 ? '已勾选项目管理平台，需选择至少 1 个项目' : mode === 'report' && reportKind === 'project' && selectedProjectIds.length === 0 ? '项目汇报必填：请选择至少 1 个项目' : undefined}>确认需求并生成</button>
+              <button onClick={startRequirementConfirmation} disabled={!prompt.trim() || (mode === 'report' && reportKind === 'project' && selectedProjectIds.length === 0) || (selectedSourceIds.includes('projects') && selectedProjectIds.length === 0)} className="w-full rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50" title={selectedSourceIds.includes('projects') && selectedProjectIds.length === 0 ? '已勾选项目管理平台，请选择项目' : mode === 'report' && reportKind === 'project' && selectedProjectIds.length === 0 ? '项目汇报必填：请选择项目' : undefined}>确认需求并生成</button>
             ) : stage === 'draft' && requirementEditing ? (
               <div className="space-y-2">
                 <p className="text-center text-[11px] leading-4 text-amber-600">需求已修改，需重新生成后才能发送</p>
@@ -1879,16 +1839,13 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-gray-950/35 p-4">
           <div className="flex h-[min(680px,calc(100vh-48px))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="flex shrink-0 items-start justify-between border-b border-gray-100 px-6 py-5">
-              <div>
-                <h3 className="text-lg font-bold text-gray-950">从项目管理平台选择项目</h3>
-                <p className="mt-1 text-sm text-gray-500">支持多选，选择多个项目后将分别生成一份项目汇报。</p>
-              </div>
+              <h3 className="text-lg font-bold text-gray-950">从项目管理平台选择项目</h3>
               <button type="button" onClick={() => setShowProjectPicker(false)} className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" title="关闭"><X size={18} /></button>
             </div>
             <div className="shrink-0 border-b border-gray-100 px-6 py-4">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input value={projectKeyword} onChange={event => setProjectKeyword(event.target.value)} placeholder="搜索项目名称、编号、团队或负责人" className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-3 text-sm outline-none focus:border-theme-300 focus:bg-white" />
+                <input value={projectKeyword} onChange={event => setProjectKeyword(event.target.value)} placeholder="搜索项目名称、编号、IT项目经理或IT执行子经理" className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 pr-3 text-sm outline-none focus:border-theme-300 focus:bg-white" />
               </div>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3 scrollbar-hover">
@@ -1897,24 +1854,23 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                   const selected = projectPickerSelection.includes(project.id);
                   return (
                     <button key={project.id} type="button" onClick={() => toggleProjectSelection(project.id)} className={`flex w-full items-center gap-4 px-3 py-4 text-left transition-colors ${selected ? 'bg-theme-50/60' : 'bg-white hover:bg-gray-50'}`}>
-                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border ${selected ? 'border-theme-600 bg-theme-600 text-white' : 'border-gray-300 bg-white text-transparent'}`}><Check size={13} /></span>
+                      <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected ? 'border-theme-600 bg-theme-600 text-white' : 'border-gray-300 bg-white text-transparent'}`}><span className="h-2 w-2 rounded-full bg-current" /></span>
                       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500"><FolderKanban size={19} /></span>
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2"><span className="truncate text-sm font-semibold text-gray-900">{project.name}</span><span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">{project.code}</span></span>
-                        <span className="mt-1 block truncate text-xs text-gray-400">{project.teamName} · 负责人 {project.owner} · 当前进度 {project.progress}%</span>
+                        <span className="mt-1 block truncate text-xs text-gray-400">IT项目经理 {project.itManager} · IT执行子经理 {project.itExecutionSubManager} · 当前进度 {project.progress}%</span>
                       </span>
-                      <span className={`shrink-0 rounded px-2 py-1 text-xs font-semibold ${project.riskLevel === '风险' ? 'bg-red-50 text-red-600' : project.riskLevel === '关注' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{project.riskLevel}</span>
+                      <span className={`shrink-0 rounded px-2 py-1 text-xs font-semibold ${project.riskLevel === '风险' ? 'bg-red-50 text-red-600' : project.riskLevel === '关注' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{getProjectLightLabel(project.riskLevel)}</span>
                     </button>
                   );
                 })}
               </div>
               {filteredProjects.length === 0 && <div className="py-16 text-center text-sm text-gray-400">暂无匹配项目</div>}
             </div>
-            <div className="flex shrink-0 items-center justify-between border-t border-gray-100 bg-white px-6 py-4">
-              <p className="text-sm text-gray-500">已选择 <span className="font-semibold text-theme-700">{projectPickerSelection.length}</span> 个项目</p>
+            <div className="flex shrink-0 items-center justify-end border-t border-gray-100 bg-white px-6 py-4">
               <div className="flex gap-3">
                 <button type="button" onClick={() => setShowProjectPicker(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50">取消</button>
-                <button type="button" onClick={confirmProjectSelection} className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700">确认选择</button>
+                <button type="button" onClick={confirmProjectSelection} disabled={projectPickerSelection.length === 0} className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50">确认选择</button>
               </div>
             </div>
           </div>
