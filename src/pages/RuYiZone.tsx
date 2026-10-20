@@ -74,7 +74,6 @@ const defaultAssistants: Assistant[] = [
   { id: 1, name: "企业知识专家", isActive: false, icon: <Building2 size={18} /> },
   { id: 2, name: "IT服务助手", isActive: false, icon: <MonitorCog size={18} /> },
   { id: 3, name: "如意公文创作", isActive: false, icon: <FileTextIcon size={18} /> },
-  { id: 4, name: "如意PPT创作", isActive: false, icon: <PresentationIcon size={18} /> },
   { id: 5, name: "如意参谋师", isActive: false, icon: <Target size={18} /> },
 ];
 
