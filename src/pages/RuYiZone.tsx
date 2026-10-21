@@ -1663,7 +1663,7 @@ export default function RuYiZone() {
                 <h4 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">常用智能助手</h4>
                 <span className="rounded-full bg-theme-50 px-2 py-0.5 text-[10px] font-medium text-theme-600 dark:bg-theme-900/30 dark:text-theme-300">智能体</span>
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2" data-requirement-id="ruyi-workbench-navigation">
               {assistants.map((assistant) => (
                 <button
                   type="button"
@@ -2534,7 +2534,7 @@ export default function RuYiZone() {
               </div>
 
               {/* 工具按钮 */}
-              <div className="flex flex-wrap gap-4 mb-16">
+              <div className="flex flex-wrap gap-4 mb-16" data-requirement-id="ruyi-plugin-state">
                 {tools.map((tool) => (
                   <button
                     key={tool.id}
@@ -2554,7 +2554,7 @@ export default function RuYiZone() {
                 ))}
               </div>
 
-              <div className="mb-16 relative">
+              <div className="mb-16 relative" data-requirement-id="ruyi-conversation-input">
                 <div className={`relative min-h-[168px] border-2 rounded-2xl p-5 md:p-6 shadow-sm bg-white dark:bg-gray-800 hover:shadow-md transition-all duration-300 ${activeTool ? 'border-theme-200 ring-1 ring-theme-100' : 'border-gray-100 dark:border-gray-700'}`}>
                   {activeTool === '公文' && (
                     <div className="pr-24">

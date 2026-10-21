@@ -234,7 +234,7 @@ export default function PcWorkbenchAdmin() {
         <span className="text-xs text-gray-400">共 {visibleCards.length} / {cards.length} 张卡片</span>
       </div>
 
-      <div className="overflow-hidden rounded-lg bg-white shadow-sm">
+      <div className="overflow-hidden rounded-lg bg-white shadow-sm" data-requirement-id="pc-card-publishing">
         <table className="w-full text-left">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs text-gray-500">
             <tr>
@@ -291,7 +291,7 @@ export default function PcWorkbenchAdmin() {
       {/* 新增第一步：选择卡片类型 */}
       {editorMode === 'pick-type' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-2xl" data-requirement-id="pc-card-type">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">选择卡片类型</h3>
@@ -360,7 +360,7 @@ export default function PcWorkbenchAdmin() {
               <button onClick={() => setEditorMode(null)} className="text-gray-400 hover:text-gray-700"><X size={20} /></button>
             </div>
             <div className="scrollbar-hover min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
-              <section>
+              <section data-requirement-id="pc-card-basics">
                 <p className="mb-2 text-xs font-semibold text-gray-500">基础信息</p>
                 <div className={draft.kind === 'component' ? 'grid grid-cols-1 gap-3' : 'grid grid-cols-2 gap-3'}>
                   <label className="block text-sm text-gray-700">卡片标题<span className="text-red-500"> *</span>
@@ -399,7 +399,7 @@ export default function PcWorkbenchAdmin() {
                 </div>
               </section>
 
-              <section>
+              <section data-requirement-id="pc-card-addresses">
                 <p className="mb-2 text-xs font-semibold text-gray-500">入口配置</p>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block text-sm text-gray-700">主地址{draft.kind === 'link' && <span className="text-red-500"> *</span>}
@@ -411,7 +411,7 @@ export default function PcWorkbenchAdmin() {
                 </div>
               </section>
 
-              <section className="text-sm text-gray-700">
+              <section className="text-sm text-gray-700" data-requirement-id="pc-card-availability">
                 <p className="mb-2 text-xs font-semibold text-gray-500">发布配置</p>
                 <span>可用范围</span>
                 <select

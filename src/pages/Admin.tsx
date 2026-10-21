@@ -324,7 +324,7 @@ function ContentPlaceholder({ title, icon }: { title: string; icon: string }) {
   );
 }
 
-type VersionPlatform = 'android' | 'ios' | 'desktop';
+type VersionPlatform = 'android' | 'ios' | 'macos' | 'windows';
 type VersionStatus = '已发布' | '已失效' | '草稿';
 
 type VersionRecord = {
@@ -346,7 +346,8 @@ type VersionRecord = {
 const versionPlatformTabs: Array<{ id: VersionPlatform; label: string }> = [
   { id: 'android', label: 'android' },
   { id: 'ios', label: 'iOS' },
-  { id: 'desktop', label: 'client' },
+  { id: 'macos', label: 'macOS' },
+  { id: 'windows', label: 'Windows' },
 ];
 
 const initialVersionRows: VersionRecord[] = [
@@ -354,13 +355,14 @@ const initialVersionRows: VersionRecord[] = [
   { id: 'android-321', platform: 'android', versionNo: '3.2.1', buildNo: '20250515004', forceUpdate: true, status: '已失效', content: '账号安全体系加强，本次升级为强制更新，建议...', description: '安全策略更新', updater: MAIN_USER_NAME, updatedAt: '2026-01-30 14:45:50', packageType: 'APK', supportedOS: 'Android 9+', downloadUrl: 'https://download.juneyaoair.com/ijx/android/3.2.1.apk' },
   { id: 'ios-331', platform: 'ios', versionNo: '3.3.1', buildNo: '20251104001', forceUpdate: false, status: '已发布', content: '登录安全优化、个人信息增加个人生...', description: 'App Store 发布版本', updater: MAIN_USER_NAME, updatedAt: '2026-01-30 14:44:11', packageType: 'App Store', supportedOS: 'iOS 15+', downloadUrl: 'https://apps.apple.com/app/ijx' },
   { id: 'ios-320', platform: 'ios', versionNo: '3.2.0', buildNo: '20250428002', forceUpdate: false, status: '已失效', content: 'iJX app now supports English 2. 福利中心：...', description: '双语能力更新', updater: MAIN_USER_NAME, updatedAt: '2025-06-24 22:30:28', packageType: 'App Store', supportedOS: 'iOS 14+', downloadUrl: 'https://apps.apple.com/app/ijx' },
-  { id: 'desktop-110', platform: 'desktop', versionNo: '1.1.0', buildNo: '20260915001', forceUpdate: false, status: '已发布', content: '新增 PC 工作门户、桌面端打开外部链接策略配置...', description: 'Windows 桌面客户端安装包', updater: MAIN_USER_NAME, updatedAt: '2026-09-15 18:30:21', packageType: 'EXE', supportedOS: 'Windows 10/11', downloadUrl: 'https://download.juneyaoair.com/ijx/desktop/1.1.0.exe' },
-  { id: 'desktop-100', platform: 'desktop', versionNo: '1.0.0', buildNo: '20260818001', forceUpdate: false, status: '已失效', content: '桌面端基础能力：门户入口、消息通知、日历同步...', description: '桌面端首个试运行版本', updater: MAIN_USER_NAME, updatedAt: '2026-08-18 11:05:02', packageType: 'MSI', supportedOS: 'Windows 10+', downloadUrl: 'https://download.juneyaoair.com/ijx/desktop/1.0.0.msi' },
+  { id: 'windows-110', platform: 'windows', versionNo: '1.1.0', buildNo: '20260915001', forceUpdate: false, status: '已发布', content: '新增 PC 工作门户、桌面端打开外部链接策略配置...', description: 'Windows 桌面客户端安装包', updater: MAIN_USER_NAME, updatedAt: '2026-09-15 18:30:21', packageType: 'EXE', supportedOS: 'Windows 10/11', downloadUrl: 'https://download.juneyaoair.com/ijx/windows/1.1.0.exe' },
+  { id: 'windows-100', platform: 'windows', versionNo: '1.0.0', buildNo: '20260818001', forceUpdate: false, status: '已失效', content: '桌面端基础能力：门户入口、消息通知、日历同步...', description: '桌面端首个试运行版本', updater: MAIN_USER_NAME, updatedAt: '2026-08-18 11:05:02', packageType: 'MSI', supportedOS: 'Windows 10+', downloadUrl: 'https://download.juneyaoair.com/ijx/windows/1.0.0.msi' },
+  { id: 'macos-100', platform: 'macos', versionNo: '1.0.0', buildNo: '20260818002', forceUpdate: false, status: '已发布', content: '桌面端基础能力：门户入口、消息通知、日历同步...', description: 'macOS 桌面客户端安装包', updater: MAIN_USER_NAME, updatedAt: '2026-08-18 11:10:02', packageType: 'DMG', supportedOS: 'macOS 12+', downloadUrl: 'https://download.juneyaoair.com/ijx/macos/1.0.0.dmg' },
 ];
 
 const defaultVersionDraft: VersionRecord = {
   id: '',
-  platform: 'desktop',
+  platform: 'windows',
   versionNo: '',
   buildNo: '',
   forceUpdate: false,
@@ -403,8 +405,8 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
       ...defaultVersionDraft,
       id: `${activePlatform}-${Date.now()}`,
       platform: activePlatform,
-      packageType: activePlatform === 'desktop' ? 'EXE' : activePlatform === 'ios' ? 'App Store' : 'APK',
-      supportedOS: activePlatform === 'desktop' ? 'Windows 10/11' : activePlatform === 'ios' ? 'iOS 15+' : 'Android 10+',
+      packageType: activePlatform === 'windows' ? 'EXE' : activePlatform === 'macos' ? 'DMG' : activePlatform === 'ios' ? 'App Store' : 'APK',
+      supportedOS: activePlatform === 'windows' ? 'Windows 10/11' : activePlatform === 'macos' ? 'macOS 12+' : activePlatform === 'ios' ? 'iOS 15+' : 'Android 10+',
     });
     setEditorOpen(true);
   };
@@ -501,7 +503,7 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
                   <th className="px-3 py-3 font-medium">状态</th>
                   <th className="px-3 py-3 font-medium">修复内容</th>
                   <th className="px-3 py-3 font-medium">描述</th>
-                  {activePlatform === 'desktop' && <th className="px-3 py-3 font-medium">client配置</th>}
+                  {(activePlatform === 'windows' || activePlatform === 'macos') && <th className="px-3 py-3 font-medium">client配置</th>}
                   <th className="px-3 py-3 font-medium">更新人</th>
                   <th className="px-3 py-3 font-medium">更新时间</th>
                   <th className="px-3 py-3 font-medium">操作</th>
@@ -516,7 +518,7 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
                     <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.status}</td>
                     <td className="max-w-[260px] truncate px-3 py-3 text-gray-700">{item.content}</td>
                     <td className="max-w-[210px] truncate px-3 py-3 text-gray-500">{item.description}</td>
-                    {activePlatform === 'desktop' && (
+                    {(activePlatform === 'windows' || activePlatform === 'macos') && (
                       <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.packageType} · {item.supportedOS}</td>
                     )}
                     <td className="whitespace-nowrap px-3 py-3 text-gray-700">{item.updater}</td>
@@ -530,7 +532,7 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
                 ))}
                 {filteredRows.length === 0 && (
                   <tr>
-                    <td colSpan={activePlatform === 'desktop' ? 10 : 9} className="px-3 py-12 text-center text-gray-400">暂无版本数据</td>
+                    <td colSpan={activePlatform === 'windows' || activePlatform === 'macos' ? 10 : 9} className="px-3 py-12 text-center text-gray-400">暂无版本数据</td>
                   </tr>
                 )}
               </tbody>

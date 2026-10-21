@@ -17,6 +17,7 @@ import Admin from "@/pages/Admin";
 import WorkReport from "@/pages/WorkReport";
 import OkrModule from "@/pages/OkrModule";
 import Download from "@/pages/Download";
+import { RequirementModeLayer, RequirementModeProvider } from "@/components/requirements/RequirementMode";
 
 function shouldShowMobileView(width: number, height: number): boolean {
   const aspectRatio = width / height;
@@ -172,27 +173,30 @@ export default function App() {
 
   return (
     <Router basename={import.meta.env.BASE_URL}>
-      <Routes>
-        {/* 管理后台 — 独立页面，不嵌套在 Layout 中 */}
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/download" element={<Download />} />
-        <Route path="/" element={<Navigate to="/web_client" replace />} />
-        <Route path="/web_client/*" element={webClientRoutes} />
-        <Route path="/enterprise" element={<Navigate to="/web_client/enterprise" replace />} />
-        <Route path="/assistant" element={<Navigate to="/web_client/assistant" replace />} />
-        <Route path="/process" element={<Navigate to="/web_client/process" replace />} />
-        <Route path="/ekb" element={<Navigate to="/web_client/ekb" replace />} />
-        <Route path="/profile" element={<Navigate to="/web_client/profile" replace />} />
-        <Route path="/agent-square" element={<Navigate to="/web_client/agent-square" replace />} />
-        <Route path="/ruyi-zone" element={<Navigate to="/web_client/ruyi-zone" replace />} />
-        <Route path="/presentation" element={<Navigate to="/web_client/ruyi-zone/presentation" replace />} />
-        <Route path="/calendar" element={<Navigate to="/web_client/calendar" replace />} />
-        <Route path="/business" element={<Navigate to="/web_client/business" replace />} />
-        <Route path="/work-report" element={<Navigate to="/web_client/work-report" replace />} />
-        <Route path="/work-items" element={<Navigate to="/web_client/enterprise" replace />} />
-        <Route path="/okr" element={<Navigate to="/web_client/okr" replace />} />
-        <Route path="/settings" element={<Navigate to="/web_client/settings" replace />} />
-      </Routes>
+      <RequirementModeProvider>
+        <Routes>
+          {/* 管理后台 — 独立页面，不嵌套在 Layout 中 */}
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/download" element={<Download />} />
+          <Route path="/" element={<Navigate to="/web_client" replace />} />
+          <Route path="/web_client/*" element={webClientRoutes} />
+          <Route path="/enterprise" element={<Navigate to="/web_client/enterprise" replace />} />
+          <Route path="/assistant" element={<Navigate to="/web_client/assistant" replace />} />
+          <Route path="/process" element={<Navigate to="/web_client/process" replace />} />
+          <Route path="/ekb" element={<Navigate to="/web_client/ekb" replace />} />
+          <Route path="/profile" element={<Navigate to="/web_client/profile" replace />} />
+          <Route path="/agent-square" element={<Navigate to="/web_client/agent-square" replace />} />
+          <Route path="/ruyi-zone" element={<Navigate to="/web_client/ruyi-zone" replace />} />
+          <Route path="/presentation" element={<Navigate to="/web_client/ruyi-zone/presentation" replace />} />
+          <Route path="/calendar" element={<Navigate to="/web_client/calendar" replace />} />
+          <Route path="/business" element={<Navigate to="/web_client/business" replace />} />
+          <Route path="/work-report" element={<Navigate to="/web_client/work-report" replace />} />
+          <Route path="/work-items" element={<Navigate to="/web_client/enterprise" replace />} />
+          <Route path="/okr" element={<Navigate to="/web_client/okr" replace />} />
+          <Route path="/settings" element={<Navigate to="/web_client/settings" replace />} />
+        </Routes>
+        <RequirementModeLayer />
+      </RequirementModeProvider>
     </Router>
   );
 }

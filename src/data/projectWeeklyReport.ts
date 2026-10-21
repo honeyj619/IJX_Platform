@@ -116,9 +116,6 @@ export const resolveHealthLight = (params: {
   return 'green';
 };
 
-const buildStageSummary = (stages: GanttStage[]): string =>
-  stages.map(stage => `${stage.name.replace(/^阶段[一二三四五六七八九十]+ · /, '')} ${stage.progress}%`).join(' / ');
-
 /** 由项目基础数据构造周报（原型阶段以确定数据模拟禅道取数与清洗结果） */
 export const buildProjectWeeklyData = (params: {
   projectId: string;
@@ -177,7 +174,7 @@ export const buildProjectWeeklyData = (params: {
       { id: 'risk', name: '风险消化率', value: '—', fraction: '(0/0)' },
     ],
     overallProgress: params.progress,
-    milestoneSummary: `按阶段分解计算：${buildStageSummary(stages)}，加权综合 ${params.progress}%。`,
+    milestoneSummary: '整体进度公式计算逻辑：整体进度百分比 = ( 当前时间 - 项目专业评审会时间 ) / ( 项目计划结项时间 - 项目专业评审会 )',
     overallDescription: `${params.projectName}本周按计划推进（${params.latestReport}）。请在本区域补充项目总体进展描述后再发送。`,
     stages,
     thisWeekWorks: [

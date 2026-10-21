@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { X, ChevronDown, ChevronRight, PencilLine } from 'lucide-react';
+import { X, ChevronDown, ChevronRight } from 'lucide-react';
 import { getHealthLightMeta, type ProjectWeeklyData } from '../data/projectWeeklyReport';
 
 const MAX_DESCRIPTION = 1000;
@@ -16,6 +16,9 @@ interface ProjectWeeklyReportProps {
   onEditingChange?: (editing: boolean) => void;
   /** 分段编辑-保存描述（字段级） */
   onDescriptionSave?: (value: string) => void;
+  /** 总体进展描述 AI 生成失败时重新生成 */
+  onDescriptionRegenerate?: () => void;
+  descriptionGenerationFailed?: boolean;
   /** 分段编辑-保存下周计划（字段级） */
   onNextWeekWorksSave?: (value: string[]) => void;
   /** 分段编辑：是否封版（已提交），封版不显示编辑按钮 */
@@ -90,7 +93,7 @@ const ReadOnlyField = ({ label, value }: { label: string; value: string }) => (
 );
 
 /** 项目周报渲染组件（浅色企业风，1:1 对齐 PC 周报模板结构） */
-export default function ProjectWeeklyReport({ data, filled, litIndex = -1, description, onEditingChange, onDescriptionSave, onNextWeekWorksSave, sealed = false, readOnly = false }: ProjectWeeklyReportProps) {
+export default function ProjectWeeklyReport({ data, filled, litIndex = -1, description, onEditingChange, onDescriptionSave, onDescriptionRegenerate, descriptionGenerationFailed = false, onNextWeekWorksSave, sealed = false, readOnly = false }: ProjectWeeklyReportProps) {
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
   const [editingSection, setEditingSection] = useState<SectionKey | null>(null);
   const [descDraft, setDescDraft] = useState(description);
@@ -223,7 +226,9 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-gray-500">里程碑 · 整体完成度</p>
-            <p className="mt-2 text-sm leading-6 text-gray-700" title="该字段由禅道数据自动生成，不可编辑">{data.milestoneSummary}</p>
+            <p className="mt-2 text-sm leading-6 text-gray-700" title="该字段由禅道数据自动生成，不可编辑">
+              整体进度公式计算逻辑：整体进度百分比 = ( 当前时间 - 项目专业评审会时间 ) / ( 项目计划结项时间 - 项目专业评审会 )
+            </p>
           </div>
         </div>
       </section>
@@ -237,12 +242,16 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
               <span className={`text-xs font-semibold ${descDraft.length > MAX_DESCRIPTION || descDraft.trim().length === 0 ? 'text-red-500' : 'text-gray-400'}`}>
                 {descDraft.trim().length === 0 ? '必填' : descDraft.length > MAX_DESCRIPTION ? `超限，请删减至 ${MAX_DESCRIPTION} 字以内` : `${descDraft.length} / ${MAX_DESCRIPTION} 字`}
               </span>
-            ) : (
+            ) : !descriptionGenerationFailed && (
               <span className="text-xs text-gray-400">{description.length} 字</span>
             )}
-            {sectionEditable && editingSection !== 'description' && (
+            {sectionEditable && editingSection !== 'description' && descriptionGenerationFailed ? (
+              <button type="button" onClick={onDescriptionRegenerate} className="rounded-md border border-red-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-red-600 transition-colors hover:bg-red-50">
+                重新生成
+              </button>
+            ) : sectionEditable && editingSection !== 'description' && (
               <button type="button" onClick={() => startEdit('description')} disabled={editingSection !== null} className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-600 transition-colors hover:border-theme-300 hover:text-theme-700 disabled:cursor-not-allowed disabled:opacity-40">
-                <PencilLine size={12} />编辑
+                编辑
               </button>
             )}
           </div>
@@ -262,6 +271,10 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
               <button type="button" onClick={cancelEdit} className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50">取消</button>
               <button type="button" onClick={saveDescription} disabled={descDraft.trim().length === 0 || descDraft.length > MAX_DESCRIPTION} className="rounded-md bg-theme-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50">保存</button>
             </div>
+          </div>
+        ) : descriptionGenerationFailed ? (
+          <div className="rounded-lg border border-red-100 bg-red-50/60 px-4 py-4 text-sm text-red-600">
+            AI 生成总体进展描述失败，请重新生成。
           </div>
         ) : (
           <p className="whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 text-sm leading-7 text-gray-700">{description || '（暂无描述）'}</p>
@@ -299,12 +312,8 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
 
       {/* 详细阶段甘特图（按阶段分解任务，对齐 PC 周报模板） */}
       <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="mb-4 flex items-center justify-between px-6 pt-5">
+        <div className="mb-4 px-6 pt-5">
           <h3 className="text-sm font-bold text-gray-900">详细阶段甘特图（按阶段分解任务）</h3>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setCollapsedStages(new Set())} className="rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-50">全部展开</button>
-            <button type="button" onClick={() => setCollapsedStages(new Set(data.stages.map(s => s.id)))} className="rounded-md border border-gray-200 px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-50">全部折叠</button>
-          </div>
         </div>
 
         <div className="pb-2">
@@ -423,7 +432,7 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
             <span className="ml-2 text-xs font-normal text-gray-400">共 {data.nextWeekWorks.filter(Boolean).length} 项</span>
             {sectionEditable && editingSection !== 'nextWeekWorks' && (
               <button type="button" onClick={() => startEdit('nextWeekWorks')} disabled={editingSection !== null} className="ml-auto inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-semibold text-gray-600 transition-colors hover:border-theme-300 hover:text-theme-700 disabled:cursor-not-allowed disabled:opacity-40">
-                <PencilLine size={12} />编辑
+                编辑
               </button>
             )}
           </h3>

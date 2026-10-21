@@ -19,7 +19,6 @@ import {
   Mail,
   MessageSquareText,
   Paperclip,
-  PencilLine,
   RefreshCw,
   Save,
   Search,
@@ -242,6 +241,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   const [sendRecords, setSendRecords] = useState(getReportSendRecords);
   const [savedReports, setSavedReports] = useState(getSavedReportRecords);
   const [savedContentHash, setSavedContentHash] = useState('');
+  const [reportEditingConfirmed, setReportEditingConfirmed] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showProjectSendConfirm, setShowProjectSendConfirm] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
@@ -257,6 +257,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   }, [mode, reportKind]); // eslint-disable-line react-hooks/exhaustive-deps
   const [weeklyData, setWeeklyData] = useState<ProjectWeeklyData | null>(null);
   const [overallDescription, setOverallDescription] = useState('');
+  const [descriptionGenerationFailed, setDescriptionGenerationFailed] = useState(false);
   const [dispatch, setDispatch] = useState<DispatchConfig>({ sender: MAIN_USER_EMAIL, recipients: [], cc: [], wecom: [] });
   const [receipts, setReceipts] = useState<SendReceipt[]>([]);
   // 需求编辑模式：草稿态右侧默认只读，点"调整需求"后才能编辑
@@ -349,8 +350,10 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
             latestReport: target.latestReport,
             period,
           });
+          const descriptionFailed = /总体进展描述.*失败|整体进展描述.*失败/.test(prompt);
           setWeeklyData(data);
-          setOverallDescription(data.overallDescription);
+          setOverallDescription(descriptionFailed ? '' : data.overallDescription);
+          setDescriptionGenerationFailed(descriptionFailed);
           // 分发配置默认值（BR-07-01/02）：发件人=当前用户，收件人=项目干系人（通讯录姓名）
           const light = data.healthLight;
           setDispatch({
@@ -380,7 +383,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     }
     const timer = window.setTimeout(() => setGenerationStep(current => current + 1), 620);
     return () => window.clearTimeout(timer);
-  }, [generationStep, selectedProjects, selectedSourceIds, stage, stages.length, reportKind, activeProjectId, period]);
+  }, [generationStep, selectedProjects, selectedSourceIds, stage, stages.length, reportKind, activeProjectId, period, prompt]);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -416,6 +419,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     if (value.trim().length === 0 || value.length > 1000) { showToast('请检查总体进展描述（必填，最多 1000 字）'); return; }
     const nextData = { ...weeklyData, overallDescription: value };
     setOverallDescription(value);
+    setDescriptionGenerationFailed(false);
     setWeeklyData(nextData);
     upsertFieldSavedRecords(nextData);
   };
@@ -427,6 +431,15 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     const nextData = { ...weeklyData, nextWeekWorks: value };
     setWeeklyData(nextData);
     upsertFieldSavedRecords(nextData);
+  };
+
+  const regenerateOverallDescription = () => {
+    if (!weeklyData || isCurrentReportSealed) return;
+    const regenerated = weeklyData.overallDescription || `${weeklyData.projectName}本周按计划推进，项目整体进展平稳，关键事项按当前节点持续落实。`;
+    setOverallDescription(regenerated);
+    setDescriptionGenerationFailed(false);
+    setReportEditingConfirmed(false);
+    showToast('总体进展描述已重新生成');
   };
 
   /** 按最新周报数据重建记录（HTML 整体重生成，不拼接），覆盖同业务键记录 */
@@ -488,6 +501,31 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   const isCurrentReportSealed = currentReportKeys.length > 0 && currentReportKeys.some(reportKey => (
     sendRecords.some(record => (record.reportKey || createReportBusinessKey(record)) === reportKey)
   ));
+  const projectReportContentInvalid = reportKind === 'project' && (
+    !weeklyData || overallDescription.trim().length === 0 || overallDescription.length > 1000
+  );
+  const canConfirmReportEditing = !isCurrentReportSealed
+    && !fieldEditing
+    && Boolean(currentContentHash)
+    && !projectReportContentInvalid;
+  const canSubmitCurrentReport = !isCurrentReportSealed
+    && !fieldEditing
+    && !projectReportContentInvalid
+    && reportEditingConfirmed
+    && Boolean(savedContentHash)
+    && !hasUnsavedChanges;
+
+  const reportActionHint = isCurrentReportSealed
+    ? '该周期汇报已提交封版'
+    : fieldEditing
+      ? '字段编辑中，保存字段后再保存汇报'
+      : projectReportContentInvalid
+        ? '请填写总体进展描述（最多 1000 字）'
+        : !reportEditingConfirmed
+          ? '请确认已保存汇报内容的改动，确认后即可提交'
+          : hasUnsavedChanges || !savedContentHash
+            ? '内容已修改，请重新确认已保存相关改动'
+            : '内容已确认，可提交';
 
   const saveCurrentReports = () => {
     if (mode !== 'report') return;
@@ -557,6 +595,12 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     }
     setSavedContentHash(currentContentHash);
     showToast('汇报已保存，可继续提交');
+  };
+
+  const confirmReportEditingAndSave = () => {
+    if (!canConfirmReportEditing) return;
+    if (hasUnsavedChanges || !savedContentHash) saveCurrentReports();
+    setReportEditingConfirmed(true);
   };
 
   const persistPersonalSendRecord = () => {
@@ -680,7 +724,8 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       showToast('请先选择需要引用的历史工作汇报');
       return;
     }
-    if (/模拟失败|生成失败/.test(prompt)) {
+    const descriptionFailureRequested = /总体进展描述.*失败|整体进展描述.*失败/.test(prompt);
+    if (/模拟失败|生成失败/.test(prompt) && !descriptionFailureRequested) {
       setStage('failed');
       return;
     }
@@ -688,8 +733,10 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     setProjectDrafts({});
     setActiveProjectId('');
     setWeeklyData(null);
+    setDescriptionGenerationFailed(false);
     setReceipts([]);
     setSavedContentHash('');
+    setReportEditingConfirmed(false);
     setStage('generating');
   };
 
@@ -715,6 +762,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     setShowSubmitConfirm(false);
     setShowRegenerateConfirm(false);
     setSavedContentHash('');
+    setReportEditingConfirmed(false);
     clearActiveSavedReport();
   };
 
@@ -1011,6 +1059,8 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               sealed={isCurrentReportSealed}
               onEditingChange={setFieldEditing}
               onDescriptionSave={saveFieldDescription}
+              onDescriptionRegenerate={regenerateOverallDescription}
+              descriptionGenerationFailed={descriptionGenerationFailed}
               onNextWeekWorksSave={saveFieldNextWorks}
             />
           </div>
@@ -1482,7 +1532,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
             <div className="rounded-lg border border-gray-200 bg-white p-3">
               <p className="text-[11px] font-semibold text-gray-500">当前结果</p>
               <p className="mt-1.5 text-xs leading-5 text-gray-600">{reportKind === 'project' && weeklyData ? `${weeklyData.projectName} · ${period} · 周报已生成` : '汇报草稿已生成'}</p>
-              <button type="button" onClick={() => setRequirementEditing(true)} className="mt-2.5 w-full rounded-lg border border-theme-200 bg-theme-50 px-3 py-2 text-xs font-semibold text-theme-700 hover:bg-theme-100">调整需求重新生成</button>
+              <button type="button" onClick={() => { setReportEditingConfirmed(false); setRequirementEditing(true); }} className="mt-2.5 w-full rounded-lg border border-theme-200 bg-theme-50 px-3 py-2 text-xs font-semibold text-theme-700 hover:bg-theme-100">调整需求重新生成</button>
             </div>
           )}
         </div>
@@ -1630,7 +1680,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
             <p className="text-xs font-semibold text-gray-500">汇报要求</p>
             {!requirementEditing ? (
               stage === 'draft' ? (
-                <button type="button" onClick={() => setRequirementEditing(true)} className="inline-flex items-center gap-1 rounded-md border border-theme-200 bg-white px-2 py-1 text-[11px] font-semibold text-theme-700 hover:bg-theme-50"><PencilLine size={11} />调整需求</button>
+                <button type="button" onClick={() => { setReportEditingConfirmed(false); setRequirementEditing(true); }} className="rounded-md border border-theme-200 bg-white px-2 py-1 text-[11px] font-semibold text-theme-700 hover:bg-theme-50">调整需求</button>
               ) : (
                 <span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-400">{stage === 'dispatching' || stage === 'sending' ? '发送流程中 · 需求锁定' : '已发送 · 需求锁定'}</span>
               )
@@ -1733,10 +1783,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       {toast && <div className="fixed left-1/2 top-20 z-[90] -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-xl">{toast}</div>}
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-3"><button onClick={handleBack} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200" title="返回如意空间"><ArrowLeft size={18} /></button><div className="min-w-0"><div className="flex items-center gap-1.5 text-xs text-gray-500"><button type="button" onClick={handleBack} className="transition-colors hover:text-theme-700 hover:underline">如意空间</button><span className="text-gray-300">/</span><span className="text-gray-600">参谋师工作台</span></div><div className="truncate text-sm font-semibold text-gray-900">{draft.title || '汇报工作台'}</div></div></div>
-        <button onClick={() => navigate('/web_client/work-report')} className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-600 hover:border-theme-200 hover:bg-theme-50 hover:text-theme-700" title="查看工作汇报页面">
-          <FolderKanban size={15} />
-          所有汇报
-        </button>
+        <button onClick={() => navigate('/web_client/work-report')} className="ml-auto shrink-0 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-600 hover:border-theme-200 hover:bg-theme-50 hover:text-theme-700" title="查看工作汇报页面">所有汇报</button>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-row overflow-hidden">
@@ -1772,12 +1819,14 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
               </div>
             ) : stage === 'draft' && mode === 'report' && reportKind === 'project' ? (
               <div className="space-y-2">
-                <div className="space-y-2">
-                  <button type="button" onClick={() => setStage('dispatching')} disabled={isCurrentReportSealed || fieldEditing || hasUnsavedChanges || !savedContentHash || !weeklyData || overallDescription.trim().length === 0 || overallDescription.length > 1000} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-theme-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={16} />提交汇报</button>
-                  <p className="text-center text-[11px] leading-4 text-gray-400">{isCurrentReportSealed ? '该周期汇报已提交封版' : fieldEditing ? '字段编辑中，保存后可提交' : hasUnsavedChanges || !savedContentHash ? '字段修改后保存即可提交' : '内容已保存，可提交'}</p>
-                </div>
+                {canSubmitCurrentReport ? (
+                  <button type="button" onClick={() => setStage('dispatching')} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-theme-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-theme-700"><Send size={16} />提交汇报</button>
+                ) : (
+                  <button type="button" onClick={confirmReportEditingAndSave} disabled={!canConfirmReportEditing} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-theme-200 bg-white px-4 py-2.5 text-sm font-bold text-theme-700 transition-colors hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"><Save size={16} />我确认已保存汇报内容的改动</button>
+                )}
+                <p className="text-center text-[11px] leading-4 text-gray-400">{reportActionHint}</p>
               </div>
-            ) : stage === 'draft' && mode === 'report' ? <div className="space-y-2">{returnTo && <button onClick={handleWriteBack} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-100"><ArrowLeft size={15} />回填原页面</button>}<div className="space-y-2"><button type="button" onClick={() => setShowSubmitConfirm(true)} disabled={isCurrentReportSealed || fieldEditing || hasUnsavedChanges || !savedContentHash} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-theme-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"><Send size={16} />提交汇报</button><p className="text-center text-[11px] leading-4 text-gray-400">{isCurrentReportSealed ? '该周期汇报已提交封版' : fieldEditing ? '字段编辑中，保存后可提交' : hasUnsavedChanges || !savedContentHash ? '字段修改后保存即可提交' : '内容已保存，可提交'}</p></div></div> : stage === 'draft' && mode === 'insight' ? <div className="grid grid-cols-2 gap-2"><button onClick={() => showToast('洞察结果已复制')} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600"><Copy size={15} />复制结果</button><button onClick={() => showToast('洞察结果已保存')} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white"><Save size={15} />保存洞察</button></div> : <button onClick={() => resetWorkspace(mode)} disabled={stage === 'generating' || stage === 'sending'} className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">新建{mode === 'report' ? '汇报' : '洞察'}</button>}
+            ) : stage === 'draft' && mode === 'report' ? <div className="space-y-2">{returnTo && <button onClick={handleWriteBack} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-theme-200 bg-theme-50 px-3 py-2.5 text-sm font-semibold text-theme-700 hover:bg-theme-100"><ArrowLeft size={15} />回填原页面</button>}{canSubmitCurrentReport ? <button type="button" onClick={() => setShowSubmitConfirm(true)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-theme-600 px-4 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-theme-700"><Send size={16} />提交汇报</button> : <button type="button" onClick={confirmReportEditingAndSave} disabled={!canConfirmReportEditing} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-theme-200 bg-white px-4 py-2.5 text-sm font-bold text-theme-700 transition-colors hover:bg-theme-50 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"><Save size={16} />我确认已保存汇报内容的改动</button>}<p className="text-center text-[11px] leading-4 text-gray-400">{reportActionHint}</p></div> : stage === 'draft' && mode === 'insight' ? <div className="grid grid-cols-2 gap-2"><button onClick={() => showToast('洞察结果已复制')} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600"><Copy size={15} />复制结果</button><button onClick={() => showToast('洞察结果已保存')} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white"><Save size={15} />保存洞察</button></div> : <button onClick={() => resetWorkspace(mode)} disabled={stage === 'generating' || stage === 'dispatching' || stage === 'sending'} className="w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50">新建{mode === 'report' ? '汇报' : '洞察'}</button>}
 
           </footer>
         </aside>
@@ -1855,7 +1904,6 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                   return (
                     <button key={project.id} type="button" onClick={() => toggleProjectSelection(project.id)} className={`flex w-full items-center gap-4 px-3 py-4 text-left transition-colors ${selected ? 'bg-theme-50/60' : 'bg-white hover:bg-gray-50'}`}>
                       <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${selected ? 'border-theme-600 bg-theme-600 text-white' : 'border-gray-300 bg-white text-transparent'}`}><span className="h-2 w-2 rounded-full bg-current" /></span>
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-500"><FolderKanban size={19} /></span>
                       <span className="min-w-0 flex-1">
                         <span className="flex flex-wrap items-center gap-2"><span className="truncate text-sm font-semibold text-gray-900">{project.name}</span><span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">{project.code}</span></span>
                         <span className="mt-1 block truncate text-xs text-gray-400">IT项目经理 {project.itManager} · IT执行子经理 {project.itExecutionSubManager} · 当前进度 {project.progress}%</span>
