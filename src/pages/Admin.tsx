@@ -154,6 +154,8 @@ const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
   'user-groups': { menu: 'system', subMenu: 'system-user-groups' },
   'app-management': { menu: 'system', subMenu: 'app-management' },
   'device-management': { menu: 'system', subMenu: 'device-management' },
+  'version-list': { menu: 'system', subMenu: 'version-list' },
+  'version-release': { menu: 'system', subMenu: 'version-release' },
 };
 
 const adminTheme = {
