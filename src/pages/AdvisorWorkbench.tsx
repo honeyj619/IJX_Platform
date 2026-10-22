@@ -31,7 +31,7 @@ import { type AdvisorMode, type AdvisorSource } from '../data/advisor';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import { workItems } from '../data/workItems';
 import { contactDirectory } from '../data/contactDirectory';
-import { buildProjectWeeklyData, getHealthLightMeta, type ProjectWeeklyData } from '../data/projectWeeklyReport';
+import { buildProjectWeeklyData, formatProjectWeeklyEmailSubject, getHealthLightMeta, type ProjectWeeklyData } from '../data/projectWeeklyReport';
 import {
   appendReportSendRecords,
   createReportSendRecordId,
@@ -310,9 +310,24 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     setPeriod(saved.period);
     setSelectedSourceIds(sourceCatalog.filter(item => saved.sourceLabels.includes(item.name)).map(item => item.id));
     if (saved.weeklyData) {
+      const project = projectOptions.find(option => option.id === saved.weeklyData?.projectId);
+      const refreshedWeeklyData = project ? {
+        ...buildProjectWeeklyData({
+          projectId: project.id,
+          projectName: project.name,
+          teamName: project.teamName,
+          progress: project.progress,
+          riskLevel: project.riskLevel,
+          latestReport: project.latestReport,
+          period: saved.period,
+        }),
+        projectCode: saved.weeklyData.projectCode || project.code,
+        overallDescription: saved.weeklyData.overallDescription,
+        nextWeekWorks: saved.weeklyData.nextWeekWorks,
+      } : saved.weeklyData;
       setReportKind('project');
-      setWeeklyData(saved.weeklyData);
-      setOverallDescription(saved.weeklyData.overallDescription);
+      setWeeklyData(refreshedWeeklyData);
+      setOverallDescription(refreshedWeeklyData.overallDescription);
       setSelectedProjectIds(saved.projectId ? [saved.projectId] : []);
       setActiveProjectId(saved.projectId || '');
       setDispatch(current => ({ ...current, recipients: saved.reportTo, cc: saved.copyTo }));
@@ -453,7 +468,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       id: existing?.id || createSavedReportId(),
       reportKey,
       reportType: '项目汇报',
-      title: `${nextData.projectName}项目汇报`,
+      title: formatProjectWeeklyEmailSubject(nextData.projectName, nextData.period),
       sender: MAIN_USER_NAME,
       savedAt: now,
       period,
@@ -548,7 +563,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           id: existing?.id || createSavedReportId(),
           reportKey,
           reportType: '项目汇报',
-          title: `${project.name}项目汇报`,
+          title: formatProjectWeeklyEmailSubject(project.name, data.period),
           sender: MAIN_USER_NAME,
           savedAt: now,
           period,
@@ -665,7 +680,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
         id: createReportSendRecordId(`advisor-${project.id}`),
         reportKey,
         reportType: '项目汇报' as const,
-        title: `${project.name}项目汇报`,
+        title: formatProjectWeeklyEmailSubject(project.name, generatedData.period),
         sender: MAIN_USER_NAME,
         sentAt,
         period,
@@ -1165,6 +1180,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
     // 通讯录选人：不录入邮箱，选中即可（发件人固定当前用户）
     const recipientsValid = dispatch.recipients.length > 0;
     const canConfirm = recipientsValid && (!showWecom || wecomRecipients.length > 0);
+    const emailSubject = formatProjectWeeklyEmailSubject(weeklyData.projectName, weeklyData.period);
 
     const importPreviousRecipients = () => {
       if (!previousRecipientRecord) {
@@ -1242,8 +1258,8 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-inner">
                   {/* 模拟邮件主题行 */}
-                  <div className="mb-2 border-b border-gray-100 pb-2 text-xs text-gray-500">
-                    <p><span className="text-gray-400">主题：</span>【项目汇报】{weeklyData.projectName} · {period} · {light.label}</p>
+                  <div className="mb-2 border-b border-gray-100 pb-2 text-xs text-gray-500" data-requirement-id="advisor-email-subject">
+                    <p><span className="text-gray-400">主题：</span>{emailSubject}</p>
                   </div>
                   {/* 模拟汇报长图首屏（HTML 转图效果示意）：点击查看全图 */}
                   <div
@@ -1352,7 +1368,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
           <ReportSendFlow
             open
             meta={{
-              title: `${weeklyData.projectName}第${weeklyData.weekNumber}周项目周报`,
+              title: emailSubject,
               reportType: '项目汇报',
               sender: MAIN_USER_NAME,
               period,

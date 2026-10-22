@@ -104,6 +104,66 @@ export const prototypeRequirements: PrototypeRequirement[] = [
       '排序使用数字值，数值较小的卡片优先。',
     ],
   },
+  {
+    id: 'advisor-project-week-number',
+    surface: '如意参谋师 · 项目周报',
+    order: 1,
+    title: '项目周计算',
+    functionalRequirement: '项目周报展示项目从立项开始累计推进到当前日期的项目周数。',
+    businessRules: [
+      '按项目立项日期所在的自然周作为第 1 周，每跨过一个自然周递增 1。',
+      '每个项目使用稳定的立项日期，当前日期取浏览器时间。',
+      '项目周与邮件主题中的年度自然周是两个独立口径。',
+    ],
+  },
+  {
+    id: 'advisor-gantt-progress',
+    surface: '如意参谋师 · 项目周报',
+    order: 2,
+    title: '阶段进度计算',
+    functionalRequirement: '甘特图按阶段起止日期和当前日期实时计算阶段及子阶段进度。',
+    businessRules: [
+      '阶段进度 =（当前时间 - 阶段开始时间）/（阶段完成时间 - 阶段开始时间）。',
+      '计算结果四舍五入并限制在 0-100，阶段状态与计算结果保持一致。',
+      '仅提供月日的阶段日期使用汇报周期年份；无有效周期年份时使用当前年份。',
+    ],
+  },
+  {
+    id: 'advisor-current-stage-status',
+    surface: '如意参谋师 · 项目周报',
+    order: 3,
+    title: '当前阶段展示',
+    functionalRequirement: '周报头部右侧集中展示当前阶段、当前子阶段和项目健康灯。',
+    businessRules: [
+      '左侧仅展示项目名称、项目周和汇报周期。',
+      '当前阶段由阶段日期与当前时间匹配，优先展示正在进行的阶段。',
+      '当前阶段状态块与健康灯并列呈现，并保持醒目、紧凑。',
+    ],
+  },
+  {
+    id: 'advisor-gantt-collapse',
+    surface: '如意参谋师 · 项目周报',
+    order: 4,
+    title: '甘特图子阶段折叠',
+    functionalRequirement: '有子阶段的父阶段支持展开或收起子阶段，便于查看阶段整体计划。',
+    businessRules: [
+      '折叠操作只隐藏或显示子阶段，父阶段行始终保留。',
+      '无子阶段的父阶段不显示折叠控件，也不可点击折叠。',
+      '控件文案明确显示当前可执行的展开或收起动作。',
+    ],
+  },
+  {
+    id: 'advisor-email-subject',
+    surface: '如意参谋师 · 项目周报',
+    order: 5,
+    title: '项目周报邮件主题',
+    functionalRequirement: '发送确认预览和实际发送统一使用标准项目周报邮件主题。',
+    businessRules: [
+      '主题格式为【项目周报】XXXX项目 YYYY年第XX周（MM.DD–MM.DD）。',
+      '周次按邮件周期所属的 ISO 年度自然周计算，日期范围固定为周一至周日。',
+      '预览、二次确认和发送记录使用同一个主题生成结果。',
+    ],
+  },
 ];
 
 export const prototypeRequirementById = new Map(

@@ -104,6 +104,76 @@ const healthLightMeta: Record<HealthLight, { label: string; dot: string; text: s
 
 export const getHealthLightMeta = (light: HealthLight) => healthLightMeta[light];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const projectLaunchDates: Record<string, string> = {
+  'wi-portal-upgrade': '2026-03-16',
+  'wi-report-okr': '2026-04-06',
+  'wi-it-demand': '2026-03-09',
+  'wi-knowledge': '2026-05-04',
+};
+
+const startOfNaturalWeek = (date: Date) => {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const weekday = result.getDay() || 7;
+  result.setDate(result.getDate() - weekday + 1);
+  return result;
+};
+
+const parsePeriodStart = (period: string | undefined, fallback: Date) => {
+  const match = period?.match(/(\d{4})-(\d{2})-(\d{2})/);
+  return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : fallback;
+};
+
+const parseStageDate = (value: string, year: number) => {
+  const [month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+/** 项目周：按立项周到当前周跨过的自然周计算，立项所在周为第 1 周。 */
+export const getProjectWeekNumber = (projectId: string, currentDate = new Date()) => {
+  const launchDate = new Date(`${projectLaunchDates[projectId] ?? '2026-03-09'}T00:00:00`);
+  const launchWeek = startOfNaturalWeek(launchDate);
+  const currentWeek = startOfNaturalWeek(currentDate);
+  return Math.max(1, Math.floor((currentWeek.getTime() - launchWeek.getTime()) / (7 * DAY_MS)) + 1);
+};
+
+/** 甘特阶段进度：按当前时间在阶段周期中的位置计算，并限制在 0-100。 */
+export const calculateStageProgress = (start: string, end: string, year: number, currentDate = new Date()) => {
+  const startDate = parseStageDate(start, year);
+  const endDate = parseStageDate(end, year);
+  const duration = endDate.getTime() - startDate.getTime();
+  if (duration <= 0) return currentDate.getTime() >= endDate.getTime() ? 100 : 0;
+  const raw = ((currentDate.getTime() - startDate.getTime()) / duration) * 100;
+  return Math.round(Math.min(100, Math.max(0, raw)));
+};
+
+const getStageStatus = (progress: number): GanttStage['status'] => (
+  progress >= 100 ? 'done' : progress <= 0 ? 'todo' : 'doing'
+);
+
+const getSubStageStatus = (progress: number): GanttSubStage['status'] => (
+  progress >= 100 ? 'done' : progress <= 0 ? 'todo' : 'doing'
+);
+
+/** 邮件主题使用 ISO 年周，与按项目立项时间计算的“项目周”是两个独立口径。 */
+export const formatProjectWeeklyEmailSubject = (projectName: string, period: string, fallbackDate = new Date()) => {
+  const periodDate = parsePeriodStart(period, fallbackDate);
+  const monday = startOfNaturalWeek(periodDate);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  const isoAnchor = new Date(Date.UTC(monday.getFullYear(), monday.getMonth(), monday.getDate()));
+  isoAnchor.setUTCDate(isoAnchor.getUTCDate() + 3);
+  const isoYear = isoAnchor.getUTCFullYear();
+  const firstThursday = new Date(Date.UTC(isoYear, 0, 4));
+  const firstWeekMonday = startOfNaturalWeek(new Date(firstThursday.getUTCFullYear(), firstThursday.getUTCMonth(), firstThursday.getUTCDate()));
+  const isoWeek = Math.floor((monday.getTime() - firstWeekMonday.getTime()) / (7 * DAY_MS)) + 1;
+  const formatMonthDay = (date: Date) => `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+  const normalizedName = projectName.endsWith('项目') ? projectName : `${projectName}项目`;
+  return `【项目周报】${normalizedName} ${isoYear}年第${isoWeek}周（${formatMonthDay(monday)}–${formatMonthDay(sunday)}）`;
+};
+
 /** BR-03-04/05：按完成率与风险判定健康灯 */
 export const resolveHealthLight = (params: {
   overallProgress: number;
@@ -124,6 +194,7 @@ export const buildProjectWeeklyData = (params: {
   progress: number;
   riskLevel: string;
   latestReport: string;
+  /** 兼容历史 mock 入参；项目周始终按立项时间计算，不采用该值。 */
   weekNumber?: number;
   period?: string;
 }): ProjectWeeklyData => {
@@ -132,24 +203,33 @@ export const buildProjectWeeklyData = (params: {
   const openRiskCount = params.riskLevel === '风险' ? 3 : params.riskLevel === '关注' ? 1 : 0;
   const healthLight = resolveHealthLight({ overallProgress: params.progress, planProgress, openRiskCount });
   const doneCount = Math.round((params.progress / 100) * 30);
-  const stages: GanttStage[] = [
-    { id: 'st-1', name: '阶段一 · 需求分析', start: '06-01', end: '06-19', status: 'done', progress: 100, taskSummary: '2项任务 全部完成' },
-    { id: 'st-2', name: '阶段二 · 系统设计', start: '06-08', end: '07-03', status: 'done', progress: 100, taskSummary: '3项任务 全部完成' },
-    { id: 'st-3', name: '阶段三 · 原型与UI设计', start: '06-29', end: '07-17', status: 'done', progress: 100, taskSummary: '3项任务 全部完成' },
-    {
-      id: 'st-4', name: '阶段四 · 开发实施', start: '07-06', end: '09-30', status: 'doing',
-      progress: params.progress, taskSummary: `${Math.max(Math.round((params.progress / 100) * 16), 8)}项完成 · ${Math.max(4 - Math.round((params.progress - 85) / 5), 1)}项进行中`,
-      subStages: [
-        { id: 'st-4-1', name: '功能开发（机票、酒店、预订、退订）', start: '07-06', end: '07-31', status: 'delayed', progress: 86, owner: '蒋涵-后' },
-        { id: 'st-4-2', name: '机票与酒店接口联调', start: '08-01', end: '08-21', status: 'doing', progress: 68, owner: '蒋涵-后' },
-        { id: 'st-4-3', name: '小程序渠道上线', start: '08-22', end: '08-31', status: 'doing', progress: 52, owner: '蒋涵-后' },
-        { id: 'st-4-4', name: 'PC 版本上线', start: '09-01', end: '09-15', status: 'todo', progress: 0, owner: '蒋涵-后' },
-        { id: 'st-4-5', name: '其他资源及产品迭代上线', start: '09-16', end: '09-30', status: 'todo', progress: 0, owner: '蒋涵-后' },
-      ],
-    },
-    { id: 'st-5', name: '阶段五 · 联调测试', start: '08-22', end: '09-11', status: 'todo', progress: 0, taskSummary: '待启动' },
-    { id: 'st-6', name: '阶段六 · 上线交付', start: '09-12', end: '09-30', status: 'todo', progress: 0, taskSummary: '待启动' },
+  const currentDate = new Date();
+  const stageYear = parsePeriodStart(params.period, currentDate).getFullYear();
+  const makeStage = (stage: Omit<GanttStage, 'status' | 'progress'>): GanttStage => {
+    const progress = calculateStageProgress(stage.start, stage.end, stageYear, currentDate);
+    return { ...stage, progress, status: getStageStatus(progress) };
+  };
+  const makeSubStage = (stage: Omit<GanttSubStage, 'status' | 'progress'>): GanttSubStage => {
+    const progress = calculateStageProgress(stage.start, stage.end, stageYear, currentDate);
+    return { ...stage, progress, status: getSubStageStatus(progress) };
+  };
+  const developmentSubStages = [
+    makeSubStage({ id: 'st-4-1', name: '功能开发（机票、酒店、预订、退订）', start: '07-06', end: '08-31', owner: '蒋涵-后' }),
+    makeSubStage({ id: 'st-4-2', name: '机票与酒店接口联调', start: '09-01', end: '10-31', owner: '蒋涵-后' }),
+    makeSubStage({ id: 'st-4-3', name: '小程序渠道上线', start: '11-01', end: '11-15', owner: '蒋涵-后' }),
+    makeSubStage({ id: 'st-4-4', name: 'PC 版本上线', start: '11-16', end: '11-30', owner: '蒋涵-后' }),
+    makeSubStage({ id: 'st-4-5', name: '其他资源及产品迭代上线', start: '12-01', end: '12-15', owner: '蒋涵-后' }),
   ];
+  const stages: GanttStage[] = [
+    makeStage({ id: 'st-1', name: '阶段一 · 需求分析', start: '06-01', end: '06-19', taskSummary: '2项任务 全部完成' }),
+    makeStage({ id: 'st-2', name: '阶段二 · 系统设计', start: '06-08', end: '07-03', taskSummary: '3项任务 全部完成' }),
+    makeStage({ id: 'st-3', name: '阶段三 · 原型与UI设计', start: '06-29', end: '07-17', taskSummary: '3项任务 全部完成' }),
+    makeStage({ id: 'st-4', name: '阶段四 · 开发实施', start: '07-06', end: '11-30', taskSummary: '8项完成 · 13项进行中', subStages: developmentSubStages }),
+    makeStage({ id: 'st-5', name: '阶段五 · 联调测试', start: '11-16', end: '12-15', taskSummary: '待启动' }),
+    makeStage({ id: 'st-6', name: '阶段六 · 上线交付', start: '12-16', end: '12-31', taskSummary: '待启动' }),
+  ];
+  const currentStage = stages.find(stage => stage.status === 'doing') ?? stages.find(stage => stage.status === 'todo') ?? stages.at(-1);
+  const currentSubStage = currentStage?.subStages?.find(stage => stage.status === 'doing') ?? currentStage?.subStages?.find(stage => stage.status === 'todo');
   const rate = `${params.progress.toFixed(2)}%`;
 
   return {
@@ -160,9 +240,9 @@ export const buildProjectWeeklyData = (params: {
     sponsor: '刘备',
     manager: '诸葛亮',
     itManager: '司马懿',
-    currentStage: '开发实施',
-    currentSubStage: '机票与酒店接口联调',
-    weekNumber: params.weekNumber ?? 33,
+    currentStage: currentStage?.name.replace(/^阶段[一二三四五六七八九十]+ · /, '') ?? '—',
+    currentSubStage: currentSubStage?.name ?? '',
+    weekNumber: getProjectWeekNumber(params.projectId, currentDate),
     period: params.period ?? '2026-08-03 ~ 2026-08-09',
     healthLight,
     stats: [

@@ -112,6 +112,27 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
     return <ReportSkeleton litIndex={litIndex} />;
   }
 
+  const ganttYear = Number(data.period.match(/\d{4}/)?.[0]) || new Date().getFullYear();
+  const ganttDates = data.stages.flatMap(stage => [stage.start, stage.end, ...(stage.subStages?.flatMap(subStage => [subStage.start, subStage.end]) ?? [])]);
+  const parseGanttDate = (value: string) => {
+    const [month, day] = value.split('-').map(Number);
+    return new Date(ganttYear, month - 1, day);
+  };
+  const rawStart = new Date(Math.min(...ganttDates.map(value => parseGanttDate(value).getTime())));
+  const rawEnd = new Date(Math.max(...ganttDates.map(value => parseGanttDate(value).getTime())));
+  const ganttStart = new Date(ganttYear, rawStart.getMonth(), 1);
+  const ganttEnd = new Date(ganttYear, rawEnd.getMonth() + 1, 0);
+  const ganttTotalDays = Math.round((ganttEnd.getTime() - ganttStart.getTime()) / 86400000) + 1;
+  const ganttOffset = (value: string) => Math.round((parseGanttDate(value).getTime() - ganttStart.getTime()) / 86400000);
+  const monthSegments: Array<{ label: string; days: number }> = [];
+  for (let month = ganttStart.getMonth(); month <= ganttEnd.getMonth(); month += 1) {
+    monthSegments.push({ label: `${month + 1}月`, days: new Date(ganttYear, month + 1, 0).getDate() });
+  }
+  const weekSegments = Array.from({ length: Math.ceil(ganttTotalDays / 7) }, (_, index) => ({
+    label: `W${index + 1}`,
+    days: Math.min(7, ganttTotalDays - index * 7),
+  }));
+
   // ===== 分段编辑状态：同时只允许一段处于编辑 =====
   const startEdit = (key: SectionKey) => {
     if (!sectionEditable) return;
@@ -159,16 +180,22 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h2 className="text-xl font-bold text-gray-950">{data.projectName}</h2>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-gray-500" data-requirement-id="advisor-project-week-number">
               项目周第 <span className="font-semibold text-gray-800">{data.weekNumber}</span> 周 · 汇报周期：
               <span className="font-semibold text-gray-800">{data.period}</span>
             </p>
-            <p className="mt-1 text-xs text-gray-400">当前阶段：{data.currentStage} · 子阶段：{data.currentSubStage || '—'}</p>
           </div>
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold ${light.bg} ${light.text}`}>
-            <span className={`h-2.5 w-2.5 rounded-full ${light.dot}`} />
-            {light.label}
-          </span>
+          <div className="flex shrink-0 items-stretch gap-2" data-requirement-id="advisor-current-stage-status">
+            <div className="rounded-lg border border-theme-100 bg-theme-50/70 px-3 py-2 text-right">
+              <p className="text-[10px] font-medium text-theme-500">当前阶段</p>
+              <p className="mt-0.5 text-sm font-bold text-theme-800">{data.currentStage}</p>
+              <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-theme-600">子阶段：{data.currentSubStage || '—'}</p>
+            </div>
+            <span className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold ${light.bg} ${light.text}`}>
+              <span className={`h-2.5 w-2.5 rounded-full ${light.dot}`} />
+              {light.label}
+            </span>
+          </div>
         </div>
       </section>
 
@@ -311,7 +338,7 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
       ))}
 
       {/* 详细阶段甘特图（按阶段分解任务，对齐 PC 周报模板） */}
-      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm" data-requirement-id="advisor-gantt-progress">
         <div className="mb-4 px-6 pt-5">
           <h3 className="text-sm font-bold text-gray-900">详细阶段甘特图（按阶段分解任务）</h3>
         </div>
@@ -321,14 +348,14 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
           <div className="grid grid-cols-[300px_minmax(0,1fr)] items-start">
             <div className="px-4 py-3 text-xs font-bold text-gray-900">阶段 / 子阶段</div>
             <div className="border-b border-gray-200">
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(122, minmax(0, 1fr))' }}>
-                {[{ n: '6月', span: 30 }, { n: '7月', span: 31 }, { n: '8月', span: 31 }, { n: '9月', span: 30 }].map(mo => (
-                  <div key={mo.n} style={{ gridColumn: `span ${mo.span}` }} className="border-r border-gray-100 py-2 text-center text-xs font-semibold text-gray-600 last:border-r-0">{mo.n}</div>
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${ganttTotalDays}, minmax(0, 1fr))` }}>
+                {monthSegments.map(month => (
+                  <div key={month.label} style={{ gridColumn: `span ${month.days}` }} className="border-r border-gray-100 py-2 text-center text-xs font-semibold text-gray-600 last:border-r-0">{month.label}</div>
                 ))}
               </div>
-              <div className="grid" style={{ gridTemplateColumns: 'repeat(122, minmax(0, 1fr))' }}>
-                {Array.from({ length: 18 }, (_, i) => (
-                  <div key={i} style={{ gridColumn: `span ${i === 17 ? 3 : 7}` }} className="border-r border-gray-100/60 py-1.5 text-center text-[11px] text-gray-400 last:border-r-0">W{i + 1}</div>
+              <div className="grid" style={{ gridTemplateColumns: `repeat(${ganttTotalDays}, minmax(0, 1fr))` }}>
+                {weekSegments.map(week => (
+                  <div key={week.label} style={{ gridColumn: `span ${week.days}` }} className="border-r border-gray-100/60 py-1.5 text-center text-[11px] text-gray-400 last:border-r-0">{week.label}</div>
                 ))}
               </div>
             </div>
@@ -339,40 +366,46 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
             {data.stages.map((stage, idx) => {
               const collapsed = collapsedStages.has(stage.id);
               const hasSubStages = Boolean(stage.subStages?.length);
-              const toNum = (s: string) => {
-                const [, mm, dd] = s.split('-').map(Number);
-                return (new Date(2026, mm - 1, dd).getTime() - new Date(2026, 5, 1).getTime()) / 86400000;
-              };
-              const TOTAL = ((new Date(2026, 8, 30).getTime() - new Date(2026, 5, 1).getTime()) / 86400000) + 1;
-              const a = toNum(stage.start), b = toNum(stage.end);
-              const left = (a / TOTAL) * 100, width = ((b - a + 1) / TOTAL) * 100;
-              const valTxt = stage.status === 'doing' ? `进行中 · ${stage.progress}%` : stage.status === 'done' ? '100%' : '待开始';
+              const a = ganttOffset(stage.start), b = ganttOffset(stage.end);
+              const left = (a / ganttTotalDays) * 100, width = ((b - a + 1) / ganttTotalDays) * 100;
+              const valTxt = stage.status === 'doing' ? `进行中 · ${stage.progress}%` : stage.status === 'done' ? `已完成 · ${stage.progress}%` : `待开始 · ${stage.progress}%`;
               const isCurrentStage = stage.name.includes(data.currentStage);
               return (
                 <div key={stage.id} className="border-b border-gray-100 last:border-b-0">
                   <div className={`grid min-h-[58px] grid-cols-[300px_minmax(0,1fr)] ${isCurrentStage ? 'bg-theme-50/70' : 'bg-gray-50/40'}`}>
-                    <button type="button" onClick={() => hasSubStages && toggleStage(stage.id)} className={`flex flex-col justify-center gap-0.5 px-4 py-2.5 text-left ${hasSubStages ? 'hover:bg-gray-100/70' : 'cursor-default'}`}>
-                      <span className="flex items-center gap-2 text-[13px] font-semibold text-gray-800">
-                        {hasSubStages ? (collapsed ? <ChevronRight size={13} className="shrink-0 text-gray-400" /> : <ChevronDown size={13} className="shrink-0 text-gray-400" />) : <span className="w-[13px]" />}
+                    <div className="flex flex-col justify-center gap-0.5 px-4 py-2.5 text-left">
+                      <span className="flex min-w-0 items-center gap-2 overflow-hidden text-[13px] font-semibold text-gray-800">
+                        {hasSubStages ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleStage(stage.id)}
+                            className="inline-flex h-5 w-5 shrink-0 items-center justify-center text-gray-400 hover:text-theme-700"
+                            title={collapsed ? '展开子阶段' : '收起子阶段'}
+                            aria-expanded={!collapsed}
+                            data-requirement-id={isCurrentStage ? 'advisor-gantt-collapse' : undefined}
+                          >
+                            {collapsed ? <ChevronRight size={13} /> : <ChevronDown size={13} />}
+                          </button>
+                        ) : <span className="w-[13px]" />}
                         <span className="rounded border border-theme-200 bg-theme-50 px-1.5 py-0.5 text-[10px] font-semibold text-theme-700">阶段</span>
-                        <span className="truncate">{stage.name.replace(/^阶段[一二三四五六七八九十]+ · /, '')}</span>
+                        <span className="min-w-0 truncate whitespace-nowrap">{stage.name.replace(/^阶段[一二三四五六七八九十]+ · /, '')}</span>
                         {isCurrentStage && <span className="shrink-0 rounded bg-theme-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">当前阶段</span>}
                       </span>
                       <span className="pl-[21px] text-[11.5px] text-gray-400">{stage.start} ~ {stage.end}</span>
-                    </button>
-                    <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #e5e7eb 1px, transparent 1px)', backgroundSize: 'calc(700%/122) 100%' }}>
+                    </div>
+                    <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #e5e7eb 1px, transparent 1px)', backgroundSize: `${(7 / ganttTotalDays) * 100}% 100%` }}>
                       <div
-                        className={`absolute top-[13px] flex h-8 items-center rounded-md px-3 text-xs font-semibold text-white ${stage.status === 'todo' ? 'border-[1.5px] border-dashed border-gray-300 !bg-transparent !text-gray-400' : stage.status === 'doing' ? 'shadow-md ring-2 ring-theme-200' : 'shadow-sm'}`}
+                        className={`absolute top-[13px] flex h-8 items-center overflow-hidden whitespace-nowrap rounded-md px-3 text-xs font-semibold text-white ${stage.status === 'todo' ? 'border-[1.5px] border-dashed border-gray-300 !bg-transparent !text-gray-400' : stage.status === 'doing' ? 'shadow-md ring-2 ring-theme-200' : 'shadow-sm'}`}
                         style={{ left: `${left}%`, width: `${width}%`, background: stage.status === 'todo' ? undefined : `linear-gradient(90deg, var(--theme-${[300, 400, 500, 500, 600, 700][idx] ?? 700}), var(--theme-${[400, 500, 600, 600, 700, 700][idx] ?? 700}))` }}
                       >
-                        <span>{stage.start} ~ {stage.end}</span>
-                        <span className="ml-auto pl-2 text-[11.5px] opacity-95">{valTxt}</span>
+                        <span className="shrink-0">{stage.start} ~ {stage.end}</span>
+                        <span className="ml-auto min-w-0 truncate pl-2 text-[11.5px] opacity-95">{valTxt}</span>
                       </div>
                     </div>
                   </div>
                   {hasSubStages && !collapsed && stage.subStages?.map(subStage => {
-                    const subLeft = (toNum(subStage.start) / TOTAL) * 100;
-                    const subWidth = ((toNum(subStage.end) - toNum(subStage.start) + 1) / TOTAL) * 100;
+                    const subLeft = (ganttOffset(subStage.start) / ganttTotalDays) * 100;
+                    const subWidth = ((ganttOffset(subStage.end) - ganttOffset(subStage.start) + 1) / ganttTotalDays) * 100;
                     const subStatus = subStage.status === 'done' ? '已完成' : subStage.status === 'doing' ? '进行中' : subStage.status === 'delayed' ? '已延期' : '未开始';
                     const isCurrentSubStage = subStage.name === data.currentSubStage;
                     return (
@@ -381,13 +414,13 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
                           <p className={`truncate text-xs ${isCurrentSubStage ? 'font-semibold text-theme-800' : 'font-medium text-gray-700'}`}>{subStage.name}</p>
                           <p className="mt-0.5 text-[10px] text-gray-400">{subStage.start} ~ {subStage.end}</p>
                         </div>
-                        <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #f1f5f9 1px, transparent 1px)', backgroundSize: 'calc(700%/122) 100%' }}>
+                        <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #f1f5f9 1px, transparent 1px)', backgroundSize: `${(7 / ganttTotalDays) * 100}% 100%` }}>
                           <div
-                            className={`absolute top-[10px] flex h-7 items-center rounded px-2 text-[10px] font-medium ${subStage.status === 'todo' ? 'border border-dashed border-gray-300 bg-white text-gray-400' : subStage.status === 'delayed' ? 'bg-red-500 text-white' : 'bg-theme-500 text-white'} ${isCurrentSubStage ? 'ring-2 ring-theme-200' : ''}`}
+                            className={`absolute top-[10px] flex h-7 items-center overflow-hidden whitespace-nowrap rounded px-2 text-[10px] font-medium ${subStage.status === 'todo' ? 'border border-dashed border-gray-300 bg-white text-gray-400' : subStage.status === 'delayed' ? 'bg-red-500 text-white' : 'bg-theme-500 text-white'} ${isCurrentSubStage ? 'ring-2 ring-theme-200' : ''}`}
                             style={{ left: `${subLeft}%`, width: `${subWidth}%` }}
                           >
-                            <span className="truncate">{subStage.start} ~ {subStage.end}</span>
-                            <span className="ml-auto pl-2">{subStatus}{subStage.progress > 0 ? ` · ${subStage.progress}%` : ''}</span>
+                            <span className="shrink-0">{subStage.start} ~ {subStage.end}</span>
+                            <span className="ml-auto min-w-0 truncate pl-2">{subStatus}{subStage.progress > 0 ? ` · ${subStage.progress}%` : ''}</span>
                           </div>
                         </div>
                       </div>
@@ -401,7 +434,7 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
 
         {/* 图例 */}
         <div className="flex flex-wrap items-center gap-5 border-t border-gray-200 px-6 py-3 text-xs text-gray-500">
-          <span className="flex items-center gap-1.5 text-gray-400">点击阶段行可展开/折叠；横条为该阶段整体周期与进度</span>
+          <span className="flex items-center gap-1.5 text-gray-400">点击箭头展开或收起子阶段；父阶段行始终保留，横条展示阶段周期与实时计算进度</span>
           <span className="flex-1" />
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: 'linear-gradient(90deg, var(--theme-400), var(--theme-500))' }} />已完成</span>
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm ring-1 ring-theme-200" style={{ background: 'linear-gradient(90deg, var(--theme-500), var(--theme-600))' }} />进行中</span>
