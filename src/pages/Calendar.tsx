@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight, Plus, X, Info, Clock, Users, Paperclip } from 'lucide-react';
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from '../data/people';
+import ContactPicker from '../components/ContactPicker';
 
 interface CalendarItem {
   id: string;
@@ -942,14 +943,12 @@ export default function Calendar() {
 
                   <div className="grid grid-cols-[88px_1fr] items-center gap-3 text-sm">
                     <span className="text-right text-slate-700 before:text-red-500 before:content-['*'] dark:text-slate-200"> 参与者:</span>
-                    <div className="flex items-center gap-3">
-                      <input
-                        value={bookingDraft.participants}
-                        onChange={(event) => setBookingDraft(prev => ({ ...prev, participants: event.target.value }))}
-                        placeholder="请选择参与者"
-                        className="h-9 flex-1 rounded border border-slate-200 px-3 text-sm outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
+                    <div className="flex items-center gap-3" data-requirement-id="calendar-batch-participants">
+                      <ContactPicker
+                        selected={bookingDraft.participants ? bookingDraft.participants.split(/[、，,\s]+/).filter(Boolean) : []}
+                        onChange={(next) => setBookingDraft(prev => ({ ...prev, participants: next.join('、') }))}
+                        placeholder="请选择参与者，可多选"
                       />
-                      <button className="text-sm font-medium text-theme-600">+批量添加</button>
                     </div>
                   </div>
 

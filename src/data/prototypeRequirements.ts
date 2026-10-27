@@ -177,6 +177,19 @@ export const prototypeRequirements: PrototypeRequirement[] = [
       '搜索框提示文案统一为“可输入多个人名或组织名称”。',
     ],
   },
+  {
+    id: 'calendar-batch-participants',
+    surface: '日历 · 创建日程/会议',
+    order: 1,
+    title: '日程与会议批量添加参与者',
+    functionalRequirement: '创建日程、预约会议弹框中的参与者字段使用通讯录组件，支持按组织架构浏览与搜索批量选择参与者。',
+    businessRules: [
+      '参与者字段展示已选人员名单，清空后可重新选择。',
+      '点击参与者字段打开通讯录选择器，可按部门浏览或按姓名、部门、职务、邮箱搜索。',
+      '选择器内支持多选，确认后以顿号分隔写回参与者字段。',
+      '搜索能力遵循通讯录选择器统一规则（多关键词、匹配度排序、百人上限）。',
+    ],
+  },
 ];
 
 export const prototypeRequirementById = new Map(
