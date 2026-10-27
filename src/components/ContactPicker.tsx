@@ -288,7 +288,7 @@ export default function ContactPicker({
           {limitToast && (
             <div className="fixed left-1/2 top-16 z-[90] -translate-x-1/2 rounded-lg bg-gray-900/90 px-4 py-2 text-xs font-medium text-white shadow-lg">最多搜索100人</div>
           )}
-          <div role="dialog" aria-modal="true" aria-labelledby="contact-picker-title" className="flex max-h-[min(640px,calc(100vh-32px))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+          <div role="dialog" aria-modal="true" aria-labelledby="contact-picker-title" data-requirement-id="contact-picker-search" className="flex max-h-[min(640px,calc(100vh-32px))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
               <div>
                 <h3 id="contact-picker-title" className="text-base font-bold text-gray-900">
