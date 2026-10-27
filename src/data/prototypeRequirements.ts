@@ -164,6 +164,19 @@ export const prototypeRequirements: PrototypeRequirement[] = [
       '预览、二次确认和发送记录使用同一个主题生成结果。',
     ],
   },
+  {
+    id: 'contact-picker-search',
+    surface: '通用组件 · 通讯录选择器',
+    order: 1,
+    title: '通讯录搜索与批量选人',
+    functionalRequirement: '通讯录选择器支持按姓名、部门、职务、邮箱搜索，支持一次输入多个人名或组织名称批量查询，搜索结果按匹配度排序展示。',
+    businessRules: [
+      '多个关键词可用顿号、逗号或空格分隔，任一关键词命中即纳入结果。',
+      '搜索结果按匹配度降序排列：忽略空格后的整串文本匹配度最高，置顶展示；其次按关键词命中数量与命中字段（姓名优先于部门、职务、邮箱）排序。',
+      '搜索结果最多展示 100 人，超出上限时前端提示“最多搜索100人”。',
+      '搜索框提示文案统一为“可输入多个人名或组织名称”。',
+    ],
+  },
 ];
 
 export const prototypeRequirementById = new Map(
