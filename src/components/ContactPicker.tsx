@@ -40,6 +40,11 @@ interface ContactPickerProps {
   /** 结构化选择回调（与 selected/onChange 二选一使用） */
   selections?: ContactSelection[];
   onSelectionsChange?: (next: ContactSelection[]) => void;
+  /** 受控弹框开关（不传则组件内部自管） */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** 隐藏触发按钮（配合受控 open 使用，如外部自定义入口） */
+  hideTrigger?: boolean;
 }
 
 type DirectoryNode = ContactPerson;
@@ -107,6 +112,9 @@ export default function ContactPicker({
   lockedIds = [],
   selections,
   onSelectionsChange,
+  open: openProp,
+  onOpenChange,
+  hideTrigger,
 }: ContactPickerProps) {
   // 新模式判定：传入 selections 即启用结构化（管理后台）
   const structured = Boolean(selections && onSelectionsChange);
@@ -115,7 +123,12 @@ export default function ContactPicker({
   const allowPersons = resolvedKinds.includes('person');
   const allowDepartments = structured ? resolvedKinds.includes('department') : selectionMode === 'people-and-departments';
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp !== undefined ? openProp : internalOpen;
+  const setOpen = (next: boolean) => {
+    setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [keyword, setKeyword] = useState('');
   const [limitToast, setLimitToast] = useState(false);
   const [draft, setDraft] = useState<string[]>(selected);
@@ -192,6 +205,15 @@ export default function ContactPicker({
     return userGroups.filter(group => matchAnyKeyword(group.name, keywords) || matchAnyKeyword(group.description, keywords));
   }, [keyword, userGroups]);
 
+  // 受控模式：外部打开弹框时同步 draft（等价内部 openPicker 的初始化）
+  useEffect(() => {
+    if (!openProp) return;
+    setDraft([...new Set([...lockedNames, ...selected])]);
+    setStructuredDraft(selections ? [...selections] : []);
+    setKeyword('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openProp]);
+
   const openPicker = () => {
     setDraft([...new Set([...lockedNames, ...selected])]);
     setStructuredDraft(selections ? [...selections] : []);
@@ -265,7 +287,7 @@ export default function ContactPicker({
 
   return (
     <>
-      {triggerVariant === 'button' ? (
+      {!hideTrigger && (triggerVariant === 'button' ? (
         <button type="button" onClick={openPicker} className="inline-flex h-9 shrink-0 items-center gap-2 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f]">
           <UserPlus size={15} />
           {triggerLabel}
@@ -281,7 +303,7 @@ export default function ContactPicker({
           )}
           <span className="ml-auto shrink-0 text-xs text-gray-400">{selectedCount} 项</span>
         </button>
-      )}
+      ))}
 
       {open && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/40 p-4" onMouseDown={event => { if (event.target === event.currentTarget) closePicker(); }}>
