@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight, Plus, X, Info, Clock, Users, Paperclip } from 'lucide-react';
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from '../data/people';
+import ContactPicker from '../components/ContactPicker';
+import { contactDirectory } from '../data/contactDirectory';
 
 interface CalendarItem {
   id: string;
@@ -109,6 +111,8 @@ export default function Calendar() {
   const [isRoomDragging, setIsRoomDragging] = useState(false);
   const [dragSelection, setDragSelection] = useState<RoomSelection | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [participantSuggestOpen, setParticipantSuggestOpen] = useState(false);
+  const [batchPickerOpen, setBatchPickerOpen] = useState(false);
 
   // 支持从个人门户“新增日程”直达创建弹窗，并清理参数避免刷新后重复打开。
   useEffect(() => {
@@ -940,16 +944,60 @@ export default function Calendar() {
                     />
                   </label>
 
-                  <div className="grid grid-cols-[88px_1fr] items-center gap-3 text-sm">
+                  <div className="grid grid-cols-[88px_1fr] items-center gap-3 text-sm" data-requirement-id="calendar-batch-participants">
                     <span className="text-right text-slate-700 before:text-red-500 before:content-['*'] dark:text-slate-200"> 参与者:</span>
                     <div className="flex items-center gap-3">
-                      <input
-                        value={bookingDraft.participants}
-                        onChange={(event) => setBookingDraft(prev => ({ ...prev, participants: event.target.value }))}
+                      <div className="relative flex-1">
+                        <input
+                          value={bookingDraft.participants}
+                          onChange={(event) => {
+                            setBookingDraft(prev => ({ ...prev, participants: event.target.value }));
+                            setParticipantSuggestOpen(event.target.value.trim().length > 0);
+                          }}
+                          onFocus={(event) => setParticipantSuggestOpen(event.target.value.trim().length > 0)}
+                          onBlur={() => window.setTimeout(() => setParticipantSuggestOpen(false), 180)}
+                          placeholder="请选择参与者"
+                          className="h-9 w-full rounded border border-slate-200 px-3 text-sm outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
+                        />
+                        {participantSuggestOpen && (() => {
+                          const lastKeyword = bookingDraft.participants.split(/[、，,\s]+/).pop() || '';
+                          const suggestions = lastKeyword
+                            ? contactDirectory.filter(person => person.name.includes(lastKeyword) || person.title.includes(lastKeyword) || person.department.includes(lastKeyword)).slice(0, 6)
+                            : [];
+                          if (suggestions.length === 0) return null;
+                          return (
+                            <div className="absolute left-0 top-10 z-30 w-full overflow-hidden rounded border border-slate-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                              {suggestions.map(person => (
+                                <button
+                                  key={person.id}
+                                  type="button"
+                                  onMouseDown={(event) => event.preventDefault()}
+                                  onClick={() => {
+                                    const parts = bookingDraft.participants.split(/[、，,\s]+/).filter(Boolean);
+                                    parts[parts.length - 1] = person.name;
+                                    const next = [...new Set(parts)].join('、');
+                                    setBookingDraft(prev => ({ ...prev, participants: next }));
+                                    setParticipantSuggestOpen(false);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-theme-50 dark:text-slate-200 dark:hover:bg-gray-800"
+                                >
+                                  <span className="font-medium">{person.name}</span>
+                                  <span className="text-xs text-slate-400">{person.department} · {person.title}</span>
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                      <button type="button" onClick={() => setBatchPickerOpen(true)} className="shrink-0 text-sm font-medium text-theme-600 hover:text-theme-700">+批量添加</button>
+                      <ContactPicker
+                        open={batchPickerOpen}
+                        onOpenChange={setBatchPickerOpen}
+                        hideTrigger
+                        selected={bookingDraft.participants.split(/[、，,\s]+/).filter(Boolean)}
+                        onChange={(next) => setBookingDraft(prev => ({ ...prev, participants: next.join('、') }))}
                         placeholder="请选择参与者"
-                        className="h-9 flex-1 rounded border border-slate-200 px-3 text-sm outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
                       />
-                      <button className="text-sm font-medium text-theme-600">+批量添加</button>
                     </div>
                   </div>
 

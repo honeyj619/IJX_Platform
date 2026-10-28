@@ -40,6 +40,11 @@ interface ContactPickerProps {
   /** 结构化选择回调（与 selected/onChange 二选一使用） */
   selections?: ContactSelection[];
   onSelectionsChange?: (next: ContactSelection[]) => void;
+  /** 受控弹框开关（不传则组件内部自管） */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** 隐藏触发按钮（配合受控 open 使用，如外部自定义入口） */
+  hideTrigger?: boolean;
 }
 
 type DirectoryNode = ContactPerson;
@@ -52,6 +57,30 @@ const parseKeywords = (raw: string): string[] => raw.trim()
 
 /** 多关键词匹配：任一关键词命中即返回 true（人员批量查询）；单关键词保持原有语义（姓名/部门/职务/邮箱模糊） */
 const matchAnyKeyword = (text: string, keywords: string[]): boolean => keywords.some(word => text.includes(word));
+
+/** 搜索结果最多展示人数（超出截断并提示） */
+const SEARCH_RESULT_LIMIT = 100;
+
+/** 全文本匹配：忽略空格后的整串（匹配度最高，排序置顶） */
+const normalizeFullText = (raw: string): string => raw.replace(/\s+/g, '');
+
+/** 搜索框统一文案 */
+const SEARCH_PLACEHOLDER = '可输入多个人名或组织名称';
+
+/** 匹配度评分：整串忽略空格命中 > 多关键词命中；姓名命中 > 部门/职务/邮箱命中 */
+const relevanceScore = (person: ContactPerson, keywords: string[], fullText: string): number => {
+  if (keywords.length === 0) return 0;
+  let score = 0;
+  if (fullText) {
+    if (person.name.includes(fullText)) score += 100;
+    else if (person.department.includes(fullText) || person.title.includes(fullText) || person.email.includes(fullText)) score += 60;
+  }
+  keywords.forEach(word => {
+    if (person.name.includes(word)) score += 10;
+    else if (person.department.includes(word) || person.title.includes(word) || person.email.includes(word)) score += 4;
+  });
+  return score;
+};
 
 const kindLabel: Record<ContactSelectionKind, string> = {
   person: '人员',
@@ -83,6 +112,9 @@ export default function ContactPicker({
   lockedIds = [],
   selections,
   onSelectionsChange,
+  open: openProp,
+  onOpenChange,
+  hideTrigger,
 }: ContactPickerProps) {
   // 新模式判定：传入 selections 即启用结构化（管理后台）
   const structured = Boolean(selections && onSelectionsChange);
@@ -90,10 +122,15 @@ export default function ContactPicker({
   const resolvedKinds = allowedKinds && allowedKinds.length > 0 ? allowedKinds : ['person', 'department'];
   const allowPersons = resolvedKinds.includes('person');
   const allowDepartments = structured ? resolvedKinds.includes('department') : selectionMode === 'people-and-departments';
-  const allowUserGroups = structured && resolvedKinds.includes('user-group') && resolvedTabs.includes('user-groups');
 
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = openProp !== undefined ? openProp : internalOpen;
+  const setOpen = (next: boolean) => {
+    setInternalOpen(next);
+    onOpenChange?.(next);
+  };
   const [keyword, setKeyword] = useState('');
+  const [limitToast, setLimitToast] = useState(false);
   const [draft, setDraft] = useState<string[]>(selected);
   const [structuredDraft, setStructuredDraft] = useState<ContactSelection[]>(selections || []);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -110,25 +147,72 @@ export default function ContactPicker({
   const disabledIdSet = useMemo(() => new Set(disabledIds), [disabledIds]);
   const lockedIdSet = useMemo(() => new Set(lockedIds), [lockedIds]);
 
-  const visibleGroups = useMemo(() => {
+  // 搜索结果：按匹配度排序（整串忽略空格命中最优先），搜索态最多展示 SEARCH_RESULT_LIMIT 人
+  const searchResult = useMemo(() => {
     const keywords = parseKeywords(keyword);
-    return contactGroups
-      .map(group => ({
-        group,
-        members: contactDirectory.filter(person => {
-          if (person.department !== group) return false;
-          if (keywords.length === 0 || matchAnyKeyword(group, keywords)) return true;
-          return matchAnyKeyword(person.name, keywords) || matchAnyKeyword(person.title, keywords) || matchAnyKeyword(person.email, keywords);
-        }),
-      }))
-      .filter(({ group, members }) => members.length > 0 || (allowDepartments && keywords.length > 0 && matchAnyKeyword(group, keywords)));
+    const fullText = normalizeFullText(keyword);
+    const searching = keywords.length > 0;
+    const ranked = contactGroups
+      .map(group => {
+        const matched = contactDirectory
+          .filter(person => {
+            if (person.department !== group) return false;
+            if (!searching || matchAnyKeyword(group, keywords)) return true;
+            return matchAnyKeyword(person.name, keywords) || matchAnyKeyword(person.title, keywords) || matchAnyKeyword(person.email, keywords);
+          })
+          .map(person => ({ person, score: relevanceScore(person, keywords, fullText) }))
+          .sort((a, b) => b.score - a.score);
+        const groupScore = searching
+          ? (fullText && group.includes(fullText) ? 100 : 0)
+            + keywords.reduce((sum, word) => sum + (group.includes(word) ? 20 : 0), 0)
+            + matched.reduce((max, entry) => Math.max(max, entry.score), 0)
+          : 0;
+        return { group, matched, groupScore };
+      })
+      .sort((a, b) => b.groupScore - a.groupScore);
+
+    let truncated = false;
+    let remaining = SEARCH_RESULT_LIMIT;
+    const groups = ranked
+      .map(({ group, matched }) => {
+        const members = matched.map(entry => entry.person);
+        let shown = members;
+        if (searching) {
+          if (members.length > remaining) truncated = true;
+          shown = members.slice(0, Math.max(remaining, 0));
+          remaining = Math.max(remaining - members.length, 0);
+        }
+        return { group, members: shown };
+      })
+      .filter(({ group, members }) => members.length > 0 || (allowDepartments && searching && matchAnyKeyword(group, keywords)));
+
+    const hitCount = groups.reduce((sum, entry) => sum + entry.members.length, 0);
+    return { groups, hitCount, truncated };
   }, [allowDepartments, keyword]);
+  const visibleGroups = searchResult.groups;
+
+  // 搜索结果超出上限时提示“最多搜索100人”
+  useEffect(() => {
+    if (!searchResult.truncated) return;
+    setLimitToast(true);
+    const timer = window.setTimeout(() => setLimitToast(false), 2200);
+    return () => window.clearTimeout(timer);
+  }, [searchResult.truncated, keyword]);
 
   const visibleUserGroups = useMemo(() => {
     const keywords = parseKeywords(keyword);
     if (keywords.length === 0) return userGroups;
     return userGroups.filter(group => matchAnyKeyword(group.name, keywords) || matchAnyKeyword(group.description, keywords));
   }, [keyword, userGroups]);
+
+  // 受控模式：外部打开弹框时同步 draft（等价内部 openPicker 的初始化）
+  useEffect(() => {
+    if (!openProp) return;
+    setDraft([...new Set([...lockedNames, ...selected])]);
+    setStructuredDraft(selections ? [...selections] : []);
+    setKeyword('');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openProp]);
 
   const openPicker = () => {
     setDraft([...new Set([...lockedNames, ...selected])]);
@@ -175,9 +259,9 @@ export default function ContactPicker({
     if (allowDepartments) visibleGroups.forEach(({ group, members }) => {
       if (keywords.length === 0 || matchAnyKeyword(group, keywords)) result.push({ id: `dept:${group}`, kind: 'department', name: group, note: `${members.length} 人` });
     });
-    if (allowPersons) contactDirectory.forEach(person => {
-      if (keywords.length === 0 || matchAnyKeyword(person.name, keywords) || matchAnyKeyword(person.department, keywords)) result.push({ id: `person:${person.id}`, kind: 'person', name: person.name, note: person.title });
-    });
+    if (allowPersons) visibleGroups.forEach(({ members }) => members.forEach(person => {
+      result.push({ id: `person:${person.id}`, kind: 'person', name: person.name, note: person.title });
+    }));
     return result;
   };
   const selectAllVisible = () => {
@@ -203,7 +287,7 @@ export default function ContactPicker({
 
   return (
     <>
-      {triggerVariant === 'button' ? (
+      {!hideTrigger && (triggerVariant === 'button' ? (
         <button type="button" onClick={openPicker} className="inline-flex h-9 shrink-0 items-center gap-2 rounded bg-[#2f75b5] px-4 text-sm font-medium text-white hover:bg-[#28669f]">
           <UserPlus size={15} />
           {triggerLabel}
@@ -219,11 +303,14 @@ export default function ContactPicker({
           )}
           <span className="ml-auto shrink-0 text-xs text-gray-400">{selectedCount} 项</span>
         </button>
-      )}
+      ))}
 
       {open && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/40 p-4" onMouseDown={event => { if (event.target === event.currentTarget) closePicker(); }}>
-          <div role="dialog" aria-modal="true" aria-labelledby="contact-picker-title" className="flex max-h-[min(640px,calc(100vh-32px))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+          {limitToast && (
+            <div className="fixed left-1/2 top-16 z-[90] -translate-x-1/2 rounded-lg bg-gray-900/90 px-4 py-2 text-xs font-medium text-white shadow-lg">最多搜索100人</div>
+          )}
+          <div role="dialog" aria-modal="true" aria-labelledby="contact-picker-title" data-requirement-id="contact-picker-search" className="flex max-h-[min(640px,calc(100vh-32px))] w-full max-w-3xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-100 px-5 py-4">
               <div>
                 <h3 id="contact-picker-title" className="text-base font-bold text-gray-900">
@@ -255,12 +342,12 @@ export default function ContactPicker({
               <div className="flex min-h-0 flex-col border-r border-gray-100 max-sm:border-r-0">
                 <div className="shrink-0 px-4 pt-4">
                   {parseKeywords(keyword).length > 1 && (
-                    <p className="mb-2 text-[10px] text-gray-400">已按 {parseKeywords(keyword).length} 个关键词搜索，命中 {visibleGroups.reduce((sum, entry) => sum + entry.members.length, 0)} 人</p>
+                    <p className="mb-2 text-[10px] text-gray-400">已按 {parseKeywords(keyword).length} 个关键词搜索，命中 {searchResult.hitCount}{searchResult.truncated ? '+' : ''} 人</p>
                   )}
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
                       <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input value={keyword} onChange={event => setKeyword(event.target.value)} placeholder={activeTab === 'user-groups' ? '搜索用户组名称或描述，支持多词' : '搜索姓名/部门/职务/邮箱，多人用顿号或空格分隔'} className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:border-theme-300 focus:bg-white" autoFocus />
+                      <input value={keyword} onChange={event => setKeyword(event.target.value)} placeholder={SEARCH_PLACEHOLDER} className="h-8 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:border-theme-300 focus:bg-white" autoFocus />
                     </div>
                     {structured && (
                       <button type="button" onClick={selectAllVisible} className="h-8 shrink-0 rounded-lg border border-gray-200 px-3 text-[11px] font-medium text-gray-600 hover:border-theme-300 hover:text-theme-700">全选</button>

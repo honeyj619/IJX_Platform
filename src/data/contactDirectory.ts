@@ -23,11 +23,10 @@ const buildEmail = (name: string) => {
   return `${pinyin[name] || 'member'}@juneyaoair.com`;
 };
 
-/** 平台演示通讯录；业务明确指定的固定推送人也在此维护。 */
+/** 平台演示通讯录；业务明确指定的固定推送人不进组织树（仅企微收件人规则使用，见 AdvisorWorkbench/WorkReport）。 */
 const directoryDefinition: Array<[string, string, Array<[string, string]>]> = [
   ['公司领导', '决策层', [
     ['刘备', '项目发起人'], ['孙权', '分管领导'],
-    ['接总', '公司领导'], ['任总', '公司领导'], ['孔丰汇', '公司领导'],
   ]],
   ['信息技术部', 'IT 研发', [
     ['诸葛亮', '项目经理'], ['司马懿', 'IT项目经理'], ['张飞', '开发工程师'], ['赵云', '开发工程师'],
