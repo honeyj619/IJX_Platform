@@ -355,9 +355,9 @@ const sortByFreq = <T,>(items: T[], getId: (item: T) => string, freq: ClickFreqM
     .map(entry => entry.item);
 
 const commonFeatures: CommonFeature[] = [
-  { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', category: '办公协同', openMode: 'auto', path: '/web_client/business' },
-  { id: 'work-report', name: '工作汇报', icon: <FileText size={17} />, tone: 'bg-pink-50 text-pink-700', category: '办公协同', openMode: 'auto', path: '/web_client/work-report' },
-  { id: 'okr', name: 'OKR', icon: <Target size={17} />, tone: 'bg-blue-50 text-blue-700', category: '办公协同', openMode: 'auto', path: '/web_client/okr' },
+  { id: 'flight-status', name: '航班动态', icon: <Plane size={17} />, tone: 'bg-cyan-50 text-cyan-700', category: '办公协同', openMode: 'auto', path: '/pc_client/business' },
+  { id: 'work-report', name: '工作汇报', icon: <FileText size={17} />, tone: 'bg-pink-50 text-pink-700', category: '办公协同', openMode: 'auto', path: '/pc_client/work-report' },
+  { id: 'okr', name: 'OKR', icon: <Target size={17} />, tone: 'bg-blue-50 text-blue-700', category: '办公协同', openMode: 'auto', path: '/pc_client/okr' },
   { id: 'discount-ticket', name: '优惠票', icon: <Ticket size={17} />, tone: 'bg-amber-50 text-amber-700', category: '员工服务', openMode: 'native', destination: '优惠票' },
   { id: 'salary', name: '我的薪酬', icon: <WalletCards size={17} />, tone: 'bg-emerald-50 text-emerald-700', category: '员工服务', openMode: 'native', destination: '我的薪酬' },
   { id: 'leave', name: '我的休假', icon: <Sun size={17} />, tone: 'bg-sky-50 text-sky-700', category: '员工服务', openMode: 'native', destination: '我的休假' },
@@ -1347,7 +1347,7 @@ export default function Personal_Enterprise() {
   }, [navigate, showJumpTip]);
 
   const handleSystemClick = useCallback((system: System) => {
-    const target = `/web_client/business?system=${system.id}`;
+    const target = `/pc_client/business?system=${system.id}`;
     openConfiguredEntry(system.name, target, system.openMode || 'auto');
   }, [openConfiguredEntry]);
 
@@ -1805,7 +1805,7 @@ export default function Personal_Enterprise() {
         {editAction}
         {cardId === 'calendar' && (
           <button
-            onClick={() => navigate('/web_client/calendar?create=1')}
+            onClick={() => navigate('/pc_client/calendar?create=1')}
             className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             title="新增日程"
           >
@@ -2153,7 +2153,7 @@ export default function Personal_Enterprise() {
               contextId,
               reportType: '事项汇报',
               initialPrompt: '结合当前事项、任务和历史汇报生成本期工作汇报',
-              returnTo: '/web_client/enterprise',
+              returnTo: '/pc_client/enterprise',
             }))}
           />
         )}
@@ -2217,7 +2217,7 @@ export default function Personal_Enterprise() {
               contextId: workItemReportTaskId || selectedWorkItem.id,
               reportType: '事项汇报',
               initialPrompt: '根据当前事项和任务执行记录生成汇报草稿',
-              returnTo: '/web_client/enterprise',
+              returnTo: '/pc_client/enterprise',
             }))}
             onSubmit={handleSubmitWorkItemReport}
           />

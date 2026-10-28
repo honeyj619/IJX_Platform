@@ -164,7 +164,7 @@ export default function Business() {
   });
   const [localSystems, setLocalSystems] = useState<System[]>(systems);
   const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
-  const highlightedSystemId = searchTarget?.type === 'route' && searchTarget.path === '/web_client/business'
+  const highlightedSystemId = searchTarget?.type === 'route' && searchTarget.path === '/pc_client/business'
     ? Number(searchTarget.entityId)
     : null;
 

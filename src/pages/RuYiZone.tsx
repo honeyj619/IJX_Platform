@@ -246,9 +246,9 @@ const approvalLinks: ProcessLink[] = [
 ];
 
 const knowledgeLinks: ProcessLink[] = [
-  { id: 1, title: "智能办公系统功能介绍", to: "/web_client/ekb?doc=smart-office-intro&source=ruyi-zone" },
-  { id: 2, title: "协同办公平台使用手册", to: "/web_client/ekb?doc=collaboration-manual&source=ruyi-zone" },
-  { id: 3, title: "常见问题 FAQ 汇总", to: "/web_client/ekb?doc=faq&source=ruyi-zone" },
+  { id: 1, title: "智能办公系统功能介绍", to: "/pc_client/ekb?doc=smart-office-intro&source=ruyi-zone" },
+  { id: 2, title: "协同办公平台使用手册", to: "/pc_client/ekb?doc=collaboration-manual&source=ruyi-zone" },
+  { id: 3, title: "常见问题 FAQ 汇总", to: "/pc_client/ekb?doc=faq&source=ruyi-zone" },
 ];
 
 const operationsLinks: ProcessLink[] = [
@@ -520,7 +520,7 @@ export default function RuYiZone() {
         setInput("");
         setHasConversation(false);
         setShowPresentationEditor(true);
-        navigate('/web_client/ruyi-zone/presentation');
+        navigate('/pc_client/ruyi-zone/presentation');
       } else {
         // 调整意见：合并进需求描述，同样带入工作台
         setPresentationPrompt((current) => `${current}\n补充要求：${message}`);
@@ -528,7 +528,7 @@ export default function RuYiZone() {
         setInput("");
         setHasConversation(false);
         setShowPresentationEditor(true);
-        navigate('/web_client/ruyi-zone/presentation');
+        navigate('/pc_client/ruyi-zone/presentation');
       }
       return;
     }
@@ -543,7 +543,7 @@ export default function RuYiZone() {
       setShowEditor(false);
       setEmbedEditorInRuyiZone(false);
       setShowPresentationEditor(true);
-      navigate('/web_client/ruyi-zone/presentation');
+      navigate('/pc_client/ruyi-zone/presentation');
       return;
     }
     if (activeTool === '公文' && conversationKind === "documentValidation") {
@@ -648,7 +648,7 @@ export default function RuYiZone() {
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
     setShowPresentationEditor(false);
-    navigate('/web_client/ruyi-zone');
+    navigate('/pc_client/ruyi-zone');
   };
 
   const getHistoryAssistantName = (kind: ConversationKind) => {
@@ -689,7 +689,7 @@ export default function RuYiZone() {
     setReportSubmitDone(false);
     setFeedbackDraft(null);
     setSubmittedFeedback(null);
-    if (documentWorkspacePath || presentationWorkspacePath || advisorWorkspacePath) navigate('/web_client/ruyi-zone');
+    if (documentWorkspacePath || presentationWorkspacePath || advisorWorkspacePath) navigate('/pc_client/ruyi-zone');
   };
 
   const openLegacyDocumentAssistant = () => {
@@ -714,7 +714,7 @@ export default function RuYiZone() {
     setEmbedEditorInRuyiZone(true);
     setShowEditor(true);
     setShowPresentationEditor(false);
-    navigate('/web_client/ruyi-zone/document');
+    navigate('/pc_client/ruyi-zone/document');
   };
 
   const openLegacyPresentationAssistant = () => {
@@ -730,7 +730,7 @@ export default function RuYiZone() {
     setShowPresentationEditor(true);
     setConversationKind("pending");
     setInput("");
-    navigate('/web_client/ruyi-zone/presentation');
+    navigate('/pc_client/ruyi-zone/presentation');
   };
 
   const openLegacyItAssistant = () => {
@@ -819,7 +819,7 @@ export default function RuYiZone() {
       setSelectedReportSubmitTargets([1]);
       setReportSubmitDone(false);
       setShowPresentationEditor(false);
-      navigate('/web_client/ruyi-zone/advisor');
+      navigate('/pc_client/ruyi-zone/advisor');
       return;
     }
     // 更新选中状态
@@ -1003,7 +1003,7 @@ export default function RuYiZone() {
       setShowEditor(false);
       setEmbedEditorInRuyiZone(false);
       setShowPresentationEditor(true);
-      navigate('/web_client/ruyi-zone/presentation');
+      navigate('/pc_client/ruyi-zone/presentation');
       return;
     }
     if (activeTool === "公文" && documentMode === "validation") {
@@ -1430,7 +1430,7 @@ export default function RuYiZone() {
               }}
               onBack={() => {
                 setShowPresentationEditor(false);
-                navigate('/web_client/ruyi-zone');
+                navigate('/pc_client/ruyi-zone');
               }}
             />
           ) : (showEditor || documentWorkspacePath) ? (            <DocumentEditor
@@ -1651,7 +1651,7 @@ export default function RuYiZone() {
               </div>
               <span>如意空间</span>
               <Link
-                to="/web_client/agent-square"
+                to="/pc_client/agent-square"
                 className="ml-auto inline-flex items-center gap-1 rounded-full border border-theme-100 bg-theme-50 px-2 py-1 text-[11px] font-semibold text-theme-700 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-theme-100 dark:border-theme-900/40 dark:bg-theme-900/20 dark:text-theme-200"
                 title="进入AI门户"
               >
@@ -1705,7 +1705,7 @@ export default function RuYiZone() {
               </div>
             </div>
             <Link
-              to="/web_client/agent-square"
+              to="/pc_client/agent-square"
               className="block w-full bg-gradient-to-theme text-white py-3 rounded-lg hover:opacity-90 transition-all duration-300 text-center font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
             >
               前往智能体广场
@@ -1745,7 +1745,7 @@ export default function RuYiZone() {
         {/* 第三列：如意空间内容区域 */}
         <div className="flex-1 flex flex-col h-full overflow-hidden">
           {advisorWorkspacePath ? (
-            <AdvisorWorkbench onBack={() => navigate('/web_client/ruyi-zone')} />
+            <AdvisorWorkbench onBack={() => navigate('/pc_client/ruyi-zone')} />
           ) : (showPresentationEditor || presentationWorkspacePath) ? (
             <PresentationWorkbench
               initialState={{
@@ -1764,7 +1764,7 @@ export default function RuYiZone() {
               }}
               onBack={() => {
                 setShowPresentationEditor(false);
-                navigate('/web_client/ruyi-zone');
+                navigate('/pc_client/ruyi-zone');
               }}
             />
           ) : ((showEditor && embedEditorInRuyiZone) || documentWorkspacePath) ? (
@@ -1844,8 +1844,8 @@ export default function RuYiZone() {
                             <li><span className="font-semibold">根据录音创建：</span>上传会议录音文件，由系统生成纪要草稿。</li>
                           </ol>
                           <div className="mb-6 flex flex-wrap gap-3">
-                            <Link to="/web_client/ekb?template=meeting-minutes" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">查看会议纪要模板</Link>
-                            <Link to="/web_client/ruyi-zone?tool=document&scene=meeting-minutes" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">创建空白纪要</Link>
+                            <Link to="/pc_client/ekb?template=meeting-minutes" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">查看会议纪要模板</Link>
+                            <Link to="/pc_client/ruyi-zone?tool=document&scene=meeting-minutes" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">创建空白纪要</Link>
                           </div>
                         </>
                       )}
@@ -1870,7 +1870,7 @@ export default function RuYiZone() {
                             <div className="mb-6 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50 p-4">
                               <div className="font-semibold text-emerald-800">反馈提交成功</div>
                               <p className="mt-1 text-sm text-emerald-700">反馈编号 {submittedFeedback.feedbackNo}，当前状态为待处理。</p>
-                              <Link to={`/web_client/help-feedback/${submittedFeedback.id}`} className="mt-3 inline-flex rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">查看反馈详情</Link>
+                              <Link to={`/pc_client/help-feedback/${submittedFeedback.id}`} className="mt-3 inline-flex rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">查看反馈详情</Link>
                             </div>
                           )}
                         </>
@@ -1886,7 +1886,7 @@ export default function RuYiZone() {
                             <li>项目立项完成。</li>
                           </ol>
                           <p className="mb-4 leading-7">Web 端不展示 IM 表单卡片，我已将表单能力转换为流程入口。点击后可进入项目立项页面补充项目名称、类型、预计开始日期、预算、负责人和项目概述。</p>
-                          <Link to="/web_client/process?type=project-setup&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">发起项目立项申请</Link>
+                          <Link to="/pc_client/process?type=project-setup&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">发起项目立项申请</Link>
                         </>
                       )}
 
@@ -1914,8 +1914,8 @@ export default function RuYiZone() {
                             <li><span className="font-semibold">参与人：</span>{getDemoPerson(2)}、{getDemoPerson(1)}、{getDemoPerson(3)}</li>
                           </ul>
                           <div className="mb-6 flex flex-wrap gap-3">
-                            <Link to="/web_client/calendar?action=create&source=ruyi-zone" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">确认创建日程</Link>
-                            <Link to="/web_client/calendar?action=edit&source=ruyi-zone" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">修改日程信息</Link>
+                            <Link to="/pc_client/calendar?action=create&source=ruyi-zone" className="rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">确认创建日程</Link>
+                            <Link to="/pc_client/calendar?action=edit&source=ruyi-zone" className="rounded-lg bg-gray-100 px-4 py-2 font-medium text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-100">修改日程信息</Link>
                           </div>
                         </>
                       )}
@@ -1942,7 +1942,7 @@ export default function RuYiZone() {
                             <li>迟到 2 次，早退 0 次。</li>
                             <li>请假 1 天，整体出勤率 95.5%。</li>
                           </ul>
-                          <p className="mb-6 leading-7">整体表现良好。相关制度可查看 <Link to="/web_client/ekb?doc=attendance-policy&source=ruyi-zone" className="font-semibold text-theme-700 underline-offset-4 hover:underline dark:text-theme-300">考勤管理制度 v2.3</Link>。</p>
+                          <p className="mb-6 leading-7">整体表现良好。相关制度可查看 <Link to="/pc_client/ekb?doc=attendance-policy&source=ruyi-zone" className="font-semibold text-theme-700 underline-offset-4 hover:underline dark:text-theme-300">考勤管理制度 v2.3</Link>。</p>
                         </>
                       )}
 
@@ -2047,7 +2047,7 @@ export default function RuYiZone() {
                               </div>
                             ))}
                           </div>
-                          <Link to="/web_client/okr?assistant=assessment&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">打开 OKR 页面继续调整</Link>
+                          <Link to="/pc_client/okr?assistant=assessment&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">打开 OKR 页面继续调整</Link>
                         </>
                       )}
 
@@ -2126,7 +2126,7 @@ export default function RuYiZone() {
                                 <div><span className="text-gray-400">健康状态：</span><span className="inline-flex items-center gap-1 font-semibold text-emerald-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />绿灯（正常）</span></div>
                               </div>
                               <button
-                                onClick={() => navigate('/web_client/ruyi-zone/advisor?mode=project-report')}
+                                onClick={() => navigate('/pc_client/ruyi-zone/advisor?mode=project-report')}
                                 className="inline-flex items-center gap-2 rounded-lg bg-theme-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-theme-700"
                               >
                                 进入项目汇报工作台查看完整汇报
@@ -2184,7 +2184,7 @@ export default function RuYiZone() {
                           {statsAnswer.records.length === 0 && statsAnswer.unsent.length === 0 && (
                             <p className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-500">{statsAnswer.lightWord ? '当前没有' + statsAnswer.lightWord + '项目的汇报记录' : '当前没有汇报发送记录'}</p>
                           )}
-                          <Link to="/web_client/work-report" className="mt-5 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100">前往工作汇报查看明细</Link>
+                          <Link to="/pc_client/work-report" className="mt-5 inline-flex rounded-lg bg-theme-50 px-4 py-2 text-sm font-semibold text-theme-700 hover:bg-theme-100">前往工作汇报查看明细</Link>
                         </>
                       )}
                       {conversationKind === "reportStats" && !statsAnswer && (

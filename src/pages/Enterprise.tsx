@@ -68,9 +68,9 @@ export default function Enterprise() {
 
   const switchPortalType = (nextType: PortalType) => {
     setPortalType(nextType);
-    let nextPath = '/web_client/enterprise';
-    if (nextType === 'enterprise') nextPath = '/web_client/enterprise?tab=enterprise';
-    if (nextType === 'knowledge') nextPath = '/web_client/enterprise?tab=knowledge';
+    let nextPath = '/pc_client/enterprise';
+    if (nextType === 'enterprise') nextPath = '/pc_client/enterprise?tab=enterprise';
+    if (nextType === 'knowledge') nextPath = '/pc_client/enterprise?tab=knowledge';
     navigate(nextPath, { replace: false });
   };
 
@@ -91,7 +91,7 @@ export default function Enterprise() {
   const openHelpFeedback = () => {
     const context = createFeedbackPageContext(portalTitleMap[portalType], `${location.pathname}${location.search}`);
     saveFeedbackPageContext(context);
-    navigate('/web_client/help-feedback', { state: { feedbackPageContext: context } });
+    navigate('/pc_client/help-feedback', { state: { feedbackPageContext: context } });
   };
 
   return (

@@ -143,7 +143,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '项目立项会议',
     description: '2025-05-01 · 项目会议',
     keywords: ['项目', '立项', '会议', '日程'],
-    target: { type: 'route', path: '/web_client/calendar', entityId: 1 },
+    target: { type: 'route', path: '/pc_client/calendar', entityId: 1 },
   },
   {
     id: 'calendar-duty',
@@ -151,7 +151,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '值班',
     description: '2025-05-22 · 全天',
     keywords: ['值班', '日程', '工作'],
-    target: { type: 'route', path: '/web_client/calendar', entityId: 4 },
+    target: { type: 'route', path: '/pc_client/calendar', entityId: 4 },
   },
   {
     id: 'calendar-beijing',
@@ -159,7 +159,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: 'H01253 北京',
     description: '2025-05-04 · 出差',
     keywords: ['北京', '出差', '航班', '日程'],
-    target: { type: 'route', path: '/web_client/calendar', entityId: 2 },
+    target: { type: 'route', path: '/pc_client/calendar', entityId: 2 },
   },
   {
     id: 'calendar-shanghai',
@@ -167,7 +167,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: 'H01253 上海',
     description: '2025-05-22 · 出差',
     keywords: ['上海', '出差', '航班', '日程'],
-    target: { type: 'route', path: '/web_client/calendar', entityId: 5 },
+    target: { type: 'route', path: '/pc_client/calendar', entityId: 5 },
   },
   ...[
     ['doc-1', '03-人力资源手册', '企业知识库 · 人力资源', 1],
@@ -181,7 +181,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: String(title),
     description: String(description),
     keywords: ['文档', '知识库', '项目', String(title)],
-    target: { type: 'route' as const, path: '/web_client/ekb', entityId: Number(entityId) },
+    target: { type: 'route' as const, path: '/pc_client/ekb', entityId: Number(entityId) },
   })),
   ...[
     [1, '项目立项申请', '待审批 · 梁吉力'],
@@ -194,7 +194,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: String(title),
     description: String(description),
     keywords: ['流程', '审批', '申请', '项目', String(title)],
-    target: { type: 'route' as const, path: '/web_client/process', entityId: Number(entityId) },
+    target: { type: 'route' as const, path: '/pc_client/process', entityId: Number(entityId) },
   })),
   ...[
     [1, '员工服务平台', '员工自助与综合服务'],
@@ -209,7 +209,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: String(title),
     description: String(description),
     keywords: ['业务系统', '平台', '管理', String(title), String(description)],
-    target: { type: 'route' as const, path: '/web_client/business', entityId: Number(entityId) },
+    target: { type: 'route' as const, path: '/pc_client/business', entityId: Number(entityId) },
   })),
   {
     id: 'app-work-report',
@@ -218,7 +218,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '工作汇报',
     description: '常用功能 · 查看、编写和发送工作汇报',
     keywords: ['系统应用', '常用功能', '项目周报', '汇报'],
-    target: { type: 'route', path: '/web_client/work-report' },
+    target: { type: 'route', path: '/pc_client/work-report' },
   },
   {
     id: 'app-calendar',
@@ -227,7 +227,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '日历',
     description: '常用功能 · 日程和会议室管理',
     keywords: ['系统应用', '常用功能', '会议', '日程'],
-    target: { type: 'route', path: '/web_client/calendar' },
+    target: { type: 'route', path: '/pc_client/calendar' },
   },
   {
     id: 'app-work-portal',
@@ -236,7 +236,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '工作门户',
     description: '常用功能 · 待办、审批与工作事项',
     keywords: ['系统应用', '常用功能', '门户', '待办'],
-    target: { type: 'route', path: '/web_client/enterprise' },
+    target: { type: 'route', path: '/pc_client/enterprise' },
   },
   {
     id: 'app-knowledge',
@@ -245,7 +245,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '知识门户',
     description: '常用功能 · 企业知识检索与阅读',
     keywords: ['系统应用', '常用功能', '知识', '文档'],
-    target: { type: 'route', path: '/web_client/ekb' },
+    target: { type: 'route', path: '/pc_client/ekb' },
   },
   {
     id: 'agent-advisor',
@@ -254,7 +254,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '如意参谋师',
     description: '智能体 · 生成个人汇报和项目汇报',
     keywords: ['系统应用', '智能体', '项目', '汇报', '参谋师'],
-    target: { type: 'route', path: '/web_client/ruyi-zone/advisor' },
+    target: { type: 'route', path: '/pc_client/ruyi-zone/advisor' },
   },
   {
     id: 'agent-document',
@@ -263,7 +263,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '如意公文创作',
     description: '智能体 · 公文生成与编辑',
     keywords: ['系统应用', '智能体', '公文', '写作'],
-    target: { type: 'route', path: '/web_client/ruyi-zone/document' },
+    target: { type: 'route', path: '/pc_client/ruyi-zone/document' },
   },
   {
     id: 'agent-knowledge',
@@ -272,7 +272,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: '企业知识专家',
     description: '智能体 · 企业知识问答',
     keywords: ['系统应用', '智能体', '知识', '问答'],
-    target: { type: 'route', path: '/web_client/ruyi-zone' },
+    target: { type: 'route', path: '/pc_client/ruyi-zone' },
   },
   {
     id: 'agent-it',
@@ -281,7 +281,7 @@ export const globalSearchItems: GlobalSearchItem[] = [
     title: 'IT服务助手',
     description: '智能体 · IT服务咨询与问题处理',
     keywords: ['系统应用', '智能体', 'it', '服务', '问题'],
-    target: { type: 'route', path: '/web_client/ruyi-zone' },
+    target: { type: 'route', path: '/pc_client/ruyi-zone' },
   },
 ];
 

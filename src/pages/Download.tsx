@@ -1,4 +1,4 @@
-import { ArrowLeft, Apple, Smartphone, Monitor, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Apple, Smartphone, Monitor, Globe2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import logo from '@/assets/ijx-logo.jpg';
 
@@ -14,7 +14,7 @@ export default function Download() {
       <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-5 py-6 sm:px-8 lg:px-10">
         <header className="relative mb-7 flex h-14 items-center justify-center">
           <button
-            onClick={() => navigate('/web_client')}
+            onClick={() => navigate('/pc_client')}
             className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-full text-gray-900 transition-colors hover:bg-gray-100"
             title="返回"
           >
@@ -64,7 +64,7 @@ export default function Download() {
           </div>
         </section>
 
-        <section className="mt-8 grid gap-4 lg:grid-cols-3">
+        <section className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <button
             onClick={() => openClient('ios')}
             className="flex h-16 items-center justify-center gap-4 rounded-full bg-blue-500 text-xl font-semibold text-white shadow-sm transition-colors hover:bg-blue-600 lg:col-span-1"
@@ -80,12 +80,18 @@ export default function Download() {
             安卓下载
           </button>
           <button
-            onClick={() => navigate('/web_client')}
-            className="flex h-16 items-center justify-center gap-4 rounded-full bg-pink-700 text-xl font-semibold text-white shadow-sm transition-colors hover:bg-pink-800 lg:col-span-1"
+            onClick={() => navigate('/pc_client')}
+            className="flex h-16 items-center justify-center gap-3 rounded-full bg-slate-700 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-slate-800"
           >
-            <Monitor size={28} />
-            Web端进入
-            <ExternalLink size={20} />
+            <Monitor size={26} />
+            PC客户端进入
+          </button>
+          <button
+            onClick={() => navigate('/pc_web?tab=enterprise')}
+            className="flex h-16 items-center justify-center gap-3 rounded-full bg-pink-700 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-pink-800"
+          >
+            <Globe2 size={26} />
+            PC Web进入
           </button>
         </section>
       </div>

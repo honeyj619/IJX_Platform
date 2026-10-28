@@ -115,18 +115,18 @@ function getLocator(element: HTMLElement): RequirementLocator | null {
 
 function routeDefaultSurface(pathname: string) {
   const routeLabels: Array<[string, string]> = [
-    ['/web_client/ruyi-zone', '如意空间'],
-    ['/web_client/agent-square', '智能体广场'],
-    ['/web_client/work-report', '工作汇报'],
-    ['/web_client/enterprise', '个人门户'],
-    ['/web_client/assistant', '智能助手'],
-    ['/web_client/process', '流程中心'],
-    ['/web_client/ekb', '企业知识库'],
-    ['/web_client/profile', '个人中心'],
-    ['/web_client/calendar', '日历'],
-    ['/web_client/business', '商务中心'],
-    ['/web_client/okr', 'OKR'],
-    ['/web_client/settings', '设置'],
+    ['/pc_client/ruyi-zone', '如意空间'],
+    ['/pc_client/agent-square', '智能体广场'],
+    ['/pc_client/work-report', '工作汇报'],
+    ['/pc_client/enterprise', '个人门户'],
+    ['/pc_client/assistant', '智能助手'],
+    ['/pc_client/process', '流程中心'],
+    ['/pc_client/ekb', '企业知识库'],
+    ['/pc_client/profile', '个人中心'],
+    ['/pc_client/calendar', '日历'],
+    ['/pc_client/business', '商务中心'],
+    ['/pc_client/okr', 'OKR'],
+    ['/pc_client/settings', '设置'],
     ['/admin', '管理后台'],
   ];
   return routeLabels.find(([prefix]) => pathname.startsWith(prefix))?.[1] ?? '当前页面';
@@ -240,7 +240,7 @@ function collectMountedRequirements(
 export function RequirementModeLayer() {
   const { enabled, setEnabled, selectedId, setSelectedId } = useRequirementMode();
   const location = useLocation();
-  const supportedRoute = location.pathname === '/admin' || location.pathname.startsWith('/web_client');
+  const supportedRoute = location.pathname === '/admin' || location.pathname.startsWith('/pc_client');
   const [requirements, setRequirements] = useState<ManagedRequirement[]>(prototypeRequirements);
   const [mounted, setMounted] = useState<MountedRequirement[]>([]);
   const [formMode, setFormMode] = useState<FormMode>(null);

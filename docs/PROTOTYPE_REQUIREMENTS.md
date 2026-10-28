@@ -1,7 +1,7 @@
 ---
 id: ruyi-plugin-state
 surface: 如意空间首页
-route: /web_client/ruyi-zone
+route: /pc_client/ruyi-zone
 order: 1
 title: 插件选择与状态切换
 functionalRequirement: 插件用于切换当前对话的专业能力，同一时间只激活一个插件。
@@ -15,7 +15,7 @@ businessRules:
 # 插件选择与状态切换
 
 - **功能模块**：如意空间首页
-- **适用路由**：`/web_client/ruyi-zone`
+- **适用路由**：`/pc_client/ruyi-zone`
 - **模块内序号**：1
 
 ## 功能需求
@@ -31,7 +31,7 @@ businessRules:
 ---
 id: ruyi-conversation-input
 surface: 如意空间首页
-route: /web_client/ruyi-zone
+route: /pc_client/ruyi-zone
 order: 2
 title: 对话输入与发送
 functionalRequirement: 输入区根据当前智能体或插件展示对应提示，并将内容交给当前场景处理。
@@ -45,7 +45,7 @@ businessRules:
 # 对话输入与发送
 
 - **功能模块**：如意空间首页
-- **适用路由**：`/web_client/ruyi-zone`
+- **适用路由**：`/pc_client/ruyi-zone`
 - **模块内序号**：2
 
 ## 功能需求
@@ -61,7 +61,7 @@ businessRules:
 ---
 id: ruyi-workbench-navigation
 surface: 如意空间首页
-route: /web_client/ruyi-zone
+route: /pc_client/ruyi-zone
 order: 3
 title: 确认需求后进入专业工作台
 functionalRequirement: 需要结构化编辑或生成的能力进入对应专业工作台继续完成。
@@ -76,7 +76,7 @@ businessRules:
 # 确认需求后进入专业工作台
 
 - **功能模块**：如意空间首页
-- **适用路由**：`/web_client/ruyi-zone`
+- **适用路由**：`/pc_client/ruyi-zone`
 - **模块内序号**：3
 
 ## 功能需求
@@ -241,7 +241,7 @@ businessRules:
 ---
 id: advisor-project-week-number
 surface: 如意参谋师 · 项目周报
-route: /web_client/ruyi-zone/advisor
+route: /pc_client/ruyi-zone/advisor
 order: 1
 title: 项目周计算
 functionalRequirement: 项目周报展示项目从立项开始累计推进到当前日期的项目周数。
@@ -255,7 +255,7 @@ businessRules:
 # 项目周计算
 
 - **功能模块**：如意参谋师 · 项目周报
-- **适用路由**：`/web_client/ruyi-zone/advisor`
+- **适用路由**：`/pc_client/ruyi-zone/advisor`
 - **模块内序号**：1
 
 ## 功能需求
@@ -271,7 +271,7 @@ businessRules:
 ---
 id: advisor-gantt-progress
 surface: 如意参谋师 · 项目周报
-route: /web_client/ruyi-zone/advisor
+route: /pc_client/ruyi-zone/advisor
 order: 2
 title: 阶段进度计算
 functionalRequirement: 甘特图按阶段起止日期和当前日期实时计算阶段及子阶段进度。
@@ -285,7 +285,7 @@ businessRules:
 # 阶段进度计算
 
 - **功能模块**：如意参谋师 · 项目周报
-- **适用路由**：`/web_client/ruyi-zone/advisor`
+- **适用路由**：`/pc_client/ruyi-zone/advisor`
 - **模块内序号**：2
 
 ## 功能需求
@@ -301,7 +301,7 @@ businessRules:
 ---
 id: advisor-current-stage-status
 surface: 如意参谋师 · 项目周报
-route: /web_client/ruyi-zone/advisor
+route: /pc_client/ruyi-zone/advisor
 order: 3
 title: 当前阶段展示
 functionalRequirement: 周报头部右侧集中展示当前阶段、当前子阶段和项目健康灯。
@@ -315,7 +315,7 @@ businessRules:
 # 当前阶段展示
 
 - **功能模块**：如意参谋师 · 项目周报
-- **适用路由**：`/web_client/ruyi-zone/advisor`
+- **适用路由**：`/pc_client/ruyi-zone/advisor`
 - **模块内序号**：3
 
 ## 功能需求
@@ -331,7 +331,7 @@ businessRules:
 ---
 id: advisor-gantt-collapse
 surface: 如意参谋师 · 项目周报
-route: /web_client/ruyi-zone/advisor
+route: /pc_client/ruyi-zone/advisor
 order: 4
 title: 甘特图子阶段折叠
 functionalRequirement: 有子阶段的父阶段支持展开或收起子阶段，便于查看阶段整体计划。
@@ -345,7 +345,7 @@ businessRules:
 # 甘特图子阶段折叠
 
 - **功能模块**：如意参谋师 · 项目周报
-- **适用路由**：`/web_client/ruyi-zone/advisor`
+- **适用路由**：`/pc_client/ruyi-zone/advisor`
 - **模块内序号**：4
 
 ## 功能需求
@@ -361,7 +361,7 @@ businessRules:
 ---
 id: advisor-email-subject
 surface: 如意参谋师 · 项目周报
-route: /web_client/ruyi-zone/advisor
+route: /pc_client/ruyi-zone/advisor
 order: 5
 title: 项目周报邮件主题
 functionalRequirement: 发送确认预览和实际发送统一使用标准项目周报邮件主题。
@@ -375,7 +375,7 @@ businessRules:
 # 项目周报邮件主题
 
 - **功能模块**：如意参谋师 · 项目周报
-- **适用路由**：`/web_client/ruyi-zone/advisor`
+- **适用路由**：`/pc_client/ruyi-zone/advisor`
 - **模块内序号**：5
 
 ## 功能需求
@@ -391,7 +391,7 @@ businessRules:
 ---
 id: custom-20261026-001
 surface: 如意参谋师 · 项目周报
-route: /web_client/ruyi-zone/advisor
+route: /pc_client/ruyi-zone/advisor
 order: 6
 title: 数据来源 - 日程/会议
 functionalRequirement: 仅筛选状态为进行中/已结束的日程、会议数据
@@ -403,7 +403,7 @@ businessRules:
 # 数据来源 - 日程/会议
 
 - **功能模块**：如意参谋师 · 项目周报
-- **适用路由**：`/web_client/ruyi-zone/advisor`
+- **适用路由**：`/pc_client/ruyi-zone/advisor`
 - **模块内序号**：6
 
 ## 功能需求
@@ -417,7 +417,7 @@ businessRules:
 ---
 id: custom-20261028-002
 surface: 日历
-route: /web_client/calendar
+route: /pc_client/calendar
 order: 1
 title: 周期选项根据实际日期所处日期、星期反显
 functionalRequirement: 选项中涉及“周x”、“x日”、“第y个x日”的选项，需要根据用户创建日程时所处日期反显。如，当日为周四、30日，则选项中反显。
@@ -429,7 +429,7 @@ businessRules:
 # 周期选项根据实际日期所处日期、星期反显
 
 - **功能模块**：日历
-- **适用路由**：`/web_client/calendar`
+- **适用路由**：`/pc_client/calendar`
 - **模块内序号**：1
 
 ## 功能需求
@@ -443,7 +443,7 @@ businessRules:
 ---
 id: client-help-feedback-entry
 surface: WebClient · 个人卡片
-route: /web_client/*
+route: /pc_client/*
 order: 1
 title: 帮助与反馈入口及页面关联
 functionalRequirement: 个人卡片提供“帮助与反馈”入口；点击后记录用户离开前的页面信息并进入“我的反馈”，用户可继续新增反馈或查看处理进度。
@@ -458,7 +458,7 @@ businessRules:
 # 帮助与反馈入口及页面关联
 
 - **功能模块**：WebClient · 个人卡片
-- **适用路由**：`/web_client/*`
+- **适用路由**：`/pc_client/*`
 - **模块内序号**：1
 
 ## 功能需求
@@ -509,7 +509,7 @@ businessRules:
 ---
 id: custom-20261028-004
 surface: 通用组件 · 通讯录选择器
-route: /web_client/enterprise
+route: /pc_client/enterprise
 order: 1
 title: 通讯录搜索与批量选人
 functionalRequirement: 通讯录选择器支持按姓名、部门、职务、邮箱搜索，支持一次输入多个人名或组织名称批量查询，搜索结果按匹配度排序展示。
@@ -524,7 +524,7 @@ businessRules:
 # 通讯录搜索与批量选人
 
 - **功能模块**：通用组件 · 通讯录选择器
-- **适用路由**：`/web_client/enterprise`
+- **适用路由**：`/pc_client/enterprise`
 - **模块内序号**：1
 
 ## 功能需求
@@ -541,7 +541,7 @@ businessRules:
 ---
 id: custom-20261028-005
 surface: 日历 · 创建日程/会议
-route: /web_client/calendar
+route: /pc_client/calendar
 order: 1
 title: 日程与会议参与者双入口选择
 functionalRequirement: 创建日程、预约会议弹框中的参与者字段提供两个入口：文本框输入姓名实时联想选中；批量添加按钮打开通讯录组件按组织架构浏览或搜索批量选择。
@@ -556,7 +556,7 @@ businessRules:
 # 日程与会议参与者双入口选择
 
 - **功能模块**：日历 · 创建日程/会议
-- **适用路由**：`/web_client/calendar`
+- **适用路由**：`/pc_client/calendar`
 - **模块内序号**：1
 
 ## 功能需求
@@ -573,7 +573,7 @@ businessRules:
 ---
 id: custom-20261028-006
 surface: WebClient · 企业门户
-route: /web_client/enterprise
+route: /pc_client/enterprise
 order: 1
 title: 企业门户帮助与反馈入口
 functionalRequirement: 企业门户顶部工具栏提供帮助与反馈入口；点击后记录当前门户页面信息并进入我的反馈，用户可继续新增反馈或查看处理进度，与个人卡片入口行为一致。
@@ -589,7 +589,7 @@ businessRules:
 # 企业门户帮助与反馈入口
 
 - **功能模块**：WebClient · 企业门户
-- **适用路由**：`/web_client/enterprise`
+- **适用路由**：`/pc_client/enterprise`
 - **模块内序号**：1
 
 ## 功能需求

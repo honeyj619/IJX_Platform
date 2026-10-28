@@ -46,7 +46,7 @@ const processes: ProcessItem[] = [
 export default function Process() {
   const location = useLocation();
   const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
-  const highlightedProcessId = searchTarget?.type === 'route' && searchTarget.path === '/web_client/process'
+  const highlightedProcessId = searchTarget?.type === 'route' && searchTarget.path === '/pc_client/process'
     ? Number(searchTarget.entityId)
     : null;
 

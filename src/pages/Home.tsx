@@ -808,6 +808,31 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const raw = window.localStorage.getItem('ijx-pcweb-message-target');
+    if (!raw) return;
+    window.localStorage.removeItem('ijx-pcweb-message-target');
+    try {
+      const payload = JSON.parse(raw) as { name: string; createdAt: number };
+      if (!payload.name || Date.now() - payload.createdAt > 5 * 60 * 1000) return;
+      const existing = messages.find((message) => message.name === payload.name);
+      const conversation: Message = existing || {
+        id: Date.now(),
+        name: payload.name,
+        avatar: getInitialsAvatar(payload.name, 'ec4899'),
+        message: '从通讯录发起会话',
+        time: '刚刚',
+        type: 'normal',
+        chatMessages: [],
+      };
+      setMessageList((current) => current.some((message) => message.name === payload.name) ? current : [conversation, ...current]);
+      setSelectedMessage(conversation);
+      setMessageDraft('');
+    } catch {
+      // 无效的跨页面会话信息不影响消息页正常使用。
+    }
+  }, []);
+
+  useEffect(() => {
     if (contentRefReady && contentRef.current) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
@@ -1447,7 +1472,7 @@ export default function Home() {
                     <div className="ml-16 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50 p-4">
                       <div className="font-semibold text-emerald-800">反馈提交成功</div>
                       <p className="mt-1 text-sm text-emerald-700">反馈编号 {assistantSubmittedFeedback.feedbackNo}，当前状态为待处理。</p>
-                      <button onClick={() => navigate(`/web_client/help-feedback/${assistantSubmittedFeedback.id}`)} className="mt-3 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">查看反馈详情</button>
+                      <button onClick={() => navigate(`/pc_client/help-feedback/${assistantSubmittedFeedback.id}`)} className="mt-3 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">查看反馈详情</button>
                     </div>
                   )}
                 </>

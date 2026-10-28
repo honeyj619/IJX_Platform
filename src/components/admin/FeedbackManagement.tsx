@@ -53,7 +53,7 @@ export default function FeedbackManagement() {
       },
     };
     window.localStorage.setItem('ijx-feedback-contact-draft', JSON.stringify(state.feedbackContact));
-    window.open(`${import.meta.env.BASE_URL}web_client`, '_blank', 'noopener,noreferrer');
+    window.open(`${import.meta.env.BASE_URL}pc_client`, '_blank', 'noopener,noreferrer');
     if (record.status === '待处理') accept(record);
   };
   const resolve = () => {

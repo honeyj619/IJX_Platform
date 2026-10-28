@@ -74,13 +74,13 @@ const buildSeedRecords = (): FeedbackRecord[] => [
   {
     id: 'feedback-seed-1', feedbackNo: 'FB202610240001', userId: 'seed-user-1', userName: getDemoPerson(18), departmentName: '航空安保部 / 安全员中队',
     category: '功能异常', content: '新手机下载不了，下载页面一直提示网络异常。', attachments: [], source: '页面提交', status: '待处理',
-    sourceUrl: '/web_client/help-feedback', clientType: 'Windows 客户端', browserInfo: 'Edge 130', clientRequestId: 'seed-1', createdAt: '2026-10-24 20:09', updatedAt: '2026-10-24 20:09',
+    sourceUrl: '/pc_client/help-feedback', clientType: 'Windows 客户端', browserInfo: 'Edge 130', clientRequestId: 'seed-1', createdAt: '2026-10-24 20:09', updatedAt: '2026-10-24 20:09',
     timeline: [{ id: 'timeline-seed-1', title: '提交反馈', operator: getDemoPerson(18), createdAt: '2026-10-24 20:09' }],
   },
   {
     id: 'feedback-seed-2', feedbackNo: 'FB202610240002', userId: 'seed-user-2', userName: getDemoPerson(17), departmentName: '车辆管理处',
     category: '功能异常', content: 'i吉祥客户端打不开，启动后停留在白屏。', attachments: [], source: '消息页如意助手', status: '处理中',
-    sourceUrl: '/web_client', conversationId: 'ruyi-assistant', clientType: 'Windows 客户端', browserInfo: '应用内核 130', handlerName: MAIN_USER_NAME, clientRequestId: 'seed-2', createdAt: '2026-10-24 19:11', updatedAt: '2026-10-25 09:20',
+    sourceUrl: '/pc_client', conversationId: 'ruyi-assistant', clientType: 'Windows 客户端', browserInfo: '应用内核 130', handlerName: MAIN_USER_NAME, clientRequestId: 'seed-2', createdAt: '2026-10-24 19:11', updatedAt: '2026-10-25 09:20',
     timeline: [
       { id: 'timeline-seed-2a', title: '提交反馈', operator: getDemoPerson(17), createdAt: '2026-10-24 19:11' },
       { id: 'timeline-seed-2b', title: '已受理', description: '正在排查客户端启动日志。', operator: MAIN_USER_NAME, createdAt: '2026-10-25 09:20' },
@@ -89,7 +89,7 @@ const buildSeedRecords = (): FeedbackRecord[] => [
   {
     id: 'feedback-seed-3', feedbackNo: 'FB202610190003', userId: 'main-user', userName: MAIN_USER_NAME, departmentName: '信息管理部 / 管理支撑产品处',
     category: '体验建议', content: '建议日历增加批量调整重复日程的能力，减少逐条修改。', attachments: [], source: '如意空间', status: '已解决',
-    sourceUrl: '/web_client/ruyi-zone', conversationId: 'ruyi-zone-feedback', clientType: 'PC 网页', browserInfo: 'Chrome 130 / Windows 11', handlerName: getDemoPerson(11), resolution: '需求已纳入日历体验优化清单，将在后续版本统一评估。', clientRequestId: 'seed-3', createdAt: '2026-10-19 10:47', updatedAt: '2026-10-22 16:30', resolvedAt: '2026-10-22 16:30',
+    sourceUrl: '/pc_client/ruyi-zone', conversationId: 'ruyi-zone-feedback', clientType: 'PC 网页', browserInfo: 'Chrome 130 / Windows 11', handlerName: getDemoPerson(11), resolution: '需求已纳入日历体验优化清单，将在后续版本统一评估。', clientRequestId: 'seed-3', createdAt: '2026-10-19 10:47', updatedAt: '2026-10-22 16:30', resolvedAt: '2026-10-22 16:30',
     timeline: [
       { id: 'timeline-seed-3a', title: '提交反馈', operator: MAIN_USER_NAME, createdAt: '2026-10-19 10:47' },
       { id: 'timeline-seed-3b', title: '已受理', operator: getDemoPerson(11), createdAt: '2026-10-20 09:15' },

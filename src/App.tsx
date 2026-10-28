@@ -1,5 +1,6 @@
 ﻿import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Layout from "@/components/Layout";
 import MobileDevicePrompt from "@/components/MobileDevicePrompt";
 import Home from "@/pages/Home";
@@ -18,6 +19,7 @@ import Admin from "@/pages/Admin";
 import WorkReport from "@/pages/WorkReport";
 import OkrModule from "@/pages/OkrModule";
 import Download from "@/pages/Download";
+import PcWebPortal from "@/pages/PcWebPortal";
 import { RequirementModeLayer, RequirementModeProvider } from "@/components/requirements/RequirementMode";
 
 function shouldShowMobileView(width: number, height: number): boolean {
@@ -44,8 +46,9 @@ function shouldShowMobileView(width: number, height: number): boolean {
   return true; // 普通手机 → 移动模式
 }
 
-// 客户端路由前缀：/web_client 及其会重定向到 web_client 的旧路由
+// 客户端路由前缀：/pc_client 及其会重定向到客户端的旧路由
 const CLIENT_ROUTE_PREFIXES = [
+  '/pc_client',
   '/web_client',
   '/enterprise',
   '/assistant',
@@ -79,6 +82,13 @@ function isClientRoutePath(pathname: string): boolean {
   const path = getPathWithoutBase(pathname);
   if (path === '/') return true;
   return CLIENT_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
+function LegacyRouteRedirect({ from, to }: { from: string; to: string }) {
+  const location = useLocation();
+  const pathname = getPathWithoutBase(location.pathname);
+  const suffix = pathname.startsWith(from) ? pathname.slice(from.length) : '';
+  return <Navigate to={`${to}${suffix}${location.search}`} replace />;
 }
 
 export default function App() {
@@ -142,7 +152,7 @@ export default function App() {
   const isDownloadPage = window.location.pathname.includes('/download');
   const isClientPage = isClientRoutePath(window.location.pathname);
 
-  // 客户端页面不再显示移动端提示（含 / 及会重定向到 web_client 的旧路由）；
+  // 客户端页面不再显示移动端提示（含 / 及会重定向到 pc_client 的旧路由）；
   // /admin 和 /download 保留原有行为。
   if (isMobile && !isDownloadPage && !isClientPage) {
     return <MobileDevicePrompt />;
@@ -160,11 +170,11 @@ export default function App() {
           <Route path="profile" element={<Profile />} />
           <Route path="agent-square" element={<AgentSquarePage />} />
           <Route path="ruyi-zone/*" element={<RuYiZone />} />
-          <Route path="presentation" element={<Navigate to="/web_client/ruyi-zone/presentation" replace />} />
+          <Route path="presentation" element={<Navigate to="/pc_client/ruyi-zone/presentation" replace />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="business" element={<Business />} />
           <Route path="work-report" element={<WorkReport />} />
-          <Route path="work-items" element={<Navigate to="/web_client/enterprise" replace />} />
+          <Route path="work-items" element={<Navigate to="/pc_client/enterprise" replace />} />
           <Route path="okr" element={<OkrModule />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="help-feedback" element={<HelpFeedback />} />
@@ -181,22 +191,26 @@ export default function App() {
           {/* 管理后台 — 独立页面，不嵌套在 Layout 中 */}
           <Route path="/admin" element={<Admin />} />
           <Route path="/download" element={<Download />} />
-          <Route path="/" element={<Navigate to="/web_client" replace />} />
-          <Route path="/web_client/*" element={webClientRoutes} />
-          <Route path="/enterprise" element={<Navigate to="/web_client/enterprise" replace />} />
-          <Route path="/assistant" element={<Navigate to="/web_client/assistant" replace />} />
-          <Route path="/process" element={<Navigate to="/web_client/process" replace />} />
-          <Route path="/ekb" element={<Navigate to="/web_client/ekb" replace />} />
-          <Route path="/profile" element={<Navigate to="/web_client/profile" replace />} />
-          <Route path="/agent-square" element={<Navigate to="/web_client/agent-square" replace />} />
-          <Route path="/ruyi-zone" element={<Navigate to="/web_client/ruyi-zone" replace />} />
-          <Route path="/presentation" element={<Navigate to="/web_client/ruyi-zone/presentation" replace />} />
-          <Route path="/calendar" element={<Navigate to="/web_client/calendar" replace />} />
-          <Route path="/business" element={<Navigate to="/web_client/business" replace />} />
-          <Route path="/work-report" element={<Navigate to="/web_client/work-report" replace />} />
-          <Route path="/work-items" element={<Navigate to="/web_client/enterprise" replace />} />
-          <Route path="/okr" element={<Navigate to="/web_client/okr" replace />} />
-          <Route path="/settings" element={<Navigate to="/web_client/settings" replace />} />
+          <Route path="/pc_web" element={<PcWebPortal />} />
+          <Route path="/pc_web/contacts" element={<PcWebPortal />} />
+          <Route path="/web_client/*" element={<LegacyRouteRedirect from="/web_client" to="/pc_client" />} />
+          <Route path="/pc-web/*" element={<LegacyRouteRedirect from="/pc-web" to="/pc_web" />} />
+          <Route path="/" element={<Navigate to="/pc_client" replace />} />
+          <Route path="/pc_client/*" element={webClientRoutes} />
+          <Route path="/enterprise" element={<Navigate to="/pc_client/enterprise" replace />} />
+          <Route path="/assistant" element={<Navigate to="/pc_client/assistant" replace />} />
+          <Route path="/process" element={<Navigate to="/pc_client/process" replace />} />
+          <Route path="/ekb" element={<Navigate to="/pc_client/ekb" replace />} />
+          <Route path="/profile" element={<Navigate to="/pc_client/profile" replace />} />
+          <Route path="/agent-square" element={<Navigate to="/pc_client/agent-square" replace />} />
+          <Route path="/ruyi-zone" element={<Navigate to="/pc_client/ruyi-zone" replace />} />
+          <Route path="/presentation" element={<Navigate to="/pc_client/ruyi-zone/presentation" replace />} />
+          <Route path="/calendar" element={<Navigate to="/pc_client/calendar" replace />} />
+          <Route path="/business" element={<Navigate to="/pc_client/business" replace />} />
+          <Route path="/work-report" element={<Navigate to="/pc_client/work-report" replace />} />
+          <Route path="/work-items" element={<Navigate to="/pc_client/enterprise" replace />} />
+          <Route path="/okr" element={<Navigate to="/pc_client/okr" replace />} />
+          <Route path="/settings" element={<Navigate to="/pc_client/settings" replace />} />
         </Routes>
         <RequirementModeLayer />
       </RequirementModeProvider>

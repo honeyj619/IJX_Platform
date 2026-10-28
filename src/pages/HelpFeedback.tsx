@@ -30,7 +30,7 @@ export default function HelpFeedback() {
     if (!selected) {
       return <div className="p-8 text-sm text-gray-500">未找到该反馈记录。</div>;
     }
-    return <FeedbackDetail record={selected} onBack={() => navigate('/web_client/help-feedback')} />;
+    return <FeedbackDetail record={selected} onBack={() => navigate('/pc_client/help-feedback')} />;
   }
 
   return (
@@ -53,7 +53,7 @@ export default function HelpFeedback() {
           </div>
           <div className="divide-y divide-gray-100">
             {records.map(record => (
-              <button key={record.id} type="button" onClick={() => navigate(`/web_client/help-feedback/${record.id}`)} className="grid w-full grid-cols-[minmax(0,1fr)_120px_150px_110px_24px] items-center gap-4 px-5 py-4 text-left hover:bg-gray-50">
+              <button key={record.id} type="button" onClick={() => navigate(`/pc_client/help-feedback/${record.id}`)} className="grid w-full grid-cols-[minmax(0,1fr)_120px_150px_110px_24px] items-center gap-4 px-5 py-4 text-left hover:bg-gray-50">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-400">{record.feedbackNo}</span>
@@ -86,7 +86,7 @@ export default function HelpFeedback() {
                 source="页面提交"
                 pageContext={pageContext}
                 onCancel={() => setShowComposer(false)}
-                onSubmitted={record => navigate(`/web_client/help-feedback/${record.id}`)}
+                onSubmitted={record => navigate(`/pc_client/help-feedback/${record.id}`)}
               />
             </div>
           </aside>

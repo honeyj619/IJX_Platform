@@ -38,8 +38,8 @@ export function validateRequirement(value, label = '需求') {
     businessRules: value.businessRules,
   };
   if (!/^[a-z0-9][a-z0-9-]*$/.test(requirement.id)) throw new Error(`${label}.id 格式无效`);
-  if (requirement.route !== '/admin' && !requirement.route.startsWith('/web_client')) {
-    throw new Error(`${label}.route 只允许 /admin 或 /web_client 下的页面`);
+  if (requirement.route !== '/admin' && !requirement.route.startsWith('/pc_client')) {
+    throw new Error(`${label}.route 只允许 /admin 或 /pc_client 下的页面`);
   }
   if (!Number.isInteger(requirement.order) || requirement.order < 1) throw new Error(`${label}.order 必须是正整数`);
   if (!Array.isArray(requirement.businessRules) || requirement.businessRules.some((rule) => typeof rule !== 'string' || !rule.trim())) {

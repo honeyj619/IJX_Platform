@@ -54,7 +54,7 @@ const documentCategories = [
 export default function EKB() {
   const location = useLocation();
   const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
-  const highlightedDocumentId = searchTarget?.type === 'route' && searchTarget.path === '/web_client/ekb'
+  const highlightedDocumentId = searchTarget?.type === 'route' && searchTarget.path === '/pc_client/ekb'
     ? Number(searchTarget.entityId)
     : null;
 
@@ -72,10 +72,10 @@ export default function EKB() {
         <div className="bg-blue-800 text-white py-3 px-4 md:px-6">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
             <nav className="flex flex-wrap gap-4 md:gap-6 text-sm md:text-base">
-              <Link to="/web_client" className="text-white hover:text-blue-200 transition-colors">首页</Link>
-              <Link to="/web_client/ekb" className="text-white font-bold border-b-2 border-white pb-1">知识领域</Link>
-              <Link to="/web_client" className="text-white hover:text-blue-200 transition-colors">课堂</Link>
-              <Link to="/web_client" className="text-white hover:text-blue-200 transition-colors">问题反馈</Link>
+              <Link to="/pc_client" className="text-white hover:text-blue-200 transition-colors">首页</Link>
+              <Link to="/pc_client/ekb" className="text-white font-bold border-b-2 border-white pb-1">知识领域</Link>
+              <Link to="/pc_client" className="text-white hover:text-blue-200 transition-colors">课堂</Link>
+              <Link to="/pc_client" className="text-white hover:text-blue-200 transition-colors">问题反馈</Link>
               <div className="relative group">
                 <span className="flex items-center gap-1 cursor-pointer">
                   更多 <ChevronDown size={14} />

@@ -298,7 +298,7 @@ export default function OkrModule() {
       <div className="z-40 shrink-0 border-b border-gray-200 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-[1680px] items-center justify-between px-5 py-3">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/web_client/enterprise')} className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-800" title="返回个人门户">
+            <button onClick={() => navigate('/pc_client/enterprise')} className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-800" title="返回个人门户">
               <ArrowLeft size={18} />
             </button>
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-pink-700 text-white shadow-sm shadow-pink-700/20">

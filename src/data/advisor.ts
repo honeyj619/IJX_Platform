@@ -21,7 +21,7 @@ export interface AdvisorEntryParams {
   returnTo?: string;
 }
 
-export const ADVISOR_PATH = '/web_client/ruyi-zone/advisor';
+export const ADVISOR_PATH = '/pc_client/ruyi-zone/advisor';
 
 export const buildAdvisorUrl = (params: AdvisorEntryParams = {}) => {
   const search = new URLSearchParams();

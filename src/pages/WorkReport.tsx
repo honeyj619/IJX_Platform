@@ -352,7 +352,7 @@ export default function WorkReport() {
       period: '2026-06-22 至 2026-06-28',
       scope: insightMode ? '所在部门' : '本人',
       initialPrompt: insightMode ? '分析当前工作汇报的提交情况、重点进展和风险事项' : '结合当前工作数据生成本期工作汇报',
-      returnTo: '/web_client/work-report',
+      returnTo: '/pc_client/work-report',
     }));
   };
 
@@ -433,7 +433,7 @@ export default function WorkReport() {
         <div className="mx-auto flex max-w-[1600px] items-center justify-between px-5 py-3">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/web_client/enterprise')}
+              onClick={() => navigate('/pc_client/enterprise')}
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition-colors hover:border-pink-200 hover:bg-pink-50 hover:text-pink-700"
               title="返回个人门户"
             >

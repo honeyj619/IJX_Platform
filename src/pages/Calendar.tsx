@@ -116,7 +116,7 @@ export default function Calendar() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   // 全局搜索直达：定位到日程并切换日历视图
   const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
-  const highlightedEventId = searchTarget?.type === 'route' && searchTarget.path === '/web_client/calendar'
+  const highlightedEventId = searchTarget?.type === 'route' && searchTarget.path === '/pc_client/calendar'
     ? Number(searchTarget.entityId)
     : null;
 

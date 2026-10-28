@@ -107,9 +107,9 @@ const resolveClientPageTitle = (clientRelativePath: string) => (
 // 仅做重定向的兼容路径，不记录到“打开的页面”
 const redirectOnlyPaths = new Set(['/presentation', '/work-items']);
 
-const WEB_CLIENT_BASE = '/web_client';
+const WEB_CLIENT_BASE = '/pc_client';
 const clientPath = (path: string) => path === '/' ? WEB_CLIENT_BASE : `${WEB_CLIENT_BASE}${path}`;
-/** 页面路径标准化：去掉非根路径末尾的 /，使 /web_client 与 /web_client/ 等价 */
+/** 页面路径标准化：去掉非根路径末尾的 /，使 /pc_client 与 /pc_client/ 等价 */
 const normalizePagePath = (path: string) => {
   if (path.length > 1 && path.endsWith('/')) return path.slice(0, -1);
   return path;

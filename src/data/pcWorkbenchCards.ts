@@ -66,8 +66,8 @@ export type PcCardTemplate = {
 /** 已注册卡片模板（与个人门户七卡对应；一个模板仅允许一个组件卡片实例） */
 export const PC_CARD_TEMPLATES: PcCardTemplate[] = [
   { componentKey: 'stats', name: '数据概览', description: '流程审批、待办、事项进度等数据指标汇总', defaultIcon: { preset: 'trending-up', tone: 'bg-pink-600' }, capabilities: ['entry'] },
-  { componentKey: 'documents', name: '今日未读文档', description: '最新未读公文与通知列表', defaultIcon: { preset: 'file-text', tone: 'bg-purple-500' }, capabilities: ['detail', 'edit-count'], defaultDetailUrl: '/web_client/business' },
-  { componentKey: 'calendar', name: '周历', description: '本周日程与会议安排', defaultIcon: { preset: 'calendar', tone: 'bg-pink-700' }, capabilities: ['detail', 'create'], defaultDetailUrl: '/web_client/calendar' },
+  { componentKey: 'documents', name: '今日未读文档', description: '最新未读公文与通知列表', defaultIcon: { preset: 'file-text', tone: 'bg-purple-500' }, capabilities: ['detail', 'edit-count'], defaultDetailUrl: '/pc_client/business' },
+  { componentKey: 'calendar', name: '周历', description: '本周日程与会议安排', defaultIcon: { preset: 'calendar', tone: 'bg-pink-700' }, capabilities: ['detail', 'create'], defaultDetailUrl: '/pc_client/calendar' },
   { componentKey: 'systems', name: '常用系统', description: '按使用频率排序的业务系统入口', defaultIcon: { preset: 'layout', tone: 'bg-amber-500' }, capabilities: ['entry'] },
   { componentKey: 'officeApps', name: '常用功能', description: '高频办公功能快捷入口', defaultIcon: { preset: 'clipboard-list', tone: 'bg-indigo-500' }, capabilities: ['entry'] },
   { componentKey: 'duty', name: '今日值班', description: '当日值班岗位与人员', defaultIcon: { preset: 'bell', tone: 'bg-teal-500' }, capabilities: ['detail'] },

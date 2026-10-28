@@ -102,10 +102,10 @@ type ReportDraft = {
 };
 
 const sourceCatalog = [
-  { id: 'todos', name: '待办事项', detail: '5 条待处理', icon: ClipboardCheck, href: '/web_client/enterprise' },
-  { id: 'reports', name: '历史工作汇报', detail: '最近 4 周', icon: FileText, href: '/web_client/work-report' },
-  { id: 'calendar', name: '日程 / 会议', detail: '本周期 3 场', icon: CalendarDays, href: '/web_client/calendar' },
-  { id: 'projects', name: '项目管理平台', detail: '按项目生成独立汇报', icon: FolderKanban, href: '/web_client/enterprise' },
+  { id: 'todos', name: '待办事项', detail: '5 条待处理', icon: ClipboardCheck, href: '/pc_client/enterprise' },
+  { id: 'reports', name: '历史工作汇报', detail: '最近 4 周', icon: FileText, href: '/pc_client/work-report' },
+  { id: 'calendar', name: '日程 / 会议', detail: '本周期 3 场', icon: CalendarDays, href: '/pc_client/calendar' },
+  { id: 'projects', name: '项目管理平台', detail: '按项目生成独立汇报', icon: FolderKanban, href: '/pc_client/enterprise' },
 ];
 
 const projectOptions = workItems.map((item, index) => ({
@@ -850,7 +850,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       onBack();
       return;
     }
-    navigate(returnTo || '/web_client/ruyi-zone');
+    navigate(returnTo || '/pc_client/ruyi-zone');
   };
 
   const handleWriteBack = () => {
@@ -1055,7 +1055,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                   }, 900);
                 }} className="inline-flex items-center gap-2 rounded-lg bg-theme-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-theme-700"><RefreshCw size={15} />再试一次</button>
               )}
-              <button type="button" onClick={() => navigate('/web_client/work-report')} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 hover:border-theme-200 hover:text-theme-700"><FileText size={15} />回顾汇报内容</button>
+              <button type="button" onClick={() => navigate('/pc_client/work-report')} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 hover:border-theme-200 hover:text-theme-700"><FileText size={15} />回顾汇报内容</button>
             </div>
           </div>
         </div>
@@ -1482,7 +1482,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-600"><CheckCircle2 size={32} /></div>
       <h2 className="mt-5 text-2xl font-bold text-gray-950">汇报已提交</h2>
       <p className="mt-2 text-sm leading-6 text-gray-500">已提交给 {reportTo}{copyTo ? `，并抄送 ${copyTo}` : ''}。可在工作汇报页面查看状态、评论和已读情况。</p>
-      <div className="mt-6 flex gap-3"><button onClick={() => navigate('/web_client/work-report?view=sent')} className="rounded-lg bg-theme-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-theme-700">查看发送记录</button><button onClick={() => resetWorkspace('report')} className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">新建汇报</button></div>
+      <div className="mt-6 flex gap-3"><button onClick={() => navigate('/pc_client/work-report?view=sent')} className="rounded-lg bg-theme-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-theme-700">查看发送记录</button><button onClick={() => resetWorkspace('report')} className="rounded-lg border border-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50">新建汇报</button></div>
     </div>
   );
 
@@ -1799,7 +1799,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       {toast && <div className="fixed left-1/2 top-20 z-[90] -translate-x-1/2 rounded-full bg-gray-900 px-4 py-2 text-sm font-medium text-white shadow-xl">{toast}</div>}
       <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
         <div className="flex min-w-0 items-center gap-3"><button onClick={handleBack} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200" title="返回如意空间"><ArrowLeft size={18} /></button><div className="min-w-0"><div className="flex items-center gap-1.5 text-xs text-gray-500"><button type="button" onClick={handleBack} className="transition-colors hover:text-theme-700 hover:underline">如意空间</button><span className="text-gray-300">/</span><span className="text-gray-600">参谋师工作台</span></div><div className="truncate text-sm font-semibold text-gray-900">{draft.title || '汇报工作台'}</div></div></div>
-        <button onClick={() => navigate('/web_client/work-report')} className="ml-auto shrink-0 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-600 hover:border-theme-200 hover:bg-theme-50 hover:text-theme-700" title="查看工作汇报页面">所有汇报</button>
+        <button onClick={() => navigate('/pc_client/work-report')} className="ml-auto shrink-0 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-semibold text-gray-600 hover:border-theme-200 hover:bg-theme-50 hover:text-theme-700" title="查看工作汇报页面">所有汇报</button>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-row overflow-hidden">

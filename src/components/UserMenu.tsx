@@ -48,7 +48,7 @@ export function UserMenu({ collapsed = false, feedbackPageTitle = '' }: UserMenu
       id: "profile",
       label: "个人信息",
       icon: <User size={16} />,
-      path: "/web_client/profile"
+      path: "/pc_client/profile"
     },
     {
       id: "download",
@@ -60,14 +60,14 @@ export function UserMenu({ collapsed = false, feedbackPageTitle = '' }: UserMenu
       id: "help-feedback",
       label: "帮助与反馈",
       icon: <CircleHelp size={16} />,
-      path: "/web_client/help-feedback"
+      path: "/pc_client/help-feedback"
     },
     { id: "divider1", label: "", icon: null, divider: true },
     {
       id: "settings",
       label: "系统设置",
       icon: <Settings size={16} />,
-      path: "/web_client/settings"
+      path: "/pc_client/settings"
     },
     {
       id: "admin",

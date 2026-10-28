@@ -167,7 +167,7 @@ export default function GlobalSearchDialog({ query, onQueryChange, onClose }: Gl
   }, [appAnchor, filter, groupedResults]);
 
   const openTarget = (target: GlobalSearchTarget, assistantQuery?: string) => {
-    const path = target.type === 'message' ? '/web_client' : target.path;
+    const path = target.type === 'message' ? '/pc_client' : target.path;
     navigate(path, { state: createNavigationState(normalizedQuery, target, assistantQuery) });
     onClose();
   };
