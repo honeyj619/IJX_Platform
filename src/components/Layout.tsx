@@ -21,8 +21,8 @@ import { useThemeStore } from '../store/themeStore';
 import { useLayoutStore } from '../store/layoutStore';
 import { UserMenu } from './UserMenu';
 import { SIDEBAR, WEB_CLIENT_MIN_WIDTH } from '../constants/layout';
-import { getDemoPerson, getInitialsAvatar } from '../data/people';
 import { openPortalLink } from '../utils/linkOpening';
+import GlobalSearchDialog from './GlobalSearchDialog';
 
 interface LayoutProps {
   children: ReactNode;
@@ -96,8 +96,13 @@ const pageTitles: Record<string, string> = {
   '/ekb': '知识门户',
   '/agent-square': '智能体广场',
   '/profile': '个人信息',
-  '/settings': '系统设置'
+  '/settings': '系统设置',
+  '/help-feedback': '帮助与反馈',
 };
+
+const resolveClientPageTitle = (clientRelativePath: string) => (
+  clientRelativePath.startsWith('/help-feedback/') ? '反馈详情' : pageTitles[clientRelativePath] || clientRelativePath
+);
 
 // 仅做重定向的兼容路径，不记录到“打开的页面”
 const redirectOnlyPaths = new Set(['/presentation', '/work-items']);
@@ -246,7 +251,7 @@ export default function Layout({ children }: LayoutProps) {
     const clientRelativePath = stripClientBase(currentPath);
     // 重定向兼容路径不记录，避免跳转中间态显示为原始路径
     if (redirectOnlyPaths.has(clientRelativePath)) return;
-    const pageTitle = pageTitles[clientRelativePath] || currentPath;
+    const pageTitle = resolveClientPageTitle(clientRelativePath) || currentPath;
     
     if (pageTitle && !isMainNavPath(currentPath, navPaths)) {
       addPage({ title: pageTitle, path: currentPath });
@@ -278,7 +283,10 @@ export default function Layout({ children }: LayoutProps) {
         }}
       >
         <div className={`${showNavigation ? 'p-4 space-y-4' : 'p-2 pt-3 space-y-3 flex flex-col items-center'}`}>
-          <UserMenu collapsed={!showNavigation} />
+          <UserMenu
+            collapsed={!showNavigation}
+            feedbackPageTitle={resolveClientPageTitle(stripClientBase(normalizePagePath(location.pathname)))}
+          />
 
           {showNavigation ? (
             <div className="relative group">
@@ -518,116 +526,11 @@ export default function Layout({ children }: LayoutProps) {
         </div>
         
         {isSearchOpen && (
-          <div className="fixed inset-0 bg-black/40 z-[70] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden">
-              <div className="sticky top-0 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-b border-gray-100 dark:border-gray-700 px-5 py-4 z-10">
-                <div className="flex items-center gap-3">
-                  <button 
-                    className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                    onClick={() => setIsSearchOpen(false)}
-                  >
-                    <X size={18} />
-                  </button>
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      placeholder="搜索..."
-                      className="w-full pl-4 pr-10 py-2 border border-gray-200 dark:border-gray-600 rounded-full text-sm focus:outline-none focus:ring-2 ring-theme-400 focus:border-transparent transition-all bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      autoFocus
-                    />
-                    <Search size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-4">
-                <div className="flex gap-2 mb-5 overflow-x-auto pb-1">
-                  <button className="px-4 py-1.5 bg-theme-100 text-theme-700 rounded-full text-sm font-medium whitespace-nowrap">全部</button>
-                  <button className="px-4 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">用户</button>
-                  <button className="px-4 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">文档</button>
-                  <button className="px-4 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">流程</button>
-                  <button className="px-4 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">聊天记录</button>
-                  <button className="px-4 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">智能搜索</button>
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  <div className="lg:col-span-2 space-y-3">
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                      <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3 text-sm">用户</h3>
-                      <div className="flex gap-4">
-                        <div className="flex flex-col items-center">
-                          <img src={getInitialsAvatar(getDemoPerson(0), '3b82f6')} alt={getDemoPerson(0)} className="w-14 h-14 rounded-full mb-2" />
-                          <span className="text-xs text-gray-700 dark:text-gray-300">{getDemoPerson(0)}</span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">项目管理工程师</span>
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <img src={getInitialsAvatar(getDemoPerson(1), 'ec4899')} alt={getDemoPerson(1)} className="w-14 h-14 rounded-full mb-2" />
-                          <span className="text-xs text-gray-700 dark:text-gray-300">{getDemoPerson(1)}</span>
-                          <span className="text-xs text-gray-400 dark:text-gray-500">项目管理工程师</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                      <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3 text-sm">搜索结果</h3>
-                      <div className="space-y-4">
-                        <div className="border-b border-gray-200 dark:border-gray-600 pb-3">
-                          <div className="font-medium text-gray-800 dark:text-gray-200 text-sm mb-1">[流程] 项目管理平台立项流程</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">立项时间2024-12-1 项目编号LX178651-1</div>
-                        </div>
-                        <div className="border-b border-gray-200 dark:border-gray-600 pb-3">
-                          <div className="font-medium text-gray-800 dark:text-gray-200 text-sm mb-1">[文档] 项目管理平台使用手册</div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">立项时间2024-12-1 项目编号LX178651-1</div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-800 dark:text-gray-200 text-sm mb-1">[课程] 项目管理 - 敏捷教学</div>                          <div className="text-xs text-gray-500 dark:text-gray-400">立项时间2024-12-1 项目编号LX178651-1</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="bg-gradient-to-br-theme rounded-xl p-4">
-                      <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-2 text-sm">搜索总结</h3>
-                      <div className="text-xs text-gray-600 dark:text-gray-300">
-                        相关搜索结果共 12 条，包含流程 3 条，文档 5 条，课程 4 条。
-                      </div>
-                    </div>
-                    
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                      <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3 text-sm">业务系统</h3>
-                      <div className="space-y-3">
-                        <div className="border-b border-gray-200 dark:border-gray-600 pb-2">
-                          <div className="font-medium text-gray-700 dark:text-gray-300 text-sm mb-1">[管理] 项目管理平台</div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">发布时间2024-12-1</div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-700 dark:text-gray-300 text-sm mb-1">[数据] 项目管理大屏</div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">发布时间2024-12-1</div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
-                      <h3 className="font-medium text-gray-800 dark:text-gray-200 mb-3 text-sm">智能体</h3>
-                      <div className="space-y-3">
-                        <div className="border-b border-gray-200 dark:border-gray-600 pb-2">
-                          <div className="font-medium text-gray-700 dark:text-gray-300 text-sm mb-1">项目管理助手</div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">责任人：{getDemoPerson(4)}</div>
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-700 dark:text-gray-300 text-sm mb-1">敏捷项目管理助手</div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500">责任人：{getDemoPerson(5)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <GlobalSearchDialog
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            onClose={() => setIsSearchOpen(false)}
+          />
         )}
       </div>
     </div>

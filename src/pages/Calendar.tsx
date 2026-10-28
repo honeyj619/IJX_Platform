@@ -3,6 +3,8 @@ import { Search, ChevronLeft, ChevronRight, Plus, X, Info, Clock, Users, Papercl
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import ContactPicker from '../components/ContactPicker';
 import { contactDirectory } from '../data/contactDirectory';
+import { useLocation } from 'react-router-dom';
+import type { GlobalSearchNavigationState } from '../data/globalSearch';
 
 interface CalendarItem {
   id: string;
@@ -94,6 +96,7 @@ const events: Event[] = [
 ];
 
 export default function Calendar() {
+  const location = useLocation();
   const [currentDate, setCurrentDate] = useState(new Date('2025-05-22'));
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'schedule' | 'meeting-room' | 'reservation'>('schedule');
@@ -111,6 +114,19 @@ export default function Calendar() {
   const [isRoomDragging, setIsRoomDragging] = useState(false);
   const [dragSelection, setDragSelection] = useState<RoomSelection | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  // 全局搜索直达：定位到日程并切换日历视图
+  const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
+  const highlightedEventId = searchTarget?.type === 'route' && searchTarget.path === '/web_client/calendar'
+    ? Number(searchTarget.entityId)
+    : null;
+
+  useEffect(() => {
+    if (highlightedEventId == null) return;
+    const targetEvent = events.find(event => event.id === highlightedEventId);
+    if (!targetEvent) return;
+    setActiveTab('schedule');
+    setCurrentDate(new Date(`${targetEvent.date}T00:00:00`));
+  }, [highlightedEventId]);
   const [participantSuggestOpen, setParticipantSuggestOpen] = useState(false);
   const [batchPickerOpen, setBatchPickerOpen] = useState(false);
 
@@ -944,7 +960,7 @@ export default function Calendar() {
                     />
                   </label>
 
-                  <div className="grid grid-cols-[88px_1fr] items-center gap-3 text-sm" data-requirement-id="calendar-batch-participants">
+                  <div className="grid grid-cols-[88px_1fr] items-center gap-3 text-sm" data-requirement-id="custom-20261028-005">
                     <span className="text-right text-slate-700 before:text-red-500 before:content-['*'] dark:text-slate-200"> 参与者:</span>
                     <div className="flex items-center gap-3">
                       <div className="relative flex-1">

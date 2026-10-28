@@ -1,6 +1,8 @@
 ﻿import { useState, useRef, useEffect } from "react";
 import { Search, Hexagon, ArrowRight, Plus, X, User, Upload } from "lucide-react";
 import { MAIN_USER_NAME, getDemoPerson } from "../data/people";
+import { useLocation } from 'react-router-dom';
+import type { GlobalSearchNavigationState } from '../data/globalSearch';
 interface System {
   id: number;
   name: string;
@@ -138,6 +140,7 @@ const visibilityOptions = [
 ];
 
 export default function Business() {
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showContactPicker, setShowContactPicker] = useState(false);
@@ -160,6 +163,19 @@ export default function Business() {
     applicant: MAIN_USER_NAME,
   });
   const [localSystems, setLocalSystems] = useState<System[]>(systems);
+  const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
+  const highlightedSystemId = searchTarget?.type === 'route' && searchTarget.path === '/web_client/business'
+    ? Number(searchTarget.entityId)
+    : null;
+
+  useEffect(() => {
+    if (highlightedSystemId == null) return;
+    setSearchQuery('');
+    setActiveCategory('all');
+    window.setTimeout(() => {
+      document.getElementById(`business-system-${highlightedSystemId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, [highlightedSystemId]);
 
   const filteredSystems = localSystems.filter(system => {
     return system.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -357,7 +373,8 @@ export default function Business() {
                   {categorySystems.map((system) => (
                     <div
                       key={system.id}
-                      className="group relative bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-slate-200/60 dark:border-gray-700 hover:border-theme-400 hover:shadow-xl hover:shadow-theme-200/50 transition-all duration-300 cursor-pointer overflow-hidden"
+                      id={`business-system-${system.id}`}
+                      className={`group relative bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-5 border hover:border-theme-400 hover:shadow-xl hover:shadow-theme-200/50 transition-all duration-300 cursor-pointer overflow-hidden ${highlightedSystemId === system.id ? 'border-amber-400 ring-2 ring-amber-300 ring-offset-2' : 'border-slate-200/60 dark:border-gray-700'}`}
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-theme-50/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       

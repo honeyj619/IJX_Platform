@@ -41,7 +41,13 @@ interface OutlinePage {
   title: string;
   summary: string;
   bullets: string[];
+}
+
+interface OutlineChapter {
+  id: string;
+  title: string;
   expanded: boolean;
+  pages: OutlinePage[];
 }
 
 interface SavedPresentation {
@@ -87,15 +93,24 @@ const initialHistory: SavedPresentation[] = [
   { id: "failed-fresh", title: "IT部门季度复盘（生成失败）", mode: "AI智能生成", template: "吉祥IT主题", pages: 10, updatedAt: "今天 20:15", updatedDate: "2026-10-10", finalReady: false, failed: true, failedAt: Date.now() - 3 * 3600 * 1000 },
 ];
 
-const createOutline = (variant = 0): OutlinePage[] => presentationSlides.map((slide, index) => ({
-  id: `outline-${variant}-${index + 1}`,
-  title: variant > 0 && index > 0 ? `${slide.title}（优化版）` : slide.title,
-  summary: slide.subtitle,
-  bullets: [...slide.bullets],
-  expanded: index < 2,
-}));
+const createOutline = (variant = 0): OutlineChapter[] => {
+  const pages = presentationSlides.map((slide, index) => ({
+    id: `outline-${variant}-${index + 1}`,
+    title: variant > 0 && index > 0 ? `${slide.title}（优化版）` : slide.title,
+    summary: slide.subtitle,
+    bullets: [...slide.bullets],
+  }));
 
-const outlineToSlides = (outline: OutlinePage[]): PresentationSlide[] => outline.map((item, index) => ({
+  return [
+    { id: `chapter-${variant}-1`, title: "开篇与背景", expanded: true, pages: pages.slice(0, 2) },
+    { id: `chapter-${variant}-2`, title: "核心方案", expanded: true, pages: pages.slice(2, 3) },
+    { id: `chapter-${variant}-3`, title: "落地与收益", expanded: false, pages: pages.slice(3) },
+  ];
+};
+
+const getOutlinePages = (outline: OutlineChapter[]) => outline.flatMap((chapter) => chapter.pages);
+
+const outlineToSlides = (outline: OutlineChapter[]): PresentationSlide[] => getOutlinePages(outline).map((item, index) => ({
   id: index + 1,
   title: item.title,
   subtitle: item.summary,
@@ -118,7 +133,7 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
   const [textStyle, setTextStyle] = useState(state.textStyle || "简洁");
   const [template, setTemplate] = useState(state.template || presentationTemplates[0]);
   const [attachments, setAttachments] = useState(state.attachments || []);
-  const [outline, setOutline] = useState<OutlinePage[]>(createOutline());
+  const [outline, setOutline] = useState<OutlineChapter[]>(createOutline());
   const [outlineEditing, setOutlineEditing] = useState(false);
   const [outlineVersion, setOutlineVersion] = useState(0);
   const [activeGenerationStep, setActiveGenerationStep] = useState(0);
@@ -253,8 +268,6 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
       setUploadError("文件格式不支持");
       return;
     }
-    const totalSize = [...selected, ...Array.from(attachments).map(name => ({ size: 0 }) as File).map(() => ({ size: 0 }))].reduce((sum, file) => sum + file.size, 0);
-    void totalSize;
     if (selected.reduce((sum, file) => sum + file.size, 0) > 10 * 1024 * 1024) {
       setUploadError("参考附件总大小不能超过 10 MB");
       return;
@@ -269,26 +282,54 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
     markChanged();
   };
 
+  const updateOutlineChapter = (id: string, patch: Partial<OutlineChapter>) => {
+    setOutline((current) => current.map((chapter) => chapter.id === id ? { ...chapter, ...patch } : chapter));
+    markChanged();
+  };
+
   const updateOutlinePage = (id: string, patch: Partial<OutlinePage>) => {
-    setOutline((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
+    setOutline((current) => current.map((chapter) => ({
+      ...chapter,
+      pages: chapter.pages.map((page) => page.id === id ? { ...page, ...patch } : page),
+    })));
     markChanged();
   };
 
   const updateOutlineBullet = (id: string, bulletIndex: number, value: string) => {
-    setOutline((current) => current.map((item) => item.id === id ? {
-      ...item, bullets: item.bullets.map((bullet, index) => index === bulletIndex ? value : bullet),
-    } : item));
+    setOutline((current) => current.map((chapter) => ({
+      ...chapter,
+      pages: chapter.pages.map((page) => page.id === id ? {
+        ...page, bullets: page.bullets.map((bullet, index) => index === bulletIndex ? value : bullet),
+      } : page),
+    })));
     markChanged();
   };
 
-  const addOutlinePage = () => {
+  const createOutlinePage = (id: string): OutlinePage => ({
+    id,
+    title: "新增页面",
+    summary: "请输入本页需要表达的核心信息",
+    bullets: ["新增内容要点"],
+  });
+
+  const addOutlineChapter = () => {
+    const timestamp = Date.now();
     setOutline((current) => [...current, {
-      id: `outline-new-${Date.now()}`,
-      title: "新增页面",
-      summary: "请输入本页需要表达的核心信息",
-      bullets: ["新增内容要点"],
+      id: `chapter-new-${timestamp}`,
+      title: "新增章节",
       expanded: true,
+      pages: [createOutlinePage(`outline-new-${timestamp}`)],
     }]);
+    setOutlineEditing(true);
+    markChanged();
+  };
+
+  const addOutlinePage = (chapterId: string) => {
+    setOutline((current) => current.map((chapter) => chapter.id === chapterId ? {
+      ...chapter,
+      expanded: true,
+      pages: [...chapter.pages, createOutlinePage(`outline-new-${Date.now()}`)],
+    } : chapter));
     setOutlineEditing(true);
     markChanged();
   };
@@ -297,7 +338,19 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
     title: "删除大纲页面",
     message: "删除后页面编号将自动更新，确定继续吗？",
     onConfirm: () => {
-      setOutline((current) => current.filter((item) => item.id !== id));
+      setOutline((current) => current.map((chapter) => ({
+        ...chapter,
+        pages: chapter.pages.filter((page) => page.id !== id),
+      })));
+      markChanged();
+    },
+  });
+
+  const deleteOutlineChapter = (id: string) => setConfirmAction({
+    title: "删除大纲章节",
+    message: "删除章节后，该章节内的全部页面也会删除，确定继续吗？",
+    onConfirm: () => {
+      setOutline((current) => current.filter((chapter) => chapter.id !== id));
       markChanged();
     },
   });
@@ -306,8 +359,8 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
     if (!draggedOutlineId || draggedOutlineId === targetId) return;
     setOutline((current) => {
       const next = [...current];
-      const from = next.findIndex((item) => item.id === draggedOutlineId);
-      const to = next.findIndex((item) => item.id === targetId);
+      const from = next.findIndex((chapter) => chapter.id === draggedOutlineId);
+      const to = next.findIndex((chapter) => chapter.id === targetId);
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved);
       return next;
@@ -338,7 +391,10 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
   };
 
   const downloadOutline = () => {
-    const text = outline.map((item, index) => `${index + 1}. ${item.title}\n${item.summary}\n${item.bullets.map((bullet) => `- ${bullet}`).join("\n")}`).join("\n\n");
+    const text = outline.map((chapter, chapterIndex) => [
+      `第${chapterIndex + 1}章 ${chapter.title}`,
+      ...chapter.pages.map((page, pageIndex) => `${pageIndex + 1}. ${page.title}\n${page.summary}\n${page.bullets.map((bullet) => `- ${bullet}`).join("\n")}`),
+    ].join("\n\n")).join("\n\n");
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -432,7 +488,104 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
           </div>
         </section>
       )}
-      {stage === "outlineReview" && <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"><div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-semibold text-gray-900">PPT大纲</h2><p className="mt-1 text-xs text-gray-400">拖动章节调整顺序，展开后编辑页面内容</p></div><div className="flex gap-2"><button type="button" onClick={() => setOutlineEditing((current) => !current)} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">{outlineEditing ? "完成编辑" : "编辑大纲"}</button></div></div><div className="space-y-3">{outline.map((item, index) => <div key={item.id} draggable={outlineEditing} onDragStart={() => setDraggedOutlineId(item.id)} onDragOver={(event: DragEvent<HTMLDivElement>) => event.preventDefault()} onDrop={() => reorderOutline(item.id)} className="overflow-hidden rounded-lg border border-gray-200 bg-white"><div className="flex items-center gap-2 bg-gray-50 px-3 py-2.5"><GripVertical size={15} className={outlineEditing ? "cursor-grab text-gray-400" : "text-gray-200"} /><span className="rounded bg-theme-50 px-2 py-1 text-xs font-semibold text-theme-700">P{index + 1}章节</span><button type="button" onClick={() => updateOutlinePage(item.id, { expanded: !item.expanded })} className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-gray-800">{item.title}</button>{outlineEditing && <button type="button" onClick={() => deleteOutlinePage(item.id)} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600" title="删除页面"><Trash2 size={14} /></button>}<button type="button" onClick={() => updateOutlinePage(item.id, { expanded: !item.expanded })} className="text-gray-400">{item.expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}</button></div>{item.expanded && <div className="px-4 py-3"><div className="mb-2 text-[11px] font-medium text-gray-400">页面 {index + 1}</div><input disabled={!outlineEditing} value={item.title} onChange={(event) => updateOutlinePage(item.id, { title: event.target.value })} className="h-9 w-full rounded-lg border border-transparent bg-gray-50 px-3 text-sm font-semibold text-gray-800 outline-none focus:border-theme-200 focus:bg-white disabled:bg-white" /><input disabled={!outlineEditing} value={item.summary} onChange={(event) => updateOutlinePage(item.id, { summary: event.target.value })} className="mt-2 h-9 w-full rounded-lg border border-transparent bg-gray-50 px-3 text-xs text-gray-600 outline-none focus:border-theme-200 focus:bg-white disabled:bg-white" /><div className="mt-3 space-y-2">{item.bullets.map((bullet, bulletIndex) => <div key={`${item.id}-${bulletIndex}`} className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-theme-400" /><input disabled={!outlineEditing} value={bullet} onChange={(event) => updateOutlineBullet(item.id, bulletIndex, event.target.value)} className="h-8 min-w-0 flex-1 border-b border-gray-100 bg-transparent text-xs text-gray-600 outline-none focus:border-theme-300" />{outlineEditing && <button type="button" onClick={() => updateOutlinePage(item.id, { bullets: item.bullets.filter((_, bulletItemIndex) => bulletItemIndex !== bulletIndex) })} className="text-gray-300 hover:text-red-500"><X size={13} /></button>}</div>)}{outlineEditing && <button type="button" onClick={() => updateOutlinePage(item.id, { bullets: [...item.bullets, "新增内容要点"] })} className="inline-flex items-center gap-1 text-xs font-medium text-theme-700"><Plus size={13} />添加内容要点</button>}</div></div>}</div>)}</div><button type="button" onClick={addOutlinePage} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 py-2.5 text-xs font-medium text-gray-500 hover:border-theme-200 hover:text-theme-700"><Plus size={14} />新增页面</button><div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-400"><span>共 {outline.length} 页</span><span>AI生成内容，仅供参考</span></div></section>}
+      {stage === "outlineReview" && (
+        <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">PPT大纲</h2>
+              <p className="mt-1 text-xs text-gray-400">拖动章节调整顺序，展开后编辑页面内容</p>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={downloadOutline} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                下载大纲
+              </button>
+              <button type="button" onClick={requestRegenerateOutline} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                重新生成
+              </button>
+              <button type="button" onClick={() => setOutlineEditing((current) => !current)} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-medium text-gray-600 hover:bg-gray-50">
+                {outlineEditing ? "完成编辑" : "编辑大纲"}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {outline.map((chapter, chapterIndex) => (
+              <div
+                key={chapter.id}
+                draggable={outlineEditing}
+                onDragStart={() => setDraggedOutlineId(chapter.id)}
+                onDragOver={(event: DragEvent<HTMLDivElement>) => event.preventDefault()}
+                onDrop={() => reorderOutline(chapter.id)}
+                className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+              >
+                <div className="flex items-center gap-2 bg-gray-50 px-3 py-2.5">
+                  <GripVertical size={15} className={outlineEditing ? "cursor-grab text-gray-400" : "text-gray-200"} />
+                  <span className="rounded bg-theme-50 px-2 py-1 text-xs font-semibold text-theme-700">P{chapterIndex + 1}章节</span>
+                  <button type="button" onClick={() => updateOutlineChapter(chapter.id, { expanded: !chapter.expanded })} className="min-w-0 flex-1 truncate text-left text-sm font-semibold text-gray-800">
+                    {chapter.title}
+                  </button>
+                  <span className="shrink-0 text-[11px] text-gray-400">{chapter.pages.length} 页</span>
+                  {outlineEditing && (
+                    <button type="button" onClick={() => deleteOutlineChapter(chapter.id)} className="rounded p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600" title="删除章节">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                  <button type="button" onClick={() => updateOutlineChapter(chapter.id, { expanded: !chapter.expanded })} className="text-gray-400">
+                    {chapter.expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                  </button>
+                </div>
+                {chapter.expanded && (
+                  <div className="space-y-3 px-4 py-3">
+                    {chapter.pages.map((page, pageIndex) => (
+                      <div key={page.id} className="rounded-lg border border-gray-100 bg-gray-50/60 p-3">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-[11px] font-medium text-gray-400">页面 {pageIndex + 1}</span>
+                          {outlineEditing && chapter.pages.length > 1 && (
+                            <button type="button" onClick={() => deleteOutlinePage(page.id)} className="rounded p-1 text-gray-300 hover:bg-red-50 hover:text-red-600" title="删除页面">
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                        <input disabled={!outlineEditing} value={page.title} onChange={(event) => updateOutlinePage(page.id, { title: event.target.value })} className="h-9 w-full rounded-lg border border-transparent bg-white px-3 text-sm font-semibold text-gray-800 outline-none focus:border-theme-200 disabled:bg-transparent" />
+                        <input disabled={!outlineEditing} value={page.summary} onChange={(event) => updateOutlinePage(page.id, { summary: event.target.value })} className="mt-2 h-9 w-full rounded-lg border border-transparent bg-white px-3 text-xs text-gray-600 outline-none focus:border-theme-200 disabled:bg-transparent" />
+                        <div className="mt-3 space-y-2">
+                          {page.bullets.map((bullet, bulletIndex) => (
+                            <div key={`${page.id}-${bulletIndex}`} className="flex items-center gap-2">
+                              <span className="h-1.5 w-1.5 rounded-full bg-theme-400" />
+                              <input disabled={!outlineEditing} value={bullet} onChange={(event) => updateOutlineBullet(page.id, bulletIndex, event.target.value)} className="h-8 min-w-0 flex-1 border-b border-gray-100 bg-transparent text-xs text-gray-600 outline-none focus:border-theme-300" />
+                              {outlineEditing && (
+                                <button type="button" onClick={() => updateOutlinePage(page.id, { bullets: page.bullets.filter((_, bulletItemIndex) => bulletItemIndex !== bulletIndex) })} className="text-gray-300 hover:text-red-500">
+                                  <X size={13} />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                          {outlineEditing && (
+                            <button type="button" onClick={() => updateOutlinePage(page.id, { bullets: [...page.bullets, "新增内容要点"] })} className="inline-flex items-center gap-1 text-xs font-medium text-theme-700">
+                              <Plus size={13} />添加内容要点
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {outlineEditing && (
+                      <button type="button" onClick={() => addOutlinePage(chapter.id)} className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 py-2 text-xs font-medium text-gray-500 hover:border-theme-200 hover:text-theme-700">
+                        <Plus size={13} />新增页面
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={addOutlineChapter} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 py-2.5 text-xs font-medium text-gray-500 hover:border-theme-200 hover:text-theme-700">
+            <Plus size={14} />新增章节
+          </button>
+          <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-400">
+            <span>共 {outline.length} 章节 · {outline.reduce((sum, chapter) => sum + chapter.pages.length, 0)} 页</span>
+            <span>AI生成内容，仅供参考</span>
+          </div>
+        </section>
+      )}
     </div>
   );
 
@@ -466,7 +619,7 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
       </div></div>{renderAttachmentPanel(false)}<div className={`rounded-lg border p-3 ${finalFileStatus === "ready" ? "border-green-200 bg-green-50" : "border-gray-200 bg-white"}`}><div className="flex items-start gap-3"><span className={`flex h-8 w-8 items-center justify-center rounded-lg ${finalFileStatus === "ready" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>{finalFileStatus === "generating" ? <LoaderCircle size={16} className="animate-spin" /> : finalFileStatus === "ready" ? <CheckCircle2 size={16} /> : <FileText size={16} />}</span><div><div className={`text-sm font-medium ${finalFileStatus === "ready" ? "text-green-800" : "text-gray-800"}`}>{finalFileStatus === "generating" ? "正在生成最终PPT文件" : finalFileStatus === "ready" ? "最终PPT文件已生成" : "待生成最终PPT文件"}</div><p className="mt-1 text-xs leading-5 text-gray-500">{finalFileStatus === "ready" ? "可下载演示文件或继续编辑。" : "确认PPT内容无误后生成最终文件。"}</p></div></div></div></div>;
   };
 
-  const renderHistoryPanel = () => <div className="space-y-3"><div className="rounded-lg border border-gray-200 bg-white p-3"><div className="relative"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="搜索PPT文件名" className="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:bg-white" /></div><div className="mt-3 grid grid-cols-2 gap-2"><select value={historyTemplate} onChange={(event) => setHistoryTemplate(event.target.value)} className="h-8 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs"><option>全部</option>{presentationTemplates.map((item) => <option key={item}>{item}</option>)}</select></div><div className="mt-2 grid grid-cols-2 gap-2"><input type="date" value={historyStartDate} onChange={(event) => setHistoryStartDate(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px]" /><input type="date" value={historyEndDate} onChange={(event) => setHistoryEndDate(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px]" /></div></div>{filteredHistory.map((item) => <div key={item.id} role="button" tabIndex={0} onClick={() => openHistoryItem(item)} onKeyDown={(event) => { if (event.key === "Enter") openHistoryItem(item); }} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm hover:border-theme-200"><div className="flex items-start gap-3"><span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-700"><Presentation size={17} /></span><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-gray-800">{item.title}</div><div className="mt-2 flex flex-wrap gap-1"><span className="rounded bg-theme-50 px-2 py-0.5 text-[11px] text-theme-700">{item.mode}</span><span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{item.pages}页</span><span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{item.updatedAt}</span>{item.failed && <span className="rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">生成失败</span>}</div></div></div><div className="mt-3 grid grid-cols-2 gap-2">{item.failed ? (
+  const renderHistoryPanel = () => <div className="space-y-3"><div className="rounded-lg border border-gray-200 bg-white p-3"><div className="relative"><Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" /><input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="搜索PPT文件名" className="h-9 w-full rounded-lg border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:bg-white" /></div><div className="mt-3 grid grid-cols-2 gap-2"><select value={historyMode} onChange={(event) => setHistoryMode(event.target.value)} className="h-8 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs"><option>全部</option><option>AI智能生成</option><option>文档生成PPT</option></select><select value={historyTemplate} onChange={(event) => setHistoryTemplate(event.target.value)} className="h-8 rounded-lg border border-gray-200 bg-gray-50 px-2 text-xs"><option>全部</option>{presentationTemplates.map((item) => <option key={item}>{item}</option>)}</select></div><div className="mt-2 grid grid-cols-2 gap-2"><input type="date" value={historyStartDate} onChange={(event) => setHistoryStartDate(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px]" /><input type="date" value={historyEndDate} onChange={(event) => setHistoryEndDate(event.target.value)} className="h-8 min-w-0 rounded-lg border border-gray-200 bg-gray-50 px-2 text-[11px]" /></div></div>{filteredHistory.map((item) => <div key={item.id} role="button" tabIndex={0} onClick={() => openHistoryItem(item)} onKeyDown={(event) => { if (event.key === "Enter") openHistoryItem(item); }} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm hover:border-theme-200"><div className="flex items-start gap-3"><span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-theme-50 text-theme-700"><Presentation size={17} /></span><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold text-gray-800">{item.title}</div><div className="mt-2 flex flex-wrap gap-1"><span className="rounded bg-theme-50 px-2 py-0.5 text-[11px] text-theme-700">{item.mode}</span><span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{item.pages}页</span><span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600">{item.updatedAt}</span>{item.failed && <span className="rounded bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-600">生成失败</span>}</div></div></div><div className="mt-3 grid grid-cols-2 gap-2">{item.failed ? (
                       <button type="button" onClick={(event) => { event.stopPropagation(); handleRegenerateFailed(item); }} className="inline-flex items-center justify-center gap-1 rounded-lg bg-theme-600 py-1.5 text-xs font-semibold text-white hover:bg-theme-700"><RefreshCw size={13} />重新生成</button>
                     ) : item.finalReady ? <button type="button" onClick={(event) => { event.stopPropagation(); setToast("PPT文件下载已开始"); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-theme-100 bg-theme-50 py-1.5 text-xs font-medium text-theme-700"><Download size={13} />下载</button> : <div className="flex items-center justify-center rounded-lg bg-gray-50 py-1.5 text-xs text-gray-400">待生成</div>}<button type="button" onClick={(event) => { event.stopPropagation(); setConfirmAction({ title: "删除PPT", message: `确定删除《${item.title}》吗？`, onConfirm: () => setHistory((current) => current.filter((value) => value.id !== item.id)) }); }} className="inline-flex items-center justify-center gap-1 rounded-lg border border-red-100 bg-red-50 py-1.5 text-xs text-red-600"><Trash2 size={13} />删除</button></div></div>)}{filteredHistory.length === 0 && <div className="rounded-lg border border-dashed border-gray-200 bg-white px-3 py-8 text-center text-sm text-gray-400">未找到匹配的PPT</div>}</div>;
 

@@ -3,17 +3,23 @@ import { fileURLToPath } from 'node:url';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import { prototypeRequirementsPlugin } from './tools/requirements/vite-plugin.mjs';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   base: process.env.VITE_BASE || '/',
   cacheDir: path.resolve(rootDir, '.vite-react-cache'),
   build: {
     sourcemap: 'hidden',
   },
   plugins: [
-    react(),
+    prototypeRequirementsPlugin(rootDir),
+    react({
+      babel: {
+        plugins: command === 'serve' ? ['babel-plugin-react-dev-locator'] : [],
+      },
+    }),
     tsconfigPaths(),
   ],
   resolve: {
@@ -21,4 +27,4 @@ export default defineConfig({
       '@': path.resolve(rootDir, 'src'),
     },
   },
-});
+}));

@@ -1,5 +1,8 @@
 ﻿import { MAIN_USER_NAME, getDemoPerson } from "../data/people";
 import { Hexagon, CheckCircle, Clock, XCircle } from "lucide-react";
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import type { GlobalSearchNavigationState } from '../data/globalSearch';
 
 interface ProcessItem {
   id: number;
@@ -41,6 +44,19 @@ const processes: ProcessItem[] = [
 ];
 
 export default function Process() {
+  const location = useLocation();
+  const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
+  const highlightedProcessId = searchTarget?.type === 'route' && searchTarget.path === '/web_client/process'
+    ? Number(searchTarget.entityId)
+    : null;
+
+  useEffect(() => {
+    if (highlightedProcessId == null) return;
+    window.setTimeout(() => {
+      document.getElementById(`process-${highlightedProcessId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 80);
+  }, [highlightedProcessId]);
+
   return (
     
       <div className="flex-1 flex flex-col bg-gray-50 min-h-screen">
@@ -63,7 +79,7 @@ export default function Process() {
 
           <div className="space-y-4">
             {processes.map((process) => (
-              <ProcessCard key={process.id} process={process} />
+              <ProcessCard key={process.id} process={process} highlighted={highlightedProcessId === process.id} />
             ))}
           </div>
         </div>
@@ -72,7 +88,7 @@ export default function Process() {
   );
 }
 
-function ProcessCard({ process }: { process: ProcessItem }) {
+function ProcessCard({ process, highlighted = false }: { process: ProcessItem; highlighted?: boolean }) {
   const getStatusIcon = () => {
     switch (process.status) {
       case 'pending':
@@ -96,7 +112,7 @@ function ProcessCard({ process }: { process: ProcessItem }) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-100 hover:shadow-md transition-shadow">
+    <div id={`process-${process.id}`} className={`bg-white rounded-lg shadow-sm p-4 border hover:shadow-md transition-all ${highlighted ? 'border-amber-400 ring-2 ring-amber-300 ring-offset-2' : 'border-gray-100'}`}>
       <div className="flex justify-between items-start mb-2">
         <h3 className="font-semibold text-lg text-gray-900">{process.title}</h3>
         <div className="flex items-center gap-1 text-sm">

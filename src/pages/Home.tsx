@@ -39,6 +39,12 @@ import {
   Check,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from 'react-router-dom';
+import type { GlobalSearchNavigationState } from '../data/globalSearch';
+import FeedbackComposer from '../components/FeedbackComposer';
+import { resolveFeedbackIntent, type FeedbackIntentResult } from '../utils/feedbackIntent';
+import type { FeedbackRecord } from '../data/feedback';
+import { createFeedbackPageContext } from '../utils/feedbackPageContext';
 
 interface CardContent {
   title: string;
@@ -755,9 +761,18 @@ const processes: ProcessItem[] = [
 ];
 
 export default function Home() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [messageList, setMessageList] = useState<Message[]>(messages);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(messages[0]);
   const [contentRefReady, setContentRefReady] = useState(false);
+  const [highlightedChatMessageId, setHighlightedChatMessageId] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const handledSearchRequests = useRef(new Set<string>());
+  const [assistantInput, setAssistantInput] = useState('');
+  const [assistantFeedback, setAssistantFeedback] = useState<FeedbackIntentResult | null>(null);
+  const [assistantSubmittedFeedback, setAssistantSubmittedFeedback] = useState<FeedbackRecord | null>(null);
+  const [messageDraft, setMessageDraft] = useState('');
 
   // 简化逻辑：移除响应式和拖动相关的复杂处理
   const handleMessageClick = (message: Message) => {
@@ -769,10 +784,114 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const raw = window.localStorage.getItem('ijx-feedback-contact-draft');
+    if (!raw) return;
+    window.localStorage.removeItem('ijx-feedback-contact-draft');
+    try {
+      const payload = JSON.parse(raw) as { userName: string; draft: string };
+      const existing = messages.find(message => message.name === payload.userName);
+      const conversation: Message = existing || {
+        id: Date.now(),
+        name: payload.userName,
+        avatar: getInitialsAvatar(payload.userName, '64748b'),
+        message: '反馈沟通',
+        time: '刚刚',
+        type: 'normal',
+        chatMessages: [],
+      };
+      setMessageList(current => current.some(message => message.name === payload.userName) ? current : [conversation, ...current]);
+      setSelectedMessage(conversation);
+      setMessageDraft(payload.draft);
+    } catch {
+      // 无效草稿不影响消息页正常使用。
+    }
+  }, []);
+
+  useEffect(() => {
     if (contentRefReady && contentRef.current) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
   }, [selectedMessage, contentRefReady]);
+
+  useEffect(() => {
+    const payload = (location.state as GlobalSearchNavigationState | null)?.globalSearch;
+    if (!payload || payload.target.type !== 'message' || handledSearchRequests.current.has(payload.requestId)) return;
+
+    handledSearchRequests.current.add(payload.requestId);
+    const target = payload.target;
+    const existing = messageList.find(message =>
+      (target.conversationId != null && message.id === target.conversationId)
+      || message.name === target.conversationName,
+    );
+    const baseConversation: Message = existing ?? {
+      id: Date.now(),
+      name: target.conversationName,
+      avatar: getInitialsAvatar(target.conversationName, target.conversationKind === 'group' ? '64748b' : 'ec4899'),
+      message: '通过全局搜索发起会话',
+      time: '刚刚',
+      count: target.conversationKind === 'group' ? 18 : undefined,
+      type: 'normal',
+      chatMessages: [],
+    };
+
+    const nextConversation = payload.assistantQuery
+      ? {
+          ...baseConversation,
+          message: payload.assistantQuery,
+          time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false }),
+          chatMessages: [
+            ...(baseConversation.chatMessages ?? []),
+            {
+              id: Date.now(),
+              sender: 'me' as const,
+              type: 'text' as const,
+              content: payload.assistantQuery,
+              time: '刚刚',
+            },
+          ],
+        }
+      : baseConversation;
+
+    const nextMessages = existing
+      ? messageList.map(message => message.id === existing.id ? nextConversation : message)
+      : [nextConversation, ...messageList];
+    setMessageList(nextMessages);
+    setSelectedMessage(nextConversation);
+    setHighlightedChatMessageId(target.messageId ?? null);
+    navigate(location.pathname, { replace: true, state: null });
+
+    if (target.messageId != null) {
+      window.setTimeout(() => {
+        document.getElementById(`chat-message-${target.messageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 80);
+      window.setTimeout(() => setHighlightedChatMessageId(null), 2200);
+    }
+  }, [location.pathname, location.state, messageList, navigate]);
+
+  const handleAssistantSend = () => {
+    const content = assistantInput.trim();
+    if (!content || !selectedMessage || selectedMessage.type !== 'assistant') return;
+    const intent = resolveFeedbackIntent(content);
+    const timestamp = Date.now();
+    const reply = intent.intent === 'none'
+      ? '我明白了。你可以继续补充具体场景，我会帮你判断是使用咨询还是需要提交产品反馈。'
+      : intent.assistantMessage;
+    const nextConversation: Message = {
+      ...selectedMessage,
+      message: content,
+      time: '刚刚',
+      chatMessages: [
+        ...(selectedMessage.chatMessages || []),
+        { id: timestamp, sender: 'me', type: 'text', content, time: '刚刚' },
+        { id: timestamp + 1, sender: 'other', type: 'text', content: reply, time: '刚刚' },
+      ],
+    };
+    setMessageList(current => current.map(message => message.id === selectedMessage.id ? nextConversation : message));
+    setSelectedMessage(nextConversation);
+    setAssistantFeedback(intent.intent === 'none' ? null : intent);
+    setAssistantSubmittedFeedback(null);
+    setAssistantInput('');
+  };
 
   const renderContent = () => {
     if (!selectedMessage) {
@@ -1301,14 +1420,37 @@ export default function Home() {
           <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
             <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
               {selectedMessage.chatMessages ? (
-                selectedMessage.chatMessages.map((chatMsg) => (
-                  <ChatMessageBubble
-                    key={chatMsg.id}
-                    chatMsg={chatMsg}
-                    avatar={selectedMessage.avatar}
-                    name={selectedMessage.name}
-                  />
-                ))
+                <>
+                  {selectedMessage.chatMessages.map((chatMsg) => (
+                    <ChatMessageBubble
+                      key={chatMsg.id}
+                      chatMsg={chatMsg}
+                      avatar={selectedMessage.avatar}
+                      name={selectedMessage.name}
+                      highlighted={highlightedChatMessageId === chatMsg.id}
+                    />
+                  ))}
+                  {assistantFeedback?.intent === 'draft' && !assistantSubmittedFeedback && (
+                    <div className="ml-16 max-w-2xl">
+                      <FeedbackComposer
+                        compact
+                        source="消息页如意助手"
+                        conversationId="ruyi-assistant"
+                        pageContext={createFeedbackPageContext('消息 · 如意助手', `${location.pathname}${location.search}`)}
+                        initialCategory={assistantFeedback.category}
+                        initialContent={assistantFeedback.content}
+                        onSubmitted={setAssistantSubmittedFeedback}
+                      />
+                    </div>
+                  )}
+                  {assistantSubmittedFeedback && (
+                    <div className="ml-16 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                      <div className="font-semibold text-emerald-800">反馈提交成功</div>
+                      <p className="mt-1 text-sm text-emerald-700">反馈编号 {assistantSubmittedFeedback.feedbackNo}，当前状态为待处理。</p>
+                      <button onClick={() => navigate(`/web_client/help-feedback/${assistantSubmittedFeedback.id}`)} className="mt-3 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">查看反馈详情</button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <div className="flex gap-4">
                   <div className="flex-shrink-0">
@@ -1331,6 +1473,9 @@ export default function Home() {
               <div className="flex gap-2">
                 <input
                   type="text"
+                  value={assistantInput}
+                  onChange={event => setAssistantInput(event.target.value)}
+                  onKeyDown={event => { if (event.key === 'Enter') handleAssistantSend(); }}
                   placeholder="请输入您的问题..."
                   className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
                 />
@@ -1338,7 +1483,7 @@ export default function Home() {
                   <button className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
                     <ImageIcon size={20} />
                   </button>
-                  <button className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
+                  <button onClick={handleAssistantSend} className="bg-theme-500 text-white p-2 rounded-full hover:bg-theme-600 transition-colors">
                     <MessageSquare size={20} />
                   </button>
                 </div>
@@ -1357,6 +1502,7 @@ export default function Home() {
                     chatMsg={chatMsg}
                     avatar={selectedMessage.avatar}
                     name={selectedMessage.name}
+                    highlighted={highlightedChatMessageId === chatMsg.id}
                   />
                 ))
               ) : (
@@ -1381,6 +1527,8 @@ export default function Home() {
               <div className="flex gap-2">
                 <input
                   type="text"
+                  value={messageDraft}
+                  onChange={event => setMessageDraft(event.target.value)}
                   placeholder="输入消息..."
                   className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-full focus:outline-none focus:ring-2 focus:ring-theme-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
                 />
@@ -1405,7 +1553,7 @@ export default function Home() {
       <div className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-xl border border-white/60 bg-white dark:border-gray-700 dark:bg-gray-800">
         {/* 消息列表 */}
         <div className="flex-1 overflow-y-auto">
-          {messages.map((msg) => (
+          {messageList.map((msg) => (
             <MessageItem
               key={msg.id}
               message={msg}
@@ -1615,11 +1763,14 @@ function CardMessage({ message }: { message: Message }) {
   );
 }
 
-function ChatMessageBubble({ chatMsg, avatar, name }: { chatMsg: ChatMessage; avatar: string; name: string }) {
+function ChatMessageBubble({ chatMsg, avatar, name, highlighted = false }: { chatMsg: ChatMessage; avatar: string; name: string; highlighted?: boolean }) {
   const isMe = chatMsg.sender === 'me';
 
   return (
-    <div className={`flex gap-4 ${isMe ? 'flex-row-reverse' : ''}`}>
+    <div
+      id={`chat-message-${chatMsg.id}`}
+      className={`flex gap-4 rounded-xl transition-all duration-300 ${isMe ? 'flex-row-reverse' : ''} ${highlighted ? 'bg-amber-50 px-3 py-2 ring-2 ring-amber-300' : ''}`}
+    >
       <div className="flex-shrink-0">
         <img
           src={isMe ? MAIN_USER_AVATAR : avatar}

@@ -1607,7 +1607,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
                       }}
                       className={`flex w-full items-center gap-2 px-2.5 py-2 text-left ${selected ? '' : 'opacity-55'} ${locked ? 'cursor-not-allowed' : ''}`}
                       title={locked ? '项目汇报必选，不可取消' : undefined}
-                    >
+                     data-requirement-id="custom-20261026-001">
                       <item.icon size={15} className={selected ? 'text-theme-700' : 'text-gray-400'} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-xs font-semibold text-gray-700">

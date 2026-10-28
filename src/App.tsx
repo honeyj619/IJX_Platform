@@ -8,6 +8,7 @@ import Assistant from "@/pages/Assistant";
 import Process from "@/pages/Process";
 import Profile from "@/pages/Profile";
 import RuYiZone from "@/pages/RuYiZone";
+import HelpFeedback from "@/pages/HelpFeedback";
 import AgentSquarePage from "@/pages/AgentSquarePage";
 import EKB from "@/pages/EKB";
 import Calendar from "@/pages/Calendar";
@@ -166,6 +167,8 @@ export default function App() {
           <Route path="work-items" element={<Navigate to="/web_client/enterprise" replace />} />
           <Route path="okr" element={<OkrModule />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="help-feedback" element={<HelpFeedback />} />
+          <Route path="help-feedback/:feedbackId" element={<HelpFeedback />} />
         </Routes>
       </Layout>
     </div>

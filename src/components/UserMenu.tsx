@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { User, FileText, Users, Settings, LogOut, Shield, Palette, Moon, Sun, Download } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { User, Settings, LogOut, Shield, Download, CircleHelp } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useThemeStore } from "../store/themeStore";
 import { Skin } from "../store/themeStore";
 import { MAIN_USER_AVATAR, MAIN_USER_NAME } from "../data/people";
+import { createFeedbackPageContext, saveFeedbackPageContext } from "../utils/feedbackPageContext";
 
 interface MenuItem {
   id: string;
@@ -17,12 +18,14 @@ interface MenuItem {
 
 interface UserMenuProps {
   collapsed?: boolean;
+  feedbackPageTitle?: string;
 }
 
-export function UserMenu({ collapsed = false }: UserMenuProps) {
+export function UserMenu({ collapsed = false, feedbackPageTitle = '' }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const { mode, skin, setMode, setSkin } = useThemeStore();
 
   useEffect(() => {
@@ -53,6 +56,12 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
       icon: <Download size={16} />,
       path: "/download"
     },
+    {
+      id: "help-feedback",
+      label: "帮助与反馈",
+      icon: <CircleHelp size={16} />,
+      path: "/web_client/help-feedback"
+    },
     { id: "divider1", label: "", icon: null, divider: true },
     {
       id: "settings",
@@ -77,6 +86,16 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
 
   const handleMenuClick = (item: MenuItem) => {
     setIsOpen(false);
+    if (item.id === 'help-feedback' && item.path) {
+      if (!location.pathname.includes('/help-feedback')) {
+        const context = createFeedbackPageContext(feedbackPageTitle, `${location.pathname}${location.search}`);
+        saveFeedbackPageContext(context);
+        navigate(item.path, { state: { feedbackPageContext: context } });
+      } else {
+        navigate(item.path);
+      }
+      return;
+    }
     if (item.action) {
       item.action();
     }
@@ -137,6 +156,7 @@ export function UserMenu({ collapsed = false }: UserMenuProps) {
               ) : (
                 <button
                   key={item.id}
+                  data-requirement-id={item.id === 'help-feedback' ? 'client-help-feedback-entry' : undefined}
                   onClick={() => handleMenuClick(item)}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >

@@ -12,6 +12,10 @@ import DocumentEditor from "./DocumentEditor";
 import PresentationWorkbench from "./PresentationWorkbench";
 import AdvisorWorkbench from "./AdvisorWorkbench";
 import PresentationSettings from "../components/PresentationSettings";
+import FeedbackComposer from "../components/FeedbackComposer";
+import { resolveFeedbackIntent, type FeedbackIntentResult } from "../utils/feedbackIntent";
+import type { FeedbackRecord } from "../data/feedback";
+import { createFeedbackPageContext } from "../utils/feedbackPageContext";
 import { buildAdvisorUrl } from "../data/advisor";
 import { documentValidationIssues, documentValidationRules, documentValidationSummary, type DocumentMode } from "../data/documentValidation";
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from "../data/people";
@@ -351,13 +355,15 @@ export default function RuYiZone() {
   const [showReportSubmitTargets, setShowReportSubmitTargets] = useState(false);
   const [selectedReportSubmitTargets, setSelectedReportSubmitTargets] = useState<number[]>([1]);
   const [reportSubmitDone, setReportSubmitDone] = useState(false);
+  const [feedbackDraft, setFeedbackDraft] = useState<FeedbackIntentResult | null>(null);
+  const [submittedFeedback, setSubmittedFeedback] = useState<FeedbackRecord | null>(null);
 
   const resolveConversationKind = (question: string): ConversationKind => {
     if (/统计.*汇报|汇报.*统计|发送情况|多少.*(项目|汇报)/.test(question)) return "reportStats";
     if (/项目汇报|项目周报/.test(question)) return "projectReportDraft";
     if (/汇报|周报|日报|工作进展|任务分析|风险分析|工作洞察/.test(question)) return "goalAssistant";
     if (/会议纪要|纪要|录音/.test(question)) return "meetingMinutes";
-    if (/反馈|问题|报错|不好用|VPN|服务台/.test(question)) return "feedback";
+    if (resolveFeedbackIntent(question).intent !== 'none') return "feedback";
     if (/立项|项目申请|项目流程/.test(question)) return "project";
     if (/运营|数据|指标|销售|满意度|报表/.test(question)) return "operations";
     if (/日程|会议室|预约|安排|下周会议/.test(question)) return "schedule";
@@ -620,6 +626,7 @@ export default function RuYiZone() {
         return;
       }
       const nextKind = resolveConversationKind(question);
+      const nextFeedback = resolveFeedbackIntent(question);
       // 未选择插件时一律保持对话模式；仅精确的「生成XX周报」指令进入参谋师工作台
       if (nextKind === "goalAssistant" && projectReportMatch) {
         navigate(buildAdvisorUrl({ mode: 'project-report', source: 'ruyi-zone', initialPrompt: question }));
@@ -628,6 +635,8 @@ export default function RuYiZone() {
       }
       setSentQuestion(question);
       setConversationKind(nextKind);
+      setFeedbackDraft(nextKind === 'feedback' ? nextFeedback : null);
+      setSubmittedFeedback(null);
       setSelectedHistoryId(null);
       setHasConversation(true);
       setInput("");
@@ -678,6 +687,8 @@ export default function RuYiZone() {
     setShowReportSubmitTargets(false);
     setSelectedReportSubmitTargets([1]);
     setReportSubmitDone(false);
+    setFeedbackDraft(null);
+    setSubmittedFeedback(null);
     if (documentWorkspacePath || presentationWorkspacePath || advisorWorkspacePath) navigate('/web_client/ruyi-zone');
   };
 
@@ -766,6 +777,8 @@ export default function RuYiZone() {
     setEmbedEditorInRuyiZone(false);
     setShowPresentationEditor(false);
     setConversationKind("feedback");
+    setFeedbackDraft(resolveFeedbackIntent(message));
+    setSubmittedFeedback(null);
     setSentQuestion(message);
     setHasConversation(true);
     setInput("");
@@ -1839,9 +1852,27 @@ export default function RuYiZone() {
 
                       {conversationKind === "feedback" && (
                         <>
-                          <p className="mb-4 leading-7">您的使用问题已反馈至系统负责人。</p>
-                          <p className="mb-6 leading-7">我已记录您的问题描述，并同步给服务台跟进。您也可以进入服务台补充截图、影响范围或紧急程度。</p>
-                          <Link to="/web_client/business?tab=service-desk&source=ruyi-zone" className="mb-6 inline-flex rounded-lg bg-theme-50 px-4 py-2 font-medium text-theme-700 hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300">前往服务台查看处理进度</Link>
+                          <p className="mb-4 leading-7">{feedbackDraft?.assistantMessage || '请描述具体遇到的问题或希望改进的地方，我会帮你整理成反馈表单。'}</p>
+                          {feedbackDraft?.intent === 'draft' && !submittedFeedback && (
+                            <div className="mb-6 max-w-2xl">
+                              <FeedbackComposer
+                                compact
+                                source="如意空间"
+                                conversationId="ruyi-zone-feedback"
+                                pageContext={createFeedbackPageContext(`如意空间 · ${selectedAssistant?.name || '对话'}`, `${location.pathname}${location.search}`)}
+                                initialCategory={feedbackDraft.category}
+                                initialContent={feedbackDraft.content}
+                                onSubmitted={setSubmittedFeedback}
+                              />
+                            </div>
+                          )}
+                          {submittedFeedback && (
+                            <div className="mb-6 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                              <div className="font-semibold text-emerald-800">反馈提交成功</div>
+                              <p className="mt-1 text-sm text-emerald-700">反馈编号 {submittedFeedback.feedbackNo}，当前状态为待处理。</p>
+                              <Link to={`/web_client/help-feedback/${submittedFeedback.id}`} className="mt-3 inline-flex rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">查看反馈详情</Link>
+                            </div>
+                          )}
                         </>
                       )}
 

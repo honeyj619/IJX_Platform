@@ -9,7 +9,7 @@ import {
   Menu, X, Shield, Lock, GitBranch, LayoutDashboard,
   Globe, Network, Palette, ChevronRight, User, Users, FolderTree,
   Route, Wand2, FileText, Edit3, Image as ImageIcon, Type, AlignJustify, Plus, Search, Upload,
-  Database, Briefcase, RefreshCw, CheckCircle2, Layers, Smartphone, ClipboardList, ChevronLeft
+  Database, Briefcase, RefreshCw, CheckCircle2, Layers, Smartphone, ClipboardList, ChevronLeft, MessageCircle
 } from 'lucide-react';
 import NavigationConfig from '../components/NavigationConfig';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
@@ -32,6 +32,7 @@ import { contactDirectory, contactGroups, findContactByName } from '../data/cont
 import ContactPicker, { type ContactSelection } from '../components/ContactPicker';
 import DeviceManagement from '../components/admin/DeviceManagement';
 import PcWorkbenchAdmin from '../components/admin/PcWorkbenchAdmin';
+import FeedbackManagement from '../components/admin/FeedbackManagement';
 import {
   TRUSTED_ROUTE_DICTIONARY_NAME,
   TRUSTED_ROUTE_DICTIONARY_TYPE,
@@ -97,7 +98,14 @@ const menuItems: MenuItem[] = [
           { id: 'mobile-download', label: '移动应用下载管理', icon: <Smartphone size={15} /> },
         ]
       },
-      { id: 'portal-admin', label: '门户基础管理', icon: <Globe size={16} /> },
+      {
+        id: 'portal-admin',
+        label: '门户基础管理',
+        icon: <Globe size={16} />,
+        children: [
+          { id: 'portal-feedback', label: '帮助与反馈', icon: <MessageCircle size={15} /> },
+        ],
+      },
       { id: 'business-admin', label: '业务系统管理', icon: <FolderTree size={16} /> },
       { id: 'theme-admin', label: '主题装扮管理', icon: <Palette size={16} /> },
     ]
@@ -156,6 +164,7 @@ const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
   'device-management': { menu: 'system', subMenu: 'device-management' },
   'version-list': { menu: 'system', subMenu: 'version-list' },
   'version-release': { menu: 'system', subMenu: 'version-release' },
+  'help-feedback': { menu: 'system', subMenu: 'portal-feedback' },
 };
 
 const adminTheme = {
@@ -4104,7 +4113,7 @@ export default function Admin() {
             </div>
           ) : (
             /* 根据选中菜单展示对应内容 */
-            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' || activeSubMenu === 'system-dictionary' || activeSubMenu === 'app-management' || activeSubMenu === 'device-management' || activeSubMenu === 'version-list' || activeSubMenu === 'version-release' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
+            <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' || activeSubMenu === 'system-dictionary' || activeSubMenu === 'app-management' || activeSubMenu === 'device-management' || activeSubMenu === 'version-list' || activeSubMenu === 'version-release' || activeSubMenu === 'portal-feedback' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
               {/* 面包屑导航 */}
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                 <span className="cursor-pointer hover:text-gray-700" onClick={() => { setActiveMenu(null); setActiveSubMenu(null); }}>首页</span>
@@ -4172,7 +4181,7 @@ export default function Admin() {
                   {activeSubMenu === 'version-release' && <VersionManagement view="release" />}
                   {activeSubMenu === 'app-management' && <ApplicationManagement />}
                   {activeSubMenu === 'mobile-download' && <ContentPlaceholder title="移动应用下载管理" icon="📱" />}
-                  {activeSubMenu === 'portal-admin' && <ContentPlaceholder title="门户基础管理" icon="🌐" />}
+                  {activeSubMenu === 'portal-feedback' && <FeedbackManagement />}
                   {activeSubMenu === 'business-admin' && <ContentPlaceholder title="业务系统管理" icon="📁" />}
                   {activeSubMenu === 'theme-admin' && <ContentPlaceholder title="主题装扮管理" icon="🎨" />}
                 </div>

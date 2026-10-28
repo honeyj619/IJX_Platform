@@ -1,6 +1,8 @@
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import { Search, Bell, Calendar, User, ChevronDown } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import type { GlobalSearchNavigationState } from '../data/globalSearch';
 
 interface KnowledgeDomain {
   id: number;
@@ -50,6 +52,19 @@ const documentCategories = [
 ];
 
 export default function EKB() {
+  const location = useLocation();
+  const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
+  const highlightedDocumentId = searchTarget?.type === 'route' && searchTarget.path === '/web_client/ekb'
+    ? Number(searchTarget.entityId)
+    : null;
+
+  useEffect(() => {
+    if (highlightedDocumentId == null) return;
+    window.setTimeout(() => {
+      document.getElementById(`knowledge-document-${highlightedDocumentId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }, [highlightedDocumentId]);
+
   return (
 
       <div className="bg-gray-50">
@@ -200,7 +215,11 @@ export default function EKB() {
                       const authors = [MAIN_USER_NAME, getDemoPerson(0), getDemoPerson(1), getDemoPerson(2), getDemoPerson(3), getDemoPerson(4)];
                       const views = [1216, 987, 756, 543, 321, 198];
                       return (
-                        <div key={doc.id} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
+                        <div
+                          key={doc.id}
+                          id={`knowledge-document-${doc.id}`}
+                          className={`rounded-md border-b pb-4 transition-all last:border-0 last:pb-0 ${highlightedDocumentId === doc.id ? 'border-amber-300 bg-amber-50 p-3 ring-2 ring-amber-300' : 'border-gray-100'}`}
+                        >
                           <div className="font-medium text-gray-800 hover:text-blue-600 transition-colors cursor-pointer text-lg mb-2">
                             {doc.title}
                           </div>
