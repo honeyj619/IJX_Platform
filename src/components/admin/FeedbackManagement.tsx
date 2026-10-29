@@ -12,7 +12,7 @@ import {
 
 const statuses: Array<'全部' | FeedbackStatus> = ['全部', '待处理', '处理中', '已解决'];
 const categories: Array<'全部' | FeedbackCategory> = ['全部', '功能异常', '使用咨询', '体验建议', '其他'];
-const sources: Array<'全部' | FeedbackSource> = ['全部', '页面提交', '消息页如意助手', '如意空间'];
+const sources: Array<'全部' | FeedbackSource> = ['全部', '页面提交', '消息页如意助手', '如意空间', '企业门户'];
 const statusStyle: Record<FeedbackStatus, string> = {
   '待处理': 'bg-amber-50 text-amber-700',
   '处理中': 'bg-blue-50 text-blue-700',

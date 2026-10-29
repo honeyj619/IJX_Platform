@@ -1,7 +1,7 @@
 import { MAIN_USER_NAME, getDemoPerson } from './people';
 
 export type FeedbackCategory = '功能异常' | '使用咨询' | '体验建议' | '其他';
-export type FeedbackSource = '页面提交' | '消息页如意助手' | '如意空间';
+export type FeedbackSource = '页面提交' | '消息页如意助手' | '如意空间' | '企业门户';
 export type FeedbackStatus = '待处理' | '处理中' | '已解决';
 
 export type FeedbackAttachment = {

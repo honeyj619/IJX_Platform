@@ -1,10 +1,11 @@
-﻿import { Search, MessageSquare, Smartphone, BarChart3, ChevronLeft, ChevronRight, Plus, X, Mail, Monitor, MoreHorizontal, Users, DollarSign, Headphones, FileCheck, ShoppingCart, Plane, UserCircle, Kanban, CircleHelp } from 'lucide-react';
+﻿import { Search, ChevronLeft, ChevronRight, Plus, X, Monitor, Users, DollarSign, Headphones, FileCheck, ShoppingCart, Plane, UserCircle, Kanban, CircleHelp } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
 import EKB from './EKB';
-import { getDemoPerson, RUYI_ASSISTANT_AVATAR } from '../data/people';
+import { getDemoPerson } from '../data/people';
 import { createFeedbackPageContext, saveFeedbackPageContext } from '../utils/feedbackPageContext';
+import EnterpriseFloatingBar from '../components/EnterpriseFloatingBar';
 
 // 常用系统数据 - 与导航栏业务系统保持一致
 const ALL_SYSTEMS = [
@@ -406,48 +407,9 @@ export default function Enterprise({ embeddedInPcWeb = false }: { embeddedInPcWe
 
       </div>{/* end flex-1 overflow-y-auto */}
 
-      {/* 企业门户专属右侧固定悬浮栏 */}
-      {portalType === 'enterprise' && (
-        <div className="fixed right-0 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 shadow-lg rounded-l-xl flex flex-col overflow-hidden z-30">
-          {/* IT提报 */}
-          <div className="p-2 bg-pink-700 text-white">
-            <div className="flex flex-col items-center gap-1">
-              <div className="w-6 h-6 bg-white/20 rounded flex items-center justify-center">
-                <MessageSquare size={14} />
-              </div>
-              <span className="text-xs font-medium">IT提报</span>
-            </div>
-          </div>
-          
-          <div className="flex flex-col items-center gap-1 p-2">
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
-              <MoreHorizontal size={18} />
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
-              <Mail size={18} />
-            </button>
-            <button type="button" onClick={() => navigate('/download')} title="客户端下载" className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
-              <Smartphone size={18} />
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
-              <BarChart3 size={18} />
-            </button>
-          </div>
-          
-          {/* 如意助手悬浮 */}
-          <div className="border-t border-gray-100 dark:border-gray-700 p-2">
-            <div className="relative flex flex-col items-center">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center overflow-hidden">
-                <img 
-                  src={RUYI_ASSISTANT_AVATAR}
-                  alt="如意助手"
-                  className="w-full h-full"
-                />
-              </div>
-              <span className="text-[10px] text-pink-500 mt-0.5">如意助手</span>
-            </div>
-          </div>
-        </div>
+      {/* 企业门户专属右侧固定悬浮栏（通用组件，含帮助与反馈弹框）；嵌入 PC Web 时由宿主页统一渲染 */}
+      {portalType === 'enterprise' && !embeddedInPcWeb && (
+        <EnterpriseFloatingBar pageContext={{ title: '企业门户', path: `${location.pathname}${location.search}` }} />
       )}
 
       {/* 常用系统设置弹窗 */}

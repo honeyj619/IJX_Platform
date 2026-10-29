@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Building2, ChevronRight, CircleHelp, MessageCircle, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Enterprise from './Enterprise';
+import EnterpriseFloatingBar from '../components/EnterpriseFloatingBar';
 import { contactDirectory, contactGroups } from '../data/contactDirectory';
 import { getPersonAvatar, MAIN_USER_AVATAR, MAIN_USER_NAME } from '../data/people';
 import { createFeedbackPageContext, saveFeedbackPageContext } from '../utils/feedbackPageContext';
@@ -141,6 +142,9 @@ export default function PcWebPortal() {
       ) : (
         <div className="h-[calc(100vh-153px)] min-h-[720px]"><Enterprise embeddedInPcWeb /></div>
       )}
+
+      {/* 右侧悬浮导航栏（通用组件）：PC Web 所有页面统一渲染，上下文按页面区分 */}
+      <EnterpriseFloatingBar pageContext={{ title: isContacts ? 'PC Web 通讯录' : 'PC Web 企业门户', path: `${location.pathname}${location.search}` }} />
     </div>
   );
 }
