@@ -87,7 +87,7 @@ export default function Download() {
             PC客户端进入
           </button>
           <button
-            onClick={() => navigate('/pc_web?tab=enterprise')}
+            onClick={() => navigate('/pc_web')}
             className="flex h-16 items-center justify-center gap-3 rounded-full bg-pink-700 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-pink-800"
           >
             <Globe2 size={26} />

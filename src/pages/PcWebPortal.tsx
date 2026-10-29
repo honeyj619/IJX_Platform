@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Building2, ChevronRight, MessageCircle, Search } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Building2, ChevronRight, CircleHelp, MessageCircle, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Enterprise from './Enterprise';
 import { contactDirectory, contactGroups } from '../data/contactDirectory';
 import { getPersonAvatar, MAIN_USER_AVATAR, MAIN_USER_NAME } from '../data/people';
+import { createFeedbackPageContext, saveFeedbackPageContext } from '../utils/feedbackPageContext';
 
 const portalNavItems = ['首页', '文档中心', '流程中心', '协作办公', 'AI门户', '业务系统', '航班动态', '通讯录', '数据看板'];
 
@@ -20,12 +21,6 @@ export default function PcWebPortal() {
   const [keyword, setKeyword] = useState('');
   const [revealedMobiles, setRevealedMobiles] = useState<Set<string>>(() => new Set());
 
-  useEffect(() => {
-    if (!isContacts && new URLSearchParams(location.search).get('tab') !== 'enterprise') {
-      navigate('/pc_web?tab=enterprise', { replace: true });
-    }
-  }, [isContacts, location.search, navigate]);
-
   const contacts = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
     return contactDirectory.filter((person) => {
@@ -37,13 +32,20 @@ export default function PcWebPortal() {
   }, [keyword, selectedDepartment]);
 
   const openNav = (label: string) => {
-    if (label === '首页') navigate('/pc_web?tab=enterprise');
+    if (label === '首页') navigate('/pc_web');
     if (label === '通讯录') navigate('/pc_web/contacts');
   };
 
   const startConversation = (name: string) => {
     window.localStorage.setItem('ijx-pcweb-message-target', JSON.stringify({ name, createdAt: Date.now() }));
     window.open(buildWebClientUrl(), '_blank', 'noopener,noreferrer');
+  };
+
+  // 帮助与反馈：记录当前 PC Web 页面上下文后进入反馈页（与 client 行为一致）
+  const openHelpFeedback = () => {
+    const context = createFeedbackPageContext(isContacts ? 'PC Web 通讯录' : 'PC Web 企业门户', `${location.pathname}${location.search}`);
+    saveFeedbackPageContext(context);
+    navigate('/pc_client/help-feedback', { state: { feedbackPageContext: context } });
   };
 
   const toggleMobile = (personId: string) => {
@@ -60,7 +62,7 @@ export default function PcWebPortal() {
       <div className="h-6 bg-theme-700" />
       <header className="border-b border-gray-200 bg-white shadow-sm">
         <div className="mx-auto flex h-[88px] max-w-[1240px] items-center gap-7 px-6">
-          <button type="button" onClick={() => navigate('/pc_web?tab=enterprise')} className="flex shrink-0 items-center gap-3 text-left">
+          <button type="button" onClick={() => navigate('/pc_web')} className="flex shrink-0 items-center gap-3 text-left">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-theme-50 text-theme-700"><Building2 size={21} /></span>
             <span><strong className="block text-sm tracking-wide text-theme-800">JUNEYAO AIR</strong><span className="text-xs text-gray-500">i吉祥 PC Web</span></span>
           </button>
@@ -72,6 +74,15 @@ export default function PcWebPortal() {
             })}
           </nav>
           <div className="flex shrink-0 items-center gap-3 border-l border-gray-200 pl-5">
+            <button
+              type="button"
+              onClick={openHelpFeedback}
+              title="帮助与反馈"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+             data-requirement-id="custom-20261029-001">
+              <CircleHelp size={18} />
+              <span className="hidden xl:inline">帮助与反馈</span>
+            </button>
             <Search size={20} className="text-gray-400" />
             <img src={MAIN_USER_AVATAR} alt="" className="h-9 w-9 rounded-full object-cover" />
             <span className="text-sm font-medium">{MAIN_USER_NAME}</span>

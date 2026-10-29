@@ -55,7 +55,7 @@ function getPortalTypeFromSearch(search: string): PortalType {
 export default function Enterprise({ embeddedInPcWeb = false }: { embeddedInPcWeb?: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const [portalType, setPortalType] = useState<PortalType>(() => getPortalTypeFromSearch(window.location.search));
+  const [portalType, setPortalType] = useState<PortalType>(() => embeddedInPcWeb ? 'enterprise' : getPortalTypeFromSearch(window.location.search));
   const [showSettings, setShowSettings] = useState(false);
   const [selectedSystems, setSelectedSystems] = useState<string[]>(() => {
     const saved = localStorage.getItem('selectedSystems');
@@ -63,8 +63,8 @@ export default function Enterprise({ embeddedInPcWeb = false }: { embeddedInPcWe
   });
 
   useEffect(() => {
-    setPortalType(getPortalTypeFromSearch(location.search));
-  }, [location.search]);
+    setPortalType(embeddedInPcWeb ? 'enterprise' : getPortalTypeFromSearch(location.search));
+  }, [embeddedInPcWeb, location.search]);
 
   const switchPortalType = (nextType: PortalType) => {
     setPortalType(nextType);
