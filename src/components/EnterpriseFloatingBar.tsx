@@ -79,18 +79,18 @@ export default function EnterpriseFloatingBar({ pageContext, onFeedbackSubmitted
         </div>
       </div>
 
-      {/* 帮助与反馈弹框（内容与 client 一致） */}
+      {/* 帮助与反馈弹框（画面居中，内容与 client 一致） */}
       {feedbackOpen && (
-        <div className="fixed inset-0 z-[80] flex justify-end bg-black/30" onMouseDown={event => { if (event.target === event.currentTarget) setFeedbackOpen(false); }}>
-          <aside className="flex h-full w-[520px] flex-col bg-white shadow-2xl">
-            <div className="flex items-center border-b border-gray-100 px-6 py-5">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onMouseDown={event => { if (event.target === event.currentTarget) setFeedbackOpen(false); }}>
+          <div role="dialog" aria-modal="true" aria-label="帮助与反馈" className="flex max-h-[86vh] w-[min(760px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <div className="flex items-center border-b border-gray-100 px-6 py-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">帮助与反馈</h2>
-                <p className="mt-1 text-xs text-gray-400">页面和客户端环境将自动随反馈提交</p>
+                <p className="mt-0.5 text-xs text-gray-400">页面和客户端环境将自动随反馈提交</p>
               </div>
               <button type="button" onClick={() => setFeedbackOpen(false)} className="ml-auto rounded-md p-1.5 text-gray-400 hover:bg-gray-100"><X size={19} /></button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-6">
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
               {submitted ? (
                 <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
                   <h3 className="text-sm font-semibold text-emerald-800">反馈已提交</h3>
@@ -109,7 +109,7 @@ export default function EnterpriseFloatingBar({ pageContext, onFeedbackSubmitted
                 />
               )}
             </div>
-          </aside>
+          </div>
         </div>
       )}
     </>

@@ -1,10 +1,9 @@
-﻿import { Search, ChevronLeft, ChevronRight, Plus, X, Monitor, Users, DollarSign, Headphones, FileCheck, ShoppingCart, Plane, UserCircle, Kanban, CircleHelp } from 'lucide-react';
+﻿import { Search, ChevronLeft, ChevronRight, Plus, X, Monitor, Users, DollarSign, Headphones, FileCheck, ShoppingCart, Plane, UserCircle, Kanban } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
 import EKB from './EKB';
 import { getDemoPerson } from '../data/people';
-import { createFeedbackPageContext, saveFeedbackPageContext } from '../utils/feedbackPageContext';
 import EnterpriseFloatingBar from '../components/EnterpriseFloatingBar';
 
 // 常用系统数据 - 与导航栏业务系统保持一致
@@ -87,14 +86,6 @@ export default function Enterprise({ embeddedInPcWeb = false }: { embeddedInPcWe
     );
   };
 
-  // 帮助与反馈：记录当前门户页面上下文后进入反馈页（与 client 个人卡片行为一致）
-  const portalTitleMap: Record<PortalType, string> = { personal: '个人门户', enterprise: '企业门户', knowledge: '知识门户' };
-  const openHelpFeedback = () => {
-    const context = createFeedbackPageContext(portalTitleMap[portalType], `${location.pathname}${location.search}`);
-    saveFeedbackPageContext(context);
-    navigate('/pc_client/help-feedback', { state: { feedbackPageContext: context } });
-  };
-
   return (
     <div className="h-full flex flex-col bg-gray-100 dark:bg-gray-900">
       {/* 内联工具栏 — PC 客户端门户切换；PC Web 已有独立顶部导航 */}
@@ -132,15 +123,6 @@ export default function Enterprise({ embeddedInPcWeb = false }: { embeddedInPcWe
           </button>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={openHelpFeedback}
-            title="帮助与反馈"
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
-           data-requirement-id="custom-20261028-006">
-            <CircleHelp size={18} />
-            <span className="hidden md:inline">帮助与反馈</span>
-          </button>
           <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 dark:text-gray-400">
             <Search size={18} />
           </button>
