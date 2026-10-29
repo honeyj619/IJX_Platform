@@ -2,6 +2,7 @@ export const MAIN_USER_NAME = '梁吉力';
 export const MAIN_USER_SHORT_NAME = '梁';
 export const MAIN_USER_TITLE = '梁工';
 export const MAIN_USER_AVATAR = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20beautiful%20woman%20avatar%2C%20modern%20style%2C%20confident%20expression%2C%20soft%20lighting%2C%20elegant%20appearance&image_size=square_hd';
+export const RUYI_ASSISTANT_AVATAR = 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd';
 
 export const THREE_KINGDOMS_NAMES = [
   '刘备',

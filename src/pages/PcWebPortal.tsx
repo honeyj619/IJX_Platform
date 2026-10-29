@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Building2, ChevronRight, Mail, MessageCircle, Search, UserRound } from 'lucide-react';
+import { Building2, ChevronRight, MessageCircle, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Enterprise from './Enterprise';
 import { contactDirectory, contactGroups } from '../data/contactDirectory';
-import { MAIN_USER_AVATAR, MAIN_USER_NAME } from '../data/people';
+import { getPersonAvatar, MAIN_USER_AVATAR, MAIN_USER_NAME } from '../data/people';
 
 const portalNavItems = ['首页', '文档中心', '流程中心', '协作办公', 'AI门户', '业务系统', '航班动态', '通讯录', '数据看板'];
 
@@ -18,6 +18,7 @@ export default function PcWebPortal() {
   const isContacts = location.pathname.endsWith('/contacts');
   const [selectedDepartment, setSelectedDepartment] = useState(contactGroups[0]);
   const [keyword, setKeyword] = useState('');
+  const [revealedMobiles, setRevealedMobiles] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     if (!isContacts && new URLSearchParams(location.search).get('tab') !== 'enterprise') {
@@ -43,6 +44,15 @@ export default function PcWebPortal() {
   const startConversation = (name: string) => {
     window.localStorage.setItem('ijx-pcweb-message-target', JSON.stringify({ name, createdAt: Date.now() }));
     window.open(buildWebClientUrl(), '_blank', 'noopener,noreferrer');
+  };
+
+  const toggleMobile = (personId: string) => {
+    setRevealedMobiles((current) => {
+      const next = new Set(current);
+      if (next.has(personId)) next.delete(personId);
+      else next.add(personId);
+      return next;
+    });
   };
 
   return (
@@ -93,16 +103,24 @@ export default function PcWebPortal() {
 
             <div className="mt-5 grid grid-cols-2 gap-4">
               {contacts.map((person) => (
-                <article key={person.id} className="flex min-h-48 items-start gap-5 rounded border border-gray-200 p-5 transition-shadow hover:shadow-md">
-                  <span className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-2 border-theme-100 bg-theme-50 text-2xl font-semibold text-theme-700">{person.name.slice(0, 1)}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-3"><div><h3 className="text-base font-semibold">{person.name}</h3><p className="mt-1 text-sm text-gray-500">{person.title}</p></div><button type="button" onClick={() => startConversation(person.name)} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded border border-theme-200 px-2.5 text-xs font-medium text-theme-700 hover:bg-theme-50"><MessageCircle size={14} />发消息</button></div>
-                    <dl className="mt-5 space-y-2 text-sm text-gray-500">
-                      <div className="flex items-center gap-2"><Building2 size={14} className="text-gray-400" /><span>{person.department}</span></div>
-                      <div className="flex items-center gap-2"><Mail size={14} className="text-gray-400" /><span className="truncate">{person.email}</span></div>
-                      <div className="flex items-center gap-2"><UserRound size={14} className="text-gray-400" /><span>域账号：{person.email.split('@')[0]}</span></div>
-                    </dl>
+                <article key={person.id} className="relative min-h-[238px] rounded border border-gray-200 bg-white p-5 pr-36 transition-shadow hover:shadow-md">
+                  <div className="truncate text-sm text-gray-800">{person.company}</div>
+                  <div className="mt-5 flex min-w-0 items-baseline gap-4">
+                    <h3 className="shrink-0 text-base font-semibold text-gray-950">{person.name}</h3>
+                    <span className="truncate text-sm text-gray-800">{person.title}</span>
                   </div>
+                  <div className="mt-2 truncate text-sm text-gray-800">{person.department} <span className="px-1 text-gray-300">|</span> {person.organizationUnit}</div>
+                  <dl className="mt-6 space-y-2 text-sm">
+                    <div className="flex min-w-0"><dt className="w-20 shrink-0 text-gray-400">办公室电话</dt><dd className="truncate text-gray-700">{person.officePhone}</dd></div>
+                    <div className="flex min-w-0"><dt className="w-20 shrink-0 text-gray-400">手机号码</dt><dd><button type="button" onClick={() => toggleMobile(person.id)} className="text-blue-600 hover:underline">{revealedMobiles.has(person.id) ? person.mobile : '查看'}</button></dd></div>
+                    <div className="flex min-w-0"><dt className="w-20 shrink-0 text-gray-400">工号</dt><dd className="truncate text-gray-700">{person.employeeNo}</dd></div>
+                    <div className="flex min-w-0"><dt className="w-20 shrink-0 text-gray-400">电子邮箱</dt><dd className="truncate text-gray-700" title={person.email}>{person.email}</dd></div>
+                  </dl>
+                  <div className="absolute right-5 top-12 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-2 border-theme-500 bg-theme-50 text-2xl font-semibold text-theme-700">
+                    <span>{person.name.slice(0, 1)}</span>
+                    <img src={getPersonAvatar(person.name)} alt={person.name} className="absolute inset-0 h-full w-full object-cover" onError={(event) => { event.currentTarget.style.display = 'none'; }} />
+                  </div>
+                  <button type="button" onClick={() => startConversation(person.name)} className="absolute bottom-5 right-5 inline-flex h-8 items-center gap-1.5 rounded border border-theme-200 px-2.5 text-xs font-medium text-theme-700 hover:bg-theme-50"><MessageCircle size={14} />发消息</button>
                 </article>
               ))}
             </div>
@@ -110,7 +128,7 @@ export default function PcWebPortal() {
           </section>
         </main>
       ) : (
-        <div className="h-[calc(100vh-153px)] min-h-[720px]"><Enterprise /></div>
+        <div className="h-[calc(100vh-153px)] min-h-[720px]"><Enterprise embeddedInPcWeb /></div>
       )}
     </div>
   );

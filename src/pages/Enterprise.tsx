@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import Personal_Enterprise from './Personal_Enterprise';
 import EKB from './EKB';
-import { getDemoPerson } from '../data/people';
+import { getDemoPerson, RUYI_ASSISTANT_AVATAR } from '../data/people';
 import { createFeedbackPageContext, saveFeedbackPageContext } from '../utils/feedbackPageContext';
 
 // 常用系统数据 - 与导航栏业务系统保持一致
@@ -52,7 +52,7 @@ function getPortalTypeFromSearch(search: string): PortalType {
   return 'personal';
 }
 
-export default function Enterprise() {
+export default function Enterprise({ embeddedInPcWeb = false }: { embeddedInPcWeb?: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [portalType, setPortalType] = useState<PortalType>(() => getPortalTypeFromSearch(window.location.search));
@@ -96,8 +96,8 @@ export default function Enterprise() {
 
   return (
     <div className="h-full flex flex-col bg-gray-100 dark:bg-gray-900">
-      {/* 内联工具栏 — 轻量切换条 */}
-      <div className="flex items-center justify-between px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-700/60 shrink-0">
+      {/* 内联工具栏 — PC 客户端门户切换；PC Web 已有独立顶部导航 */}
+      {!embeddedInPcWeb && <div className="flex items-center justify-between px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-700/60 shrink-0">
         <div className="flex items-center bg-gray-100/80 dark:bg-gray-700/80 rounded-lg p-0.5">
           <button
             onClick={() => switchPortalType('personal')}
@@ -144,7 +144,7 @@ export default function Enterprise() {
             <Search size={18} />
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* 主内容区 */}
       <div className="flex-1 overflow-y-auto">
@@ -426,7 +426,7 @@ export default function Enterprise() {
             <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
               <Mail size={18} />
             </button>
-            <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
+            <button type="button" onClick={() => navigate('/download')} title="客户端下载" className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
               <Smartphone size={18} />
             </button>
             <button className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
@@ -439,7 +439,7 @@ export default function Enterprise() {
             <div className="relative flex flex-col items-center">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center overflow-hidden">
                 <img 
-                  src="https://api.dicebear.com/7.x/avataaars/svg?seed=ruyi_assistant"
+                  src={RUYI_ASSISTANT_AVATAR}
                   alt="如意助手"
                   className="w-full h-full"
                 />

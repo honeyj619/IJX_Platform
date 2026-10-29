@@ -4,10 +4,15 @@ import { THREE_KINGDOMS_NAMES, getInitialsAvatar } from './people';
 export interface ContactPerson {
   id: string;
   name: string;
+  company: string;
   /** 展示用邮箱（选中后由系统关联，无需用户录入） */
   email: string;
   department: string;
+  organizationUnit: string;
   title: string;
+  officePhone: string;
+  mobile: string;
+  employeeNo: string;
 }
 
 const buildEmail = (name: string) => {
@@ -49,8 +54,22 @@ const directoryDefinition: Array<[string, string, Array<[string, string]>]> = [
   ]],
 ];
 
-export const contactDirectory: ContactPerson[] = directoryDefinition.flatMap(([department, , members]) =>
-  members.map(([name, title]) => ({ id: `c-${name}`, name, email: buildEmail(name), department, title }))
+export const contactDirectory: ContactPerson[] = directoryDefinition.flatMap(([department, organizationUnit, members], departmentIndex) =>
+  members.map(([name, title], memberIndex) => {
+    const sequence = departmentIndex * 100 + memberIndex;
+    return {
+      id: `c-${name}`,
+      name,
+      company: '上海吉祥航空股份有限公司',
+      email: buildEmail(name),
+      department,
+      organizationUnit,
+      title,
+      officePhone: `66${String(3200 + sequence).padStart(4, '0')}`,
+      mobile: `138****${String(4200 + sequence).slice(-4)}`,
+      employeeNo: `H000-${String(6700 + sequence).padStart(7, '0')}`,
+    };
+  })
 );
 
 export const contactGroups = Array.from(new Set(contactDirectory.map(person => person.department)));

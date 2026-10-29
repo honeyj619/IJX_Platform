@@ -1,4 +1,4 @@
-import { MAIN_USER_AVATAR, MAIN_USER_NAME, MAIN_USER_TITLE, getDemoPerson, getInitialsAvatar } from '../data/people';
+import { MAIN_USER_AVATAR, MAIN_USER_NAME, MAIN_USER_TITLE, RUYI_ASSISTANT_AVATAR, getDemoPerson, getInitialsAvatar } from '../data/people';
 import {
   MessageSquare,
   Lock,
@@ -194,7 +194,7 @@ const messages: Message[] = [
   {
     id: 1,
     name: "如意助手",
-    avatar: "https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=professional%20astronaut%20avatar%20in%20space%2C%20clean%20design%2C%20blue%20and%20white%20color%20scheme%2C%20futuristic%20style&image_size=square_hd",
+    avatar: RUYI_ASSISTANT_AVATAR,
     message: "您好！我是如意助手，请问有什么可以帮您？",
     time: "12:21",
     unread: 2,
