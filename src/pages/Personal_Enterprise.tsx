@@ -5253,12 +5253,12 @@ function GanttChart({ projectName, progress, tasks }: { projectName: string; pro
           <div key={index} className="flex items-center gap-3">
             <div className="w-24 text-xs text-gray-600 truncate">{task.name}</div>
             <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
-              <div 
+              <div
                 className={`h-full rounded-full transition-all duration-500 ${
-                  task.completed === true 
-                    ? 'bg-gradient-to-r from-green-500 to-green-700' 
-                    : typeof task.completed === 'number' && task.completed > 0 
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-700' 
+                  task.completed === true
+                    ? 'bg-emerald-50 border border-emerald-600'
+                    : typeof task.completed === 'number' && task.completed > 0
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-700'
                       : 'bg-gray-300'
                 }`}
                 style={{ width: typeof task.completed === 'number' ? `${task.completed}%` : '100%' }}

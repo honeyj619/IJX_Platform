@@ -363,7 +363,7 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
 
           {/* 阶段行 */}
           <div>
-            {data.stages.map((stage, idx) => {
+            {data.stages.map(stage => {
               const collapsed = collapsedStages.has(stage.id);
               const hasSubStages = Boolean(stage.subStages?.length);
               const a = ganttOffset(stage.start), b = ganttOffset(stage.end);
@@ -395,8 +395,16 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
                     </div>
                     <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #e5e7eb 1px, transparent 1px)', backgroundSize: `${(7 / ganttTotalDays) * 100}% 100%` }}>
                       <div
-                        className={`absolute top-[13px] flex h-8 items-center overflow-hidden whitespace-nowrap rounded-md px-3 text-xs font-semibold text-white ${stage.status === 'todo' ? 'border-[1.5px] border-dashed border-gray-300 !bg-transparent !text-gray-400' : stage.status === 'doing' ? 'shadow-md ring-2 ring-theme-200' : 'shadow-sm'}`}
-                        style={{ left: `${left}%`, width: `${width}%`, background: stage.status === 'todo' ? undefined : `linear-gradient(90deg, var(--theme-${[300, 400, 500, 500, 600, 700][idx] ?? 700}), var(--theme-${[400, 500, 600, 600, 700, 700][idx] ?? 700}))` }}
+                        className={`absolute top-[13px] flex h-8 items-center overflow-hidden whitespace-nowrap rounded-md px-3 text-xs font-semibold ${stage.status === 'todo' ? 'border-[1.5px] border-dashed border-gray-300 !bg-transparent !text-gray-400' : stage.status === 'done' ? 'border-[1.5px] border-solid border-emerald-500 !bg-emerald-50 !text-emerald-700' : stage.status === 'doing' ? 'text-white shadow-md ring-2 ring-theme-200' : 'text-white shadow-sm'}`}
+                        style={{
+                          left: `${left}%`,
+                          width: `${width}%`,
+                          background: stage.status === 'todo'
+                            ? undefined
+                            : stage.status === 'done'
+                              ? undefined
+                              : 'linear-gradient(90deg, var(--theme-500), var(--theme-700))',
+                        }}
                       >
                         <span className="shrink-0">{stage.start} ~ {stage.end}</span>
                         <span className="ml-auto min-w-0 truncate pl-2 text-[11.5px] opacity-95">{valTxt}</span>
@@ -416,7 +424,7 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
                         </div>
                         <div className="relative" style={{ backgroundImage: 'linear-gradient(90deg, #f1f5f9 1px, transparent 1px)', backgroundSize: `${(7 / ganttTotalDays) * 100}% 100%` }}>
                           <div
-                            className={`absolute top-[10px] flex h-7 items-center overflow-hidden whitespace-nowrap rounded px-2 text-[10px] font-medium ${subStage.status === 'todo' ? 'border border-dashed border-gray-300 bg-white text-gray-400' : subStage.status === 'delayed' ? 'bg-red-500 text-white' : 'bg-theme-500 text-white'} ${isCurrentSubStage ? 'ring-2 ring-theme-200' : ''}`}
+                            className={`absolute top-[10px] flex h-7 items-center overflow-hidden whitespace-nowrap rounded px-2 text-[10px] font-medium ${subStage.status === 'todo' ? 'border border-dashed border-gray-300 bg-white text-gray-400' : subStage.status === 'delayed' ? 'bg-red-500 text-white' : subStage.status === 'done' ? 'border-[1.5px] border-solid border-emerald-500 bg-emerald-50 text-emerald-700' : 'bg-theme-600 text-white'} ${isCurrentSubStage ? 'ring-2 ring-theme-200' : ''}`}
                             style={{ left: `${subLeft}%`, width: `${subWidth}%` }}
                           >
                             <span className="shrink-0">{subStage.start} ~ {subStage.end}</span>
@@ -436,8 +444,8 @@ export default function ProjectWeeklyReport({ data, filled, litIndex = -1, descr
         <div className="flex flex-wrap items-center gap-5 border-t border-gray-200 px-6 py-3 text-xs text-gray-500">
           <span className="flex items-center gap-1.5 text-gray-400">点击箭头展开或收起子阶段；父阶段行始终保留，横条展示阶段周期与实时计算进度</span>
           <span className="flex-1" />
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm" style={{ background: 'linear-gradient(90deg, var(--theme-400), var(--theme-500))' }} />已完成</span>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm ring-1 ring-theme-200" style={{ background: 'linear-gradient(90deg, var(--theme-500), var(--theme-600))' }} />进行中</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm border-[1.5px] border-emerald-500 bg-emerald-50" />已完成</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm bg-theme-600 ring-1 ring-theme-200" />进行中</span>
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-4 rounded-sm border-[1.5px] border-dashed border-gray-400" />待开始</span>
         </div>
       </section>
