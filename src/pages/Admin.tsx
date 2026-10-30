@@ -812,11 +812,14 @@ function UserGroupManagement() {
   const [editingGroup, setEditingGroup] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const [editFeatures, setEditFeatures] = useState('');
-  const [editMemberScope, setEditMemberScope] = useState('');
   const selectedGroup = groups.find(group => group.id === selectedGroupId) || groups[0];
-  const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim()));
-  const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim()));
+  // 用户组列表按名称首字母升序（英文/数字开头在前，中文按拼音）
+  const nameBucket = (name: string) => /^[a-zA-Z0-9]/.test(name) ? 0 : 1;
+  const byNameAsc = (a: UserGroupRecord, b: UserGroupRecord) =>
+    nameBucket(a.name) - nameBucket(b.name)
+    || a.name.localeCompare(b.name, 'zh-Hans-CN-u-co-pinyin');
+  const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim())).sort(byNameAsc);
+  const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim())).sort(byNameAsc);
   const isManual = selectedGroup.source === 'manual';
 
   const showToast = (message: string) => {
@@ -994,7 +997,7 @@ function UserGroupManagement() {
       </div>
 
       <div className="grid min-h-[620px] grid-cols-[300px_minmax(0,1fr)] max-lg:grid-cols-1">
-        <aside className="border-r border-gray-200 bg-white p-5 max-lg:border-b max-lg:border-r-0">
+        <aside className="border-r border-gray-200 bg-white p-5 max-lg:border-b max-lg:border-r-0" data-requirement-id="custom-20261030-001">
           <div className="relative mb-5">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="搜索用户组" className="h-10 w-full rounded border border-gray-300 pl-10 pr-3 text-sm outline-none focus:border-[#2f75b5]" />
@@ -1129,7 +1132,7 @@ function UserGroupManagement() {
                 {detailGroup.source === 'manual' && (
                   <>
                     <button
-                      onClick={() => { setEditName(detailGroup.name); setEditDescription(detailGroup.description); setEditFeatures(detailGroup.features || ''); setEditMemberScope(detailGroup.memberScope || ''); setEditingGroup(true); }}
+                      onClick={() => { setEditName(detailGroup.name); setEditDescription(detailGroup.description); setEditingGroup(true); }}
                       className="inline-flex h-9 items-center gap-1.5 rounded border border-[#2f75b5] bg-white px-4 text-sm font-medium text-[#2f75b5] hover:bg-blue-50"
                     >
                       <PencilLine size={15} />编辑用户组
@@ -1146,7 +1149,7 @@ function UserGroupManagement() {
               </div>
             </div>
 
-            {/* 基本信息（与新增字段一致 + 适用功能/适用成员范围） */}
+            {/* 基本信息（与新增字段一致：名称 + 描述；适用功能/适用范围由成员配置决定，编辑不可改） */}
             <div className="border-b border-gray-100 px-6 py-4">
               {editingGroup && detailGroup.source === 'manual' ? (
                 <div className="space-y-4">
@@ -1158,42 +1161,14 @@ function UserGroupManagement() {
                     <span>用户组描述</span>
                     <textarea value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={500} rows={2} className="mt-1.5 w-full resize-y rounded border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#2f75b5]" />
                   </label>
-                  <div className="text-sm text-gray-700">
-                    <span>适用功能（可多选）</span>
-                    <div className="mt-1.5 space-y-1.5 rounded border border-gray-200 bg-gray-50/60 px-3 py-2.5">
-                      {USER_GROUP_FEATURE_POOL.map(feature => {
-                        const checked = editFeatures.split(' / ').filter(Boolean).includes(feature.name);
-                        return (
-                          <label key={feature.name} className="flex cursor-pointer items-center gap-2.5 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(event) => {
-                                const current = editFeatures.split(' / ').filter(Boolean);
-                                setEditFeatures(event.target.checked
-                                  ? [...current, feature.name].join(' / ')
-                                  : current.filter(item => item !== feature.name).join(' / '));
-                              }}
-                              className="h-4 w-4 accent-[#2f75b5]"
-                            />
-                            <span className="font-medium text-gray-800">{feature.name}</span>
-                            <span className="text-xs text-gray-400">{feature.description}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <label className="block text-sm text-gray-700">
-                    <span>适用成员范围</span>
-                    <input value={editMemberScope} onChange={(event) => setEditMemberScope(event.target.value)} placeholder="如：全员 / 指定部门（××部）" className="mt-1.5 h-9 w-full rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
-                  </label>
+                  <p className="rounded border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-400">适用功能与适用成员范围由成员配置决定，不支持在此编辑</p>
                   <div className="flex justify-end gap-2 pt-1">
                     <button onClick={() => setEditingGroup(false)} className="h-9 rounded border border-gray-300 bg-white px-4 text-sm text-gray-700 hover:bg-gray-50">取消</button>
                     <button
                       onClick={() => {
                         if (!editName.trim()) { showToast('请输入用户组名称'); return; }
                         setGroups(current => current.map(group => group.id === detailGroup.id
-                          ? { ...group, name: editName.trim(), description: editDescription.trim(), features: editFeatures.trim(), memberScope: editMemberScope.trim(), updatedAt: '2026-07-01 11:00' }
+                          ? { ...group, name: editName.trim(), description: editDescription.trim(), updatedAt: '2026-07-01 11:00' }
                           : group));
                         setEditingGroup(false);
                         showToast('用户组信息已保存');
