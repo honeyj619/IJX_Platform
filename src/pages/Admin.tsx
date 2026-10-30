@@ -34,6 +34,7 @@ import ContactPicker, { type ContactSelection } from '../components/ContactPicke
 import DeviceManagement from '../components/admin/DeviceManagement';
 import PcWorkbenchAdmin from '../components/admin/PcWorkbenchAdmin';
 import FeedbackManagement from '../components/admin/FeedbackManagement';
+import AdminPagination from '../components/admin/AdminPagination';
 import {
   TRUSTED_ROUTE_DICTIONARY_NAME,
   TRUSTED_ROUTE_DICTIONARY_TYPE,
@@ -818,6 +819,18 @@ function UserGroupManagement() {
   const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim())).sort(compareUserGroupByName);
   const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim())).sort(compareUserGroupByName);
   const isManual = selectedGroup.source === 'manual';
+  // 组内成员分页（每页 10 条；切换组或搜索条件变化时重置回第 1 页）
+  const MEMBER_PAGE_SIZE = 10;
+  const [memberPage, setMemberPage] = useState(1);
+  const filteredMembers = selectedGroup.members.filter(member => {
+    const kw = memberKeyword.trim();
+    if (!kw) return true;
+    return memberSearchType === 'member'
+      ? [member.name, member.domainAccount || '', member.employeeNo || ''].some(value => value.includes(kw))
+      : (member.kind === 'department' ? member.name : member.department).includes(kw);
+  });
+  useEffect(() => { setMemberPage(1); }, [selectedGroupId, memberKeyword, memberSearchType]);
+  const pagedMembers = filteredMembers.slice((memberPage - 1) * MEMBER_PAGE_SIZE, memberPage * MEMBER_PAGE_SIZE);
 
   const showToast = (message: string) => {
     setToast(message);
@@ -1073,15 +1086,7 @@ function UserGroupManagement() {
                 </tr>
               </thead>
               <tbody>
-                {selectedGroup.members
-                  .filter(member => {
-                    const kw = memberKeyword.trim();
-                    if (!kw) return true;
-                    return memberSearchType === 'member'
-                      ? [member.name, member.domainAccount || '', member.employeeNo || ''].some(value => value.includes(kw))
-                      : (member.kind === 'department' ? member.name : member.department).includes(kw);
-                  })
-                  .map(member => {
+                {pagedMembers.map(member => {
                   const isDept = member.kind === 'department';
                   return (
                     <tr key={member.userId} className="border-b border-gray-100 last:border-b-0 hover:bg-gray-50">
@@ -1103,16 +1108,11 @@ function UserGroupManagement() {
                     </tr>
                   );
                 })}
-                {selectedGroup.members.filter(member => {
-                  const kw = memberKeyword.trim();
-                  if (!kw) return true;
-                  return memberSearchType === 'member'
-                    ? [member.name, member.domainAccount || '', member.employeeNo || ''].some(value => value.includes(kw))
-                    : (member.kind === 'department' ? member.name : member.department).includes(kw);
-                }).length === 0 && <tr><td className="px-4 py-10 text-center text-gray-400" colSpan={5}>{memberKeyword ? '未找到匹配项' : '暂无成员'}</td></tr>}
+                {filteredMembers.length === 0 && <tr><td className="px-4 py-10 text-center text-gray-400" colSpan={5}>{memberKeyword ? '未找到匹配项' : '暂无成员'}</td></tr>}
               </tbody>
             </table>
           </div>
+          <AdminPagination total={filteredMembers.length} page={memberPage} pageSize={MEMBER_PAGE_SIZE} onChange={setMemberPage} />
         </section>
       </div>
 
