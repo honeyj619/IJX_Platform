@@ -218,5 +218,11 @@ export const syncUserGroups = (syncedAt: string): UserGroupRecord[] => {
   return next;
 };
 
+/** 用户组名称首字母升序：英文/数字开头在前，中文按拼音（供后台列表与通讯录选择器统一使用） */
+export const compareUserGroupByName = (a: UserGroupRecord, b: UserGroupRecord): number => {
+  const bucket = (name: string) => /^[a-zA-Z0-9]/.test(name) ? 0 : 1;
+  return bucket(a.name) - bucket(b.name) || a.name.localeCompare(b.name, 'zh-Hans-CN-u-co-pinyin');
+};
+
 /** 占位（保持未来扩展一致性） */
 export type _Unused = ReactNode;

@@ -15,6 +15,7 @@ import NavigationConfig from '../components/NavigationConfig';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import {
   USER_GROUP_FEATURE_POOL,
+  compareUserGroupByName,
   createUserGroup,
   deleteUserGroup,
   getUserGroups,
@@ -813,13 +814,9 @@ function UserGroupManagement() {
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const selectedGroup = groups.find(group => group.id === selectedGroupId) || groups[0];
-  // 用户组列表按名称首字母升序（英文/数字开头在前，中文按拼音）
-  const nameBucket = (name: string) => /^[a-zA-Z0-9]/.test(name) ? 0 : 1;
-  const byNameAsc = (a: UserGroupRecord, b: UserGroupRecord) =>
-    nameBucket(a.name) - nameBucket(b.name)
-    || a.name.localeCompare(b.name, 'zh-Hans-CN-u-co-pinyin');
-  const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim())).sort(byNameAsc);
-  const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim())).sort(byNameAsc);
+  // 用户组列表按名称首字母升序（英文/数字开头在前，中文按拼音；与通讯录选择器共用规则）
+  const manualGroups = groups.filter(group => group.source === 'manual' && group.name.includes(keyword.trim())).sort(compareUserGroupByName);
+  const syncedGroups = groups.filter(group => group.source === 'sync' && group.name.includes(keyword.trim())).sort(compareUserGroupByName);
   const isManual = selectedGroup.source === 'manual';
 
   const showToast = (message: string) => {

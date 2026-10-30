@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, FolderTree, Search, UserPlus, UserRound, Users, X } from 'lucide-react';
 import { contactDirectory, contactGroups, type ContactPerson } from '../data/contactDirectory';
-import { getUserGroups, subscribeUserGroups, type UserGroupRecord } from '../data/userGroups';
+import { compareUserGroupByName, getUserGroups, subscribeUserGroups, type UserGroupRecord } from '../data/userGroups';
 
 /** 选择项类型：人员 / 部门 / 用户组 */
 export type ContactSelectionKind = 'person' | 'department' | 'user-group';
@@ -201,8 +201,10 @@ export default function ContactPicker({
 
   const visibleUserGroups = useMemo(() => {
     const keywords = parseKeywords(keyword);
-    if (keywords.length === 0) return userGroups;
-    return userGroups.filter(group => matchAnyKeyword(group.name, keywords) || matchAnyKeyword(group.description, keywords));
+    if (keywords.length === 0) return [...userGroups].sort(compareUserGroupByName);
+    return userGroups
+      .filter(group => matchAnyKeyword(group.name, keywords) || matchAnyKeyword(group.description, keywords))
+      .sort(compareUserGroupByName);
   }, [keyword, userGroups]);
 
   // 受控模式：外部打开弹框时同步 draft（等价内部 openPicker 的初始化）
