@@ -168,7 +168,7 @@ export const presentationTemplates = presentationTemplateList.map(template => te
 export const presentationParamOptions: Record<string, PresentationParamOption> = {
   pageCount: { label: "页数", options: ["3-5页", "6-10页", "11-15页", "16-20页"] },
   textStyle: { label: "文本量", options: ["简洁", "中等", "详细"] },
-  audience: { label: "受众", options: ["大众", "投资者", "商业", "学生", "教师", "老板/领导", "员工", "同事同行", "用户", "组员"] },
+  audience: { label: "受众", options: ["老板/领导", "下属", "同事/同行", "用户", "大众"] },
   scene: { label: "场景", options: ["通用", "个人介绍", "年度计划", "分析报告", "公告", "商业计划书", "年度总结", "研究报告", "解决方案", "宣传材料", "学术会议", "产品介绍", "财务报告", "公众演讲", "项目汇报", "会议流程", "项目计划"] },
   tone: { label: "语气", options: ["专业", "励志", "幽默", "亲切", "自信", "温柔"] },
   language: { label: "语言", options: ["中文", "英文", "中英双语"] },
