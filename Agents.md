@@ -8,13 +8,28 @@
 
 ## 2. 工作目录与提交流程
 
-* 开发提交目录以 `D:\Codex\github-ijx-platform-im-web\work\push\IJX_Platform` 为准。
-* 预览目录以 `D:\Codex\github-ijx-platform-im-web\work\preview\IJX_Platform-main` 为准。
+### 2.1 本地部署与多端协作
+
+* 项目已部署到用户本地：`C:\Users\jjie6\Documents\new ijx\`，以该目录为准进行本地运行与验收。
+* 用户的本地目录不在云端沙箱可访问范围内。云端 agent（Trae/Claude）只在 `/workspace` 的 `IJX_Platform` 克隆内改代码，改动通过 git 流转到用户本地，不直接操作本地磁盘。
+* 本项目由多个 agent 共同编辑：Trae（当前云端工作区）、GPT、WorkBuddy。所有 agent 共享同一份 git 仓库，必须遵循以下协作约束，避免互相覆盖。
+* 同一时间只允许一个 agent 修改同一批文件；开始改前先 `git status` 与 `git log -1`，确认没有他人未提交的改动。
+* 每次改动范围要小、可独立验收，不顺手重构无关文件；不批量替换、不格式化整文件。
+* 不复用上一轮 agent 的未提交改动作为基础，除非用户明确说明这是已合并的基线。
+* 修改前先说明将要改动的文件清单与方案，收到确认或用户明确指令后再动手。
+
+### 2.2 预览与构建
+
 * 修改完成后必须先运行构建，确认无白屏、无编译错误、无明显乱码。
-* 需要预览时，应同步到 preview 目录，并给出可访问地址。
-* 未经用户明确确认，不自动推送 git。
-* 用户明确要求推送时，提交到 `main` 分支。
-* 推送 `main` 后，GitHub Actions 会自动触发 GitHub Pages 更新。
+* 需要预览时，启动开发服务器并给出可访问地址；预览以 `/workspace` 运行结果为准。
+* 用户本地验收目录为 `C:\Users\jjie6\Documents\new ijx\`，由其自行 `git pull` 后运行。
+
+### 2.3 审批与发布
+
+* 改动完成后不自动 `git commit` / `git pull` / `git push`，必须等用户在本地验收并明确审批通过后才能发布到 git。
+* 发布一律提交到 `main` 分支；推送 `main` 后，GitHub Actions 会自动触发 GitHub Pages 更新。
+* 等待审批时，回复必须包含：改动文件清单、功能路由、改动简述、需要重点验收的点。
+* 用户审批通过并明确要求推送后才提交，不得提前提交或合并。
 * 每次推送后的回复必须包含“功能路由 + 简述”清单。
 
 ## 3. 技术栈
@@ -164,7 +179,8 @@ npm.cmd run check
 
 未经用户明确要求，不得执行以下操作：
 
-* 自动推送 git；
+* 自动提交（`git commit`）、自动拉取（`git pull`）、自动推送（`git push`）；
+* 在用户审批前合并或多个 agent 改动互相覆盖；
 * 修改 GitHub Actions；
 * 修改部署配置；
 * 修改仓库远端配置；
