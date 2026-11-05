@@ -45,6 +45,7 @@ import FeedbackComposer from '../components/FeedbackComposer';
 import { resolveFeedbackIntent, type FeedbackIntentResult } from '../utils/feedbackIntent';
 import type { FeedbackRecord } from '../data/feedback';
 import { createFeedbackPageContext } from '../utils/feedbackPageContext';
+import { useMeetingStore } from '../store/meetingStore';
 
 interface CardContent {
   title: string;
@@ -108,6 +109,7 @@ interface ChatMessageMeta {
   meetingId?: string;
   duration?: string;
   status?: 'ongoing' | 'ended';
+  organizer?: string;
   // link 类型
   linkTitle?: string;
   linkDescription?: string;
@@ -829,6 +831,27 @@ export default function Home() {
       setMessageDraft('');
     } catch {
       // 无效的跨页面会话信息不影响消息页正常使用。
+    }
+  }, []);
+
+  useEffect(() => {
+    const raw = window.localStorage.getItem('ijx-chat-meeting-card');
+    if (!raw) return;
+    window.localStorage.removeItem('ijx-chat-meeting-card');
+    try {
+      const payload = JSON.parse(raw) as { conversationName: string; meetingId: string; meetingNo: string; title: string; organizer: string; createdAt: number };
+      if (!payload.conversationName || Date.now() - payload.createdAt > 30 * 60 * 1000) return;
+      setMessageList((current) => current.map((message) => message.name === payload.conversationName ? {
+        ...message,
+        message: `[视频会议] ${payload.title}`,
+        time: '刚刚',
+        chatMessages: [...(message.chatMessages ?? []), {
+          id: Date.now(), sender: 'me', type: 'videoMeeting', content: payload.title, time: '刚刚',
+          meta: { meetingId: payload.meetingId, duration: '刚刚发起', status: 'ongoing', organizer: payload.organizer },
+        }],
+      } : message));
+    } catch {
+      // 无效的会议卡片数据不影响消息页。
     }
   }, []);
 
@@ -1600,6 +1623,22 @@ export default function Home() {
                 {selectedMessage.count ? `${selectedMessage.count}条消息` : '在线'}
               </p>
             </div>
+            <button
+              onClick={() => navigate('/pc_client/meetings', {
+                state: {
+                  startMeeting: {
+                    conversationName: selectedMessage.name,
+                    participants: selectedMessage.name.includes('群')
+                      ? [getDemoPerson(1), getDemoPerson(7), getDemoPerson(11)]
+                      : [selectedMessage.name],
+                  },
+                },
+              })}
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+              title="发起如意会议"
+            >
+              <Video size={20} className="text-gray-600 dark:text-gray-300" />
+            </button>
             <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
               <MoreHorizontal size={20} className="text-gray-600 dark:text-gray-300" />
             </button>
@@ -1789,6 +1828,8 @@ function CardMessage({ message }: { message: Message }) {
 }
 
 function ChatMessageBubble({ chatMsg, avatar, name, highlighted = false }: { chatMsg: ChatMessage; avatar: string; name: string; highlighted?: boolean }) {
+  const navigate = useNavigate();
+  const linkedMeeting = useMeetingStore((state) => state.meetings.find((meeting) => meeting.id === chatMsg.meta?.meetingId || meeting.meetingNo === chatMsg.meta?.meetingId));
   const isMe = chatMsg.sender === 'me';
 
   return (
@@ -1806,7 +1847,7 @@ function ChatMessageBubble({ chatMsg, avatar, name, highlighted = false }: { cha
       <div className={`relative group max-w-xl ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
         {/* 消息气泡 */}
         <div className={`relative rounded-2xl shadow-sm border overflow-hidden ${isMe ? 'bg-mint-50 text-gray-700 border-mint-200 dark:bg-mint-900/30 dark:text-mint-100 dark:border-mint-700/50' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-100 dark:border-gray-700'}`}>
-          {renderChatContent(chatMsg, isMe)}
+          {renderChatContent(chatMsg, isMe, () => navigate(linkedMeeting ? `/pc_client/meetings/${linkedMeeting.id}` : '/pc_client/meetings'))}
         </div>
         {/* 时间 */}
         <span className="text-xs text-gray-400 mt-1 px-1">{chatMsg.time}</span>
@@ -1831,7 +1872,7 @@ function ChatMessageBubble({ chatMsg, avatar, name, highlighted = false }: { cha
   );
 }
 
-function renderChatContent(chatMsg: ChatMessage, isMe: boolean) {
+function renderChatContent(chatMsg: ChatMessage, isMe: boolean, onMeetingOpen: () => void) {
   // 渲染单个元素
   const renderElement = (element: ChatMessageElement, index: number) => {
     switch (element.type) {
@@ -2283,15 +2324,15 @@ function renderChatContent(chatMsg: ChatMessage, isMe: boolean) {
                 <span>会议 ID: {chatMsg.meta?.meetingId}</span>
               </div>
               <button
+                onClick={onMeetingOpen}
                 className={`w-full py-2 rounded-md text-sm font-medium transition-colors ${
                   chatMsg.meta?.status === 'ended'
                     ? 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
                     : isMe ? 'bg-theme-500 text-white hover:bg-theme-600'
                     : 'bg-theme-500 text-white hover:bg-theme-600'
                 }`}
-                disabled={chatMsg.meta?.status === 'ended'}
               >
-                {chatMsg.meta?.status === 'ended' ? '已结束' : '加入会议'}
+                {chatMsg.meta?.status === 'ended' ? '查看会议详情' : '加入会议'}
               </button>
             </div>
           </div>

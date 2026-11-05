@@ -1,5 +1,5 @@
 ﻿import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FileArchive,
   Presentation,
@@ -86,7 +86,7 @@ const menuItems: MenuItem[] = [
         label: '版本管理',
         icon: <GitBranch size={16} />,
         children: [
-          { id: 'version-list', label: '版本列表', icon: <GitBranch size={15} /> },
+          { id: 'version-list', label: '版本管理', icon: <GitBranch size={15} /> },
           { id: 'version-release', label: '发布记录', icon: <Globe size={15} /> },
         ]
       },
@@ -155,19 +155,34 @@ const findMenuItemById = (items: MenuItem[], id: string | null): MenuItem | null
 
 const topLevelSystemSections = menuItems.find(item => item.id === 'system')?.children || [];
 
-const adminSectionMap: Record<string, { menu: string; subMenu: string }> = {
-  'ai-template': { menu: 'ai', subMenu: 'ai-template' },
-  'ppt-template': { menu: 'ai', subMenu: 'ppt-template' },
-  'report-template': { menu: 'initial', subMenu: 'report-template' },
-  'system-nav': { menu: 'system', subMenu: 'system-nav' },
-  'system-dictionary': { menu: 'system', subMenu: 'system-dictionary' },
-  'user-groups': { menu: 'system', subMenu: 'system-user-groups' },
-  'app-management': { menu: 'system', subMenu: 'app-management' },
-  'device-management': { menu: 'system', subMenu: 'device-management' },
-  'version-list': { menu: 'system', subMenu: 'version-list' },
-  'version-release': { menu: 'system', subMenu: 'version-release' },
-  'help-feedback': { menu: 'system', subMenu: 'portal-feedback' },
+type AdminPageRoute = {
+  path: string;
+  menu: string;
+  subMenu: string;
+  label: string;
+  legacySections: string[];
 };
+
+const adminPageRoutes: AdminPageRoute[] = [
+  { path: '/admin/security/devices', menu: 'system', subMenu: 'device-management', label: '设备管理', legacySections: ['device-management'] },
+  { path: '/admin/system/user-groups', menu: 'system', subMenu: 'system-user-groups', label: '用户组管理', legacySections: ['user-groups', 'system-user-groups'] },
+  { path: '/admin/system/dictionaries', menu: 'system', subMenu: 'system-dictionary', label: '字典管理', legacySections: ['system-dictionary'] },
+  { path: '/admin/versions', menu: 'system', subMenu: 'version-list', label: '版本管理', legacySections: ['version-list'] },
+  { path: '/admin/versions/releases', menu: 'system', subMenu: 'version-release', label: '发布记录', legacySections: ['version-release'] },
+  { path: '/admin/workspace/apps', menu: 'system', subMenu: 'app-management', label: '应用管理', legacySections: ['app-management'] },
+  { path: '/admin/workspace/navigation', menu: 'system', subMenu: 'system-nav', label: '导航栏管理', legacySections: ['system-nav'] },
+  { path: '/admin/portal/help-feedback', menu: 'system', subMenu: 'portal-feedback', label: '帮助与反馈', legacySections: ['help-feedback', 'portal-feedback'] },
+  { path: '/admin/reports/templates', menu: 'initial', subMenu: 'report-template', label: '模板管理', legacySections: ['report-template'] },
+  { path: '/admin/ai/document-templates', menu: 'ai', subMenu: 'ai-template', label: '公文模板管理', legacySections: ['ai-template'] },
+  { path: '/admin/ai/ppt-templates', menu: 'ai', subMenu: 'ppt-template', label: 'PPT模板管理', legacySections: ['ppt-template'] },
+];
+
+const normalizeAdminPath = (pathname: string) => pathname.replace(/\/+$/, '') || '/admin';
+const adminRouteByPath = Object.fromEntries(adminPageRoutes.map(route => [route.path, route])) as Record<string, AdminPageRoute>;
+const adminRouteBySubMenu = Object.fromEntries(adminPageRoutes.map(route => [route.subMenu, route])) as Record<string, AdminPageRoute>;
+const adminSectionMap = Object.fromEntries(
+  adminPageRoutes.flatMap(route => route.legacySections.map(section => [section, route])),
+) as Record<string, AdminPageRoute>;
 
 const adminTheme = {
   brand: '#d51f5c',
@@ -392,25 +407,52 @@ const defaultVersionDraft: VersionRecord = {
 function VersionManagement({ view }: { view: 'list' | 'release' }) {
   const [activePlatform, setActivePlatform] = useState<VersionPlatform>('android');
   const [rows, setRows] = useState<VersionRecord[]>(initialVersionRows);
-  const [keyword, setKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'全部' | VersionStatus>('全部');
-  const [forceFilter, setForceFilter] = useState<'全部' | '是' | '否'>('全部');
+  const [keywordDraft, setKeywordDraft] = useState('');
+  const [statusDraft, setStatusDraft] = useState<'全部' | VersionStatus>('全部');
+  const [forceDraft, setForceDraft] = useState<'全部' | '是' | '否'>('全部');
+  const [filters, setFilters] = useState<{ keyword: string; status: '全部' | VersionStatus; forceUpdate: '全部' | '是' | '否' }>({
+    keyword: '',
+    status: '全部',
+    forceUpdate: '全部',
+  });
+  const [page, setPage] = useState(1);
   const [editorOpen, setEditorOpen] = useState(false);
   const [draft, setDraft] = useState<VersionRecord>(defaultVersionDraft);
   const [toast, setToast] = useState('');
+  const pageSize = 12;
 
   const filteredRows = rows
     .filter(item => item.platform === activePlatform)
-    .filter(item => statusFilter === '全部' || item.status === statusFilter)
-    .filter(item => forceFilter === '全部' || (forceFilter === '是' ? item.forceUpdate : !item.forceUpdate))
+    .filter(item => view === 'list' || item.status !== '草稿')
+    .filter(item => filters.status === '全部' || item.status === filters.status)
+    .filter(item => filters.forceUpdate === '全部' || (filters.forceUpdate === '是' ? item.forceUpdate : !item.forceUpdate))
     .filter(item => {
-      const value = keyword.trim().toLowerCase();
+      const value = filters.keyword.trim().toLowerCase();
       return !value || item.versionNo.toLowerCase().includes(value) || item.buildNo.toLowerCase().includes(value);
     });
+  const pagedRows = filteredRows.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+    if (page > maxPage) setPage(maxPage);
+  }, [filteredRows.length, page]);
 
   const showToast = (message: string) => {
     setToast(message);
     window.setTimeout(() => setToast(''), 2200);
+  };
+
+  const applyFilters = () => {
+    setFilters({ keyword: keywordDraft.trim(), status: statusDraft, forceUpdate: forceDraft });
+    setPage(1);
+  };
+
+  const resetFilters = () => {
+    setKeywordDraft('');
+    setStatusDraft('全部');
+    setForceDraft('全部');
+    setFilters({ keyword: '', status: '全部', forceUpdate: '全部' });
+    setPage(1);
   };
 
   const openCreate = () => {
@@ -440,6 +482,7 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
       return [draft, ...current];
     });
     setEditorOpen(false);
+    setPage(1);
     showToast('版本配置已保存');
   };
 
@@ -451,95 +494,115 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
           {toast}
         </div>
       )}
-      <div className="bg-white px-8 py-4">
-        <div className="mb-5 text-sm text-gray-500">
+      <div className="space-y-4 p-6">
+      <section className="bg-white p-4 pb-0">
+        <div className="mb-4 text-sm text-gray-500">
           首页 <span className="mx-2">/</span> 版本管理 <span className="mx-2">/</span>
           <span className="text-gray-800">{view === 'list' ? '版本管理' : '版本更新记录'}</span>
         </div>
-        <div className="flex flex-wrap items-center gap-6">
-          <label className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-gray-700">版本号</span>
+        <div className="grid grid-cols-1 gap-x-6 gap-y-3 md:grid-cols-2 2xl:grid-cols-4">
+          <label className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3">
+            <span className="whitespace-nowrap text-right text-gray-700">版本号</span>
             <input
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
+              value={keywordDraft}
+              onChange={(event) => setKeywordDraft(event.target.value)}
+              onKeyDown={(event) => { if (event.key === 'Enter') applyFilters(); }}
               placeholder="请输入版本号"
-              className="h-9 w-72 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]"
+              className="h-9 min-w-0 rounded border border-gray-300 bg-white px-3 outline-none transition focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10"
             />
           </label>
-          <label className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-gray-700">状态</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as '全部' | VersionStatus)} className="h-9 w-64 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
-              <option>全部</option>
+          <label className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-3">
+            <span className="whitespace-nowrap text-right text-gray-700">状态</span>
+            <select value={statusDraft} onChange={(event) => setStatusDraft(event.target.value as '全部' | VersionStatus)} className="h-9 min-w-0 rounded border border-gray-300 bg-white px-3 outline-none transition focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10">
+              <option value="全部">请选择状态</option>
               <option>已发布</option>
               <option>已失效</option>
               <option>草稿</option>
             </select>
           </label>
-          <label className="flex items-center gap-2">
-            <span className="whitespace-nowrap text-gray-700">是否强制更新</span>
-            <select value={forceFilter} onChange={(event) => setForceFilter(event.target.value as '全部' | '是' | '否')} className="h-9 w-72 rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
-              <option>全部</option>
+          <label className="grid grid-cols-[112px_minmax(0,1fr)] items-center gap-3">
+            <span className="whitespace-nowrap text-right text-gray-700">是否强制更新</span>
+            <select value={forceDraft} onChange={(event) => setForceDraft(event.target.value as '全部' | '是' | '否')} className="h-9 min-w-0 rounded border border-gray-300 bg-white px-3 outline-none transition focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10">
+              <option value="全部">请选择是否强制更新</option>
               <option>是</option>
               <option>否</option>
             </select>
           </label>
-          <div className="ml-auto flex gap-2">
-            <button className="rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">查询</button>
-            <button onClick={() => { setKeyword(''); setStatusFilter('全部'); setForceFilter('全部'); }} className="rounded border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50">重置</button>
-            <button className="px-3 text-[#2f75b5] hover:underline">展开⌄</button>
+          <div className="flex items-center justify-end gap-2 md:col-span-2 2xl:col-span-1">
+            <button type="button" onClick={applyFilters} className="h-9 rounded border border-[#337ab7] bg-[#337ab7] px-5 font-medium text-white transition hover:border-[#5695c4] hover:bg-[#5695c4] active:border-[#215991] active:bg-[#215991]">查询</button>
+            <button type="button" onClick={resetFilters} className="h-9 rounded border border-gray-300 bg-white px-5 text-gray-700 transition hover:border-gray-400 hover:bg-gray-50">重置</button>
           </div>
         </div>
-        <div className="mt-6 flex gap-8 border-b border-gray-200">
+        <div className="mt-4 flex gap-8 border-b border-gray-200">
           {versionPlatformTabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActivePlatform(tab.id)}
-              className={`relative pb-3 text-sm font-semibold ${activePlatform === tab.id ? 'text-[#2f75b5]' : 'text-gray-700 hover:text-[#2f75b5]'}`}
+              type="button"
+              onClick={() => { setActivePlatform(tab.id); setPage(1); }}
+              className={`relative px-1 pb-3 pt-2 text-sm font-semibold ${activePlatform === tab.id ? 'text-[#337ab7]' : 'text-gray-700 hover:text-[#337ab7]'}`}
             >
               {tab.label}
-              {activePlatform === tab.id && <span className="absolute bottom-[-1px] left-0 h-0.5 w-full bg-[#2f75b5]" />}
+              {activePlatform === tab.id && <span className="absolute bottom-[-1px] left-0 h-0.5 w-full bg-[#337ab7]" />}
             </button>
           ))}
         </div>
-      </div>
+      </section>
 
-      <div className="p-5">
-        <div className="bg-white p-5">
-          <button onClick={openCreate} className="mb-4 rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">添加</button>
+        <section className="border border-gray-200 bg-white p-4">
+          {view === 'list' && (
+            <button type="button" onClick={openCreate} className="mb-4 inline-flex h-9 items-center gap-1.5 rounded border border-[#337ab7] bg-[#337ab7] px-5 font-medium text-white transition hover:border-[#5695c4] hover:bg-[#5695c4] active:border-[#215991] active:bg-[#215991]">
+              <Plus size={15} />
+              添加
+            </button>
+          )}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1180px] border-collapse text-left">
+            <table className="w-full min-w-[1032px] table-fixed border-collapse text-left">
+              <colgroup>
+                <col className="w-20" />
+                <col className="w-24" />
+                <col className="w-24" />
+                <col className="w-20" />
+                <col className="w-40" />
+                <col className="w-[140px]" />
+                {(activePlatform === 'windows' || activePlatform === 'macos') && <col className="w-36" />}
+                <col className="w-20" />
+                <col className="w-[120px]" />
+                <col className="w-[180px]" />
+              </colgroup>
               <thead>
-                <tr className="bg-gray-50 text-gray-900">
-                  <th className="px-3 py-3 font-medium">版本号</th>
-                  <th className="px-3 py-3 font-medium">构建号</th>
-                  <th className="px-3 py-3 font-medium">是否强制更新</th>
-                  <th className="px-3 py-3 font-medium">状态</th>
-                  <th className="px-3 py-3 font-medium">修复内容</th>
-                  <th className="px-3 py-3 font-medium">描述</th>
-                  {(activePlatform === 'windows' || activePlatform === 'macos') && <th className="px-3 py-3 font-medium">client配置</th>}
-                  <th className="px-3 py-3 font-medium">更新人</th>
-                  <th className="px-3 py-3 font-medium">更新时间</th>
-                  <th className="px-3 py-3 font-medium">操作</th>
+                <tr className="border-b border-gray-200 bg-[#fafafa] text-gray-900">
+                  <th className="border-r border-gray-200 px-2 py-2 font-medium">版本号</th>
+                  <th className="border-r border-gray-200 px-2 py-2 font-medium">构建号</th>
+                  <th className="border-r border-gray-200 px-2 py-2 font-medium">是否强制更新</th>
+                  <th className="border-r border-gray-200 px-2 py-2 font-medium">状态</th>
+                  <th className="border-r border-gray-200 px-2 py-2 font-medium">修复内容</th>
+                  <th className="border-r border-gray-200 px-2 py-2 font-medium">描述</th>
+                  {(activePlatform === 'windows' || activePlatform === 'macos') && <th className="border-r border-gray-200 px-2 py-2 font-medium">client配置</th>}
+                  <th className="border-r border-gray-200 px-2 py-2 font-medium">更新人</th>
+                  <th className="border-r border-gray-200 px-2 py-2 font-medium">更新时间</th>
+                  <th className="px-2 py-2 font-medium">操作</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredRows.map(item => (
+                {pagedRows.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50">
-                    <td className="whitespace-nowrap px-3 py-3 text-gray-800">{item.versionNo}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.buildNo}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.forceUpdate ? '是' : '否'}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.status}</td>
-                    <td className="max-w-[260px] truncate px-3 py-3 text-gray-700">{item.content}</td>
-                    <td className="max-w-[210px] truncate px-3 py-3 text-gray-500">{item.description}</td>
+                    <td className="whitespace-nowrap px-2 py-3 text-gray-800">{item.versionNo}</td>
+                    <td className="whitespace-nowrap px-2 py-3 text-gray-600">{item.buildNo}</td>
+                    <td className="whitespace-nowrap px-2 py-3 text-gray-600">{item.forceUpdate ? '是' : '否'}</td>
+                    <td className="whitespace-nowrap px-2 py-3 text-gray-600">{item.status}</td>
+                    <td className="truncate px-2 py-3 text-gray-700" title={item.content}>{item.content || '—'}</td>
+                    <td className="truncate px-2 py-3 text-gray-500" title={item.description}>{item.description || '—'}</td>
                     {(activePlatform === 'windows' || activePlatform === 'macos') && (
-                      <td className="whitespace-nowrap px-3 py-3 text-gray-600">{item.packageType} · {item.supportedOS}</td>
+                      <td className="truncate px-2 py-3 text-gray-600" title={`${item.packageType} · ${item.supportedOS}`}>{item.packageType} · {item.supportedOS}</td>
                     )}
-                    <td className="whitespace-nowrap px-3 py-3 text-gray-700">{item.updater}</td>
-                    <td className="whitespace-nowrap px-3 py-3 text-gray-700">{item.updatedAt}</td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <button onClick={() => showToast('二维码下载已生成')} className="mr-4 text-[#2f75b5] hover:underline">下载二维码</button>
-                      <button onClick={() => openEdit(item)} className="mr-4 text-[#2f75b5] hover:underline">编辑</button>
-                      <button onClick={() => showToast('更多操作为前端模拟')} className="text-[#2f75b5] hover:underline">更多⌄</button>
+                    <td className="whitespace-nowrap px-2 py-3 text-gray-700">{item.updater}</td>
+                    <td className="whitespace-nowrap px-2 py-3 text-gray-700">{item.updatedAt}</td>
+                    <td className="whitespace-nowrap px-2 py-3">
+                      <button type="button" onClick={() => showToast('二维码已生成（原型模拟）')} className="text-[#337ab7] hover:text-[#215991] hover:underline">下载二维码</button>
+                      <span className="mx-3 text-gray-200">|</span>
+                      <button type="button" disabled={item.status === '已发布'} title={item.status === '已发布' ? '已发布版本不可编辑' : '编辑版本'} onClick={() => openEdit(item)} className="text-[#337ab7] hover:text-[#215991] hover:underline disabled:cursor-not-allowed disabled:text-gray-300 disabled:no-underline">编辑</button>
+                      <span className="mx-3 text-gray-200">|</span>
+                      <button type="button" onClick={() => showToast('更多操作暂未开放')} className="text-[#337ab7] hover:text-[#215991] hover:underline">更多⌄</button>
                     </td>
                   </tr>
                 ))}
@@ -551,70 +614,75 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
               </tbody>
             </table>
           </div>
-          <div className="mt-4 flex items-center justify-end gap-2 text-sm text-gray-600">
-            <span>共 {filteredRows.length} 条</span>
-            <button className="h-8 w-8 rounded border border-gray-200 text-gray-300">‹</button>
-            <button className="h-8 w-8 rounded border border-[#2f75b5] text-[#2f75b5]">1</button>
-            <button className="h-8 w-8 rounded border border-gray-200">2</button>
-            <button className="h-8 w-8 rounded border border-gray-200">›</button>
-            <select className="h-8 rounded border border-gray-200 px-2">
-              <option>12 条/页</option>
-            </select>
-            <span>跳至</span>
-            <input className="h-8 w-12 rounded border border-gray-200 px-2" />
-            <span>页</span>
-          </div>
-        </div>
+          <AdminPagination total={filteredRows.length} page={page} pageSize={pageSize} onChange={setPage} className="mt-4" />
+        </section>
       </div>
 
       {editorOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 px-4">
-          <div className="w-full max-w-2xl rounded bg-white shadow-2xl">
+          <div className="flex max-h-[88vh] w-full max-w-3xl flex-col rounded bg-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
               <h3 className="text-base font-bold text-gray-900">{rows.some(item => item.id === draft.id) ? '编辑版本配置' : '新增版本配置'}</h3>
-              <button onClick={() => setEditorOpen(false)} className="rounded p-1 text-gray-500 hover:bg-gray-100"><X size={18} /></button>
+              <button type="button" title="关闭" onClick={() => setEditorOpen(false)} className="rounded p-1 text-gray-500 hover:bg-gray-100"><X size={18} /></button>
             </div>
-            <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
-              <label className="text-sm text-gray-700">端类型
-                <select value={draft.platform} onChange={(event) => setDraft(prev => ({ ...prev, platform: event.target.value as VersionPlatform }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+            <div className="overflow-y-auto px-6 py-5">
+              <div className="divide-y divide-gray-200 overflow-hidden border border-gray-200">
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700">端类型</span>
+                  <span className="p-2">
+                    <select value={draft.platform} onChange={(event) => setDraft(prev => ({ ...prev, platform: event.target.value as VersionPlatform }))} className="h-9 w-full rounded border border-gray-300 bg-white px-3 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10">
                   <option value="android">android</option>
                   <option value="ios">iOS</option>
-                  <option value="desktop">client</option>
-                </select>
-              </label>
-              <label className="text-sm text-gray-700">版本号
-                <input value={draft.versionNo} onChange={(event) => setDraft(prev => ({ ...prev, versionNo: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
-              </label>
-              <label className="text-sm text-gray-700">构建号
-                <input value={draft.buildNo} onChange={(event) => setDraft(prev => ({ ...prev, buildNo: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
-              </label>
-              <label className="text-sm text-gray-700">状态
-                <select value={draft.status} onChange={(event) => setDraft(prev => ({ ...prev, status: event.target.value as VersionStatus }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]">
+                  <option value="macos">macOS</option>
+                  <option value="windows">Windows</option>
+                    </select>
+                  </span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700"><span className="text-red-500">*</span> 版本号</span>
+                  <span className="p-2"><input value={draft.versionNo} onChange={(event) => setDraft(prev => ({ ...prev, versionNo: event.target.value }))} className="h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10" /></span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700"><span className="text-red-500">*</span> 构建号</span>
+                  <span className="p-2"><input value={draft.buildNo} onChange={(event) => setDraft(prev => ({ ...prev, buildNo: event.target.value }))} className="h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10" /></span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700">状态</span>
+                  <span className="p-2"><select value={draft.status} onChange={(event) => setDraft(prev => ({ ...prev, status: event.target.value as VersionStatus }))} className="h-9 w-full rounded border border-gray-300 bg-white px-3 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10">
                   <option>草稿</option>
                   <option>已发布</option>
                   <option>已失效</option>
-                </select>
-              </label>
-              <label className="text-sm text-gray-700">安装包类型
-                <input value={draft.packageType} onChange={(event) => setDraft(prev => ({ ...prev, packageType: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
-              </label>
-              <label className="text-sm text-gray-700">支持系统
-                <input value={draft.supportedOS} onChange={(event) => setDraft(prev => ({ ...prev, supportedOS: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
-              </label>
-              <label className="md:col-span-2 text-sm text-gray-700">下载地址
-                <input value={draft.downloadUrl} onChange={(event) => setDraft(prev => ({ ...prev, downloadUrl: event.target.value }))} className="mt-1 h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#2f75b5]" />
-              </label>
-              <label className="md:col-span-2 text-sm text-gray-700">修复内容
-                <textarea value={draft.content} onChange={(event) => setDraft(prev => ({ ...prev, content: event.target.value }))} className="mt-1 h-20 w-full rounded border border-gray-300 px-3 py-2 outline-none focus:border-[#2f75b5]" />
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input type="checkbox" checked={draft.forceUpdate} onChange={(event) => setDraft(prev => ({ ...prev, forceUpdate: event.target.checked }))} />
-                强制更新
-              </label>
+                  </select></span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700">安装包类型</span>
+                  <span className="p-2"><input value={draft.packageType} onChange={(event) => setDraft(prev => ({ ...prev, packageType: event.target.value }))} className="h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10" /></span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700">支持系统</span>
+                  <span className="p-2"><input value={draft.supportedOS} onChange={(event) => setDraft(prev => ({ ...prev, supportedOS: event.target.value }))} className="h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10" /></span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700">下载地址</span>
+                  <span className="p-2"><input value={draft.downloadUrl} onChange={(event) => setDraft(prev => ({ ...prev, downloadUrl: event.target.value }))} className="h-9 w-full rounded border border-gray-300 px-3 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10" /></span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700">修复内容</span>
+                  <span className="p-2"><textarea value={draft.content} onChange={(event) => setDraft(prev => ({ ...prev, content: event.target.value }))} className="h-24 w-full resize-y rounded border border-gray-300 px-3 py-2 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10" /></span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700">描述</span>
+                  <span className="p-2"><textarea value={draft.description} onChange={(event) => setDraft(prev => ({ ...prev, description: event.target.value }))} className="h-20 w-full resize-y rounded border border-gray-300 px-3 py-2 outline-none focus:border-[#337ab7] focus:ring-2 focus:ring-[#337ab7]/10" /></span>
+                </label>
+                <label className="grid grid-cols-[128px_minmax(0,1fr)]">
+                  <span className="bg-gray-50 px-4 py-3 text-right text-gray-700">强制更新</span>
+                  <span className="flex items-center gap-2 p-3"><input type="checkbox" checked={draft.forceUpdate} onChange={(event) => setDraft(prev => ({ ...prev, forceUpdate: event.target.checked }))} />启用后，旧版本用户必须完成升级</span>
+                </label>
+              </div>
             </div>
             <div className="flex justify-end gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
-              <button onClick={() => setEditorOpen(false)} className="rounded border border-gray-300 bg-white px-5 py-2 text-gray-700 hover:bg-gray-50">取消</button>
-              <button onClick={saveDraft} className="rounded bg-[#2f75b5] px-5 py-2 font-medium text-white hover:bg-[#28669f]">保存</button>
+              <button type="button" onClick={() => setEditorOpen(false)} className="h-9 rounded border border-gray-300 bg-white px-5 text-gray-700 hover:bg-gray-50">取消</button>
+              <button type="button" onClick={saveDraft} className="h-9 rounded border border-[#337ab7] bg-[#337ab7] px-5 font-medium text-white hover:border-[#5695c4] hover:bg-[#5695c4] active:border-[#215991] active:bg-[#215991]">保存</button>
             </div>
           </div>
         </div>
@@ -3870,23 +3938,41 @@ function DocumentTemplateManagementConsole() {
 
 export default function Admin() {
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const initialSection = searchParams.get('section');
-  const initialAdminState = initialSection ? adminSectionMap[initialSection] : null;
+  const initialAdminState = adminRouteByPath[normalizeAdminPath(location.pathname)] || (initialSection ? adminSectionMap[initialSection] : null);
   const [activeMenu, setActiveMenu] = useState<string | null>(initialAdminState?.menu || null);
   const [activeSubMenu, setActiveSubMenu] = useState<string | null>(initialAdminState?.subMenu || null);
   const [expandedMenus, setExpandedMenus] = useState<Set<string>>(() => new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
-    const section = searchParams.get('section');
-    const mappedState = section ? adminSectionMap[section] : null;
-    if (mappedState) {
-      setActiveMenu(mappedState.menu);
-      setActiveSubMenu(mappedState.subMenu);
+    const pathname = normalizeAdminPath(location.pathname);
+    const pathRoute = adminRouteByPath[pathname];
+    if (pathRoute) {
+      setActiveMenu(pathRoute.menu);
+      setActiveSubMenu(pathRoute.subMenu);
       setExpandedMenus(new Set());
+      return;
     }
-  }, [searchParams]);
+
+    const section = searchParams.get('section');
+    const legacyRoute = section ? adminSectionMap[section] : null;
+    if (pathname === '/admin' && legacyRoute) {
+      navigate(legacyRoute.path, { replace: true });
+      return;
+    }
+
+    if (pathname !== '/admin') {
+      navigate('/admin', { replace: true });
+      return;
+    }
+
+    setActiveMenu(null);
+    setActiveSubMenu(null);
+    setExpandedMenus(new Set());
+  }, [location.pathname, navigate, searchParams]);
 
   const toggleExpandedMenu = (menuId: string) => {
     setExpandedMenus((current) => {
@@ -3904,6 +3990,14 @@ export default function Admin() {
     if (item.children?.length) {
       toggleExpandedMenu(item.id);
       setActiveSubMenu(item.id);
+      return;
+    }
+    const pageRoute = adminRouteBySubMenu[item.id];
+    if (pageRoute) {
+      setActiveMenu(pageRoute.menu);
+      setActiveSubMenu(pageRoute.subMenu);
+      setExpandedMenus(new Set());
+      navigate(pageRoute.path);
       return;
     }
     setActiveSubMenu(item.id);
@@ -4088,7 +4182,7 @@ export default function Admin() {
             <div className={activeSubMenu === 'ai-template' || activeSubMenu === 'report-template' || activeSubMenu === 'system-user-groups' || activeSubMenu === 'system-nav' || activeSubMenu === 'system-dictionary' || activeSubMenu === 'app-management' || activeSubMenu === 'device-management' || activeSubMenu === 'version-list' || activeSubMenu === 'version-release' || activeSubMenu === 'portal-feedback' ? 'w-full min-w-0' : 'max-w-4xl mx-auto'}>
               {/* 面包屑导航 */}
               <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-                <span className="cursor-pointer hover:text-gray-700" onClick={() => { setActiveMenu(null); setActiveSubMenu(null); }}>首页</span>
+                <span className="cursor-pointer hover:text-gray-700" onClick={() => navigate('/admin')}>首页</span>
                 <ChevronRight size={14} />
                 <span className="text-gray-900 font-medium">
                   {menuItems.find(m => m.id === activeMenu)?.label || ''}
@@ -4111,7 +4205,7 @@ export default function Admin() {
                       <h2 className="text-xl font-bold text-gray-900 mb-6">AI辅助功能</h2>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {menuItems.find(m => m.id === 'ai')?.children?.map(sub => (
-                          <div key={sub.id} onClick={() => setActiveSubMenu(sub.id)}
+                          <div key={sub.id} onClick={() => handleNestedMenuClick(sub)}
                             className="p-6 rounded-xl border border-gray-100 hover:border-red-200 hover:shadow-md cursor-pointer transition-all">
                             <div className="w-10 h-10 bg-red-50 text-red-600 rounded-lg flex items-center justify-center mb-3">{sub.icon}</div>
                             <div className="font-medium text-gray-900">{sub.label}</div>

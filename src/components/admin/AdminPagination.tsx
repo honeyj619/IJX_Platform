@@ -27,7 +27,7 @@ function buildPageItems(current: number, totalPages: number): Array<number | 'el
 }
 
 /**
- * 管理后台通用分页组件（样式统一：主题蓝 #2f75b5、共 N 条、上/下一页、页码省略折叠）。
+ * 管理后台通用分页组件（样式统一：操作主色 #337ab7、共 N 条、上/下一页、页码省略折叠）。
  * 受控组件：分页状态由调用方持有，翻页仅回调不内置。
  */
 export default function AdminPagination({ total, page, pageSize, onChange, className = '' }: AdminPaginationProps) {
@@ -47,7 +47,7 @@ export default function AdminPagination({ total, page, pageSize, onChange, class
         aria-label="上一页"
         disabled={current <= 1}
         onClick={() => safeOnChange(current - 1)}
-        className="rounded border border-gray-200 p-1.5 text-gray-400 transition-colors hover:border-[#2f75b5] hover:text-[#2f75b5] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:text-gray-400"
+        className="rounded border border-gray-200 p-1.5 text-gray-400 transition-colors hover:border-[#337ab7] hover:text-[#337ab7] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:text-gray-400"
       >
         <ChevronLeft size={16} />
       </button>
@@ -61,8 +61,8 @@ export default function AdminPagination({ total, page, pageSize, onChange, class
             onClick={() => safeOnChange(item)}
             className={`min-w-8 rounded border px-2.5 py-1.5 transition-colors ${
               item === current
-                ? 'border-[#2f75b5] bg-[#2f75b5] font-semibold text-white'
-                : 'border-gray-200 text-gray-600 hover:border-[#2f75b5] hover:text-[#2f75b5]'
+                ? 'border-[#337ab7] bg-[#337ab7] font-semibold text-white'
+                : 'border-gray-200 text-gray-600 hover:border-[#337ab7] hover:text-[#337ab7]'
             }`}
           >
             {item}
@@ -74,7 +74,7 @@ export default function AdminPagination({ total, page, pageSize, onChange, class
         aria-label="下一页"
         disabled={current >= totalPages}
         onClick={() => safeOnChange(current + 1)}
-        className="rounded border border-gray-200 p-1.5 text-gray-400 transition-colors hover:border-[#2f75b5] hover:text-[#2f75b5] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:text-gray-400"
+        className="rounded border border-gray-200 p-1.5 text-gray-400 transition-colors hover:border-[#337ab7] hover:text-[#337ab7] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:text-gray-400"
       >
         <ChevronRight size={16} />
       </button>

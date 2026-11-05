@@ -20,6 +20,7 @@ import WorkReport from "@/pages/WorkReport";
 import OkrModule from "@/pages/OkrModule";
 import Download from "@/pages/Download";
 import PcWebPortal from "@/pages/PcWebPortal";
+import MeetingCenter, { MeetingRecordingDetail } from "@/pages/Meetings";
 import { RequirementModeLayer, RequirementModeProvider } from "@/components/requirements/RequirementMode";
 
 function shouldShowMobileView(width: number, height: number): boolean {
@@ -59,6 +60,7 @@ const CLIENT_ROUTE_PREFIXES = [
   '/ruyi-zone',
   '/presentation',
   '/calendar',
+  '/meetings',
   '/business',
   '/work-report',
   '/work-items',
@@ -172,6 +174,11 @@ export default function App() {
           <Route path="ruyi-zone/*" element={<RuYiZone />} />
           <Route path="presentation" element={<Navigate to="/pc_client/ruyi-zone/presentation" replace />} />
           <Route path="calendar" element={<Calendar />} />
+          <Route path="meetings" element={<MeetingCenter />} />
+          <Route path="meetings/rooms" element={<Navigate to="/pc_client/meetings" replace />} />
+          <Route path="meetings/recordings" element={<MeetingCenter />} />
+          <Route path="meetings/recordings/:recordingId" element={<MeetingRecordingDetail />} />
+          <Route path="meetings/:meetingId" element={<Navigate to="/pc_client/meetings" replace />} />
           <Route path="business" element={<Business />} />
           <Route path="work-report" element={<WorkReport />} />
           <Route path="work-items" element={<Navigate to="/pc_client/enterprise" replace />} />
@@ -189,7 +196,7 @@ export default function App() {
       <RequirementModeProvider>
         <Routes>
           {/* 管理后台 — 独立页面，不嵌套在 Layout 中 */}
-          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/*" element={<Admin />} />
           <Route path="/download" element={<Download />} />
           <Route path="/pc_web" element={<PcWebPortal />} />
           <Route path="/pc_web/contacts" element={<PcWebPortal />} />
@@ -206,6 +213,7 @@ export default function App() {
           <Route path="/ruyi-zone" element={<Navigate to="/pc_client/ruyi-zone" replace />} />
           <Route path="/presentation" element={<Navigate to="/pc_client/ruyi-zone/presentation" replace />} />
           <Route path="/calendar" element={<Navigate to="/pc_client/calendar" replace />} />
+          <Route path="/meetings" element={<Navigate to="/pc_client/meetings" replace />} />
           <Route path="/business" element={<Navigate to="/pc_client/business" replace />} />
           <Route path="/work-report" element={<Navigate to="/pc_client/work-report" replace />} />
           <Route path="/work-items" element={<Navigate to="/pc_client/enterprise" replace />} />

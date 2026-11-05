@@ -4,6 +4,7 @@ import {
   MessagesSquare,
   LayoutGrid,
   CalendarDays,
+  Video,
   Feather,
   Workflow,
   CloudCog,
@@ -85,6 +86,7 @@ const pageTitles: Record<string, string> = {
   '/': '消息',
   '/enterprise': '工作门户',
   '/calendar': '日历',
+  '/meetings': '如意会议',
   '/business': '业务系统',
   '/work-report': '工作汇报',
   '/work-items': '工作门户',
@@ -101,7 +103,17 @@ const pageTitles: Record<string, string> = {
 };
 
 const resolveClientPageTitle = (clientRelativePath: string) => (
-  clientRelativePath.startsWith('/help-feedback/') ? '反馈详情' : pageTitles[clientRelativePath] || clientRelativePath
+  clientRelativePath.startsWith('/help-feedback/')
+    ? '反馈详情'
+    : clientRelativePath === '/meetings/recordings'
+      ? '录制文件'
+    : clientRelativePath === '/meetings/rooms'
+      ? '会议室'
+    : clientRelativePath.startsWith('/meetings/recordings/')
+      ? '会议录制详情'
+      : clientRelativePath.startsWith('/meetings/')
+        ? '会议详情'
+        : pageTitles[clientRelativePath] || clientRelativePath
 );
 
 // 仅做重定向的兼容路径，不记录到“打开的页面”
@@ -115,6 +127,13 @@ const normalizePagePath = (path: string) => {
   return path;
 };
 const isMainNavPath = (path: string, navPathList: string[]) => navPathList.some(target => normalizePagePath(path) === normalizePagePath(target));
+
+/** 如意会议主页面及其 Tab（/meetings、/meetings/rooms、/meetings/recordings）属于主页面，不记录到"打开的页面"；录制详情（/meetings/recordings/:recordingId）是独立页面，必须记录 */
+const isMeetingSubPath = (path: string) => {
+  const normalized = normalizePagePath(path);
+  if (normalized.startsWith(`${WEB_CLIENT_BASE}/meetings/recordings/`)) return false;
+  return normalized === `${WEB_CLIENT_BASE}/meetings` || normalized.startsWith(`${WEB_CLIENT_BASE}/meetings/`);
+};
 
 const stripClientBase = (path: string) => {
   if (path === WEB_CLIENT_BASE) return '/';
@@ -223,6 +242,7 @@ export default function Layout({ children }: LayoutProps) {
     { icon: MessagesSquare, label: '消息', to: clientPath('/'), badge: 8, badgeTitle: '8条未读消息', badgeTone: 'message' },
     { icon: LayoutGrid, label: '工作门户', to: clientPath('/enterprise'), badge: 21, badgeTitle: '21项未办事项', badgeTone: 'work' },
     { icon: CalendarDays, label: '日历', to: clientPath('/calendar') },
+    { icon: Video, label: '如意会议', to: clientPath('/meetings') },
     { icon: Workflow, label: '业务系统', to: clientPath('/business') },
     { icon: CloudCog, label: '如意空间', to: clientPath('/ruyi-zone') },
     ...customNavLinks.map(link => ({
@@ -253,7 +273,7 @@ export default function Layout({ children }: LayoutProps) {
     if (redirectOnlyPaths.has(clientRelativePath)) return;
     const pageTitle = resolveClientPageTitle(clientRelativePath) || currentPath;
     
-    if (pageTitle && !isMainNavPath(currentPath, navPaths)) {
+    if (pageTitle && !isMainNavPath(currentPath, navPaths) && !isMeetingSubPath(currentPath)) {
       addPage({ title: pageTitle, path: currentPath });
     }
   }, [location.pathname, addPage, navPaths]);
@@ -317,7 +337,10 @@ export default function Layout({ children }: LayoutProps) {
                 icon={item.icon}
                 label={item.label}
                 to={item.to}
-                active={!('external' in item && item.external) && normalizePagePath(location.pathname) === normalizePagePath(item.to)}
+                active={!('external' in item && item.external) && (
+                  normalizePagePath(location.pathname) === normalizePagePath(item.to)
+                  || (item.to === clientPath('/meetings') && location.pathname.startsWith(`${clientPath('/meetings')}/`))
+                )}
                 collapsed={!showNavigation}
                 badge={item.badge}
                 badgeTitle={item.badgeTitle}
