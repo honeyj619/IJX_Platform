@@ -6,7 +6,9 @@ export default function Download() {
   const navigate = useNavigate();
 
   const openClient = (platform: 'ios' | 'android') => {
-    window.open(platform === 'ios' ? 'ijx://download/ios' : 'ijx://download/android', '_blank');
+    const target = platform === 'ios' ? 'ios' : 'android';
+    // App 端统一为 Vue 员工端原型（/app/prototype/*）；React App 原型已弃用。
+    navigate(`/app/prototype/?platform=${target}`);
   };
 
   return (

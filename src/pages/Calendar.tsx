@@ -1,12 +1,26 @@
 import { useEffect, useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, Plus, X, Info, Clock, Users, Paperclip } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Plus, X, Info, Clock, Paperclip, Video, ChevronDown } from 'lucide-react';
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import ContactPicker from '../components/ContactPicker';
 import MeetingScheduleDialog from '../components/MeetingScheduleDialog';
+import RoomPickerDialog, { type RoomPickerItem } from '../components/RoomPickerDialog';
 import { contactDirectory } from '../data/contactDirectory';
 import { useLocation } from 'react-router-dom';
 import type { GlobalSearchNavigationState } from '../data/globalSearch';
 import { createMeetingNo, useMeetingStore } from '../store/meetingStore';
+
+const CALENDAR_PICKER_ROOMS: RoomPickerItem[] = [
+  { id: '6502', capacity: 20, equipment: ['桌子', '凳子', '电视'], imageTone: 'from-slate-200 via-stone-100 to-slate-300' },
+  { id: '6407', capacity: 40, equipment: ['桌子', '凳子', '投影仪', '电视'], imageTone: 'from-stone-200 via-white to-emerald-100' },
+  { id: '6404', capacity: 6, equipment: ['桌子', '凳子', '电视'], imageTone: 'from-slate-100 via-zinc-200 to-stone-300' },
+  { id: '6401', capacity: 16, equipment: ['桌子', '凳子', '电视', '白板'], imageTone: 'from-stone-100 via-rose-50 to-slate-200' },
+  { id: '2210', capacity: 50, equipment: ['桌子', '凳子', '投影仪', '话筒'], approval: true, imageTone: 'from-stone-200 via-stone-100 to-amber-100' },
+  { id: '2203', capacity: 24, equipment: ['桌子', '凳子', '投影仪'], approval: true, imageTone: 'from-neutral-100 via-white to-slate-200' },
+  { id: '2206', capacity: 30, equipment: ['桌子', '凳子', '投影仪'], approval: true, imageTone: 'from-stone-300 via-stone-100 to-slate-200' },
+  { id: '2208', capacity: 18, equipment: ['桌子', '凳子', '投影仪'], approval: true, imageTone: 'from-slate-200 via-white to-blue-100' },
+];
+
+const ONLINE_TYPE_LABELS = { none: '不使用线上会议', ruyi: '如意会议', external: '其他视频会议' } as const;
 
 interface CalendarItem {
   id: string;
@@ -16,13 +30,6 @@ interface CalendarItem {
   checked: boolean;
 }
 
-interface Event {
-  id: number;
-  date: string;
-  title: string;
-  type: 'meeting' | 'business' | 'vacation' | 'other';
-  location?: string;
-}
 
 interface MeetingRoom {
   id: string;
@@ -32,16 +39,6 @@ interface MeetingRoom {
   imageTone?: string;
 }
 
-interface RoomBooking {
-  id: string;
-  roomId: string;
-  title: string;
-  host: string;
-  department: string;
-  startSlot: number;
-  endSlot: number;
-  mine?: boolean;
-}
 
 interface RoomSelection {
   roomId: string;
@@ -53,9 +50,7 @@ type RepeatUnit = '天' | '周' | '月' | '年';
 type RepeatEndType = 'date';
 type RepeatMonthRule = 'date' | 'weekday';
 
-const SLOT_WIDTH = 34;
 const SLOT_COUNT = 24;
-const meetingHours = Array.from({ length: 13 }, (_, index) => 8 + index);
 const repeatWeekdayOptions = ['日', '一', '二', '三', '四', '五', '六'];
 const timeAxisSlots = Array.from({ length: 48 }, (_, index) => {
   const hour = Math.floor(index / 2);
@@ -73,29 +68,7 @@ const meetingRooms: MeetingRoom[] = [
   { id: '2208', equipment: '桌子-凳子-投影仪', capacity: 18, approval: true, imageTone: 'from-slate-200 via-white to-blue-100' },
 ];
 
-const roomBookings: RoomBooking[] = [
-  { id: 'b1', roomId: '6502', title: 'DSP 09:00盘点', host: getDemoPerson(1), department: '信息管理部', startSlot: 2, endSlot: 3 },
-  { id: 'b2', roomId: '6502', title: '维修态势感知项目周会', host: getDemoPerson(2), department: '信息管理部', startSlot: 4, endSlot: 7 },
-  { id: 'b3', roomId: '6502', title: '营销中台周会', host: getDemoPerson(3), department: '信息管理部', startSlot: 14, endSlot: 16 },
-  { id: 'b4', roomId: '6502', title: '运维协同例会', host: getDemoPerson(4), department: '信息管理部', startSlot: 16, endSlot: 19 },
-  { id: 'b5', roomId: '6407', title: '管理支撑产品处例会', host: getDemoPerson(19), department: '信息管理部', startSlot: 17, endSlot: 20, mine: true },
-  { id: 'b6', roomId: '6404', title: '南京保障基地沟通', host: getDemoPerson(5), department: '信息管理部', startSlot: 10, endSlot: 12 },
-  { id: 'b7', roomId: '6404', title: '安全会议', host: getDemoPerson(6), department: '信息管理部', startSlot: 12, endSlot: 14 },
-  { id: 'b8', roomId: '6404', title: '采购例会', host: getDemoPerson(7), department: '信息管理部', startSlot: 14, endSlot: 17 },
-  { id: 'b9', roomId: '6401', title: '旅客服务专题', host: getDemoPerson(8), department: '信息管理部', startSlot: 2, endSlot: 3 },
-  { id: 'b10', roomId: '6401', title: '法宣宣贯会', host: getDemoPerson(9), department: '信息管理部', startSlot: 17, endSlot: 20 },
-  { id: 'b11', roomId: '2203', title: '武装干部分例会', host: getDemoPerson(20), department: '地面服务部', startSlot: 10, endSlot: 14 },
-];
 
-const events: Event[] = [
-  { id: 1, date: '2025-05-01', title: '项目立项会议', type: 'meeting' },
-  { id: 2, date: '2025-05-04', title: 'H01253 北京', type: 'business', location: '北京' },
-  { id: 3, date: '2025-05-04', title: '午餐', type: 'other' },
-  { id: 4, date: '2025-05-22', title: '值班', type: 'other' },
-  { id: 5, date: '2025-05-22', title: 'H01253 上海', type: 'business', location: '上海' },
-  { id: 6, date: '2025-05-29', title: '0.5天休假', type: 'vacation' },
-  { id: 7, date: '2025-05-31', title: '休', type: 'vacation' },
-];
 
 export default function Calendar() {
   const location = useLocation();
@@ -112,9 +85,6 @@ export default function Calendar() {
     { id: '6', name: getDemoPerson(21), color: 'bg-cyan-500', type: 'subscribed', checked: false },
   ]);
   const [meetingDate, setMeetingDate] = useState('2026-07-30');
-  const [roomSearch, setRoomSearch] = useState('');
-  const [equipmentFilter, setEquipmentFilter] = useState('');
-  const [isRoomDragging, setIsRoomDragging] = useState(false);
   const [dragSelection, setDragSelection] = useState<RoomSelection | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
@@ -144,6 +114,7 @@ export default function Calendar() {
     }
   }, []);
   const [roomPickerOpen, setRoomPickerOpen] = useState(false);
+  const [onlineOptionsOpen, setOnlineOptionsOpen] = useState(false);
   const [repeatMode, setRepeatMode] = useState('不重复');
   const [customRepeatOpen, setCustomRepeatOpen] = useState(false);
   const [customRepeatDraft, setCustomRepeatDraft] = useState<{
@@ -244,11 +215,6 @@ export default function Calendar() {
     ));
   };
 
-  const filteredRooms = meetingRooms.filter(room => {
-    const matchesSearch = !roomSearch || room.id.includes(roomSearch) || room.equipment.includes(roomSearch);
-    const matchesEquipment = !equipmentFilter || room.equipment.includes(equipmentFilter);
-    return matchesSearch && matchesEquipment;
-  });
 
   const normalizeSelection = (selection: RoomSelection) => ({
     roomId: selection.roomId,
@@ -263,34 +229,6 @@ export default function Calendar() {
     return `${String(hour).padStart(2, '0')}:${minute}`;
   };
 
-  const getBookingForSlot = (roomId: string, slot: number) => {
-    return roomBookings.find(booking => booking.roomId === roomId && slot >= booking.startSlot && slot < booking.endSlot);
-  };
-
-  const handleRoomMouseDown = (roomId: string, slot: number) => {
-    if (getBookingForSlot(roomId, slot)) return;
-    setIsRoomDragging(true);
-    setDragSelection({ roomId, startSlot: slot, endSlot: slot });
-  };
-
-  const handleRoomMouseEnter = (roomId: string, slot: number) => {
-    if (!isRoomDragging || !dragSelection || dragSelection.roomId !== roomId) return;
-    setDragSelection(prev => prev ? { ...prev, endSlot: slot } : prev);
-  };
-
-  const finishRoomSelection = () => {
-    if (!isRoomDragging || !dragSelection) return;
-    setDragSelection(normalizeSelection(dragSelection));
-    setRoomEnabled(true);
-    setIsRoomDragging(false);
-    setBookingModalOpen(true);
-  };
-
-  const openDefaultBooking = () => {
-    setDragSelection({ roomId: '6407', startSlot: 4, endSlot: 5 });
-    setRoomEnabled(activeTab === 'meeting-room');
-    setBookingModalOpen(true);
-  };
 
   const selectedRange = dragSelection ? normalizeSelection(dragSelection) : { roomId: '6407', startSlot: 4, endSlot: 5 };
   const selectedRoom = meetingRooms.find(room => room.id === selectedRange.roomId) ?? meetingRooms[1];
@@ -393,152 +331,6 @@ export default function Calendar() {
   const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
   const managedCalendars = calendarList.filter(c => c.type === 'managed');
   const subscribedCalendars = calendarList.filter(c => c.type === 'subscribed');
-  const slotWidth = isTallViewport ? 38 : SLOT_WIDTH;
-  const meetingRoomShellClass = isTallViewport ? 'min-w-[920px] px-6 py-5' : 'min-w-[760px] px-5 py-4';
-  const meetingGridMinWidth = isTallViewport ? 'min-w-[1130px]' : 'min-w-[984px]';
-  const meetingRoomColumns = isTallViewport ? 'grid-cols-[200px_1fr]' : 'grid-cols-[168px_1fr]';
-
-  const renderMeetingRoomView = () => (
-    <>
-      <div className="flex-1 overflow-hidden bg-white dark:bg-gray-900">
-        <div className={`flex h-full flex-col overflow-hidden ${meetingRoomShellClass}`}>
-          <div className="mb-4 flex items-center justify-between border-b border-slate-200 dark:border-gray-700">
-            <div className="flex items-center gap-8">
-              <button className="pb-3 text-lg font-semibold text-slate-700 dark:text-slate-200">我的会议</button>
-              <button className="border-b-2 border-theme-600 pb-3 text-lg font-semibold text-theme-700 dark:text-theme-300">会议室</button>
-            </div>
-            <div className="text-sm text-slate-500">可拖动空白时间段快速预约会议室</div>
-          </div>
-
-          <div className="mb-4 flex flex-wrap items-center gap-3">
-            <select
-              value={equipmentFilter}
-              onChange={(event) => setEquipmentFilter(event.target.value)}
-              className="h-9 w-44 rounded border border-slate-200 bg-white px-3 text-sm text-slate-600 outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-200"
-            >
-              <option value="">请选择会议设备</option>
-              <option value="电视">电视</option>
-              <option value="投影仪">投影仪</option>
-              <option value="白板">白板</option>
-              <option value="话筒">话筒</option>
-            </select>
-            <button className="flex h-9 w-9 items-center justify-center rounded border border-slate-200 text-slate-600 hover:border-theme-500 hover:text-theme-600 dark:border-gray-700">
-              <ChevronLeft size={18} />
-            </button>
-            <input
-              type="date"
-              value={meetingDate}
-              onChange={(event) => setMeetingDate(event.target.value)}
-              className="h-9 w-36 rounded border border-theme-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-theme-600 dark:border-theme-700 dark:bg-gray-800 dark:text-slate-100"
-            />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">周四</span>
-            <button className="flex h-9 w-9 items-center justify-center rounded border border-slate-200 text-slate-600 hover:border-theme-500 hover:text-theme-600 dark:border-gray-700">
-              <ChevronRight size={18} />
-            </button>
-            <div className="relative h-9 w-56">
-              <input
-                value={roomSearch}
-                onChange={(event) => setRoomSearch(event.target.value)}
-                placeholder="请搜索会议室"
-                className="h-full w-full rounded border border-slate-200 bg-white pl-3 pr-9 text-sm text-slate-600 outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
-              />
-              <Search size={16} className="absolute right-3 top-2.5 text-slate-400" />
-            </div>
-          </div>
-
-          <div className="mb-4 flex max-w-[820px] items-center gap-2 border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800">
-            <Info size={16} />
-            <span>如需预订会议室，可拖动会议室的白色滑块</span>
-          </div>
-
-          <div
-            className="flex-1 overflow-auto border border-slate-200 bg-white dark:border-gray-700 dark:bg-gray-900"
-            onMouseUp={finishRoomSelection}
-          >
-            <div className={meetingGridMinWidth}>
-              <div className={`grid ${meetingRoomColumns} border-b border-slate-200 bg-slate-50 dark:border-gray-700 dark:bg-gray-800`}>
-                <div className="flex h-12 items-center justify-center border-r border-slate-200 text-sm font-semibold text-slate-700 dark:border-gray-700 dark:text-slate-200">
-                  会议室地点
-                </div>
-                <div className="grid" style={{ gridTemplateColumns: `repeat(12, ${slotWidth * 2}px)` }}>
-                  {meetingHours.slice(0, 12).map(hour => (
-                    <div key={hour} className="flex h-12 items-center justify-center border-r border-slate-200 text-sm font-semibold text-slate-700 last:border-r-0 dark:border-gray-700 dark:text-slate-200">
-                      {hour}:00
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {filteredRooms.map((room, rowIndex) => {
-                const roomSelection = dragSelection && normalizeSelection(dragSelection).roomId === room.id
-                  ? normalizeSelection(dragSelection)
-                  : null;
-                const roomBookingList = roomBookings.filter(booking => booking.roomId === room.id);
-
-                return (
-                  <div key={room.id} className={`grid ${meetingRoomColumns} border-b border-slate-200 last:border-b-0 dark:border-gray-700`}>
-                    <div className={`relative min-h-[70px] border-r border-slate-200 px-3 py-2 dark:border-gray-700 ${rowIndex % 2 === 0 ? 'bg-blue-50/60 dark:bg-blue-950/20' : 'bg-rose-50/40 dark:bg-rose-950/10'}`}>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-base font-semibold text-slate-700 dark:text-slate-100">{room.id}</div>
-                        {room.approval && <span className="text-xs font-semibold text-red-500">需审批</span>}
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{room.equipment}</div>
-                      <div className="mt-1 flex items-center gap-1 text-xs text-slate-400">
-                        <Users size={12} />
-                        {room.capacity}
-                      </div>
-                    </div>
-                    <div className="relative min-h-[70px] select-none">
-                      <div className="grid h-full" style={{ gridTemplateColumns: `repeat(${SLOT_COUNT}, ${slotWidth}px)` }}>
-                        {Array.from({ length: SLOT_COUNT }).map((_, slot) => {
-                          const booking = getBookingForSlot(room.id, slot);
-                          return (
-                            <div
-                              key={slot}
-                              onMouseDown={() => handleRoomMouseDown(room.id, slot)}
-                              onMouseEnter={() => handleRoomMouseEnter(room.id, slot)}
-                              className={`min-h-[70px] border-r border-dotted border-slate-200 last:border-r-0 dark:border-gray-700 ${booking ? 'cursor-not-allowed' : 'cursor-crosshair hover:bg-theme-50/50 dark:hover:bg-theme-900/20'}`}
-                            />
-                          );
-                        })}
-                      </div>
-
-                      {roomSelection && (
-                        <div
-                          className="pointer-events-none absolute top-0 h-full bg-pink-300/70 ring-1 ring-pink-400"
-                          style={{
-                            left: `${roomSelection.startSlot * slotWidth}px`,
-                            width: `${(roomSelection.endSlot - roomSelection.startSlot + 1) * slotWidth}px`,
-                          }}
-                        />
-                      )}
-
-                      {roomBookingList.map(booking => (
-                        <div
-                          key={booking.id}
-                          className={`absolute top-0 z-10 h-full overflow-hidden px-2 py-2 text-xs leading-4 text-white ${booking.mine ? 'bg-pink-300 text-theme-700' : 'bg-[#c89a67]'}`}
-                          style={{
-                            left: `${booking.startSlot * slotWidth}px`,
-                            width: `${(booking.endSlot - booking.startSlot) * slotWidth}px`,
-                          }}
-                        >
-                          <div className="truncate whitespace-nowrap font-semibold">{booking.title}</div>
-                          <div className="truncate whitespace-nowrap">{slotToTime(booking.startSlot)}-{slotToTime(booking.endSlot)}</div>
-                          <div className="truncate whitespace-nowrap">{booking.host}</div>
-                          <div className="truncate whitespace-nowrap">{booking.department}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </>
-  );
 
   return (
     <>
@@ -773,106 +565,16 @@ export default function Calendar() {
       </div>
 
       <MeetingScheduleDialog open={scheduleDialogOpen} source="calendar" onClose={() => setScheduleDialogOpen(false)} />
-      {roomPickerOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 py-6">
-          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded bg-white shadow-2xl dark:bg-gray-900">
-            <div className="flex items-center justify-between border-b border-slate-200 px-8 py-5 dark:border-gray-700">
-              <h3 className="text-xl font-semibold text-slate-900 dark:text-white">选择会议室</h3>
-              <button
-                onClick={() => setRoomPickerOpen(false)}
-                className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-gray-800 dark:hover:text-slate-100"
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-10 border-b border-slate-100 px-8 py-6 dark:border-gray-800">
-              <label className="flex items-center gap-4 text-sm text-slate-700 dark:text-slate-200">
-                <span className="shrink-0">搜索:</span>
-                <div className="relative h-10 w-72">
-                  <input
-                    value={roomSearch}
-                    onChange={(event) => setRoomSearch(event.target.value)}
-                    placeholder="搜索"
-                    className="h-full w-full rounded border border-slate-200 bg-white pl-4 pr-10 text-sm outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
-                  />
-                  <Search size={18} className="absolute right-3 top-2.5 text-slate-400" />
-                </div>
-              </label>
-              <label className="flex items-center gap-4 text-sm text-slate-700 dark:text-slate-200">
-                <span className="shrink-0">按设备筛选:</span>
-                <select
-                  value={equipmentFilter}
-                  onChange={(event) => setEquipmentFilter(event.target.value)}
-                  className="h-10 w-72 rounded border border-slate-200 bg-white px-4 text-sm text-slate-500 outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
-                >
-                  <option value="">请选择会议设备</option>
-                  <option value="电视">电视</option>
-                  <option value="投影仪">投影仪</option>
-                  <option value="白板">白板</option>
-                  <option value="话筒">话筒</option>
-                </select>
-              </label>
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-y-auto px-8 py-4">
-              <div className="space-y-3 pr-3">
-                {filteredRooms.map((room) => {
-                  const selected = selectedRoom.id === room.id;
-                  return (
-                    <button
-                      key={room.id}
-                      onClick={() => selectRoom(room.id)}
-                      className={`grid w-full grid-cols-[214px_1fr_auto] items-center gap-8 rounded border px-4 py-4 text-left transition-colors ${
-                        selected
-                          ? 'border-theme-500 bg-theme-50/70 dark:border-theme-500 dark:bg-theme-900/20'
-                          : 'border-slate-200 bg-white hover:border-theme-300 hover:bg-slate-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800'
-                      }`}
-                    >
-                      <div className={`relative h-32 overflow-hidden rounded bg-gradient-to-br ${room.imageTone ?? 'from-slate-200 to-slate-100'}`}>
-                        <div className="absolute inset-x-5 top-8 h-10 skew-x-[-18deg] rounded bg-white/60 shadow-sm" />
-                        <div className="absolute inset-x-8 bottom-6 h-8 skew-x-[18deg] rounded bg-black/10" />
-                        <div className="absolute left-8 top-4 h-20 w-2 rounded bg-black/20" />
-                        <div className="absolute right-10 top-5 h-20 w-2 rounded bg-black/15" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-4">
-                          <div className="text-xl font-semibold text-slate-950 dark:text-white">{room.id}</div>
-                          {room.approval && (
-                            <span className="rounded-full bg-red-50 px-3 py-1 text-sm font-medium text-red-500 dark:bg-red-950/40">需审批</span>
-                          )}
-                        </div>
-                        <div className="mt-5 truncate text-base text-slate-500 dark:text-slate-400">{room.equipment}</div>
-                        <div className="mt-6 flex items-center gap-1 text-base text-slate-400">
-                          <Users size={18} />
-                          {room.capacity}
-                        </div>
-                      </div>
-                      <div className={`h-5 w-5 rounded-full border ${selected ? 'border-theme-600 bg-theme-600 shadow-[inset_0_0_0_4px_white]' : 'border-slate-300 dark:border-gray-600'}`} />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex items-end justify-between border-t border-slate-200 px-8 py-4 dark:border-gray-700">
-              <div className="text-slate-800 dark:text-slate-100">
-                <div className="text-lg font-semibold">已选择： {selectedRoom.id}</div>
-                <div className="mt-1 text-sm">
-                  时间： {meetingDate} {slotToTime(selectedRange.startSlot)}-{slotToTime(selectedRange.endSlot + 1)}
-                  ({(selectedRange.endSlot - selectedRange.startSlot + 1) * 30}分钟)
-                </div>
-              </div>
-              <button
-                onClick={() => setRoomPickerOpen(false)}
-                className="h-10 rounded bg-theme-600 px-8 text-base font-medium text-white hover:bg-theme-700"
-              >
-                确定
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <RoomPickerDialog
+        open={roomPickerOpen}
+        rooms={CALENDAR_PICKER_ROOMS}
+        date={meetingDate}
+        startTime={slotToTime(selectedRange.startSlot)}
+        endTime={slotToTime(selectedRange.endSlot + 1)}
+        selectedRoomId={selectedRoom.id}
+        onSelect={selectRoom}
+        onClose={() => setRoomPickerOpen(false)}
+      />
 
       {bookingModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
@@ -921,21 +623,31 @@ export default function Calendar() {
                   <div className="grid grid-cols-[88px_1fr] items-start gap-3 text-sm">
                     <span className="pt-2 text-right text-slate-700 dark:text-slate-200">线上会议:</span>
                     <div className="space-y-3">
-                      <div className="grid grid-cols-3 gap-2">
-                        {([
-                          ['none', '不使用线上会议'],
-                          ['ruyi', '如意会议'],
-                          ['external', '其他视频会议'],
-                        ] as const).map(([value, label]) => (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => setBookingDraft(prev => ({ ...prev, onlineMeetingType: value }))}
-                            className={`h-9 rounded border px-3 text-sm ${bookingDraft.onlineMeetingType === value ? 'border-theme-500 bg-theme-50 font-medium text-theme-700' : 'border-slate-200 text-slate-600 hover:border-theme-300 dark:border-gray-700 dark:text-slate-200'}`}
-                          >
-                            {label}
-                          </button>
-                        ))}
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setOnlineOptionsOpen(open => !open)}
+                          className="flex h-9 w-full items-center gap-3 rounded border border-slate-200 px-3 text-sm text-slate-700 outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
+                        >
+                          <Video size={16} className="text-theme-600" />
+                          <span className="flex-1 text-left">{ONLINE_TYPE_LABELS[bookingDraft.onlineMeetingType]}</span>
+                          <ChevronDown size={15} className={`text-slate-400 transition-transform ${onlineOptionsOpen ? 'rotate-180' : ''}`} />
+                        </button>
+                        {onlineOptionsOpen && (
+                          <div className="absolute left-0 top-10 z-30 w-full overflow-hidden rounded border border-slate-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                            {(['none', 'ruyi', 'external'] as const).map((value) => (
+                              <button
+                                key={value}
+                                type="button"
+                                onClick={() => { setBookingDraft(prev => ({ ...prev, onlineMeetingType: value })); setOnlineOptionsOpen(false); }}
+                                className={`flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-slate-50 dark:hover:bg-gray-800 ${bookingDraft.onlineMeetingType === value ? 'font-medium text-theme-700 dark:text-theme-300' : 'text-slate-600 dark:text-slate-200'}`}
+                              >
+                                <span className={`h-4 w-4 shrink-0 rounded-full border ${bookingDraft.onlineMeetingType === value ? 'border-theme-600 bg-theme-600 shadow-[inset_0_0_0_3px_white]' : 'border-slate-300 dark:border-gray-600'}`} />
+                                <span>{ONLINE_TYPE_LABELS[value]}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       {bookingDraft.onlineMeetingType === 'ruyi' && (
                         <div className="flex items-center gap-2 rounded bg-theme-50 px-3 py-2 text-xs text-theme-700">

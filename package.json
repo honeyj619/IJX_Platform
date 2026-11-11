@@ -9,7 +9,10 @@
     "build": "vite build --config vite.react.config.mjs --configLoader runner",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check": "tsc -b --noEmit"
+    "check": "npm run check:types && npm run check:build && npm run check:pages",
+    "check:types": "tsc -b --noEmit",
+    "check:build": "vite build --config vite.react.config.mjs --configLoader runner --outDir node_modules/.prototype-check-dist --emptyOutDir",
+    "check:pages": "node tools/prototype/smoke-pages.mjs"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",

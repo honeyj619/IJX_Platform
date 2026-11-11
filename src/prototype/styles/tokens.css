@@ -1,0 +1,88 @@
+/* 作用域限定：原型作为 React 项目的子应用挂载，避免污染外层页面的 :root 变量 */
+.ijx-prototype {
+  /* ========== 品牌色（A 级：spec-colors.png） ========== */
+  --mr: #f53a71;
+  --color-brand-primary: #f53a71;
+  --color-brand-primary-strong: #d3265e;
+  --color-brand-link: #1989fa;
+  --color-brand-blue-strong: #1761ff;
+  --color-brand-gold: #ce9c71;
+  --color-brand-gold-muted: #cb9d6d;
+  --color-brand-brown: #996c3f;
+
+  /* ========== 中性色 ========== */
+  --n1: #f7f8fa;
+  --n2: #f2f3f5;
+  --n3: #ebedf0;
+  --n4: #dcdee0;
+  --n5: #c8c9cc;
+  --n6: #969799;
+  --n7: #646566;
+  --n8: #323233;
+  --color-page-bg: #f7f8fa;
+  --color-card-bg: #ffffff;
+  --color-border: #ebedf0;
+  --color-text-primary: #323233;
+  --color-text-secondary: #646566;
+  --color-text-muted: #969799;
+  --color-text-disabled: #c8c9cc;
+
+  /* ========== 功能色 ========== */
+  --mw: #2e71ff;
+  --color-functional-primary: #2e71ff;
+  --mg: #67c23a;
+  --color-success: #67c23a;
+  --cy4: #faab0c;
+  --color-notice: #faab0c;
+  --o4: #ed6a0c;
+  --color-warning: #ed6a0c;
+  --color-danger: #f35f5f;
+  --color-notice-bg: #fffbe8;
+
+  /* ========== 字阶 T1-T10（A 级：spec-typography.png，一倍图 px） ========== */
+  --t10-size: 26px;  --t10-line: 34px;  --t10-weight: 500;
+  --t9-size: 20px;   --t9-line: 28px;   --t9-weight: 500;
+  --t8-size: 18px;   --t8-line: 24px;   --t8-weight: 500;
+  --t7-size: 17px;   --t7-line: 23px;   --t7-weight: 400;
+  --t6-size: 16px;   --t6-line: 22px;   --t6-weight: 400;
+  --t5-size: 15px;   --t5-line: 21px;   --t5-weight: 400;
+  --t4-size: 14px;   --t4-line: 20px;   --t4-weight: 400;
+  --t3-size: 13px;   --t3-line: 19px;   --t3-weight: 400;
+  --t2-size: 12px;   --t2-line: 16px;   --t2-weight: 400;
+  --t1-size: 10px;   --t1-line: 14px;   --t1-weight: 500;
+
+  /* ========== 安全区 ========== */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+
+  /* ========== 间距（候选 Token，截图验收后再升级长期 Harness） ========== */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --gutter: 12px;
+
+  /* ========== 圆角 ========== */
+  --radius-sm: 8px;
+  --radius-card: 12px;
+  --radius-pill: 999px;
+
+  /* ========== 固定元素高度 ========== */
+  --navbar-height: 46px;
+  --tabbar-height: 50px;
+  --tabbar-total: calc(var(--tabbar-height) + var(--safe-bottom));
+  --content-bottom-space: calc(var(--tabbar-total) + var(--space-4));
+
+  /* ========== 层级 ========== */
+  --z-tabbar: 100;
+  --z-fab: 90;
+  --z-navbar: 110;
+  --z-popup: 200;
+  --z-toast: 300;
+
+  --font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+}

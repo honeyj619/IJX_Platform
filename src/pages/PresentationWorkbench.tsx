@@ -10,6 +10,8 @@ import {
   type PresentationModeId, type PresentationSlide,
 } from "../data/presentation";
 import PresentationTemplatePreview from "../components/PresentationTemplatePreview";
+import { useWorkbenchResultBridge } from "../hooks/useWorkbenchResultBridge";
+import { useRuyiStore } from "../store/ruyiStore";
 
 export interface PresentationRouteState {
   mode?: PresentationModeId;
@@ -118,9 +120,15 @@ const outlineToSlides = (outline: OutlineChapter[]): PresentationSlide[] => getO
 }));
 
 export default function PresentationWorkbench({ initialState, onBack }: PresentationWorkbenchProps = {}) {
+  // 批次4：来源会话成果回流（?sourceConversationId= 时启用）
+  const resultBridge = useWorkbenchResultBridge({ capabilityId: 'presentation', resultType: 'presentation', workbenchPath: '/pc_client/ruyi-zone/presentation' });
   const navigate = useNavigate();
   const location = useLocation();
-  const state = initialState || (location.state || {}) as PresentationRouteState;
+  // 任务2：从对话进入时用 store 启动上下文预填标题/需求描述（不依赖 location.state，刷新不丢失）
+  const launchState = resultBridge.launchContext
+    ? ({ title: resultBridge.launchContext.title, prompt: resultBridge.launchContext.prompt, autoGenerate: true } as Partial<PresentationRouteState>)
+    : {};
+  const state = initialState || ({ ...launchState, ...(location.state || {}) }) as PresentationRouteState;
   const [stage, setStage] = useState<WorkbenchStage>("requirement");
   const [workspaceTab, setWorkspaceTab] = useState<"current" | "mine">("current");
   const [title, setTitle] = useState(state.title || "");
@@ -231,8 +239,8 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
     if (finalFileStatus === "ready") setFinalFileStatus("idle");
   };
 
-  const startOutlineGeneration = (outlineOnly = false) => {
-    if (!prompt.trim()) return;
+  const startOutlineGeneration = (outlineOnly = false, promptOverride?: string) => {
+    if (!(promptOverride ?? prompt).trim()) return;
     setGenerationFailed(false);
     setActiveGenerationStep(outlineOnly ? generationSteps.length - 1 : 0);
     setExpandedGenerationStep(outlineOnly ? generationSteps.length - 1 : 0);
@@ -243,6 +251,23 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
   useEffect(() => {
     if (state.autoGenerate && state.prompt?.trim() && stage === "requirement") {
       startOutlineGeneration(false);
+    }
+    // 仅挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // P0：从对话携带来源会话进入时，读取持久化启动上下文，自动带入标题与需求描述并启动大纲生成
+  useEffect(() => {
+    if (state.prompt?.trim()) return; // 显式 initialState 优先
+    const sourceId = resultBridge.sourceConversationId;
+    if (!sourceId) return;
+    const context = useRuyiStore.getState().getWorkbenchLaunchContext(sourceId, "presentation");
+    if (!context) return;
+    if (context.title) setTitle(context.title);
+    if (context.prompt) {
+      setPrompt(context.prompt);
+      // 闭包中的 prompt 是首帧值（可能为空），必须显式传入
+      startOutlineGeneration(false, context.prompt);
     }
     // 仅挂载时执行一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -637,6 +662,7 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
         setFinalFileStatus("idle");
         setIsSaved(false);
         setToast("PPT已生成并保存至我的PPT");
+        resultBridge.recordResult(title.trim() || state.title || '未命名PPT');
       }, contentGenerationSteps.length * 650 + 900);
     }} className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white"><Sparkles size={15} />确认大纲并生成PPT内容</button><button type="button" onClick={() => { setIsSaved(true); setToast("大纲已保存"); }} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50"><Save size={14} />保存</button></div>;
     if (stage === "contentGenerating") return <button type="button" disabled className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white opacity-90"><LoaderCircle size={15} className="animate-spin" />正在生成PPT内容</button>;

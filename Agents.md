@@ -79,6 +79,10 @@
   * 入口按钮或导航跳转路径；
   * GitHub Pages basename 兼容性。
 * 不要把后台页面、下载页嵌入客户端 Layout。
+* App 端页面统一挂在 `/app` 下，使用独立移动端布局与路由，不嵌套客户端 Layout；Android/iOS 默认共用页面，仅明确平台差异页使用 `/app/<platform>/<section>`（platform 取 `android` | `ios`）。
+* App 端路径规范见 `docs/APP_ROUTES.md`；涉及 App 页面新增、更名、URL 调整时必须先读取，并同一轮更新路径清单。
+* `/app` 不受移动端门禁限制，任意窗口宽度均可访问；`/download` 的 App 入口行为保持不变。
+* IM 模块承载在 App「消息」Tab（`/app/messages`）下，**只参考原型的功能与交互结构，样式与 App 系统一致**（玫红 MR 体系，见 `docs/APP_UI_GUIDELINES.md`）；IM 原型的「工作台」「我的」由 App 系统 Tab 承担，不建立独立 IM 版本。
 * 「打开的页面」记录规则：如意会议主页面及其 Tab（`/pc_client/meetings`、`/pc_client/meetings/rooms`、`/pc_client/meetings/recordings`）属于主页面，不记录到「打开的页面」；录制详情 `/pc_client/meetings/recordings/:recordingId` 是独立新页面，必须记录到「打开的页面」。
 
 ## 7. 编码与文本规范
@@ -97,6 +101,8 @@
 完整设计基线见 `docs/UI_DESIGN_GUIDELINES.md`。涉及客户端整体布局、分栏、配色、页面容器或导航的调整时，必须先对照该文档；如设计稿形成新的长期规则，应同步更新文档。
 
 管理后台完整设计基线见 `docs/ADMIN_UI_GUIDELINES.md`。涉及 `/admin` 下的列表、筛选、表格、按钮、分页、表格式表单或后台状态反馈时必须先读取；从当前系统页面提炼出的稳定规则应同步更新该文档，不得套用客户端品牌色和页面骨架。
+
+App 端与移动端 H5 完整设计基线见 `docs/APP_UI_GUIDELINES.md`（官方 Vant 色彩/字体/按钮/导航/表单/空状态令牌）。涉及 `/app` 与移动 H5 页面布局、配色、字体、Tab 栏或移动端组件时必须先对照该文档，从截图/设计稿提炼出的稳定规则应同步更新；App 页面开发阶段与页面清单见 `docs/APP_DEVELOPMENT_PLAN.md`。
 
 管理后台路径基线见 `docs/ADMIN_ROUTES.md`。涉及后台页面新增、更名、菜单跳转或 URL 调整时必须先读取；页面必须使用已登记的规范路径，菜单点击同步更新地址栏，并在同一轮更新路径清单和旧地址兼容关系。
 
@@ -180,6 +186,17 @@ npm.cmd run check
 * 确认构建通过；
 * 确认用户已明确要求推送。
 
+## 13. 需求模式维护规则
+
+需求模式主数据为 `docs/PROTOTYPE_REQUIREMENTS.md`，编辑 SOP 见 `docs/REQUIREMENT_EDITING.md`。当用户提出「把需求增加到需求模式」时，先校验再写入：
+
+* 写入前先判断该需求是否属于功能逻辑：影响业务行为的规则、数据口径、状态流转、边界条件、跨模块联动关系。
+* 简单页面逻辑不写入需求模式：纯展示类内容（按钮悬浮/显示规则之外的样式、颜色、字号、间距、布局、图标、组件外观）、一次性文案与视觉调整。
+* 写入内容保持简洁：以「功能逻辑 + 业务规则」形式描述，不堆 UI 细节，不与 `docs/UI_DESIGN_GUIDELINES.md` 等视觉基线重复。
+* 同一功能模块内的需求序号必须顺联（1、2、3…连续不跳号），新增/删除/重排后立即重排该模块序号；每个功能模块（如意会议/日历/管理后台等）各自独立编号。
+* 锚点（`data-requirement-id`）必须绑定在承载该功能逻辑的常驻元素上（弹框根节点、区域容器等），不得绑定在按钮等易消失元素上；弹框类锚点放弹框根节点。
+* 新增条目带 `data-requirement-id` 锚点，按 `docs/REQUIREMENT_EDITING.md` 流程维护，MD 与锚点变更一并提交。
+
 ## 12. 禁止改动范围
 
 未经用户明确要求，不得执行以下操作：
@@ -198,3 +215,7 @@ npm.cmd run check
 * 提交构建产物；
 * 新增真实人员隐私数据；
 * 将一次性产品需求写入 `MEMORY.md` 或 `AGENTS.md`。
+
+## 14. 员工端子应用 Harness 指向（2026-11-11）
+
+* 员工端子应用（Vue 原型，`src/prototype/`）的产品基线、版本化参考图与验收规范独立存放于 `src/prototype/harness/`（`AGENTS.md` / `docs/` / `tasks/`）；涉及该子应用页面、消息模块与移动端验收时以该 Harness 为准，本文件其余规范适用于 React 主工程，两者分开适用、不互相覆盖。

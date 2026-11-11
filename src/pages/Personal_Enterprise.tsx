@@ -2275,7 +2275,7 @@ export default function Personal_Enterprise() {
                 })}
               </div>
             </div>
-            <div ref={systemPickerContentRef} className="min-h-0 flex-1 overflow-y-auto bg-gray-50/70 px-6 py-5">
+            <div ref={systemPickerContentRef} className="min-h-0 flex-1 overflow-y-auto bg-gray-50/70 px-6 py-5" data-requirement-id="custom-20261106-001">
               {systemPickerSections.length > 0 ? (
                 <div className="space-y-6">
                   {systemPickerSections.map(section => (

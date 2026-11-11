@@ -1,0 +1,102 @@
+/* 作用域化：原型作为 React 项目的子应用挂载在 .ijx-prototype 容器内，
+   所有 reset / 元素默认值必须限定在该容器下，避免污染外层 React 页面。 */
+
+.ijx-prototype,
+.ijx-prototype *,
+.ijx-prototype *::before,
+.ijx-prototype *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.ijx-prototype {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  font-family: var(--font-family);
+  font-size: var(--t4-size);
+  line-height: var(--t4-line);
+  font-weight: var(--t4-weight);
+  color: var(--color-text-primary);
+  background: var(--n1);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100dvh;
+}
+
+/* 应用画布：移动端全宽，桌面预览居中限宽 480px */
+.ijx-prototype .app-container {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background: var(--n1);
+  overflow-x: hidden;
+}
+
+.ijx-prototype ul,
+.ijx-prototype ol {
+  list-style: none;
+}
+
+.ijx-prototype a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ijx-prototype img {
+  display: block;
+  max-width: 100%;
+}
+
+.ijx-prototype button,
+.ijx-prototype input,
+.ijx-prototype textarea,
+.ijx-prototype select {
+  font: inherit;
+  color: inherit;
+}
+
+.ijx-prototype button {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.ijx-prototype h1,
+.ijx-prototype h2,
+.ijx-prototype h3,
+.ijx-prototype h4,
+.ijx-prototype h5,
+.ijx-prototype h6 {
+  font-weight: 500;
+}
+
+.ijx-prototype :focus-visible {
+  outline: 2px solid var(--color-brand-primary);
+  outline-offset: 2px;
+}
+
+/* 字阶工具类（字号/行高/字重成套使用） */
+.ijx-prototype .t10 { font-size: var(--t10-size); line-height: var(--t10-line); font-weight: var(--t10-weight); }
+.ijx-prototype .t9  { font-size: var(--t9-size);  line-height: var(--t9-line);  font-weight: var(--t9-weight); }
+.ijx-prototype .t8  { font-size: var(--t8-size);  line-height: var(--t8-line);  font-weight: var(--t8-weight); }
+.ijx-prototype .t7  { font-size: var(--t7-size);  line-height: var(--t7-line);  font-weight: var(--t7-weight); }
+.ijx-prototype .t6  { font-size: var(--t6-size);  line-height: var(--t6-line);  font-weight: var(--t6-weight); }
+.ijx-prototype .t5  { font-size: var(--t5-size);  line-height: var(--t5-line);  font-weight: var(--t5-weight); }
+.ijx-prototype .t4  { font-size: var(--t4-size);  line-height: var(--t4-line);  font-weight: var(--t4-weight); }
+.ijx-prototype .t3  { font-size: var(--t3-size);  line-height: var(--t3-line);  font-weight: var(--t3-weight); }
+.ijx-prototype .t2  { font-size: var(--t2-size);  line-height: var(--t2-line);  font-weight: var(--t2-weight); }
+.ijx-prototype .t1  { font-size: var(--t1-size);  line-height: var(--t1-line);  font-weight: var(--t1-weight); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ijx-prototype,
+  .ijx-prototype *,
+  .ijx-prototype *::before,
+  .ijx-prototype *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

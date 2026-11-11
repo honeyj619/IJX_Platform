@@ -27,7 +27,9 @@ export class RequirementStore {
   }
 
   async commit(requirements, sourceChanges = []) {
-    const markdown = serializeRequirementsMarkdown(requirements);
+    // F3：commit 前统一按 surface 连续编号，保证任何写入口不产生重复/跳号
+    const normalized = normalizeOrders(requirements);
+    const markdown = serializeRequirementsMarkdown(normalized);
     const verifiedRequirements = parseRequirementsMarkdown(markdown);
     for (const change of sourceChanges) validateChangedSource(change.content, change.filePath);
     await writeFilesAtomically([
@@ -39,8 +41,18 @@ export class RequirementStore {
 
   async create(input) {
     const requirements = await this.read();
-    const id = nextCustomId(requirements);
-    const sameModule = requirements.filter((requirement) => requirement.route === input.route && requirement.surface === input.surface);
+    // 支持显式稳定 ID（如 ruyi-* 方案清单条目）；缺省时按日期生成 custom-* ID
+    let id;
+    if (input.id !== undefined && input.id !== null && String(input.id).trim()) {
+      id = String(input.id).trim();
+      if (requirements.some((requirement) => requirement.id === id)) {
+        throw new Error(`需求 ID 已存在：${id}`);
+      }
+    } else {
+      id = nextCustomId(requirements);
+    }
+    // F3：功能模块 = surface（route 是适用页面，不参与编号分组）
+    const sameModule = requirements.filter((requirement) => requirement.surface === input.surface);
     const requirement = validateRequirement({
       id,
       surface: input.surface,
@@ -50,8 +62,11 @@ export class RequirementStore {
       functionalRequirement: input.functionalRequirement,
       businessRules: input.businessRules,
     }, '新需求');
-    const sourceChange = await buildCreateAnchorChange(this.rootDir, input.source ?? input.locator, id);
-    return this.commit([...requirements, requirement], [sourceChange]);
+    // 源码锚点已手工就位时可省略 source，仅写需求数据
+    const sourceChange = (input.source ?? input.locator)
+      ? await buildCreateAnchorChange(this.rootDir, input.source ?? input.locator, id)
+      : null;
+    return this.commit([...requirements, requirement], sourceChange ? [sourceChange] : []);
   }
 
   async update(id, input) {
@@ -60,11 +75,10 @@ export class RequirementStore {
     if (index < 0) throw notFound(id);
     const current = requirements[index];
     const patch = sanitizeRequirementPatch(input);
-    const moduleChanged = (patch.route && patch.route !== current.route)
-      || (patch.surface && patch.surface !== current.surface);
+    // F3：模块变化只看 surface；修改 route 不重置同模块 order
+    const moduleChanged = patch.surface && patch.surface !== current.surface;
     const order = moduleChanged
       ? requirements.filter((requirement) => requirement.id !== id
-        && requirement.route === (patch.route ?? current.route)
         && requirement.surface === (patch.surface ?? current.surface)).length + 1
       : current.order;
     requirements[index] = validateRequirement({ ...current, ...patch, order }, `需求 ${id}`);
@@ -75,21 +89,23 @@ export class RequirementStore {
     const requirements = await this.read();
     if (!requirements.some((requirement) => requirement.id === id)) throw notFound(id);
     const sourceChanges = await removeStaticRequirementAnchors(this.rootDir, id);
-    return this.commit(requirements.filter((requirement) => requirement.id !== id), sourceChanges);
+    // F3：删除后由 commit 前的 normalizeOrders 按 surface 重新连续编号
+    return this.commit(normalizeOrders(requirements.filter((requirement) => requirement.id !== id)), sourceChanges);
   }
 
   async reorder(id, input) {
     const requirements = await this.read();
     const requirement = requirements.find((item) => item.id === id);
     if (!requirement) throw notFound(id);
+    // F3：同模块 group 按 surface（跨路由同模块一起排序）
     const group = requirements
-      .filter((item) => item.route === requirement.route && item.surface === requirement.surface && item.id !== id)
+      .filter((item) => item.surface === requirement.surface && item.id !== id)
       .sort((left, right) => left.order - right.order);
 
     let targetIndex;
     if (input?.direction === 'up' || input?.direction === 'down') {
       const currentIndex = requirements
-        .filter((item) => item.route === requirement.route && item.surface === requirement.surface)
+        .filter((item) => item.surface === requirement.surface)
         .sort((left, right) => left.order - right.order)
         .findIndex((item) => item.id === id);
       targetIndex = input.direction === 'up' ? Math.max(0, currentIndex - 1) : Math.min(group.length, currentIndex + 1);
@@ -107,7 +123,7 @@ export class RequirementStore {
     }
     group.splice(targetIndex, 0, requirement);
     const orderById = new Map(group.map((item, index) => [item.id, index + 1]));
-    return this.commit(requirements.map((item) => item.route === requirement.route && item.surface === requirement.surface
+    return this.commit(requirements.map((item) => item.surface === requirement.surface
       ? { ...item, order: orderById.get(item.id) }
       : item));
   }

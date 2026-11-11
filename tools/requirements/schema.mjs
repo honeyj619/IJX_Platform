@@ -64,7 +64,8 @@ export function normalizeOrders(values) {
   const requirements = validateRequirements(values);
   const groups = new Map();
   for (const requirement of requirements) {
-    const moduleKey = `${requirement.route}\0${requirement.surface}`;
+    // F3：功能模块 = surface；route 是适用页面，不参与编号分组
+    const moduleKey = requirement.surface;
     const group = groups.get(moduleKey) ?? [];
     group.push(requirement);
     groups.set(moduleKey, group);

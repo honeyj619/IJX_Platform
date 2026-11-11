@@ -1,24 +1,20 @@
 ﻿import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import Layout from "@/components/Layout";
 import MobileDevicePrompt from "@/components/MobileDevicePrompt";
-import Home from "@/pages/Home";
 import Enterprise from "@/pages/Enterprise";
-import Assistant from "@/pages/Assistant";
 import Process from "@/pages/Process";
 import Profile from "@/pages/Profile";
-import RuYiZone from "@/pages/RuYiZone";
 import HelpFeedback from "@/pages/HelpFeedback";
 import AgentSquarePage from "@/pages/AgentSquarePage";
 import EKB from "@/pages/EKB";
-import Calendar from "@/pages/Calendar";
 import Business from "@/pages/Business";
 import SettingsPage from "@/pages/SettingsPage";
-import Admin from "@/pages/Admin";
 import WorkReport from "@/pages/WorkReport";
 import OkrModule from "@/pages/OkrModule";
 import Download from "@/pages/Download";
+import VuePrototypeHost from "@/components/VuePrototypeHost";
 import PcWebPortal from "@/pages/PcWebPortal";
 import MeetingCenter, { MeetingRecordingDetail } from "@/pages/Meetings";
 import { RequirementModeLayer, RequirementModeProvider } from "@/components/requirements/RequirementMode";
@@ -86,6 +82,18 @@ function isClientRoutePath(pathname: string): boolean {
   return CLIENT_ROUTE_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
+/** App 端路由：独立移动端原型，不套用桌面 Layout，且不受移动端门禁限制 */
+function isAppRoutePath(pathname: string): boolean {
+  const path = getPathWithoutBase(pathname);
+  return path === '/app' || path.startsWith('/app/');
+}
+
+// P2 构建优化：重页面懒加载（模块级定义，避免组件内重建导致 Suspense 反复挂载、导航点击异常）
+const Home = lazy(() => import('@/pages/Home'));
+const RuYiZone = lazy(() => import('@/pages/RuYiZone'));
+const Calendar = lazy(() => import('@/pages/Calendar'));
+const Admin = lazy(() => import('@/pages/Admin'));
+
 function LegacyRouteRedirect({ from, to }: { from: string; to: string }) {
   const location = useLocation();
   const pathname = getPathWithoutBase(location.pathname);
@@ -117,12 +125,14 @@ export default function App() {
         deviceType = width >= 600 ? '折叠屏展开' : '手机竖屏';
       }
       
-      console.log('🔍 屏幕尺寸检测:');
-      console.log(`   尺寸: ${width} x ${height} px`);
-      console.log(`   宽高比: ${aspectRatio.toFixed(2)}`);
-      console.log(`   屏幕方向: ${isLandscape ? '横屏' : '竖屏'}`);
-      console.log(`   设备类型: ${deviceType}`);
-      console.log(`   显示模式: ${shouldMobile ? '❌ 移动端提示' : '✅ 桌面端应用'}`);
+      if (import.meta.env.DEV) {
+        console.log('🔍 屏幕尺寸检测:');
+        console.log(`   尺寸: ${width} x ${height} px`);
+        console.log(`   宽高比: ${aspectRatio.toFixed(2)}`);
+        console.log(`   屏幕方向: ${isLandscape ? '横屏' : '竖屏'}`);
+        console.log(`   设备类型: ${deviceType}`);
+        console.log(`   显示模式: ${shouldMobile ? '❌ 移动端提示' : '✅ 桌面端应用'}`);
+      }
     };
 
     checkIsMobile();
@@ -153,20 +163,22 @@ export default function App() {
 
   const isDownloadPage = window.location.pathname.includes('/download');
   const isClientPage = isClientRoutePath(window.location.pathname);
+  const isAppPage = isAppRoutePath(window.location.pathname);
 
-  // 客户端页面不再显示移动端提示（含 / 及会重定向到 pc_client 的旧路由）；
-  // /admin 和 /download 保留原有行为。
-  if (isMobile && !isDownloadPage && !isClientPage) {
+  // 客户端页面、App 端原型与下载页不显示移动端提示；
+  // /admin 和 /download 保留原有行为，/app 为独立移动端布局。
+  if (isMobile && !isDownloadPage && !isClientPage && !isAppPage) {
     return <MobileDevicePrompt />;
   }
 
-  const webClientRoutes = (
+    const webClientRoutes = (
     <div className="web-client-viewport">
       <Layout>
+        <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-gray-400">加载中…</div>}>
         <Routes>
           <Route index element={<Home />} />
           <Route path="enterprise" element={<Enterprise />} />
-          <Route path="assistant" element={<Assistant />} />
+          <Route path="assistant" element={<Navigate to="/pc_client/ruyi-zone" replace />} />
           <Route path="process" element={<Process />} />
           <Route path="ekb" element={<EKB />} />
           <Route path="profile" element={<Profile />} />
@@ -187,6 +199,7 @@ export default function App() {
           <Route path="help-feedback" element={<HelpFeedback />} />
           <Route path="help-feedback/:feedbackId" element={<HelpFeedback />} />
         </Routes>
+        </Suspense>
       </Layout>
     </div>
   );
@@ -198,6 +211,12 @@ export default function App() {
           {/* 管理后台 — 独立页面，不嵌套在 Layout 中 */}
           <Route path="/admin/*" element={<Admin />} />
           <Route path="/download" element={<Download />} />
+          {/* 新 Vue 员工端原型：独立子应用，自带 TabBar，不套 AppLayout */}
+          <Route path="/app/prototype/*" element={<VuePrototypeHost />} />
+          {/* React App 原型已弃用：旧入口统一重定向到 Vue 员工端，避免落到下架页面 */}
+          <Route path="/app/messages/*" element={<Navigate to="/app/prototype/message" replace />} />
+          <Route path="/app" element={<Navigate to="/app/prototype/" replace />} />
+          <Route path="/app/*" element={<Navigate to="/app/prototype/" replace />} />
           <Route path="/pc_web" element={<PcWebPortal />} />
           <Route path="/pc_web/contacts" element={<PcWebPortal />} />
           <Route path="/web_client/*" element={<LegacyRouteRedirect from="/web_client" to="/pc_client" />} />
@@ -205,7 +224,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/pc_client" replace />} />
           <Route path="/pc_client/*" element={webClientRoutes} />
           <Route path="/enterprise" element={<Navigate to="/pc_client/enterprise" replace />} />
-          <Route path="/assistant" element={<Navigate to="/pc_client/assistant" replace />} />
+          <Route path="/assistant" element={<Navigate to="/pc_client/ruyi-zone" replace />} />
           <Route path="/process" element={<Navigate to="/pc_client/process" replace />} />
           <Route path="/ekb" element={<Navigate to="/pc_client/ekb" replace />} />
           <Route path="/profile" element={<Navigate to="/pc_client/profile" replace />} />

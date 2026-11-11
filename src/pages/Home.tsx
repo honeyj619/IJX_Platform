@@ -40,6 +40,15 @@ import {
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from 'react-router-dom';
+import type { RuyiMessage, RuyiMessageActionType, RuyiMessageFeedback } from '../types/ruyi';
+import { canOpenRuyiResult } from '../utils/ruyiResultPresentation';
+import { useRuyiStore } from '../store/ruyiStore';
+import { useShallow } from 'zustand/react/shallow';
+import { FIXED_SYSTEM_CONVERSATION_ID } from '../data/ruyiDemoScenarios';
+import { useRuyiSend } from '../hooks/useRuyiSend';
+import { getRuyiCapability } from '../data/ruyiCapabilities';
+import { createMessage, buildConfirmationSummary, buildMissingPrompt } from '../services/ruyiMockRuntime';
+import RuyiImMessageList from '../components/ruyi/RuyiImMessageList';
 import type { GlobalSearchNavigationState } from '../data/globalSearch';
 import FeedbackComposer from '../components/FeedbackComposer';
 import { resolveFeedbackIntent, type FeedbackIntentResult } from '../utils/feedbackIntent';
@@ -762,6 +771,15 @@ const processes: ProcessItem[] = [
   },
 ];
 
+function formatTime(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) {
+    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  }
+  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+}
+
 export default function Home() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -775,6 +793,35 @@ export default function Home() {
   const [assistantFeedback, setAssistantFeedback] = useState<FeedbackIntentResult | null>(null);
   const [assistantSubmittedFeedback, setAssistantSubmittedFeedback] = useState<FeedbackRecord | null>(null);
   const [messageDraft, setMessageDraft] = useState('');
+
+  // 如意助手共享 store（修复死循环：不订阅整个 store——getConversationMessages 每次返回新数组引用，
+  // 作为 effect 依赖会无限触发 setState；改用 useShallow 稳定 messages 引用，动作按需订阅）
+  const { send: sendToRuyi, regenerateAssistantResponse: regenerateToRuyi } = useRuyiSend();
+  const ruyiMessages = useRuyiStore(
+    useShallow((state) => (state.conversations[FIXED_SYSTEM_CONVERSATION_ID]?.messageIds ?? []).map((id) => state.messages[id]).filter(Boolean)),
+  );
+
+  // 同步如意助手最后一条消息到 PC 消息列表预览
+  useEffect(() => {
+    const last = ruyiMessages[ruyiMessages.length - 1];
+    if (!last) return;
+    setMessageList((current) =>
+      current.map((message) =>
+        message.type === 'assistant'
+          ? {
+              ...message,
+              message: last.content.slice(0, 60),
+              time: formatTime(last.createdAt),
+            }
+          : message,
+      ),
+    );
+  }, [ruyiMessages]);
+
+  // P0：刷新恢复——持久化的 executing 任务转为可重试状态，避免永久显示"处理中"
+  useEffect(() => {
+    useRuyiStore.getState().recoverInterruptedExecutions();
+  }, []);
 
   // 简化逻辑：移除响应式和拖动相关的复杂处理
   const handleMessageClick = (message: Message) => {
@@ -861,6 +908,13 @@ export default function Home() {
     }
   }, [selectedMessage, contentRefReady]);
 
+  // 如意助手有新消息时保持滚动到底部
+  useEffect(() => {
+    if (selectedMessage?.type === 'assistant' && contentRef.current) {
+      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+    }
+  }, [ruyiMessages, selectedMessage]);
+
   useEffect(() => {
     const payload = (location.state as GlobalSearchNavigationState | null)?.globalSearch;
     if (!payload || payload.target.type !== 'message' || handledSearchRequests.current.has(payload.requestId)) return;
@@ -920,25 +974,215 @@ export default function Home() {
     const content = assistantInput.trim();
     if (!content || !selectedMessage || selectedMessage.type !== 'assistant') return;
     const intent = resolveFeedbackIntent(content);
-    const timestamp = Date.now();
-    const reply = intent.intent === 'none'
-      ? '我明白了。你可以继续补充具体场景，我会帮你判断是使用咨询还是需要提交产品反馈。'
-      : intent.assistantMessage;
-    const nextConversation: Message = {
-      ...selectedMessage,
-      message: content,
-      time: '刚刚',
-      chatMessages: [
-        ...(selectedMessage.chatMessages || []),
-        { id: timestamp, sender: 'me', type: 'text', content, time: '刚刚' },
-        { id: timestamp + 1, sender: 'other', type: 'text', content: reply, time: '刚刚' },
-      ],
-    };
-    setMessageList(current => current.map(message => message.id === selectedMessage.id ? nextConversation : message));
-    setSelectedMessage(nextConversation);
-    setAssistantFeedback(intent.intent === 'none' ? null : intent);
-    setAssistantSubmittedFeedback(null);
+    if (intent.intent !== 'none') {
+      // 反馈意图：记录用户原话到共享会话并弹出反馈 composer
+      sendToRuyi(FIXED_SYSTEM_CONVERSATION_ID, content);
+      setAssistantFeedback(intent);
+      setAssistantSubmittedFeedback(null);
+      setAssistantInput('');
+      return;
+    }
+    sendToRuyi(FIXED_SYSTEM_CONVERSATION_ID, content);
     setAssistantInput('');
+  };
+
+  const handleRuyiAction = (type: RuyiMessageActionType, message: RuyiMessage, payload?: { reason?: RuyiMessageFeedback['reason']; resolvedDate?: string; dateText?: string; [key: string]: unknown }) => {
+    switch (type) {
+      case 'copy':
+        void navigator.clipboard.writeText(message.content);
+        break;
+      case 'confirm-date': {
+        // F1：跨日日期重确认（与如意空间同口径——payload 驱动 + 防重复 + 不直接执行）
+        const resolvedDate = typeof payload?.resolvedDate === 'string' ? payload.resolvedDate : '';
+        const dateText = typeof payload?.dateText === 'string' ? payload.dateText : '';
+        if (!message.taskId || !resolvedDate || !dateText) break;
+        const store2 = useRuyiStore.getState();
+        const task = store2.getTaskById(message.taskId);
+        if (!task || task.conversationId !== message.conversationId) break;
+        if (!['interrupted', 'awaiting-confirmation', 'collecting'].includes(task.status)) break;
+        const msgInStore = store2.messages[message.id];
+        if (!msgInStore || !msgInStore.actions?.some((a) => a.type === 'confirm-date')) break; // 已处理过则忽略
+        store2.updateMessage({ ...msgInStore, actions: [] });
+        store2.sendUserMessage(message.conversationId, `确认日期：${dateText}（${resolvedDate}）`);
+        store2.updateMeetingTask(task.id, {
+          status: 'awaiting-confirmation',
+          slots: { ...task.slots, dateText, resolvedDate },
+          relativeDateConfirmedAt: new Date().toISOString(),
+        });
+        store2.appendTaskEvent(task.id, { type: 'parameter-updated', label: `重新确认相对日期「${dateText}」→ ${resolvedDate}`, status: 'awaiting-confirmation' });
+        const updated = useRuyiStore.getState().getTaskById(task.id);
+        if (updated) {
+          store2.appendAssistantMessage(
+            createMessage(message.conversationId, 'assistant', 'confirmation', buildConfirmationSummary(updated.slots), {
+              taskId: task.id,
+              actions: [
+                { type: 'confirm-task', label: '确认创建' },
+                { type: 'modify-task', label: '修改' },
+                { type: 'cancel-task', label: '取消' },
+              ],
+            }),
+          );
+        }
+        break;
+      }
+      case 'open-result': {
+        const result = message.resultId ? useRuyiStore.getState().getResultById(message.resultId) : null;
+        // F2 双重保护：共享安全函数判断，仅可打开状态允许导航
+        if (result && canOpenRuyiResult(result)) navigate(result.workbenchHref);
+        break;
+      }
+      case 'open-workbench': {
+        const capability = message.capabilityId ? getRuyiCapability(message.capabilityId) : null;
+        // P0：携带来源会话（PC 消息固定系统会话），保证成果回流与返回；
+        // 同时写入启动上下文，工作台自动带入标题与需求描述
+        if (capability?.workbenchPath) {
+          useRuyiStore.getState().saveWorkbenchLaunchContext(FIXED_SYSTEM_CONVERSATION_ID, capability.id as 'document' | 'presentation' | 'advisor');
+          navigate(`${capability.workbenchPath}?sourceConversationId=${FIXED_SYSTEM_CONVERSATION_ID}`);
+        }
+        break;
+      }
+      case 'confirm-task': {
+        if (message.taskId) {
+          useRuyiStore.getState().confirmTask(message.taskId);
+          useRuyiStore.getState().appendAssistantMessage(
+            createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', '正在创建会议，请稍候…', {
+              taskId: message.taskId,
+            }),
+          );
+          // 批次5：模拟执行完成，回写成功消息并终结任务（与如意空间一致）
+          const taskId = message.taskId;
+          window.setTimeout(() => {
+            const task = useRuyiStore.getState().getTaskById(taskId);
+            if (!task || task.status !== 'executing') return;
+            const slots = task.slots;
+            if (task.failureReason) {
+              useRuyiStore.getState().failTask(taskId, task.failureReason);
+              useRuyiStore.getState().appendAssistantMessage(
+                createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', `会议创建失败：${task.failureReason}`, {
+                  taskId,
+                  actions: [{ type: 'retry', label: '重试' }],
+                }),
+              );
+              return;
+            }
+            const summary = `会议创建成功：\n标题：${slots.title || '项目沟通会'}\n日期：${slots.dateText || ''}（${slots.resolvedDate || ''}）\n时间：${slots.startTime || ''} - ${slots.endTime || ''}\n参会人：${slots.attendeeNames?.join('、') || ''}\n地点：${slots.location || '线上会议'}`;
+            useRuyiStore.getState().completeTask(taskId);
+            useRuyiStore.getState().appendAssistantMessage(
+              createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', summary, { taskId }),
+            );
+          }, 1600);
+        }
+        break;
+      }
+      case 'cancel-task': {
+        if (message.taskId) {
+          useRuyiStore.getState().cancelTask(message.taskId);
+          useRuyiStore.getState().appendAssistantMessage(
+            createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'system', 'text', '会议创建已取消。', {
+              taskId: message.taskId,
+            }),
+          );
+        }
+        break;
+      }
+      case 'resume-task': {
+        if (message.taskId) {
+          const task = useRuyiStore.getState().getTaskById(message.taskId);
+          if (task && task.missingSlots.length === 0) {
+            // 参数已完整：恢复为确认态并重新展示完整确认卡片
+            useRuyiStore.getState().updateMeetingTask(message.taskId, { status: 'awaiting-confirmation' });
+            useRuyiStore.getState().appendAssistantMessage(
+              createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'confirmation', buildConfirmationSummary(task.slots), {
+                taskId: message.taskId,
+                actions: [
+                  { type: 'confirm-task', label: '确认创建' },
+                  { type: 'modify-task', label: '修改' },
+                  { type: 'cancel-task', label: '取消' },
+                ],
+              }),
+            );
+          } else {
+            useRuyiStore.getState().resumeTask(message.taskId);
+            useRuyiStore.getState().appendAssistantMessage(
+              createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', '好的，继续为您创建会议。' + (task ? buildMissingPrompt(task.missingSlots) : ''), {
+                taskId: message.taskId,
+              }),
+            );
+          }
+        }
+        break;
+      }
+      case 'modify-task': {
+        if (message.taskId) {
+          useRuyiStore.getState().updateMeetingTask(message.taskId, { status: 'collecting' });
+          useRuyiStore.getState().appendAssistantMessage(
+            createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', '好的，请直接输入要调整的内容（如时间、参会人），我会更新后再次向您确认。', { taskId: message.taskId }),
+          );
+        }
+        break;
+      }
+      case 'retry': {
+        if (message.taskId) {
+          const task = useRuyiStore.getState().getTaskById(message.taskId);
+          if (task && task.status === 'failed') {
+            useRuyiStore.getState().updateMeetingTask(message.taskId, { status: 'awaiting-confirmation', failureReason: undefined });
+            useRuyiStore.getState().appendAssistantMessage(createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', '正在重试创建会议，请稍候…', { taskId: message.taskId }));
+            const tid = message.taskId;
+            window.setTimeout(() => {
+              const t0 = useRuyiStore.getState().getTaskById(tid);
+              if (!t0 || t0.status !== 'awaiting-confirmation') return;
+              useRuyiStore.getState().confirmTask(tid);
+              window.setTimeout(() => {
+                const t = useRuyiStore.getState().getTaskById(tid);
+                if (!t || t.status !== 'executing') return;
+                const slots = t.slots;
+                const summary = `会议创建成功：
+标题：${slots.title || '项目沟通会'}
+日期：${slots.dateText || ''}（${slots.resolvedDate || ''}）
+时间：${slots.startTime || ''} - ${slots.endTime || ''}
+参会人：${slots.attendeeNames?.join('、') || ''}
+地点：${slots.location || '线上会议'}`;
+                useRuyiStore.getState().completeTask(tid);
+                useRuyiStore.getState().appendAssistantMessage(createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', summary, { taskId: tid }));
+              }, 1600);
+            }, 600);
+          } else {
+            useRuyiStore.getState().appendAssistantMessage(createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', '该任务当前无需重试。', { taskId: message.taskId }));
+          }
+        }
+        break;
+      }
+      case 'feedback-useful': {
+        if (!message.feedback || message.feedback.rating !== 'useful') {
+          useRuyiStore.getState().updateMessage({ ...message, feedback: { rating: 'useful' } });
+        }
+        break;
+      }
+      case 'feedback-useless': {
+        const reason = payload?.reason as RuyiMessageFeedback['reason'] | undefined;
+        if (reason) {
+          if (message.feedback?.rating !== 'useless' || message.feedback.reason !== reason) {
+            useRuyiStore.getState().updateMessage({ ...message, feedback: { rating: 'useless', reason } });
+          }
+        } else if (!message.feedback || message.feedback.rating !== 'useless') {
+          useRuyiStore.getState().updateMessage({ ...message, feedback: { rating: 'useless' } });
+        }
+        break;
+      }
+      case 'regenerate': {
+        const original = useRuyiStore.getState().getConversationMessages(FIXED_SYSTEM_CONVERSATION_ID)
+          .filter((m) => m.sender === 'user')
+          .slice(-1)[0];
+        if (original) {
+          regenerateToRuyi(FIXED_SYSTEM_CONVERSATION_ID, original.content);
+        } else {
+          useRuyiStore.getState().appendAssistantMessage(createMessage(FIXED_SYSTEM_CONVERSATION_ID, 'assistant', 'text', '未找到可重新生成的原始请求。'));
+        }
+        break;
+      }
+      default:
+        break;
+    }
   };
 
   const renderContent = () => {
@@ -1466,54 +1710,26 @@ export default function Home() {
       case 'assistant':
         return (
           <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
-            <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
-              {selectedMessage.chatMessages ? (
-                <>
-                  {selectedMessage.chatMessages.map((chatMsg) => (
-                    <ChatMessageBubble
-                      key={chatMsg.id}
-                      chatMsg={chatMsg}
-                      avatar={selectedMessage.avatar}
-                      name={selectedMessage.name}
-                      highlighted={highlightedChatMessageId === chatMsg.id}
-                    />
-                  ))}
-                  {assistantFeedback?.intent === 'draft' && !assistantSubmittedFeedback && (
-                    <div className="ml-16 max-w-2xl">
-                      <FeedbackComposer
-                        compact
-                        source="消息页如意助手"
-                        conversationId="ruyi-assistant"
-                        pageContext={createFeedbackPageContext('消息 · 如意助手', `${location.pathname}${location.search}`)}
-                        initialCategory={assistantFeedback.category}
-                        initialContent={assistantFeedback.content}
-                        onSubmitted={setAssistantSubmittedFeedback}
-                      />
-                    </div>
-                  )}
-                  {assistantSubmittedFeedback && (
-                    <div className="ml-16 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-                      <div className="font-semibold text-emerald-800">反馈提交成功</div>
-                      <p className="mt-1 text-sm text-emerald-700">反馈编号 {assistantSubmittedFeedback.feedbackNo}，当前状态为待处理。</p>
-                      <button onClick={() => navigate(`/pc_client/help-feedback/${assistantSubmittedFeedback.id}`)} className="mt-3 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">查看反馈详情</button>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="flex gap-4">
-                  <div className="flex-shrink-0">
-                    <img
-                      src={selectedMessage.avatar}
-                      alt={selectedMessage.name}
-                      className="w-12 h-12 rounded-full"
-                    />
-                  </div>
-                  <MessageBubble>
-                    <p className="text-gray-700 dark:text-gray-300">{selectedMessage.message}</p>
-                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-400">
-                      <span>{selectedMessage.time}</span>
-                    </div>
-                  </MessageBubble>
+            <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4" data-requirement-id="ruyi-im-continuity">
+              <RuyiImMessageList messages={ruyiMessages} onAction={handleRuyiAction} />
+              {assistantFeedback?.intent === 'draft' && !assistantSubmittedFeedback && (
+                <div className="mx-auto mt-3 max-w-2xl">
+                  <FeedbackComposer
+                    compact
+                    source="消息页如意助手"
+                    conversationId="ruyi-assistant"
+                    pageContext={createFeedbackPageContext('消息 · 如意助手', `${location.pathname}${location.search}`)}
+                    initialCategory={assistantFeedback.category}
+                    initialContent={assistantFeedback.content}
+                    onSubmitted={setAssistantSubmittedFeedback}
+                  />
+                </div>
+              )}
+              {assistantSubmittedFeedback && (
+                <div className="mx-auto mt-3 max-w-2xl rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <div className="font-semibold text-emerald-800">反馈提交成功</div>
+                  <p className="mt-1 text-sm text-emerald-700">反馈编号 {assistantSubmittedFeedback.feedbackNo}，当前状态为待处理。</p>
+                  <button onClick={() => navigate(`/pc_client/help-feedback/${assistantSubmittedFeedback.id}`)} className="mt-3 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700">查看反馈详情</button>
                 </div>
               )}
             </div>
@@ -1623,6 +1839,14 @@ export default function Home() {
                 {selectedMessage.count ? `${selectedMessage.count}条消息` : '在线'}
               </p>
             </div>
+            {selectedMessage.type === 'assistant' && (
+              <button
+                onClick={() => navigate(`/pc_client/ruyi-zone/conversations/${FIXED_SYSTEM_CONVERSATION_ID}`)}
+                className="rounded-lg bg-theme-50 px-3 py-1.5 text-xs font-semibold text-theme-700 transition-colors hover:bg-theme-100 dark:bg-theme-900/20 dark:text-theme-300 dark:hover:bg-theme-900/40"
+              >
+                前往如意空间
+              </button>
+            )}
             <button
               onClick={() => navigate('/pc_client/meetings', {
                 state: {

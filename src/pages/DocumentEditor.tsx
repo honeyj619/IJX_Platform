@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import ProcessReferenceFilePicker from "../components/ProcessReferenceFilePicker";
 import {
@@ -290,20 +290,25 @@ const initialSavedDocuments = [
 
 import RuyiWorkbenchShell from '../components/RuyiWorkbenchShell';
 
+import { useWorkbenchResultBridge } from '../hooks/useWorkbenchResultBridge';
+import { useRuyiStore } from '../store/ruyiStore';
 export default function DocumentEditor({ docType, docTitle, docLength, docContent, attachments = [], documentMode = "writing", validationFileName = "", validationIssues = defaultValidationIssues, startInRequirements = false, startInOutline = false, embedded = false, onRemoveAttachment, onBack }: DocumentEditorProps) {
   const [currentDocumentMode, setCurrentDocumentMode] = useState<DocumentMode>(documentMode);
+  // 批次4：来源会话成果回流（?sourceConversationId= 时启用）
+  const resultBridge = useWorkbenchResultBridge({ capabilityId: 'document', resultType: 'document', workbenchPath: '/pc_client/ruyi-zone/document' });
   const [content, setContent] = useState(documentMode === "validation" ? validationSampleContent : startInRequirements || startInOutline ? '' : sampleContent);
-  const [requirementTitle, setRequirementTitle] = useState(docTitle || (documentMode === "validation" ? validationFileName.replace(/\.[^.]+$/, "") : '未命名文档'));
+  const launchCtx = resultBridge.launchContext;
+  const [requirementTitle, setRequirementTitle] = useState(docTitle || launchCtx?.title || (documentMode === "validation" ? validationFileName.replace(/\.[^.]+$/, "") : '未命名文档'));
   const [requirementType, setRequirementType] = useState(templateCategories.includes(docType) ? docType : templateCategories[0]);
   const [requirementLength, setRequirementLength] = useState(docLength);
-  const [requirementContent, setRequirementContent] = useState(docContent || (startInRequirements ? '' : '暂无补充要求'));
+  const [requirementContent, setRequirementContent] = useState(docContent || launchCtx?.prompt || (startInRequirements ? '' : '暂无补充要求'));
   const [selectedTemplate, setSelectedTemplate] = useState(
     (editorTemplates.find(template => template.category === docType) || editorTemplates[0]).id
   );
   const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
   const [activeTemplateCategory, setActiveTemplateCategory] = useState(templateCategories[0]);
   const [activeTemplateFilter, setActiveTemplateFilter] = useState('全部');
-  const [requirementsEditable, setRequirementsEditable] = useState(documentMode === "validation" ? false : startInRequirements);
+  const [requirementsEditable, setRequirementsEditable] = useState(documentMode === "validation" ? false : (startInRequirements || !!launchCtx));
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [showApplyAllValidationConfirm, setShowApplyAllValidationConfirm] = useState(false);
   const [showProcessReferencePicker, setShowProcessReferencePicker] = useState(false);
@@ -317,8 +322,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const [outlineText, setOutlineText] = useState(formatOutlineText(defaultOutline));
   const [outlineDirty, setOutlineDirty] = useState(false);
   const [documentTab, setDocumentTab] = useState<'current' | 'mine'>('current');
-  const [selectedSavedDocumentId, setSelectedSavedDocumentId] = useState<string | null>(null);
-  const [savedDocuments, setSavedDocuments] = useState(initialSavedDocuments);
+  const [selectedSavedDocumentId, setSelectedSavedDocumentId] = useState<string | null>(null);  const [savedDocuments, setSavedDocuments] = useState(initialSavedDocuments);
   const [documentPendingDelete, setDocumentPendingDelete] = useState<typeof initialSavedDocuments[number] | null>(null);
   const [documentSearch, setDocumentSearch] = useState('');
   const [documentSourceFilter, setDocumentSourceFilter] = useState('全部');
@@ -356,6 +360,19 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     pendingValidationIssues.filter((item) => item.type === ruleId).length
   );
   const validationMarkedContent = createValidationTextTokens(content, pendingValidationIssues);
+
+  // P0：从对话携带来源会话进入时，读取持久化启动上下文，自动带入公文标题与需求描述（不要求重新描述）
+  useEffect(() => {
+    if (docTitle || docContent) return; // 嵌入调用已显式传入时优先
+    const sourceId = resultBridge.sourceConversationId;
+    if (!sourceId) return;
+    const context = useRuyiStore.getState().getWorkbenchLaunchContext(sourceId, 'document');
+    if (!context) return;
+    if (context.title) setRequirementTitle(context.title);
+    if (context.prompt) setRequirementContent(context.prompt);
+    // 仅挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleSection = (section: 'outline' | 'structure' | 'contentRef') => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -418,6 +435,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       return;
     }
     saveDocumentSnapshot();
+    resultBridge.recordResult(requirementTitle.trim() || '未命名文档');
   };
 
   const generateOutlineDraft = () => {

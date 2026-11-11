@@ -1,3 +1,5 @@
+import { useWorkbenchResultBridge } from '../hooks/useWorkbenchResultBridge';
+import { useRuyiStore } from '../store/ruyiStore';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -198,7 +200,9 @@ const sourceLabels: Record<AdvisorSource, string> = {
 };
 
 export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
-  const location = useLocation();
+  // 批次4：来源会话成果回流（?sourceConversationId= 时启用）
+  const resultBridge = useWorkbenchResultBridge({ capabilityId: 'advisor', resultType: 'report', workbenchPath: '/pc_client/ruyi-zone/advisor' });
+
   const navigate = useNavigate();
   const params = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const initialModeParam = (params.get('mode') || 'report') as AdvisorMode;
@@ -254,6 +258,20 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       setSelectedSourceIds(current => [...current, 'projects']);
     }
   }, [mode, reportKind]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // P0：从对话携带来源会话进入时，读取持久化启动上下文，自动带入报告主题与需求描述（保留现有编辑能力）
+  useEffect(() => {
+    const sourceId = resultBridge.sourceConversationId;
+    if (!sourceId) return;
+    const context = useRuyiStore.getState().getWorkbenchLaunchContext(sourceId, 'advisor');
+    if (!context) return;
+    if (context.prompt && !prompt.trim()) setPrompt(context.prompt);
+    if (context.title && draft.title === defaultDraft.title) {
+      setDraft(current => ({ ...current, title: context.title }));
+    }
+    // 仅挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [weeklyData, setWeeklyData] = useState<ProjectWeeklyData | null>(null);
   const [overallDescription, setOverallDescription] = useState('');
   const [descriptionGenerationFailed, setDescriptionGenerationFailed] = useState(false);
@@ -544,6 +562,7 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       success: true,
       read: false,
     }));
+    resultBridge.recordResult(activeDraft.title || '工作汇报', 'completed');
     appendReportSendRecords([{
       id: createReportSendRecordId('advisor-work'),
       reportKey: currentReportKeys[0],

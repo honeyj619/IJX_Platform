@@ -30,7 +30,6 @@ import { prototypeRequirements, type PrototypeRequirement } from '../../data/pro
 const STORAGE_KEY = 'ijx-prototype-requirement-mode';
 const OVERRIDES_STORAGE_KEY = 'ijx-prototype-requirement-overrides-v2';
 const OVERRIDES_DISMISS_KEY = 'ijx-prototype-requirement-overrides-v2-dismissed';
-const LOCATOR_SELECTOR = '[trae-inspector-file-path][trae-inspector-start-line][trae-inspector-start-column]';
 const NEW_SURFACE_VALUE = '__new_surface__';
 const isMaintenanceEnabled = import.meta.env.DEV;
 
@@ -185,9 +184,17 @@ function useRequirementMode() {
 }
 
 function requirementRouteMatches(configuredRoute: string, pathname: string) {
-  if (!configuredRoute.endsWith('/*')) return configuredRoute === pathname;
-  const prefix = configuredRoute.slice(0, -2);
-  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+  if (configuredRoute.endsWith('/*')) {
+    const prefix = configuredRoute.slice(0, -2);
+    return pathname === prefix || pathname.startsWith(`${prefix}/`);
+  }
+  if (pathname === configuredRoute) return true;
+  if (pathname.startsWith(`${configuredRoute}/`)) return true;
+  // F3：支持路径参数段（如 /tasks/:taskId 匹配 /tasks/task-v2-confirm）
+  const routeSegs = configuredRoute.split('/').filter(Boolean);
+  const pathSegs = pathname.split('/').filter(Boolean);
+  if (routeSegs.length === 0 || routeSegs.length !== pathSegs.length) return false;
+  return routeSegs.every((seg, i) => seg.startsWith(':') || seg === pathSegs[i]);
 }
 
 function collectMountedRequirements(
@@ -218,7 +225,8 @@ function collectMountedRequirements(
   const requirementsBySurface = new Map<string, ManagedRequirement[]>();
   requirements.forEach((requirement) => {
     if (!surfaceOrder.has(requirement.surface)) surfaceOrder.set(requirement.surface, surfaceOrder.size);
-    const moduleKey = `${requirement.route}\0${requirement.surface}`;
+    // F3：功能模块 = surface（跨路由同模块统一编号；页面只挂载当前 route 的角标，但数字用模块真实序号）
+    const moduleKey = requirement.surface;
     const group = requirementsBySurface.get(moduleKey) ?? [];
     group.push(requirement);
     requirementsBySurface.set(moduleKey, group);
@@ -639,8 +647,9 @@ export function RequirementModeLayer() {
     return [...groups.entries()];
   }, [mounted]);
 
+  // F3：模块条目按 surface 聚合（含同模块其他路由的条目），上下移动调整整个模块顺序
   const selectedSurfaceItems = selected ? requirements
-    .filter((item) => item.surface === selected.surface && item.route === selected.route)
+    .filter((item) => item.surface === selected.surface)
     .sort((a, b) => a.order - b.order) : [];
   const selectedSurfaceIndex = selected ? selectedSurfaceItems.findIndex((item) => item.id === selected.id) : -1;
   const panelVisible = enabled && Boolean(selected || formMode || legacyImport);
