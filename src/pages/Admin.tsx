@@ -35,6 +35,7 @@ import DeviceManagement from '../components/admin/DeviceManagement';
 import PcWorkbenchAdmin from '../components/admin/PcWorkbenchAdmin';
 import FeedbackManagement from '../components/admin/FeedbackManagement';
 import AdminPagination from '../components/admin/AdminPagination';
+import VersionCreateDialog, { versionCreatePlatformConfig, type VersionCreatePayload } from '../components/admin/VersionCreateDialog';
 import {
   TRUSTED_ROUTE_DICTIONARY_NAME,
   TRUSTED_ROUTE_DICTIONARY_TYPE,
@@ -369,6 +370,13 @@ type VersionRecord = {
   packageType: string;
   supportedOS: string;
   downloadUrl: string;
+  /** 新增弹框元数据（仅新增记录携带，不迁移旧数据；原型阶段不保存 File/Base64，不伪造下载地址） */
+  scopeId?: string;
+  scopeLabel?: string;
+  packageFileName?: string;
+  packageSizeLabel?: string;
+  packageExt?: string;
+  logoFileName?: string;
 };
 
 const versionPlatformTabs: Array<{ id: VersionPlatform; label: string }> = [
@@ -417,6 +425,7 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
   });
   const [page, setPage] = useState(1);
   const [editorOpen, setEditorOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [draft, setDraft] = useState<VersionRecord>(defaultVersionDraft);
   const [toast, setToast] = useState('');
   const pageSize = 12;
@@ -456,14 +465,36 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
   };
 
   const openCreate = () => {
-    setDraft({
-      ...defaultVersionDraft,
+    setCreateOpen(true);
+  };
+
+  const handleCreateSubmit = (payload: VersionCreatePayload) => {
+    const config = versionCreatePlatformConfig[activePlatform];
+    const record: VersionRecord = {
       id: `${activePlatform}-${Date.now()}`,
       platform: activePlatform,
-      packageType: activePlatform === 'windows' ? 'EXE' : activePlatform === 'macos' ? 'DMG' : activePlatform === 'ios' ? 'App Store' : 'APK',
-      supportedOS: activePlatform === 'windows' ? 'Windows 10/11' : activePlatform === 'macos' ? 'macOS 12+' : activePlatform === 'ios' ? 'iOS 15+' : 'Android 10+',
-    });
-    setEditorOpen(true);
+      versionNo: payload.versionNo,
+      buildNo: payload.buildNo,
+      forceUpdate: payload.forceUpdate,
+      status: '草稿',
+      content: payload.content,
+      description: payload.description,
+      updater: MAIN_USER_NAME,
+      updatedAt: '刚刚',
+      packageType: config.packageType,
+      supportedOS: config.defaultOS,
+      downloadUrl: '',
+      scopeId: payload.scopeId || undefined,
+      scopeLabel: payload.scopeLabel || undefined,
+      packageFileName: payload.packageFileName,
+      packageSizeLabel: payload.packageSizeLabel,
+      packageExt: payload.packageExt,
+      logoFileName: payload.logoFileName,
+    };
+    setRows(current => [record, ...current]);
+    setCreateOpen(false);
+    setPage(1);
+    showToast(`${config.platformLabel}版本已添加`);
   };
 
   const openEdit = (item: VersionRecord) => {
@@ -617,6 +648,14 @@ function VersionManagement({ view }: { view: 'list' | 'release' }) {
           <AdminPagination total={filteredRows.length} page={page} pageSize={pageSize} onChange={setPage} className="mt-4" />
         </section>
       </div>
+
+      <VersionCreateDialog
+        open={createOpen}
+        platform={activePlatform}
+        existingRecords={rows}
+        onCancel={() => setCreateOpen(false)}
+        onSubmit={handleCreateSubmit}
+      />
 
       {editorOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/35 px-4">
