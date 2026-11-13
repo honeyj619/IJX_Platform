@@ -1,14 +1,15 @@
 # AI Prototype Harness
 
-本仓库用于 i吉祥员工端移动原型和后续管理后台原型。Harness 的职责是让 AI 在每次任务中使用同一套产品事实、设计基线、实现边界和验收方法，而不是把当前旧代码自动解释成正确规范。
+本 Harness 专用于 i吉祥员工端 Vue 移动原型。它让 AI 在每次任务中使用同一套产品事实、设计基线、实现边界和验收方法，而不是把当前旧代码自动解释成正确规范。管理后台由主工程根 Harness 与 `docs/ADMIN_*` 规范治理，不属于本 Harness。
 
 ## 0. 适用域与权威工程（用户 2026-11-11 确认，Q1-A）
 
 - **本 Harness 适用于 `IJX_Platform` 仓库 `src/prototype/` 员工端子应用**（Vue 3 + Vue Router + Vite），该子应用是 i吉祥员工端的**唯一权威实现**；`src/prototype/harness/` 为其治理域，本目录 `docs/references/` 为版本化参考图。
 - `IJX_App`（`honeyj619/IJX_App.git`，路径 `D:\Codex\github-ijx-platform-app`）为**历史仓库**，其 `src/views/Message.vue` 等页面保留为历史版本，**不再作为改造对象**；该仓库 `PRODUCT.md` / `CURRENT.md` 已加迁出指向。
 - 涉及 `src/prototype/` 页面、消息模块、移动端视觉与交互验收时，以本 Harness 为准；仓库根 `Agents.md` 与 `docs/APP_UI_GUIDELINES.md` 等 React 主工程规范适用于主工程，两者不互相覆盖。
-- 技术决策 `zustand/vanilla + persist` 已由用户 2026-11-11 确认保留（Q4），登记于 `tasks/CURRENT.md`；属任务级决策，不升级为长期 Harness 规则。
+- 技术决策 `zustand/vanilla + persist` 已由用户 2026-11-11 确认保留（Q4），历史记录见 `tasks/archive/2026-11-app-migration-and-message.md`；属消息模块实现决策，不扩展为其他模块的默认规则。
 - 迁移不改动 React 主工程路由与 `/download` → `/app/prototype/` 落地链路。
+- 跨端正式路由与兼容关系以主仓 `docs/APP_ROUTES.md` 为唯一合同；本 Harness 不复制第二份路径清单。
 
 ## 1. 规则优先级
 
@@ -16,7 +17,7 @@
 
 1. 用户当前任务中的明确要求。
 2. `docs/references/` 中的版本化参考图，以及 `docs/REFERENCE_BASELINES.md` 对参考图的解释。
-3. 已确认的长期 Harness：`docs/PRODUCT.md`、`docs/DESIGN_SYSTEM.md`、`docs/ADMIN_SYSTEM.md`、`docs/PROTOTYPE_RULES.md`。
+3. 已确认的长期 Harness：`docs/PRODUCT.md`、`docs/DESIGN_SYSTEM.md`、`docs/PROTOTYPE_RULES.md`。
 4. `src/` 中的当前实现。它只证明“现在是什么”，不能覆盖目标页面或正式设计规范。
 5. `tasks/CURRENT.md` 中的当次假设和临时决定。
 
@@ -38,8 +39,8 @@
 2. `docs/REFERENCE_BASELINES.md`
 3. `docs/PRODUCT.md`
 4. `docs/DESIGN_SYSTEM.md`
-5. `docs/ADMIN_SYSTEM.md`（涉及管理后台时必读）
-6. `docs/PROTOTYPE_RULES.md`
+5. `docs/PROTOTYPE_RULES.md`
+6. 主仓 `docs/APP_ROUTES.md`
 7. `tasks/CURRENT.md`
 8. 与需求有关的路由、页面、组件、数据和资源文件
 

@@ -175,19 +175,19 @@ i吉祥是面向企业员工的统一协同入口，整合企业门户、日程�
 
 消息模块（`src/prototype/views/Message.vue` + `views/message/*` + `src/prototype/im/`）已于 2026-11-11 完成完整迁移：会话列表（全部 / 未读 / @消息筛选、未读角标、置顶 / 星标 / 免打扰）、全局搜索与 `messageId` 定位高亮、单聊与群聊、13 类消息、引用 / 复制 / 回应 / 撤回 / 重编辑 / 删除 / 置顶 / 转发、投票 / 接龙 / 话题 / 回执 / 定时 / 阅后即焚、建群与群资料 / 成员 / 公告 / 文件 / 加群设置 / 审批、通讯录、服务号工单、应用菜单、扫一扫、localStorage 持久化；13 条功能子页 + 1 条兜底重定向均为二级页并隐藏底部导航。
 
-2026-11-11 P1 / P2 补充：消息模块视觉与组件规范已对齐 `spec-*`（共享 `ImIcon` / `ImButton` / `ImField` / `ImEmpty` / `ImNavBar` / `ImSheet`，本地线稿图标与 160px 空态插图，点击区 ≥44×44，字阶与色值 Token 化）；核心写操作具备「处理中 → 结果 / 错误」反馈与防重复提交，空态提供下一步操作，根页与会话设置页均可「恢复演示数据」（二次确认），未接真实能力入口统一标注「暂未开放」。以上状态以 `harness/tasks/CURRENT.md` 的 P1 / P2 执行记录为准。
+2026-11-11 P1 / P2 补充：消息模块视觉与组件规范已对齐 `spec-*`（共享 `ImIcon` / `ImButton` / `ImField` / `ImEmpty` / `ImNavBar` / `ImSheet`，本地线稿图标与 160px 空态插图，点击区 ≥44×44，字阶与色值 Token 化）；核心写操作具备「处理中 → 结果 / 错误」反馈与防重复提交，空态提供下一步操作，根页与会话设置页均可「恢复演示数据」（二次确认），未接真实能力入口统一标注「暂未开放」。历史实施记录见 `harness/tasks/archive/2026-11-app-migration-and-message.md`。
 
 > 上述为**权威工程**状态。`IJX_App` 历史仓库的 `Message.vue` 仍是旧结构与旧视觉（Font Awesome、DiceBear、alert()），保留为历史版本，不再改造；详见该仓库 `PRODUCT.md §8` 迁出指向。
 
 ## 9. 资源现状
 
-- `src/assets/home/*`、`src/assets/profile/*` 均由 `docs/references/page-*.jpg` 按像素分析坐标裁切，只含纯视觉内容（品牌美术字/云层/天空/飞机/商品照片/旅行照片/横幅画面），不含状态栏、城市、搜索框、按钮、角标、页签、标题或价格等 DOM 职责内容。
+- `src/prototype/assets/home/*`、`src/prototype/assets/profile/*` 均由 `docs/references/page-*.jpg` 按像素分析坐标裁切，只含纯视觉内容（品牌美术字/云层/天空/飞机/商品照片/旅行照片/横幅画面），不含状态栏、城市、搜索框、按钮、角标、页签、标题或价格等 DOM 职责内容。
 - 裁切脚本：`tools/stage23-repair/extract-r2-assets.ps1` 为第二轮三张资源（i快讯标识、`ws-all` 四宫格、助手头像）与 `bg-sky.png` 的唯一权威可重复脚本；`extract-r2*.ps1` / `extract-ws-all*.ps1` 已改为委托该脚本，避免旧错误坐标回退。条带定位见 `tools/stage23-repair/review/`。
 - 正式品牌素材、商品图与旅行图待替换（当前为参考图裁切的演示资源）。
 
-## 10. 管理后台边界
+## 10. 跨治理域边界
 
-管理后台面向平台运营管理员，使用独立桌面信息架构、页面壳层和操作色。员工端页面截图、底部导航和移动端组件排列不适用于管理后台。详细规则见 `docs/ADMIN_SYSTEM.md`。
+管理后台不属于本 Harness。涉及后台的任务返回主仓根治理域，读取 `docs/HARNESS_MAP.md`、`docs/ADMIN_UI_GUIDELINES.md` 与 `docs/ADMIN_ROUTES.md`；不得把员工端截图、底部导航和移动组件规则套用到后台。
 
 ## 11. 待确认
 
