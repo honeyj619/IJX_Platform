@@ -25,7 +25,7 @@ V2 只预留类型、路由规划和扩展点，不在 V1 页面中展示未完�
 
 ### 1.1 禁止扩展
 
-- 不修改 `src/pages/app/**`、`src/data/im/**`、`src/store/imStore.ts` 及 App 路由。
+- 不恢复已删除的 `src/pages/app/**`，不修改 `src/data/im/**`、`src/store/imStore.ts` 及 App 路由。
 - 不实现真实登录、多用户认证、服务端权限、流式接口或后台任务。
 - 不新增完整 Agent Team、Connector/MCP、模型或知识库管理页面。
 - 不把 AI 任务中心做成现有事项、项目、日程或审批数据的聚合页。

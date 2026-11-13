@@ -9,6 +9,7 @@
 - 实际发布链路：`IJX_Platform` 主仓构建并通过 `/app/prototype/*` 发布。
 - 历史仓库 `honeyj619/IJX_App` 不参与主仓依赖、构建、路由或 GitHub Pages 发布。
 - `IJX_App` 仅保留历史，不再接受功能开发、设计整改或 Harness 更新。
+- 主仓旧 React App 目录 `src/pages/app/` 已删除，避免继续形成第二套实现。
 
 ## 2. 基线
 

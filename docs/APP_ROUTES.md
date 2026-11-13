@@ -9,7 +9,7 @@
 - React Router 负责 `/app` 统一入口、Vue 子应用宿主和历史 URL 兼容。
 - Vue Router 负责 `/app/prototype/*` 内的所有 App 页面。
 - Android 与 iOS 默认共用同一页面；`?platform=android|ios` 只表示演示平台，不建立两套页面。
-- `src/pages/app/` 是已弃用的 React App 实现，不再登记新路由，也不得作为开发目标。
+- 旧 React App 目录 `src/pages/app/` 已删除；历史方案仅保存在 `docs/archive/APP_REACT_DEVELOPMENT_PLAN_2026-11-05.md`，不得恢复为运行时实现。
 - `honeyj619/IJX_App` 是历史归档，不参与本合同。
 
 ## 2. 规范 URL

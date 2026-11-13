@@ -1,5 +1,7 @@
 # IJX Platform App 端页面开发方案
 
+> **历史归档：禁止继续执行。** 本方案描述的是已删除的 React App 实现。当前唯一权威实现为 `src/prototype/`，现行路由以 `docs/APP_ROUTES.md` 为准。
+
 > 版本：1.0（规划稿，待评审）
 > 日期：2026-11-05
 > 依据材料：6 张 App 截图、IM 原型 `index.html`（3745 行单页）、既有 `docs/APP_ROUTES.md` 与客户端设计规范
