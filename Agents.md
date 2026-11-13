@@ -1,5 +1,7 @@
 # IJX Platform Memory
 
+> 开始任何页面任务前，先读取 `docs/HARNESS_MAP.md` 判断治理域。涉及 `src/prototype/` 的员工端 App 任务，必须进入 `src/prototype/harness/`，本文件不得覆盖 App 子 Harness。
+
 ## 1. 项目定位
 
 * 本项目为 IJX Platform 前端原型项目，当前阶段以页面原型、前端交互和 mock 数据演示为主。
@@ -79,10 +81,10 @@
   * 入口按钮或导航跳转路径；
   * GitHub Pages basename 兼容性。
 * 不要把后台页面、下载页嵌入客户端 Layout。
-* App 端页面统一挂在 `/app` 下，使用独立移动端布局与路由，不嵌套客户端 Layout；Android/iOS 默认共用页面，仅明确平台差异页使用 `/app/<platform>/<section>`（platform 取 `android` | `ios`）。
+* App 端权威实现为 Vue 子应用 `src/prototype/`，由 React 宿主挂载在 `/app/prototype/*`，不嵌套客户端 Layout；`/app` 是统一入口，Android/iOS 默认共用页面，通过 `?platform=android|ios` 表示演示平台。
 * App 端路径规范见 `docs/APP_ROUTES.md`；涉及 App 页面新增、更名、URL 调整时必须先读取，并同一轮更新路径清单。
 * `/app` 不受移动端门禁限制，任意窗口宽度均可访问；`/download` 的 App 入口行为保持不变。
-* IM 模块承载在 App「消息」Tab（`/app/messages`）下，**只参考原型的功能与交互结构，样式与 App 系统一致**（玫红 MR 体系，见 `docs/APP_UI_GUIDELINES.md`）；IM 原型的「工作台」「我的」由 App 系统 Tab 承担，不建立独立 IM 版本。
+* IM 模块承载在 Vue App「消息」Tab（`/app/prototype/message`）下；旧 `/app/messages/*` 仅作为兼容入口。消息样式与 App 系统一致（玫红 MR 体系），不建立第二套 React IM 实现。
 * 「打开的页面」记录规则：如意会议主页面及其 Tab（`/pc_client/meetings`、`/pc_client/meetings/rooms`、`/pc_client/meetings/recordings`）属于主页面，不记录到「打开的页面」；录制详情 `/pc_client/meetings/recordings/:recordingId` 是独立新页面，必须记录到「打开的页面」。
 
 ## 7. 编码与文本规范
