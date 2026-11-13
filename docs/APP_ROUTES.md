@@ -1,55 +1,59 @@
-# IJX Platform App 路由合同
+# IJX Platform App 端路径规范
 
-版本：2.0  
-适用范围：React 宿主、`/download` 跨端入口与 `src/prototype/` Vue 员工端  
-权威实现：`src/prototype/`
+> 版本：2.0（2026-11-13 路由收敛整改）
+> 适用范围：员工端 App（Vue 子应用）及其宿主路由、下载入口与历史兼容路由
+> 权威实现：`src/prototype/`（Vue 3 + Vue Router，由 `src/components/VuePrototypeHost.tsx` 挂载）
 
-## 1. 架构边界
+## 1. 架构与路由分工
 
-- React Router 负责 `/app` 统一入口、Vue 子应用宿主和历史 URL 兼容。
-- Vue Router 负责 `/app/prototype/*` 内的所有 App 页面。
-- Android 与 iOS 默认共用同一页面；`?platform=android|ios` 只表示演示平台，不建立两套页面。
-- 旧 React App 目录 `src/pages/app/` 已删除；历史方案仅保存在 `docs/archive/APP_REACT_DEVELOPMENT_PLAN_2026-11-05.md`，不得恢复为运行时实现。
-- `honeyj619/IJX_App` 是历史归档，不参与本合同。
+- App 权威代码位于 `src/prototype/`，是员工端唯一事实源；`IJX_App` 独立仓库已退役为只读归档。
+- Vue 子应用由 `VuePrototypeHost` 挂载在宿主路由 `/app/prototype/*` 下。
+- Vue Router base = 部署 base + `/app/prototype/`（本地 `/app/prototype/`，Pages `/IJX_Platform/app/prototype/`），见 `src/prototype/router/index.ts`。
+- 根 React Router（`src/App.tsx`）只负责宿主页面、下载入口和旧路由兼容；App 内部页面路由由 `src/prototype/router/index.ts` 管理。
+- 宿主侧进入 App 的路径一律引用 `src/constants/appRoutes.ts` 常量（`APP_PROTOTYPE_BASE` / `APP_PROTOTYPE_HOME` / `APP_PROTOTYPE_MESSAGE` / `appPrototypeRoute` / `appPrototypeHomeWithPlatform`），不硬编码。
 
-## 2. 规范 URL
+## 2. 规范路由（本轮 URL 保持不变，不迁移）
 
-| 页面 | 规范 URL | Vue 内部路径 | 状态 |
-| --- | --- | --- | --- |
-| App 统一入口 | `/app` | - | 重定向到 `/app/prototype/` |
-| 首页 | `/app/prototype/` | `/` | 已实现 |
-| 日程 | `/app/prototype/schedule` | `/schedule` | 已实现 |
-| 工作台 | `/app/prototype/workspace` | `/workspace` | 已实现 |
-| 消息 | `/app/prototype/message` | `/message` | 已实现 |
-| 我的 | `/app/prototype/profile` | `/profile` | 已实现 |
-| 帮助与反馈 | `/app/prototype/profile/feedback` | `/profile/feedback` | 已实现 |
-| 消息搜索 | `/app/prototype/message/search` | `/message/search` | 已实现 |
-| 会话 | `/app/prototype/message/chat/:sessionId` | `/message/chat/:sessionId` | 已实现 |
-| 会话信息 | `/app/prototype/message/info/:sessionId` | `/message/info/:sessionId` | 已实现 |
-| 会话记录 | `/app/prototype/message/history/:sessionId` | `/message/history/:sessionId` | 已实现 |
-| 通讯录 | `/app/prototype/message/contacts` | `/message/contacts` | 已实现 |
-| 联系人 | `/app/prototype/message/contact/:contactId` | `/message/contact/:contactId` | 已实现 |
-| 创建群聊 | `/app/prototype/message/group/create` | `/message/group/create` | 已实现 |
-| 群详情 | `/app/prototype/message/group/:groupId` | `/message/group/:groupId` | 已实现 |
-| 扫一扫 | `/app/prototype/message/scan` | `/message/scan` | 原型入口 |
-| 置顶消息 | `/app/prototype/message/pins/:sessionId` | `/message/pins/:sessionId` | 已实现 |
-| 话题 | `/app/prototype/message/topic/:topicId` | `/message/topic/:topicId` | 已实现 |
-| 回执 | `/app/prototype/message/receipt/:sessionId/:msgId` | `/message/receipt/:sessionId/:msgId` | 已实现 |
-| 服务号 | `/app/prototype/message/service/:accountId` | `/message/service/:accountId` | 已实现 |
+| 页面 | 规范 URL |
+| --- | --- |
+| App 统一入口 | `/app`（重定向 → `/app/prototype/`） |
+| Vue App 首页 | `/app/prototype/` |
+| 日程 | `/app/prototype/schedule` |
+| 工作台 | `/app/prototype/workspace` |
+| 消息 | `/app/prototype/message` |
+| 我的 | `/app/prototype/profile` |
+| 消息搜索 | `/app/prototype/message/search` |
+| 会话 | `/app/prototype/message/chat/:sessionId` |
+| 会话信息 | `/app/prototype/message/info/:sessionId` |
+| 会话记录 | `/app/prototype/message/history/:sessionId` |
+| 通讯录 | `/app/prototype/message/contacts` |
+| 联系人 | `/app/prototype/message/contact/:contactId` |
+| 创建群聊 | `/app/prototype/message/group/create` |
+| 群详情 | `/app/prototype/message/group/:groupId` |
+| 扫一扫 | `/app/prototype/message/scan` |
+| 置顶消息 | `/app/prototype/message/pins/:sessionId` |
+| 话题 | `/app/prototype/message/topic/:topicId` |
+| 回执 | `/app/prototype/message/receipt/:sessionId/:msgId` |
+| 服务号 | `/app/prototype/message/service/:accountId` |
 
-## 3. 下载页入口
+消息模块为 13 条功能子页 + 1 条兜底重定向（`/message/:pathMatch(.*)*` → `/message`）；全部为二级页、隐藏底部导航、提供明确返回。
 
-| 操作 | 目标 URL |
+## 3. 下载入口
+
+| 下载页操作 | 目标 |
 | --- | --- |
 | iOS 下载 | `/app/prototype/?platform=ios` |
 | Android 下载 | `/app/prototype/?platform=android` |
 | PC 客户端进入 | `/pc_client` |
 | PC Web 进入 | `/pc_web` |
 
-## 4. 历史兼容
+`platform` 仅用于平台演示上下文。没有明确平台差异时，iOS 和 Android 使用同一页面和组件。
 
-| 历史 URL | 兼容目标 |
+## 4. 历史兼容路由（只作入口，不再出现在新增功能、页面链接和文档示例中）
+
+| 历史路由 | 兼容目标 |
 | --- | --- |
+| `/app` | `/app/prototype/` |
 | `/app/home` | `/app/prototype/` |
 | `/app/android/home` | `/app/prototype/?platform=android` |
 | `/app/ios/home` | `/app/prototype/?platform=ios` |
@@ -57,23 +61,33 @@
 | `/app/messages/*` | `/app/prototype/message` |
 | 其他未登记 `/app/*` | `/app/prototype/` |
 
-历史 URL 只用于兼容，不得用于新代码、文档示例或页面链接。
+React App 原型（`/app/home`、`/app/<platform>/home`、`src/pages/app/`、`AppLayout.tsx`）已弃用，不再是规范实现。
 
-## 5. GitHub Pages
+## 5. 维护流程
 
-- React Router basename 使用 `import.meta.env.BASE_URL`。
-- Vue Router base 为 `${import.meta.env.BASE_URL}app/prototype/`。
-- Pages 正式 base 为 `/IJX_Platform/`。
-- 业务代码不得手工拼接仓库前缀。
-- 新增或更名路由时必须验证直接打开、刷新、前进、后退与 404 恢复。
+新增 App 页面时，同一轮必须完成：
 
-## 6. 维护流程
+1. 在 `src/prototype/views/` 实现页面，并在 `src/prototype/router/index.ts` 登记路由。
+2. 宿主侧如有新入口，更新 `src/constants/appRoutes.ts` 并引用。
+3. 更新本文件路径清单。
+4. 将新路由加入 `tools/prototype/smoke-pages.mjs` 冒烟清单。
+5. 在 `src/prototype/harness/tasks/CURRENT.md` 登记任务与验证结果。
 
-新增或更名 App 页面时，同一轮必须：
+## 6. 路由检查
 
-1. 修改 `src/prototype/router/index.ts`。
-2. 必要时修改 `src/App.tsx` 的宿主或兼容路由。
-3. 更新本文件。
-4. 更新 `tools/prototype/smoke-pages.mjs` 与路由合同检查。
-5. 在 `src/prototype/harness/tasks/CURRENT.md` 记录任务边界和验证结果。
-6. 运行 `npm.cmd run check`、`npm.cmd run check:routes` 和适用的浏览器链路验证。
+| 命令 | 覆盖 |
+| --- | --- |
+| `npm run check:routes` | 本文件与 `App.tsx` / `Download.tsx` / Vue Router 的合同一致性 |
+| `npm run check:pages` | 全部规范路由冒烟 |
+| `npm run check:app-chain` | `/download` 四端入口全链路浏览器回归 |
+
+## 7. Pages base 验收
+
+GitHub Pages basename 为 `/IJX_Platform/`。生产验收构建：
+
+```powershell
+$env:VITE_BASE='/IJX_Platform/'
+npm.cmd run build
+```
+
+必须验证：`/IJX_Platform/download`、`/IJX_Platform/app/prototype/`、`/IJX_Platform/app/prototype/message`、`/IJX_Platform/pc_client`、`/IJX_Platform/pc_web`、`/IJX_Platform/admin`，且子路由刷新可恢复、无重复前缀或丢失前缀。

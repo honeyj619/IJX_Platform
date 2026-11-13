@@ -15,18 +15,10 @@ import WorkReport from "@/pages/WorkReport";
 import OkrModule from "@/pages/OkrModule";
 import Download from "@/pages/Download";
 import VuePrototypeHost from "@/components/VuePrototypeHost";
+import { APP_PROTOTYPE_BASE, APP_PROTOTYPE_HOME, APP_PROTOTYPE_MESSAGE, appPrototypeHomeWithPlatform } from "@/constants/appRoutes";
 import PcWebPortal from "@/pages/PcWebPortal";
 import MeetingCenter, { MeetingRecordingDetail } from "@/pages/Meetings";
 import { RequirementModeLayer, RequirementModeProvider } from "@/components/requirements/RequirementMode";
-import {
-  APP_DOWNLOAD,
-  APP_ENTRY,
-  APP_PROTOTYPE_BASE,
-  APP_PROTOTYPE_HOME,
-  APP_PROTOTYPE_MESSAGE,
-  PC_CLIENT_HOME,
-  PC_WEB_HOME,
-} from "@/constants/appRoutes";
 
 function shouldShowMobileView(width: number, height: number): boolean {
   const aspectRatio = width / height;
@@ -219,19 +211,22 @@ export default function App() {
         <Routes>
           {/* 管理后台 — 独立页面，不嵌套在 Layout 中 */}
           <Route path="/admin/*" element={<Admin />} />
-          <Route path={APP_DOWNLOAD} element={<Download />} />
-          {/* 新 Vue 员工端原型：独立子应用，自带 TabBar，不套 AppLayout */}
+          <Route path="/download" element={<Download />} />
+          {/* Vue 员工端原型：唯一权威 App 实现，独立子应用，自带 TabBar，不套 AppLayout */}
           <Route path={`${APP_PROTOTYPE_BASE}/*`} element={<VuePrototypeHost />} />
-          {/* React App 原型已弃用：旧入口统一重定向到 Vue 员工端，避免落到下架页面 */}
+          {/* 历史 React App URL 仅作兼容入口：统一重定向到 Vue 员工端 */}
           <Route path="/app/messages/*" element={<Navigate to={APP_PROTOTYPE_MESSAGE} replace />} />
-          <Route path={APP_ENTRY} element={<Navigate to={APP_PROTOTYPE_HOME} replace />} />
-          <Route path={`${APP_ENTRY}/*`} element={<Navigate to={APP_PROTOTYPE_HOME} replace />} />
-          <Route path={PC_WEB_HOME} element={<PcWebPortal />} />
+          <Route path="/app/android/home" element={<Navigate to={appPrototypeHomeWithPlatform('android')} replace />} />
+          <Route path="/app/ios/home" element={<Navigate to={appPrototypeHomeWithPlatform('ios')} replace />} />
+          <Route path="/app/home" element={<Navigate to={APP_PROTOTYPE_HOME} replace />} />
+          <Route path="/app" element={<Navigate to={APP_PROTOTYPE_HOME} replace />} />
+          <Route path="/app/*" element={<Navigate to={APP_PROTOTYPE_HOME} replace />} />
+          <Route path="/pc_web" element={<PcWebPortal />} />
           <Route path="/pc_web/contacts" element={<PcWebPortal />} />
           <Route path="/web_client/*" element={<LegacyRouteRedirect from="/web_client" to="/pc_client" />} />
           <Route path="/pc-web/*" element={<LegacyRouteRedirect from="/pc-web" to="/pc_web" />} />
-          <Route path="/" element={<Navigate to={PC_CLIENT_HOME} replace />} />
-          <Route path={`${PC_CLIENT_HOME}/*`} element={webClientRoutes} />
+          <Route path="/" element={<Navigate to="/pc_client" replace />} />
+          <Route path="/pc_client/*" element={webClientRoutes} />
           <Route path="/enterprise" element={<Navigate to="/pc_client/enterprise" replace />} />
           <Route path="/assistant" element={<Navigate to="/pc_client/ruyi-zone" replace />} />
           <Route path="/process" element={<Navigate to="/pc_client/process" replace />} />
