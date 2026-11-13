@@ -1,60 +1,78 @@
-# IJX Platform App 端路径规范
+# IJX Platform App 路由合同
 
-> 版本：1.0
-> 适用范围：`/app` 移动端原型
-> 目标：App 端拥有独立移动端布局与稳定路由，Android 与 iOS 默认共用页面，仅对明确的平台差异分别呈现；页面可复制、可刷新、可前进后退。
+版本：2.0  
+适用范围：React 宿主、`/download` 跨端入口与 `src/prototype/` Vue 员工端  
+权威实现：`src/prototype/`
 
-## 1. 路径清单
+## 1. 架构边界
 
-| 页面 | 规范 URL | 平台 | 状态 |
+- React Router 负责 `/app` 统一入口、Vue 子应用宿主和历史 URL 兼容。
+- Vue Router 负责 `/app/prototype/*` 内的所有 App 页面。
+- Android 与 iOS 默认共用同一页面；`?platform=android|ios` 只表示演示平台，不建立两套页面。
+- `src/pages/app/` 是已弃用的 React App 实现，不再登记新路由，也不得作为开发目标。
+- `honeyj619/IJX_App` 是历史归档，不参与本合同。
+
+## 2. 规范 URL
+
+| 页面 | 规范 URL | Vue 内部路径 | 状态 |
 | --- | --- | --- | --- |
-| App 入口 | `/app` | 共用 | 已实现（重定向 `/app/home`） |
-| App 首页 | `/app/home` | 共用（默认） | 已实现（框架） |
-| App 首页（平台差异形式） | `/app/android/home`、`/app/ios/home` | 按平台 | 已实现（框架） |
-| App 日程 | `/app/schedule`（内含「日程/任务」双 Tab） | 共用 | 已实现（框架） |
-| App 工作台 | `/app/workbench` | 共用 | 已实现（框架） |
-| App 我的 | `/app/me` | 共用 | 已实现（框架） |
-| App 消息（IM 会话列表） | `/app/messages` | 共用 | 已实现（P0） |
-| IM 会话详情 | `/app/messages/session/:sessionId` | 共用 | 已实现（P0） |
-| IM 会话信息 | `/app/messages/session-info/:sessionId` | 共用 | 已实现（P0） |
-| IM 全局搜索 | `/app/messages/search` | 共用 | 已实现（P0） |
-| IM 会话内搜索 | `/app/messages/history/:sessionId` | 共用 | 已实现（P0） |
-| IM 通讯录 | `/app/messages/contacts` | 共用 | 规划中 |
-| IM 群聊管理 | `/app/messages/group/:groupId`（含成员/公告/文件/名单/话题子页） | 共用 | 规划中 |
-| IM 建群/加入申请 | `/app/messages/groups/create`、`/app/messages/groups/join` | 共用 | 规划中 |
-| IM 话题 | `/app/messages/topic/:topicId` | 共用 | 规划中 |
-| IM 转发/合并记录 | `/app/messages/forward`、`/app/messages/merge/:mergeId` | 共用 | 规划中 |
+| App 统一入口 | `/app` | - | 重定向到 `/app/prototype/` |
+| 首页 | `/app/prototype/` | `/` | 已实现 |
+| 日程 | `/app/prototype/schedule` | `/schedule` | 已实现 |
+| 工作台 | `/app/prototype/workspace` | `/workspace` | 已实现 |
+| 消息 | `/app/prototype/message` | `/message` | 已实现 |
+| 我的 | `/app/prototype/profile` | `/profile` | 已实现 |
+| 消息搜索 | `/app/prototype/message/search` | `/message/search` | 已实现 |
+| 会话 | `/app/prototype/message/chat/:sessionId` | `/message/chat/:sessionId` | 已实现 |
+| 会话信息 | `/app/prototype/message/info/:sessionId` | `/message/info/:sessionId` | 已实现 |
+| 会话记录 | `/app/prototype/message/history/:sessionId` | `/message/history/:sessionId` | 已实现 |
+| 通讯录 | `/app/prototype/message/contacts` | `/message/contacts` | 已实现 |
+| 联系人 | `/app/prototype/message/contact/:contactId` | `/message/contact/:contactId` | 已实现 |
+| 创建群聊 | `/app/prototype/message/group/create` | `/message/group/create` | 已实现 |
+| 群详情 | `/app/prototype/message/group/:groupId` | `/message/group/:groupId` | 已实现 |
+| 扫一扫 | `/app/prototype/message/scan` | `/message/scan` | 原型入口 |
+| 置顶消息 | `/app/prototype/message/pins/:sessionId` | `/message/pins/:sessionId` | 已实现 |
+| 话题 | `/app/prototype/message/topic/:topicId` | `/message/topic/:topicId` | 已实现 |
+| 回执 | `/app/prototype/message/receipt/:sessionId/:msgId` | `/message/receipt/:sessionId/:msgId` | 已实现 |
+| 服务号 | `/app/prototype/message/service/:accountId` | `/message/service/:accountId` | 已实现 |
 
-规划页面清单与实施阶段详见 `docs/APP_DEVELOPMENT_PLAN.md`；未登记的 `/app/*` 路径统一回到 `/app/home`。
+## 3. 下载页入口
 
-## 2. 路由设计规则
+| 操作 | 目标 URL |
+| --- | --- |
+| iOS 下载 | `/app/prototype/?platform=ios` |
+| Android 下载 | `/app/prototype/?platform=android` |
+| PC 客户端进入 | `/pc_client` |
+| PC Web 进入 | `/pc_web` |
 
-- App 端页面统一挂在 `/app` 下，使用独立移动端布局（`src/pages/app/AppLayout.tsx`），不嵌套 `web_client` 的桌面 Layout。
-- 共享页面：`/app/<section>`，Android 与 iOS 默认共用，不携带平台段。
-- 平台差异页：`/app/<platform>/<section>`，仅当页面存在明确平台差异时使用；`<platform>` 取值 `android` | `ios`。
-- 共享页面支持 `?platform=android|ios` 指定平台用于调试；缺省平台为 `android`（`DEFAULT_APP_PLATFORM`）。
-- 子页面通过 `useAppPlatform()`（AppLayout 导出的 context hook）读取当前平台，不得手工解析路径。
-- 移动端页面宽度由 AppLayout 手机壳约束（`max-w-[430px]`），桌面浏览器居中呈现。
-- 页面筛选、分页和临时弹窗状态不另建页面路径；需要分享或恢复时再使用查询参数。
-- 页面必须支持直接粘贴 URL、浏览器刷新、前进和后退。
+## 4. 历史兼容
 
-## 3. 兼容规则
+| 历史 URL | 兼容目标 |
+| --- | --- |
+| `/app/home` | `/app/prototype/` |
+| `/app/android/home` | `/app/prototype/?platform=android` |
+| `/app/ios/home` | `/app/prototype/?platform=ios` |
+| `/app/messages` | `/app/prototype/message` |
+| `/app/messages/*` | `/app/prototype/message` |
+| 其他未登记 `/app/*` | `/app/prototype/` |
 
-- `/app` 不受移动端门禁（MobileDevicePrompt）限制，任意窗口宽度均可访问。
-- 与现有 Client、Web 页面互不影响：`/app` 不参与 `web_client` 旧路由重定向；`/download` 页「iOS下载」「安卓下载」按钮分别进入 `/app/ios/home`、`/app/android/home`，PC 客户端与 PC Web 入口行为保持不变。
-- GitHub Pages 的 `basename` 由路由器统一处理，业务代码不得手工拼接仓库前缀。
+历史 URL 只用于兼容，不得用于新代码、文档示例或页面链接。
 
-## 4. 与三端配置的关系
+## 5. GitHub Pages
 
-- App 端相关的管理后台配置页仍遵循 `docs/ADMIN_ROUTES.md` 登记规则。
-- 「同一配置同步三端（PC 客户端 / PC Web / App）」的产品规则待 App 页面设计稿确认后补充到需求模式 `docs/PROTOTYPE_REQUIREMENTS.md`。
+- React Router basename 使用 `import.meta.env.BASE_URL`。
+- Vue Router base 为 `${import.meta.env.BASE_URL}app/prototype/`。
+- Pages 正式 base 为 `/IJX_Platform/`。
+- 业务代码不得手工拼接仓库前缀。
+- 新增或更名路由时必须验证直接打开、刷新、前进、后退与 404 恢复。
 
-## 5. 维护流程
+## 6. 维护流程
 
-新增或更名 App 端页面时，同一轮必须完成：
+新增或更名 App 页面时，同一轮必须：
 
-1. 在 `src/pages/app/` 下实现页面组件，页面内通过 `useAppPlatform()` 读取平台。
-2. 确认 `src/App.tsx` 登记规范 URL（共享页不带平台段，平台差异页带平台段）。
-3. 更新本文件的路径清单。
-4. 验证下载页入口、直接访问、刷新、前进后退和平台段解析。
-5. 在 `tasks/CURRENT.md` 记录本轮路径变化和验证结果。
+1. 修改 `src/prototype/router/index.ts`。
+2. 必要时修改 `src/App.tsx` 的宿主或兼容路由。
+3. 更新本文件。
+4. 更新 `tools/prototype/smoke-pages.mjs` 与路由合同检查。
+5. 在 `src/prototype/harness/tasks/CURRENT.md` 记录任务边界和验证结果。
+6. 运行 `npm.cmd run check`、`npm.cmd run check:routes` 和适用的浏览器链路验证。

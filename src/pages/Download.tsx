@@ -1,14 +1,14 @@
 import { ArrowLeft, Apple, Smartphone, Monitor, Globe2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import logo from '@/assets/ijx-logo.jpg';
+import { appPrototypeUrl, PC_CLIENT_HOME, PC_WEB_HOME } from '@/constants/appRoutes';
 
 export default function Download() {
   const navigate = useNavigate();
 
   const openClient = (platform: 'ios' | 'android') => {
-    const target = platform === 'ios' ? 'ios' : 'android';
     // App 端统一为 Vue 员工端原型（/app/prototype/*）；React App 原型已弃用。
-    navigate(`/app/prototype/?platform=${target}`);
+    navigate(appPrototypeUrl(platform));
   };
 
   return (
@@ -16,7 +16,7 @@ export default function Download() {
       <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col px-5 py-6 sm:px-8 lg:px-10">
         <header className="relative mb-7 flex h-14 items-center justify-center">
           <button
-            onClick={() => navigate('/pc_client')}
+            onClick={() => navigate(PC_CLIENT_HOME)}
             className="absolute left-0 flex h-11 w-11 items-center justify-center rounded-full text-gray-900 transition-colors hover:bg-gray-100"
             title="返回"
           >
@@ -82,14 +82,14 @@ export default function Download() {
             安卓下载
           </button>
           <button
-            onClick={() => navigate('/pc_client')}
+            onClick={() => navigate(PC_CLIENT_HOME)}
             className="flex h-16 items-center justify-center gap-3 rounded-full bg-slate-700 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-slate-800"
           >
             <Monitor size={26} />
             PC客户端进入
           </button>
           <button
-            onClick={() => navigate('/pc_web')}
+            onClick={() => navigate(PC_WEB_HOME)}
             className="flex h-16 items-center justify-center gap-3 rounded-full bg-pink-700 text-lg font-semibold text-white shadow-sm transition-colors hover:bg-pink-800"
           >
             <Globe2 size={26} />
