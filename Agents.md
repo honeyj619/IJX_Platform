@@ -1,7 +1,5 @@
 # IJX Platform Memory
 
-> 开始任何页面任务前，先读取 `docs/HARNESS_MAP.md` 判断治理域。涉及 `src/prototype/` 的员工端 App 任务，必须进入 `src/prototype/harness/`，本文件不得覆盖 App 子 Harness。
-
 ## 1. 项目定位
 
 * 本项目为 IJX Platform 前端原型项目，当前阶段以页面原型、前端交互和 mock 数据演示为主。
@@ -81,10 +79,11 @@
   * 入口按钮或导航跳转路径；
   * GitHub Pages basename 兼容性。
 * 不要把后台页面、下载页嵌入客户端 Layout。
-* App 端权威实现为 Vue 子应用 `src/prototype/`，由 React 宿主挂载在 `/app/prototype/*`，不嵌套客户端 Layout；`/app` 是统一入口，Android/iOS 默认共用页面，通过 `?platform=android|ios` 表示演示平台。
-* App 端路径规范见 `docs/APP_ROUTES.md`；涉及 App 页面新增、更名、URL 调整时必须先读取，并同一轮更新路径清单。
+* App 端权威实现为 `src/prototype/`（Vue 3 子应用，经 `src/components/VuePrototypeHost.tsx` 挂载），正式路由统一挂在 `/app/prototype/` 下，内部页面路由由 `src/prototype/router/index.ts` 管理；`platform` 查询参数（`android` | `ios`）仅表示演示平台，Android/iOS 默认共用页面。
+* App 端路径规范见 `docs/APP_ROUTES.md`；涉及 App 页面新增、更名、URL 调整时必须先读取，并同一轮更新路径清单。宿主侧进入 App 的路径一律引用 `src/constants/appRoutes.ts` 常量，不硬编码。
+* `/app/home`、`/app/messages` 等旧 React App URL 仅作兼容跳转保留，不再是规范路由；新增功能、页面链接和文档示例一律使用 `/app/prototype/*`。
 * `/app` 不受移动端门禁限制，任意窗口宽度均可访问；`/download` 的 App 入口行为保持不变。
-* IM 模块承载在 Vue App「消息」Tab（`/app/prototype/message`）下；旧 `/app/messages/*` 仅作为兼容入口。消息样式与 App 系统一致（玫红 MR 体系），不建立第二套 React IM 实现。
+* IM 消息模块承载在 App「消息」入口（`/app/prototype/message`）下，产品与验收规范归 `src/prototype/harness/`。
 * 「打开的页面」记录规则：如意会议主页面及其 Tab（`/pc_client/meetings`、`/pc_client/meetings/rooms`、`/pc_client/meetings/recordings`）属于主页面，不记录到「打开的页面」；录制详情 `/pc_client/meetings/recordings/:recordingId` 是独立新页面，必须记录到「打开的页面」。
 
 ## 7. 编码与文本规范
@@ -218,6 +217,8 @@ npm.cmd run check
 * 新增真实人员隐私数据；
 * 将一次性产品需求写入 `MEMORY.md` 或 `AGENTS.md`。
 
-## 14. 员工端子应用 Harness 指向（2026-11-11）
+## 14. Harness 治理地图与员工端子应用指向
 
-* 员工端子应用（Vue 原型，`src/prototype/`）的产品基线、版本化参考图与验收规范独立存放于 `src/prototype/harness/`（`AGENTS.md` / `docs/` / `tasks/`）；涉及该子应用页面、消息模块与移动端验收时以该 Harness 为准，本文件其余规范适用于 React 主工程，两者分开适用、不互相覆盖。
+* **处理任何页面需求前，先读取 `docs/HARNESS_MAP.md` 判断治理域**（PC 客户端 / 管理后台 / Vue App / 跨端入口）。涉及 `src/prototype/` 时，必须进入 `src/prototype/harness/`，根规范不得覆盖 App Harness。
+* 员工端子应用（Vue 原型，`src/prototype/`）的产品基线、版本化参考图与验收规范独立存放于 `src/prototype/harness/`（`AGENTS.md` / `docs/` / `tasks/` / `checks/`）；涉及该子应用页面、消息模块与移动端验收时以该 Harness 为准，本文件其余规范适用于 React 主工程，两者分开适用、不互相覆盖。
+* `IJX_App` 独立仓库已退役为只读归档，不作为任何开发目标（迁移审计见 `docs/archive/IJX_APP_MIGRATION_AUDIT.md`）。

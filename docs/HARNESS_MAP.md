@@ -1,44 +1,47 @@
-# IJX Platform Harness 治理地图
+# Harness 治理地图
 
-版本：1.0  
-更新日期：2026-11-13
+> 处理任何页面需求前，先读取本文件判断治理域。
+> 涉及 `src/prototype/` 时，必须进入 `src/prototype/harness/`，根规范不得覆盖 App Harness。
 
-## 1. 唯一事实源
+## 1. 三个治理域
 
-| 治理域 | 权威代码 | 权威规范 |
-| --- | --- | --- |
-| PC 客户端、如意空间 | `src/pages/`、`src/components/`、`src/store/` | 根 `Agents.md`、`docs/UI_DESIGN_GUIDELINES.md`、如意助手专项方案 |
-| 管理后台 | `src/pages/Admin.tsx`、`src/components/admin/` | 根 `Agents.md`、`docs/ADMIN_UI_GUIDELINES.md`、`docs/ADMIN_ROUTES.md` |
-| Vue 员工端 App | `src/prototype/` | `src/prototype/harness/` |
-| 跨端入口与兼容路由 | `src/App.tsx`、`src/pages/Download.tsx` | `docs/APP_ROUTES.md` |
+| 治理域 | 权威代码 | 权威规范 | 验证入口 |
+| --- | --- | --- | --- |
+| PC 客户端 / 如意空间 | `src/pages/`、`src/components/` | 根 `Agents.md`、`docs/UI_DESIGN_GUIDELINES.md` | `npm run check` + 相关页面浏览器回归 |
+| 管理后台 | `/admin` 相关代码（`src/pages/Admin.tsx` 等） | `docs/ADMIN_UI_GUIDELINES.md`、`docs/ADMIN_ROUTES.md` | `npm run check` + 后台入口回归 |
+| Vue App（员工端） | `src/prototype/` | `src/prototype/harness/` | `npm run check:routes` + `check:pages` + `check:app-chain` |
+| 跨端入口与兼容路由 | `src/App.tsx`、`src/pages/Download.tsx` | `docs/APP_ROUTES.md` | `npm run check:routes` + 下载链路回归 |
 
-`honeyj619/IJX_App` 是只读历史仓库，不再是开发目标，也不得作为代码或 Harness 的同步源。
+## 2. 唯一事实源
 
-## 2. 任务路由规则
+- 员工端 App 唯一权威实现：`IJX_Platform/src/prototype/`（Vue 3 子应用，由 `src/components/VuePrototypeHost.tsx` 挂载）。
+- `IJX_App` 独立仓库已退役，只读归档，不参与主仓构建、路由和发布（审计见 `docs/archive/IJX_APP_MIGRATION_AUDIT.md`）。
+- GitHub Pages 只构建和发布 `IJX_Platform` 主仓。
 
-- 修改 `/pc_client`、如意空间、桌面工作台：读取根 `Agents.md` 和对应专项文档。
-- 修改 `/admin`：读取 `docs/ADMIN_UI_GUIDELINES.md` 与 `docs/ADMIN_ROUTES.md`。
-- 修改 `/app/prototype/*`、App 五个 Tab 或 Vue 消息模块：进入 `src/prototype/harness/`，按其 `AGENTS.md` 的顺序读取全部必需文件。
-- 修改 `/download`、`/app` 兼容入口或跨端跳转：同时检查根路由、Vue Router、`docs/APP_ROUTES.md` 和路由自动化。
+## 3. 每个治理域开始任务前必读
 
-同一任务跨越两个治理域时，必须分别满足两套规范；不得用一个治理域的视觉或组件规则覆盖另一个治理域。
+- **PC 客户端 / 如意空间**：根 `Agents.md` → `docs/UI_DESIGN_GUIDELINES.md` → 涉及页面代码。
+- **管理后台**：根 `Agents.md` → `docs/ADMIN_UI_GUIDELINES.md` → `docs/ADMIN_ROUTES.md` → `/admin` 相关代码。
+- **Vue App**：`src/prototype/harness/AGENTS.md` → 其 `docs/` 四份长期规范 → `tasks/CURRENT.md`；涉及宿主路由或下载入口时加读根 `docs/APP_ROUTES.md`。
 
-## 3. 协作边界
+## 4. 跨域需求处理
 
-- 同一时间只允许一个 Agent 修改同一组文件。
-- `src/prototype/` 的产品、设计与任务记录只写入其子 Harness。
-- 根 `tasks/CURRENT.md` 不记录 App 子应用的页面实施细节；App 任务写入 `src/prototype/harness/tasks/CURRENT.md`。
-- 历史记录进入对应 `tasks/archive/`，`CURRENT.md` 只保留一个活动任务。
-- 任何路由变更必须同轮更新实现、文档和自动化断言。
+- 一个需求横跨两个治理域（如下载页入口调整 + App 页面改动）时，拆分为各域内的独立改动，分别按各自 Harness 验收，分批提交，不混在一起。
+- Vue Router 内部使用相对于 `/app/prototype/` 的路径；React 宿主侧的路由常量统一放 `src/constants/appRoutes.ts`，Vue 侧不得硬编码 React 部署前缀，React 侧不得绕过常量硬编码 App 路径。
 
-## 4. 验收入口
+## 5. 禁止互相覆盖
 
-| 范围 | 最低验证 |
+- 根 `Agents.md` 只负责把任务路由到正确治理域，不复制 App Harness 的详细规范。
+- `src/prototype/harness/` 不混入后台与客户端规范；后台规范（`ADMIN_*`）不进入 App Harness。
+- 任何治理域的规范更新不得顺带改写其他域的规范文件。
+
+## 6. App 验证入口速查
+
+| 命令 | 覆盖 |
 | --- | --- |
-| 主工程 | `npm.cmd run check`、`git diff --check` |
-| App 路由合同 | `npm.cmd run check:routes` |
-| App 页面路由 | `npm.cmd run check:pages` |
-| 下载页四端链路 | `npm.cmd run check:app-chain` |
-| GitHub Pages | 使用 `VITE_BASE=/IJX_Platform/` 构建，并验证直接访问与刷新 |
+| `npm run check:routes` | 路由合同（宿主路由 / 兼容路由 / 下载入口 / APP_ROUTES.md 一致性） |
+| `npm run check:pages` | App 页面冒烟（5 入口 + 14 消息子路由） |
+| `npm run check:app-chain` | `/download` 四端入口全链路浏览器回归 |
+| `npm run check` | 上述 + 类型 + 构建 |
 
-浏览器验收不能被静态构建替代；页面视觉或关键交互发生变化时，仍需按各自 Harness 补充真实视口验证。
+Pages 正式 base（`/IJX_Platform/`）构建验收：`VITE_BASE='/IJX_Platform/' npm run build`，然后验证 `/IJX_Platform/download`、`/IJX_Platform/app/prototype/`、`/IJX_Platform/app/prototype/message`、`/IJX_Platform/pc_client`、`/IJX_Platform/pc_web`、`/IJX_Platform/admin`。
