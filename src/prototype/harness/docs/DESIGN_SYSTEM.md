@@ -193,26 +193,13 @@
 
 ## 13. 当前迁移差距
 
-- 代码仍使用 `#D93030`、`#FF6B6B`、`#C4A35A` 等散落色值。
-- 字阶、行高和字重尚未 Token 化。
-- Font Awesome、DiceBear 和远程占位图片尚未替换。
-- 旧页面大量使用通用白色圆角卡片，与版本化页面结构不一致。
-- 底部导航没有把安全区纳入自身高度；页面仍使用固定 70px 避让。
-- Button、NavBar、Empty、Field 尚未形成共享 Vue 组件。
+消息模块（`src/prototype/` 消息相关页面与 `styles/im.css`）已完成 Token 化、本地图标与共享 Im 组件对齐；一级页面（Home/Schedule/Workspace/Profile）的差距按各自任务记录判定。仍开放的长期差距：
+
+- 占位图标集（`assets/icons/im/` 40 个线稿 SVG）与 160px 空态插图待正式品牌素材替换。
+- 消息模块圆角候选值（`--im-radius-bubble/input/sheet/tag`）待截图验收后决定是否升级为正式 Token。
+- 正式品牌图标、Logo、头图、Banner 和内容图片包未交付。
 
 上述内容只能在明确的迁移任务中改动产品代码；本文件本身不代表代码已完成迁移。
-
-### 消息模块已处理的迁移差距（2026-11-11 P1 / P2，仅适用于 `src/prototype/` 消息模块）
-
-| 原差距 | 消息模块处理结果 | 依据 |
-| --- | --- | --- |
-| 散落色值 / 字阶未 Token 化 | `styles/im.css` 字号全部 `var(--t1..t10-size)`；品牌玫红 rgba 收敛为 `--im-brand-*` 语义变量；`im/ui.ts` 色板移除 `#8b5cf6` / `#00b8a9` | `spec-colors` / `spec-typography` |
-| 远程占位图 / emoji 功能图标 | DiceBear / trae-api URL 全删；40 个本地同族线稿 SVG 占位集 + 本地主头像；emoji 仅作消息内容保留 | §5 / `AGENTS.md §9` |
-| Button / NavBar / Empty / Field 未形成共享组件 | 新增 `ImIcon` / `ImButton` / `ImField`，重写 `ImEmpty` / `ImNavBar` / `ImSheet`；三态、行式 12px 间距、160px 空态插图 | §6–§9 / `spec-*` |
-| 点击区与状态缺失 | 全模块 ≥44×44；`:focus-visible` 与 `prefers-reduced-motion`；P2-1 补齐处理中 / 加载 / 错误 / 成功反馈与防重复提交 | §12 |
-| 圆角候选值未登记 | `--im-radius-bubble/input/sheet/tag` 与头像动态字号例外已写入 `tasks/CURRENT.md`，未升级为正式 Token | §4 |
-
-> 范围声明：以上结论**只针对消息模块**；本节上方的一级页面（Home / Schedule / Workspace / Profile）差距清单仍按各自任务记录判定，不因本表而默认关闭。占位图标、场景插图与圆角候选值仍待正式素材 / 截图验收后替换或转正。
 
 ## 14. 待确认
 

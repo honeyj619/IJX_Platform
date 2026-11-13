@@ -1,15 +1,13 @@
 # AI Prototype Harness
 
-本 Harness 专用于 i吉祥员工端 Vue 移动原型。它让 AI 在每次任务中使用同一套产品事实、设计基线、实现边界和验收方法，而不是把当前旧代码自动解释成正确规范。管理后台由主工程根 Harness 与 `docs/ADMIN_*` 规范治理，不属于本 Harness。
+本 Harness 治理 i吉祥员工端移动原型。职责：让 AI 在每次任务中使用同一套产品事实、设计基线、实现边界和验收方法，而不是把当前旧代码自动解释成正确规范。
 
-## 0. 适用域与权威工程（用户 2026-11-11 确认，Q1-A）
+## 0. 适用域与权威工程
 
-- **本 Harness 适用于 `IJX_Platform` 仓库 `src/prototype/` 员工端子应用**（Vue 3 + Vue Router + Vite），该子应用是 i吉祥员工端的**唯一权威实现**；`src/prototype/harness/` 为其治理域，本目录 `docs/references/` 为版本化参考图。
-- `IJX_App`（`honeyj619/IJX_App.git`，路径 `D:\Codex\github-ijx-platform-app`）为**历史仓库**，其 `src/views/Message.vue` 等页面保留为历史版本，**不再作为改造对象**；该仓库 `PRODUCT.md` / `CURRENT.md` 已加迁出指向。
-- 涉及 `src/prototype/` 页面、消息模块、移动端视觉与交互验收时，以本 Harness 为准；仓库根 `Agents.md` 与 `docs/APP_UI_GUIDELINES.md` 等 React 主工程规范适用于主工程，两者不互相覆盖。
-- 技术决策 `zustand/vanilla + persist` 已由用户 2026-11-11 确认保留（Q4），历史记录见 `tasks/archive/2026-11-app-migration-and-message.md`；属消息模块实现决策，不扩展为其他模块的默认规则。
-- 迁移不改动 React 主工程路由与 `/download` → `/app/prototype/` 落地链路。
-- 跨端正式路由与兼容关系以主仓 `docs/APP_ROUTES.md` 为唯一合同；本 Harness 不复制第二份路径清单。
+- **本 Harness 适用于 `IJX_Platform` 仓库 `src/prototype/` 员工端子应用**（Vue 3 + Vue Router + Vite），该子应用是 i吉祥员工端的**唯一权威实现**；`src/prototype/harness/` 为其治理域，`docs/references/` 为版本化参考图。
+- `IJX_App`（`honeyj619/IJX_App`）为**只读历史归档**，不参与主仓构建、路由和发布，不作为改造对象；迁移审计见主仓 `docs/archive/IJX_APP_MIGRATION_AUDIT.md`。
+- 涉及 `src/prototype/` 页面、消息模块、移动端视觉与交互验收时，以本 Harness 为准；仓库根 `Agents.md` 与 `docs/UI_DESIGN_GUIDELINES.md` 等 React 主工程规范适用于主工程，两者不互相覆盖。
+- App 路由合同（宿主路由、下载入口、兼容跳转）以根 `docs/APP_ROUTES.md` 为准，本 Harness 不重复维护路由清单。
 
 ## 1. 规则优先级
 
@@ -18,7 +16,7 @@
 1. 用户当前任务中的明确要求。
 2. `docs/references/` 中的版本化参考图，以及 `docs/REFERENCE_BASELINES.md` 对参考图的解释。
 3. 已确认的长期 Harness：`docs/PRODUCT.md`、`docs/DESIGN_SYSTEM.md`、`docs/PROTOTYPE_RULES.md`。
-4. `src/` 中的当前实现。它只证明“现在是什么”，不能覆盖目标页面或正式设计规范。
+4. `src/prototype/` 中的当前实现。它只证明“现在是什么”，不能覆盖目标页面或正式设计规范。
 5. `tasks/CURRENT.md` 中的当次假设和临时决定。
 
 如果同级来源互相冲突，不得自行挑选。记录冲突、影响和建议，等待产品经理确认。页面截图中的业务数据可视为演示内容，组件规范图中的颜色、字阶、状态和行为才是长期设计依据。
@@ -26,7 +24,7 @@
 ## 2. Harness 更新规则
 
 - 只有用户明确确认的规则，或能被版本化参考材料直接证明的稳定规则，才能进入长期 Harness。
-- 未确认推断、临时演示数据、绕行方案和一次性需求只写入 `tasks/CURRENT.md`。
+- 未确认推断、临时演示数据、绕行方案和一次性需求只写入 `tasks/CURRENT.md`；执行完毕后连同过程记录一起移入 `tasks/archive/`。
 - 新规则写入长期 Harness 时，必须注明来源、适用范围和是否已经落到代码。
 - 不得因为旧代码重复出现某个数值，就自动把它升级为设计 Token。
 - 任务结束时说明本轮是否更新长期 Harness、更新了哪些文件，以及是否仍有待确认项。
@@ -40,9 +38,8 @@
 3. `docs/PRODUCT.md`
 4. `docs/DESIGN_SYSTEM.md`
 5. `docs/PROTOTYPE_RULES.md`
-6. 主仓 `docs/APP_ROUTES.md`
-7. `tasks/CURRENT.md`
-8. 与需求有关的路由、页面、组件、数据和资源文件
+6. `tasks/CURRENT.md`
+7. 与需求有关的路由、页面、组件、数据和资源文件；涉及宿主路由或下载入口时加读根 `docs/APP_ROUTES.md`
 
 开始实现前必须写清：目标、范围、参考基线、验收标准、非目标和影响文件。只做审查时可以不改 `tasks/CURRENT.md`；一旦修改仓库，就必须更新。
 
@@ -54,7 +51,7 @@
 4. **最小实现**：复用现有 Vue 3、Vue Router 和 Vite，不顺手重构无关代码。
 5. **状态验证**：覆盖默认、按压或选中、禁用、加载、空、成功和错误中本任务可达的状态。
 6. **视觉验收**：按 `docs/PROTOTYPE_RULES.md` 生成目标视口截图，与版本化基线逐区块对照。
-7. **工程验收**：运行构建、路由检查、差异检查，并记录实际退出结果。
+7. **工程验收**：运行构建、路由检查、差异检查，并记录实际退出结果（命令索引见 `checks/README.md`）。
 8. **汇报**：说明完成内容、影响范围、验证证据、未覆盖风险、待确认事项和 Git 状态。
 
 ## 5. 开发边界
@@ -64,8 +61,7 @@
 - 未经明确任务，不新增大型组件库、复杂状态管理或测试平台。
 - 设计材料采用 Vant 视觉规范，但当前仓库未安装 Vant。不得把“遵循 Vant 规范”误写成“已经使用 Vant 组件”；是否引入 Vant 必须作为明确技术决策。
 - 员工端使用品牌主色 Token，禁止业务组件继续散落硬编码旧红色。
-- 管理后台使用独立壳层和操作色，不复用员工端底部导航与移动卡片骨架。
-- 自定义品牌图标和页面图片优先使用版本化本地资源。Font Awesome 只属于当前旧实现，不是目标图标规范。
+- 自定义品牌图标和页面图片优先使用版本化本地资源。Font Awesome 只属于历史旧实现，不是目标图标规范。
 - 不自动提交、推送、部署或改写 Git 历史。
 - 发现已有改动时保留并绕开；无法安全绕开时先说明。
 
@@ -76,7 +72,7 @@
 - 详情页必须提供明确返回路径，不能用新增一级入口代替层级导航。
 - 核心演示路径不能只用 `alert()` 伪装完成。必须包含触发、处理中反馈、可见结果、关联状态同步，以及返回或继续路径。
 - 页面与组件实现必须以 `docs/references/` 为目标基线。若参考图未覆盖某页面或状态，标记“待补充”，不得自行拼成正式设计。
-- **例外（来源：用户 2026-11-11 明确决策 Q2；适用范围：仅消息页 `/message` 及其二级页；是否已落代码：是（P1 已完成组件与视觉对齐，见 `tasks/CURRENT.md` P1 执行记录））**：消息页**只登记结构性基线**，不要求也不新增 `page-message*` 截图；视觉与组件一律以 `DESIGN_SYSTEM.md` + `spec-*` 为准。缺截图不构成免除视觉验收的理由，也不得据此把消息页降级为「视觉待补充」或跳过逐区块对照。
+- **例外（消息页 `/message` 及其二级页）**：消息页只登记结构性基线（`REFERENCE_BASELINES.md §2`），不新增 `page-message*` 截图；视觉与组件一律以 `DESIGN_SYSTEM.md` + `spec-*` 为准。缺截图不构成免除视觉验收的理由，也不得据此把消息页降级为「视觉待补充」或跳过逐区块对照。
 
 ## 7. 验证基线
 
@@ -86,7 +82,7 @@
 - 关键交互：验证“入口 -> 操作 -> 处理中 -> 结果 -> 状态同步 -> 返回或继续”。
 - 最终检查：`git diff --check`、`git status --short`；如果 Git 命令本身异常，必须报告并使用只读替代方法确认改动范围。
 
-`npm run check` 当前只覆盖构建和路由壳，不等于视觉回归、内容正确或交互完成。不得仅凭该命令通过就宣称页面验收通过。
+`npm run check` 只证明类型、构建与路由壳可访问，不等于视觉回归、内容正确或交互完成。不得仅凭该命令通过就宣称页面验收通过。
 
 ## 8. 完成汇报格式
 
