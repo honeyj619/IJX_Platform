@@ -21,6 +21,7 @@ const routes = [
   { name: 'Schedule', path: '/schedule', marker: 'Schedule' },
   { name: 'Workspace', path: '/workspace', marker: 'Workspace' },
   { name: 'Profile', path: '/profile', marker: 'Profile' },
+  { name: 'Feedback', path: '/profile/feedback', marker: '/profile/feedback' },
   { name: 'Message', path: '/message', marker: 'Message' },
   { name: 'MessageSearch', path: '/message/search', marker: '/message/search' },
   { name: 'MessageChat', path: '/message/chat/' + 's-g-fe', marker: '/message/chat/:sessionId' },

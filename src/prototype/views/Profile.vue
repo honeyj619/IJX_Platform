@@ -107,7 +107,7 @@
 
     <!-- 第二组菜单（左侧线稿图标） -->
     <nav class="menu-group" aria-label="帮助与安全">
-      <button type="button" class="menu-row" @click="showToast('帮助与反馈暂未开放')">
+      <button type="button" class="menu-row" @click="openFeedback">
         <span class="menu-row__icon" aria-hidden="true" v-html="menuIcons.help"></span>
         <span class="menu-row__label">帮助与反馈</span>
         <svg class="menu-row__arrow" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -149,9 +149,16 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import bgSky from '../assets/profile/bg-sky.png'
 import avatarImg from '../assets/profile/avatar-liangjie.png'
 import wifiBanner from '../assets/profile/banner-wifi.png'
+
+const router = useRouter()
+
+function openFeedback() {
+  router.push('/profile/feedback')
+}
 
 /* 四个高优入口（黑灰线稿 + 品牌粉点缀 SVG） */
 const iconStroke = 'stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"'

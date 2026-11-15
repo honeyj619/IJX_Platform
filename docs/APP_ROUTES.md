@@ -22,6 +22,7 @@
 | 工作台 | `/app/prototype/workspace` | `/workspace` | 已实现 |
 | 消息 | `/app/prototype/message` | `/message` | 已实现 |
 | 我的 | `/app/prototype/profile` | `/profile` | 已实现 |
+| 帮助与反馈 | `/app/prototype/profile/feedback` | `/profile/feedback` | 已实现 |
 | 消息搜索 | `/app/prototype/message/search` | `/message/search` | 已实现 |
 | 会话 | `/app/prototype/message/chat/:sessionId` | `/message/chat/:sessionId` | 已实现 |
 | 会话信息 | `/app/prototype/message/info/:sessionId` | `/message/info/:sessionId` | 已实现 |

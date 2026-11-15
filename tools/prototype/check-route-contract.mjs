@@ -21,6 +21,7 @@ const checks = [
   ['App 规范入口', sources.constants.includes("APP_PROTOTYPE_BASE = '/app/prototype'")],
   ['iOS/Android 查询参数', sources.constants.includes('?platform=${platform}')],
   ['Vue 一级路由完整', ['/', '/schedule', '/workspace', '/message', '/profile'].every((route) => sources.vueRouter.includes(`path: '${route}'`))],
+  ['Vue 帮助与反馈路由', sources.vueRouter.includes("path: '/profile/feedback'") && sources.contract.includes('/app/prototype/profile/feedback')],
   ['Vue 消息路由完整', [
     '/message/search', '/message/chat/:sessionId', '/message/info/:sessionId',
     '/message/history/:sessionId', '/message/contacts', '/message/contact/:contactId',
