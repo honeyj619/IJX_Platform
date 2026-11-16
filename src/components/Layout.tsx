@@ -21,6 +21,7 @@ import { create } from 'zustand';
 import { useThemeStore } from '../store/themeStore';
 import { useLayoutStore } from '../store/layoutStore';
 import { UserMenu } from './UserMenu';
+import ClientWindowBar from './ClientWindowBar';
 import { SIDEBAR, WEB_CLIENT_MIN_WIDTH } from '../constants/layout';
 import { openPortalLink } from '../utils/linkOpening';
 import GlobalSearchDialog from './GlobalSearchDialog';
@@ -540,21 +541,26 @@ export default function Layout({ children }: LayoutProps) {
       </div>
 
       {/* 主内容区域 */}
-      <div 
-        className={`client-main-shell flex-1 overflow-hidden flex flex-col h-full min-w-0 transition-all duration-300 ${isMessagePage ? '' : 'rounded-xl border border-white/60 bg-white dark:bg-gray-900'}`}
-        style={{ height: '100%' }}
-      >
-        <div className={`flex-1 min-h-0 ${isMessagePage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-          {children}
+      {/* 原生标题栏模拟：帮助入口 + 窗口控制（演示）——置于内容卡外层，透明浮于页面底色 */}
+      <div className="flex min-w-0 flex-1 flex-col" style={{ height: '100%' }}>
+        <ClientWindowBar
+          pageTitle={resolveClientPageTitle(stripClientBase(normalizePagePath(location.pathname)))}
+        />
+        <div
+          className={`client-main-shell flex-1 overflow-hidden flex flex-col min-w-0 transition-all duration-300 ${isMessagePage ? '' : 'rounded-xl border border-white/60 bg-white dark:bg-gray-900'}`}
+        >
+          <div className={`flex-1 min-h-0 ${isMessagePage ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+            {children}
+          </div>
+
+          {isSearchOpen && (
+            <GlobalSearchDialog
+              query={searchQuery}
+              onQueryChange={setSearchQuery}
+              onClose={() => setIsSearchOpen(false)}
+            />
+          )}
         </div>
-        
-        {isSearchOpen && (
-          <GlobalSearchDialog
-            query={searchQuery}
-            onQueryChange={setSearchQuery}
-            onClose={() => setIsSearchOpen(false)}
-          />
-        )}
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import type { RuyiMessage, RuyiMessageActionType } from "../../types/ruyi";
 import { useRuyiStore } from "../../store/ruyiStore";
 import { getRuyiResultDisplayTitle, canOpenRuyiResult } from "../../utils/ruyiResultPresentation";
-import { Loader2, ExternalLink, Check, X, Play, Pencil, Copy } from "lucide-react";
+import { Loader2, ExternalLink, Check, X, Play, Pencil, Copy, ArrowRight } from "lucide-react";
+import RuyiCapabilitySummary from "./capability/RuyiCapabilitySummary";
 
 interface RuyiImMessageListProps {
   messages: RuyiMessage[];
@@ -12,6 +13,7 @@ const actionIcons: Partial<Record<RuyiMessageActionType, React.ReactNode>> = {
   copy: <Copy size={12} />,
   "open-result": <ExternalLink size={12} />,
   "open-workbench": <ExternalLink size={12} />,
+  "continue-in-zone": <ArrowRight size={12} />,
   "confirm-task": <Check size={12} />,
   "modify-task": <Pencil size={12} />,
   "cancel-task": <X size={12} />,
@@ -69,6 +71,8 @@ function RuyiImMessageBubble({
       <div className="flex justify-end">
         <div className="max-w-[80%] rounded-2xl bg-theme-50 px-4 py-2.5 text-sm text-gray-900 dark:bg-theme-900/20 dark:text-white">
           <div className="whitespace-pre-line">{message.content}</div>
+          {/* V3：能力提交消息附带参数摘要 */}
+          {message.capabilitySubmission && <RuyiCapabilitySummary submission={message.capabilitySubmission} />}
         </div>
       </div>
     );

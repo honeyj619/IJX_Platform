@@ -1,27 +1,48 @@
-import { useState } from 'react';
-import { BarChart3, CircleHelp, Mail, MessageSquare, MoreHorizontal, Smartphone, X } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { BarChart3, ChevronRight, CircleHelp, Mail, MessageSquare, MoreHorizontal, Smartphone, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import FeedbackComposer from './FeedbackComposer';
 import { createFeedbackPageContext } from '../utils/feedbackPageContext';
 import { RUYI_ASSISTANT_AVATAR } from '../data/people';
-import type { FeedbackRecord } from '../data/feedback';
+import { createFeedbackRequestId, type FeedbackRecord } from '../data/feedback';
 
 interface EnterpriseFloatingBarProps {
   /** 反馈表单反显的来源页面上下文（标题+路径） */
   pageContext: { title: string; path: string };
-  /** 提交成功回调（默认展示提交成功态） */
+  /** 提交成功回调（默认面板内展示成功态） */
   onFeedbackSubmitted?: (record: FeedbackRecord) => void;
 }
 
+const COLLAPSE_KEY = 'ijx-floating-bar-collapsed-v1';
+
+/** 读取折叠状态（默认展开） */
+const readCollapsed = (): boolean => {
+  try {
+    return window.localStorage.getItem(COLLAPSE_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
 /**
  * 企业门户右侧固定悬浮栏（通用组件）：
- * IT提报 / 快捷入口 / 帮助与反馈（弹框）/ 如意助手。
- * 企业门户 tab 与 PC Web 门户（含通讯录页）共用。
+ * IT提报 / 快捷入口 / 帮助与反馈（弹框，不跳转）/ 如意助手。
+ * 支持折叠（状态保存在当前浏览器）；企业门户 tab 与 PC Web 门户（含通讯录页）共用。
  */
 export default function EnterpriseFloatingBar({ pageContext, onFeedbackSubmitted }: EnterpriseFloatingBarProps) {
   const navigate = useNavigate();
+  const [collapsed, setCollapsed] = useState<boolean>(readCollapsed);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [submitted, setSubmitted] = useState<FeedbackRecord | null>(null);
+  const requestIdRef = useRef(createFeedbackRequestId('pcweb-floating'));
+
+  const toggleCollapsed = () => {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      window.localStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+    } catch { /* 存储失败不影响交互 */ }
+  };
 
   const openFeedback = () => {
     setSubmitted(null);
@@ -29,17 +50,22 @@ export default function EnterpriseFloatingBar({ pageContext, onFeedbackSubmitted
   };
 
   const handleSubmit = (record: FeedbackRecord) => {
+    requestIdRef.current = createFeedbackRequestId('pcweb-floating');
     if (onFeedbackSubmitted) {
       onFeedbackSubmitted(record);
       setFeedbackOpen(false);
       return;
     }
+    setFeedbackOpen(false);
     setSubmitted(record);
   };
 
   return (
     <>
-      <div className="fixed right-0 top-1/2 z-30 flex -translate-y-1/2 flex-col overflow-hidden rounded-l-xl bg-white shadow-lg dark:bg-gray-800">
+      <div
+        className="fixed right-0 top-1/2 z-30 flex -translate-y-1/2 flex-col overflow-hidden rounded-l-xl bg-white shadow-lg dark:bg-gray-800"
+        data-requirement-id="enterprise-floating-bar"
+      >
         {/* IT提报 */}
         <div className="bg-pink-700 p-2 text-white">
           <div className="flex flex-col items-center gap-1">
@@ -50,23 +76,41 @@ export default function EnterpriseFloatingBar({ pageContext, onFeedbackSubmitted
           </div>
         </div>
 
-        <div className="flex flex-col items-center gap-1 p-2">
-          <button type="button" onClick={openFeedback} title="帮助与反馈" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" data-requirement-id="custom-20261029-002">
-            <CircleHelp size={18} />
+        {/* 折叠态：仅一个展开按钮 */}
+        {collapsed ? (
+          <button type="button" onClick={toggleCollapsed} title="展开悬浮栏" className="flex h-10 w-10 items-center justify-center text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
+            <ChevronRight size={18} />
           </button>
-          <button type="button" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" title="更多">
-            <MoreHorizontal size={18} />
-          </button>
-          <button type="button" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" title="邮件">
-            <Mail size={18} />
-          </button>
-          <button type="button" onClick={() => navigate('/download')} title="客户端下载" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
-            <Smartphone size={18} />
-          </button>
-          <button type="button" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" title="数据看板">
-            <BarChart3 size={18} />
-          </button>
-        </div>
+        ) : (
+          <div className="flex flex-col items-center gap-1 p-2">
+            <button
+              type="button"
+              onClick={openFeedback}
+              className="flex w-10 flex-col items-center gap-0.5 rounded-lg py-1.5 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+              title="帮助与反馈：反馈当前页面或查看我的反馈"
+              data-requirement-id="custom-20261029-002"
+            >
+              <CircleHelp size={18} />
+              <span className="text-[10px] leading-3">反馈</span>
+            </button>
+            <button type="button" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" title="更多">
+              <MoreHorizontal size={18} />
+            </button>
+            <button type="button" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" title="邮件">
+              <Mail size={18} />
+            </button>
+            <button type="button" onClick={() => navigate('/download')} title="客户端下载" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700">
+              <Smartphone size={18} />
+            </button>
+            <button type="button" className="flex h-10 w-10 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" title="数据看板">
+              <BarChart3 size={18} />
+            </button>
+            {/* 折叠按钮 */}
+            <button type="button" onClick={toggleCollapsed} title="收起悬浮栏" className="flex h-7 w-10 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700">
+              <ChevronRight size={16} className="rotate-180" />
+            </button>
+          </div>
+        )}
 
         {/* 如意助手悬浮 */}
         <div className="border-t border-gray-100 p-2 dark:border-gray-700">
@@ -79,7 +123,7 @@ export default function EnterpriseFloatingBar({ pageContext, onFeedbackSubmitted
         </div>
       </div>
 
-      {/* 帮助与反馈弹框（画面居中，内容与 client 一致） */}
+      {/* 帮助与反馈弹框（画面居中，不跳转、保留当前页面） */}
       {feedbackOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4" onMouseDown={event => { if (event.target === event.currentTarget) setFeedbackOpen(false); }}>
           <div role="dialog" aria-modal="true" aria-label="帮助与反馈" className="flex max-h-[86vh] w-[min(760px,calc(100vw-2rem))] flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
@@ -91,23 +135,27 @@ export default function EnterpriseFloatingBar({ pageContext, onFeedbackSubmitted
               <button type="button" onClick={() => setFeedbackOpen(false)} className="ml-auto rounded-md p-1.5 text-gray-400 hover:bg-gray-100"><X size={19} /></button>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-              {submitted ? (
-                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-5">
-                  <h3 className="text-sm font-semibold text-emerald-800">反馈已提交</h3>
-                  <p className="mt-2 text-sm leading-6 text-emerald-700">我们已收到你的反馈（{submitted.feedbackNo}），可在“我的反馈”中查看处理进度。</p>
-                  <div className="mt-4 flex gap-2">
-                    <button type="button" onClick={() => navigate(`/pc_client/help-feedback/${submitted.id}`)} className="rounded-md bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700">查看我的反馈</button>
-                    <button type="button" onClick={() => setFeedbackOpen(false)} className="rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">关闭</button>
-                  </div>
-                </div>
-              ) : (
-                <FeedbackComposer
-                  source="企业门户"
-                  pageContext={createFeedbackPageContext(pageContext.title, pageContext.path)}
-                  onCancel={() => setFeedbackOpen(false)}
-                  onSubmitted={handleSubmit}
-                />
-              )}
+              <FeedbackComposer
+                source="PC Web悬浮栏"
+                clientKind="PC_WEB"
+                pageContext={createFeedbackPageContext(pageContext.title, pageContext.path, 'PC_WEB', 'web')}
+                onCancel={() => setFeedbackOpen(false)}
+                onSubmitted={handleSubmit}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 提交成功（提供查看详情 / 继续浏览） */}
+      {submitted && !feedbackOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+          <div className="rounded-lg border border-emerald-200 bg-white p-5 shadow-2xl">
+            <h3 className="text-sm font-semibold text-emerald-800">反馈已提交</h3>
+            <p className="mt-2 text-sm leading-6 text-emerald-700">我们已收到你的反馈（{submitted.feedbackNo}），可在“我的反馈”中查看处理进度。</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button type="button" onClick={() => setSubmitted(null)} className="rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">继续浏览</button>
+              <button type="button" onClick={() => navigate(`/pc_client/help-feedback/${submitted.id}`)} className="rounded-md bg-theme-600 px-4 py-2 text-sm font-semibold text-white hover:bg-theme-700">查看反馈详情</button>
             </div>
           </div>
         </div>

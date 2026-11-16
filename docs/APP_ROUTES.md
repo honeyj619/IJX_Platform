@@ -22,6 +22,8 @@
 | 工作台 | `/app/prototype/workspace` |
 | 消息 | `/app/prototype/message` |
 | 我的 | `/app/prototype/profile` |
+| 帮助与反馈 | `/app/prototype/profile/feedback` |
+| 反馈详情 | `/app/prototype/profile/feedback/:feedbackId` |
 | 消息搜索 | `/app/prototype/message/search` |
 | 会话 | `/app/prototype/message/chat/:sessionId` |
 | 会话信息 | `/app/prototype/message/info/:sessionId` |
@@ -36,7 +38,7 @@
 | 回执 | `/app/prototype/message/receipt/:sessionId/:msgId` |
 | 服务号 | `/app/prototype/message/service/:accountId` |
 
-消息模块为 13 条功能子页 + 1 条兜底重定向（`/message/:pathMatch(.*)*` → `/message`）；全部为二级页、隐藏底部导航、提供明确返回。
+消息模块为 13 条功能子页 + 1 条兜底重定向（`/message/:pathMatch(.*)*` → `/message`）；「我的」域新增帮助与反馈二级页（隐藏底部导航、提供返回）。
 
 ## 3. 下载入口
 

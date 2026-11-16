@@ -88,9 +88,9 @@ export function UserMenu({ collapsed = false, feedbackPageTitle = '' }: UserMenu
     setIsOpen(false);
     if (item.id === 'help-feedback' && item.path) {
       if (!location.pathname.includes('/help-feedback')) {
-        const context = createFeedbackPageContext(feedbackPageTitle, `${location.pathname}${location.search}`);
+        const context = createFeedbackPageContext(feedbackPageTitle, `${location.pathname}${location.search}`, 'PC_CLIENT');
         saveFeedbackPageContext(context);
-        navigate(item.path, { state: { feedbackPageContext: context } });
+        navigate(item.path, { state: { feedbackPageContext: context, feedbackOrigin: { source: 'PC客户端用户菜单', clientKind: 'PC_CLIENT' } } });
       } else {
         navigate(item.path);
       }

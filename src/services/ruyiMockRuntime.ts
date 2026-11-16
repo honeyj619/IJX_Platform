@@ -500,9 +500,9 @@ function handleGenericQuery(
   if (t.includes('公文') || t.includes('会议纪要') || t.includes('通知')) {
     return {
       messages: [
-        createMessage(conversationId, 'assistant', 'text', '好的，我来帮您起草公文。请补充会议主题、参会人员和关键结论，或直接进入公文工作台编辑。', {
+        createMessage(conversationId, 'assistant', 'text', '好的，我来帮您起草公文。请先告诉我这些信息：\n1. 公文类型（通知 / 会议纪要 / 工作简报等）\n2. 文章标题与篇幅要求\n3. 背景要点和内容要求\n4. 是否有参考附件或指定模板\n\n也可以直接前往如意空间，使用「如意公文」插件配置参数后提交。', {
           capabilityId: 'document',
-          actions: [{ type: 'open-workbench', label: '进入公文工作台' }],
+          actions: [{ type: 'continue-in-zone', label: '前往如意空间继续创作' }],
         }),
       ],
     };
@@ -511,20 +511,20 @@ function handleGenericQuery(
   if (t.includes('ppt') || t.includes('演示')) {
     return {
       messages: [
-        createMessage(conversationId, 'assistant', 'text', '好的，我来帮您制作PPT。请补充主题、受众和页数要求，或直接进入PPT工作台配置。', {
+        createMessage(conversationId, 'assistant', 'text', '好的，我来帮您制作PPT。请先梳理这些需求：\n1. PPT 主题与使用场景\n2. 页数、受众和内容语气\n3. 是否有参考附件或指定模板\n\n也可以直接前往如意空间，使用「如意PPT」插件配置参数后提交。', {
           capabilityId: 'presentation',
-          actions: [{ type: 'open-workbench', label: '进入PPT工作台' }],
+          actions: [{ type: 'continue-in-zone', label: '前往如意空间继续创作' }],
         }),
       ],
     };
   }
 
-  if (t.includes('周报') || t.includes('参谋')) {
+  if (t.includes('周报') || t.includes('参谋') || t.includes('工作汇报') || t.includes('汇报')) {
     return {
       messages: [
-        createMessage(conversationId, 'assistant', 'text', '好的，我来协助您生成项目周报。请补充周期、关键进展和待跟进事项，或直接进入参谋师工作台。', {
+        createMessage(conversationId, 'assistant', 'text', '好的，我来协助您整理汇报。请先确认：\n1. 汇报类型（项目周报 / 个人周报 / 经营分析）与周期\n2. 分析对象与数据来源\n3. 需要重点体现的内容\n\n也可以直接前往如意空间，使用「如意参谋」插件配置参数后提交。', {
           capabilityId: 'advisor',
-          actions: [{ type: 'open-workbench', label: '进入参谋师工作台' }],
+          actions: [{ type: 'continue-in-zone', label: '前往如意空间继续创作' }],
         }),
       ],
     };
@@ -674,6 +674,99 @@ function handleActiveCapability(
     };
   }
 
+  // 可调用智能体：由对应智能体作答，回复保留来源署名与来源入口
+  if (capability.id === 'iknow') {
+    const agentSource = {
+      capabilityId: capability.id,
+      sourceLabel: capability.sourceLabel,
+      sourceHref: capability.sourceHref,
+    };
+    const feedbackActions = [
+      { type: 'feedback-useful' as const, label: '有用' },
+      { type: 'feedback-useless' as const, label: '没用' },
+      { type: 'regenerate' as const, label: '重新生成' },
+    ];
+    if (t.includes('报销') || t.includes('差旅') || t.includes('标准')) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '根据《差旅费管理办法 v3.2》：\n1. 市内交通按实报销，需附行程单；\n2. 住宿按职级与城市分级限额，超标部分自理；\n3. 报销须在出差结束后 15 个工作日内发起。', { ...agentSource, actions: feedbackActions }),
+        ],
+      };
+    }
+    if (t.includes('流程') || t.includes('立项') || t.includes('申请')) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '已检索到《项目立项管理流程》：发起人提交立项申请 → 部门负责人审批 → 项目管理办公室评审 → 立项归档。所需材料为立项建议书、预算测算表和立项评审表。', { ...agentSource, actions: feedbackActions }),
+        ],
+      };
+    }
+    if (t.includes('手册') || t.includes('使用') || t.includes('平台') || t.includes('文章')) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '为您找到 3 篇相关知识条目：\n1. 智能办公平台使用手册 v2.1\n2. 如意空间功能介绍\n3. 协同办公常见问题 FAQ', { ...agentSource, actions: feedbackActions }),
+        ],
+      };
+    }
+    if (t.includes('考勤') || t.includes('制度')) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '根据《考勤管理制度 v2.3》：工作日 9:00 前打卡，弹性工作制需提前备案；月度异常考勤由部门考勤员在次月 3 日前统一核实。', { ...agentSource, actions: feedbackActions }),
+        ],
+      };
+    }
+    return {
+      messages: [
+        createMessage(conversationId, 'assistant', 'text', '已为您检索企业知识库。可以告诉我具体想查的制度、流程或知识条目，例如「差旅报销标准」「项目立项流程」。', { ...agentSource, actions: feedbackActions }),
+      ],
+    };
+  }
+
+  if (capability.id === 'hr-xiaofu') {
+    const agentSource = {
+      capabilityId: capability.id,
+      sourceLabel: capability.sourceLabel,
+      sourceHref: capability.sourceHref,
+    };
+    const feedbackActions = [
+      { type: 'feedback-useful' as const, label: '有用' },
+      { type: 'feedback-useless' as const, label: '没用' },
+      { type: 'regenerate' as const, label: '重新生成' },
+    ];
+    if (t.includes('年假') || t.includes('休假') || t.includes('假期')) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '您本年度带薪年假 15 天，已使用 6 天，剩余 9 天（数据截至今日）。年假申请可在人力系统「休假管理」中发起，最少提前 1 个工作日提交。', { ...agentSource, actions: feedbackActions }),
+        ],
+      };
+    }
+    if (t.includes('考勤') || t.includes('异常') || t.includes('打卡')) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '上月考勤记录已核对完毕：应出勤 22 天，实际出勤 22 天，无迟到、缺卡等异常记录。如需明细可在人力系统导出考勤月报。', { ...agentSource, actions: feedbackActions }),
+        ],
+      };
+    }
+    if (t.includes('证明') || t.includes('在职')) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '在职证明支持线上自助开具：进入人力系统「证明开具」→ 选择用途 → 提交申请，审批通过后可直接下载带电子章的 PDF。一般 1 个工作日内办结。', { ...agentSource, actions: feedbackActions }),
+        ],
+      };
+    }
+    if (t.includes('薪资') || t.includes('工资') || t.includes('发放')) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '薪资按月于每月 15 日发放（遇节假日提前至最近工作日），工资单可在人力系统「我的薪酬」查看；如有疑问可提交薪酬咨询工单。', { ...agentSource, actions: feedbackActions }),
+        ],
+      };
+    }
+    return {
+      messages: [
+        createMessage(conversationId, 'assistant', 'text', '您好，我是人力小福，可以协助查询年假、考勤异常、在职证明、薪资发放等人力服务事项。请描述您想办理的事项。', { ...agentSource, actions: feedbackActions }),
+      ],
+    };
+  }
+
   if (capability.producesResult) {
     return {
       messages: [
@@ -763,7 +856,18 @@ export function routeUserInput(
   // 注意：翻译需要优先于「汇报」等可能触发参谋的关键词
   if (normalizeText(text).includes('翻译')) {
     const match = text.match(/[“"](.+?)[”"]/);
-    const phrase = match ? match[1] : text;
+    const phrase = match ? match[1] : '';
+    // V3.1：无具体翻译内容的预设问题 → 引导（如意空间可用「智能翻译」插件配置后发送）
+    if (!phrase.trim()) {
+      return {
+        messages: [
+          createMessage(conversationId, 'assistant', 'text', '请把需要翻译的内容发给我，并说明目标语言（如英文、日文）与语气偏好。\n也可以前往如意空间，使用「智能翻译」插件配置源语言、目标语言后提交。', {
+            capabilityId: 'translation',
+            actions: [{ type: 'continue-in-zone', label: '前往如意空间继续创作' }],
+          }),
+        ],
+      };
+    }
     return {
       messages: [
         createMessage(conversationId, 'assistant', 'text', `英文译文：\n${phrase}`, { capabilityId: 'translation' }),

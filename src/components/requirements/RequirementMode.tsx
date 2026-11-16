@@ -265,6 +265,105 @@ export function RequirementModeLayer() {
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const observedElementsRef = useRef<Set<HTMLElement>>(new Set());
 
+  // ===== 入口工具条：可拖动 + 失焦 1s 后半透明（悬停恢复） =====
+  const ENTRY_POS_KEY = 'ijx-requirement-entry-pos-v1';
+  const entryBarRef = useRef<HTMLDivElement | null>(null);
+  const [entryPos, setEntryPos] = useState<{ x: number; y: number }>(() => {
+    try {
+      const raw = window.localStorage.getItem(ENTRY_POS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { x: number; y: number };
+        if (Number.isFinite(parsed.x) && Number.isFinite(parsed.y)) return parsed;
+      }
+    } catch { /* 回退默认位置 */ }
+    return { x: -1, y: -1 }; // -1 表示默认（右上角，由 CSS 定位）
+  });
+  const [entryDragging, setEntryDragging] = useState(false);
+  const [entryDimmed, setEntryDimmed] = useState(false);
+  const dimTimerRef = useRef<number | null>(null);
+  const dragStateRef = useRef<{ startX: number; startY: number; originLeft: number; originTop: number; moved: boolean } | null>(null);
+
+  const persistEntryPos = (x: number, y: number) => {
+    try { window.localStorage.setItem(ENTRY_POS_KEY, JSON.stringify({ x, y })); } catch { /* 忽略 */ }
+  };
+
+  /** 失焦 1s 后进入半透明；悬停/拖动时恢复 */
+  const scheduleEntryDim = () => {
+    if (dimTimerRef.current) window.clearTimeout(dimTimerRef.current);
+    setEntryDimmed(false);
+    dimTimerRef.current = window.setTimeout(() => setEntryDimmed(true), 1000);
+  };
+
+  const handleEntryPointerDown = (event: React.PointerEvent) => {
+    // 只响应主键；按钮点击不触发拖动（拖动阈值 4px，点击仍可用）
+    if (event.button !== 0) return;
+    const bar = entryBarRef.current;
+    if (!bar) return;
+    const rect = bar.getBoundingClientRect();
+    dragStateRef.current = { startX: event.clientX, startY: event.clientY, originLeft: rect.left, originTop: rect.top, moved: false };
+    setEntryDragging(true);
+    scheduleEntryDim();
+    bar.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleEntryPointerMove = (event: React.PointerEvent) => {
+    const drag = dragStateRef.current;
+    if (!drag || !entryDragging) return;
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return; // 拖动阈值：避免点击误判
+    drag.moved = true;
+    const bar = entryBarRef.current;
+    const rect = bar?.getBoundingClientRect();
+    const maxX = window.innerWidth - (rect?.width ?? 200) - 8;
+    const maxY = window.innerHeight - (rect?.height ?? 36) - 8;
+    const next = {
+      x: Math.max(8, Math.min(maxX, drag.originLeft + dx)),
+      y: Math.max(8, Math.min(maxY, drag.originTop + dy)),
+    };
+    setEntryPos(next);
+  };
+
+  const handleEntryPointerUp = () => {
+    const drag = dragStateRef.current;
+    if (drag?.moved) {
+      persistEntryPos(entryPos.x, entryPos.y);
+      // 拖动后抑制一次点击（避免拖完误触发按钮）
+      const bar = entryBarRef.current;
+      if (bar) {
+        bar.dataset.suppressClick = '1';
+        window.setTimeout(() => { delete bar.dataset.suppressClick; }, 50);
+      }
+    }
+    dragStateRef.current = null;
+    setEntryDragging(false);
+    scheduleEntryDim();
+  };
+
+  // 挂载后启动失焦计时；窗口尺寸变化时夹紧位置
+  useEffect(() => {
+    scheduleEntryDim();
+    return () => { if (dimTimerRef.current) window.clearTimeout(dimTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    const clamp = () => {
+      setEntryPos(current => {
+        if (current.x < 0 || current.y < 0) return current;
+        const bar = entryBarRef.current;
+        const rect = bar?.getBoundingClientRect();
+        const maxX = window.innerWidth - (rect?.width ?? 200) - 8;
+        const maxY = window.innerHeight - (rect?.height ?? 36) - 8;
+        const next = { x: Math.max(8, Math.min(maxX, current.x)), y: Math.max(8, Math.min(maxY, current.y)) };
+        if (next.x !== current.x || next.y !== current.y) persistEntryPos(next.x, next.y);
+        return next;
+      });
+    };
+    window.addEventListener('resize', clamp);
+    return () => window.removeEventListener('resize', clamp);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const requirementById = useMemo(
     () => new Map(requirements.map((requirement) => [requirement.id, requirement])),
     [requirements],
@@ -658,15 +757,31 @@ export function RequirementModeLayer() {
 
   return (
     <>
-      <div data-requirement-ui className="fixed right-4 top-3 z-[10030] flex items-center gap-2">
+      <div
+        ref={entryBarRef}
+        data-requirement-ui
+        className={`fixed z-[10030] flex items-center gap-2 transition-opacity duration-500 ${entryDragging ? 'cursor-grabbing' : 'cursor-grab'} ${entryDimmed ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}
+        style={entryPos.x >= 0 && entryPos.y >= 0 ? { left: entryPos.x, top: entryPos.y } : { right: 16, top: 12 }}
+        onPointerDown={handleEntryPointerDown}
+        onPointerMove={handleEntryPointerMove}
+        onPointerUp={handleEntryPointerUp}
+        onPointerCancel={handleEntryPointerUp}
+        onMouseEnter={() => { if (dimTimerRef.current) window.clearTimeout(dimTimerRef.current); setEntryDimmed(false); }}
+        onMouseLeave={scheduleEntryDim}
+        onClick={(event) => {
+          // 拖动结束的 pointerup 后会跟一次 click——拖动场景抑制
+          if (entryBarRef.current?.dataset.suppressClick) { event.preventDefault(); event.stopPropagation(); }
+        }}
+        title="按住拖动调整位置"
+      >
         {enabled && isMaintenanceEnabled && (
-          <button type="button" onClick={beginCreate} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-gray-200 bg-white/95 px-2.5 text-xs font-semibold text-gray-600 shadow-lg backdrop-blur-sm hover:border-theme-200 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200" title="新增原型需求">
+          <button type="button" onClick={(event) => { event.stopPropagation(); beginCreate(); }} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-gray-200 bg-white/95 px-2.5 text-xs font-semibold text-gray-600 shadow-lg backdrop-blur-sm hover:border-theme-200 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200" title="新增原型需求">
             <Plus size={15} /><span>新增</span>
           </button>
         )}
         <button
           type="button"
-          onClick={() => setEnabled(!enabled)}
+          onClick={(event) => { event.stopPropagation(); if (entryBarRef.current?.dataset.suppressClick) return; setEnabled(!enabled); }}
           className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold shadow-lg backdrop-blur-sm transition-colors ${enabled ? 'border-theme-200 bg-theme-600 text-white hover:bg-theme-700' : 'border-gray-200 bg-white/95 text-gray-600 hover:border-theme-200 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200'}`}
           title={enabled ? '关闭需求模式' : '开启需求模式'}
           aria-pressed={enabled}

@@ -257,6 +257,7 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
   }, []);
 
   // P0：从对话携带来源会话进入时，读取持久化启动上下文，自动带入标题与需求描述并启动大纲生成
+  // V3：同时带入 confirmedParams（页数/受众/场景/语气/文本量/语言/模板）与附件
   useEffect(() => {
     if (state.prompt?.trim()) return; // 显式 initialState 优先
     const sourceId = resultBridge.sourceConversationId;
@@ -264,6 +265,20 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
     const context = useRuyiStore.getState().getWorkbenchLaunchContext(sourceId, "presentation");
     if (!context) return;
     if (context.title) setTitle(context.title);
+    const params = context.confirmedParams ?? {};
+    const pickStr = (key: string): string | undefined =>
+      typeof params[key] === "string" && (params[key] as string).trim() ? (params[key] as string) : undefined;
+    const nextPageCount = pickStr("pageCount"); if (nextPageCount) setPageCount(nextPageCount);
+    const nextAudience = pickStr("audience"); if (nextAudience) setAudience(nextAudience);
+    const nextScene = pickStr("scene"); if (nextScene) setScene(nextScene);
+    const nextTone = pickStr("tone"); if (nextTone) setTone(nextTone);
+    const nextTextStyle = pickStr("textStyle"); if (nextTextStyle) setTextStyle(nextTextStyle);
+    const nextLanguage = pickStr("language"); if (nextLanguage) setLanguage(nextLanguage);
+    const nextTemplate = pickStr("template");
+    if (nextTemplate && presentationTemplates.includes(nextTemplate)) setTemplate(nextTemplate);
+    if (context.attachments && context.attachments.length > 0) {
+      setAttachments((current) => (current.length > 0 ? current : [...context.attachments!]));
+    }
     if (context.prompt) {
       setPrompt(context.prompt);
       // 闭包中的 prompt 是首帧值（可能为空），必须显式传入

@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
+  RuyiCapabilitySubmission,
   RuyiContextReference,
   RuyiConversation,
   RuyiMessage,
@@ -21,6 +22,20 @@ import { ruyiCapabilities } from '../data/ruyiCapabilities';
 import { loadRuyiDemoScenario, FIXED_SYSTEM_CONVERSATION_ID } from '../data/ruyiDemoScenarios';
 import { MAIN_USER_NAME } from '../data/people';
 import { generateTitleFromText, generateWorkbenchResultMessage } from '../services/ruyiMockRuntime';
+import { formatSubmissionParams } from '../data/ruyiToolPanel';
+
+/** V3：能力提交摘要（助手确认消息正文用，与 RuyiCapabilitySummary 组件同源） */
+function formatSubmissionSummary(submission: RuyiCapabilitySubmission): string {
+  const params = formatSubmissionParams(submission.capabilityId, submission.confirmedParams);
+  const lines: string[] = [];
+  if (params.length > 0) {
+    lines.push(`参数摘要：${params.map((p) => `${p.label}=${p.value}`).join('；')}`);
+  }
+  if (submission.attachments.length > 0) {
+    lines.push(`附件：${submission.attachments.join('、')}`);
+  }
+  return lines.join('\n');
+}
 
 const STORAGE_KEY = 'ijx-ruyi-prototype-v1';
 // demo 进入前的持久化快照（内存持有，退出恢复）
@@ -119,6 +134,11 @@ interface RuyiStoreActions {
   deleteConversation: (conversationId: string) => void;
   selectCapability: (conversationId: string, capabilityId: RuyiConversation['activeCapabilityId']) => void;
   sendUserMessage: (conversationId: string, content: string) => RuyiMessage;
+  /** V3：统一能力提交（写用户消息+结构化提交+助手确认/结果+工作台上下文，返回用户消息与上下文供跳转） */
+  submitCapability: (
+    conversationId: string,
+    submission: RuyiCapabilitySubmission,
+  ) => { userMessage: RuyiMessage; assistantMessage: RuyiMessage; workbenchContext: RuyiWorkbenchLaunchContext | null };
   appendAssistantMessage: (message: RuyiMessage) => void;
   updateMessage: (message: RuyiMessage) => void;
   startMeetingTask: (conversationId: string, initialText: string) => RuyiTaskMock | null;
@@ -130,8 +150,14 @@ interface RuyiStoreActions {
   failTask: (taskId: string, reason: string) => void;
   completeTask: (taskId: string, resultHref?: string) => void;
   createResult: (reference: Omit<RuyiResultReference, 'id' | 'createdAt'>) => RuyiResultReference;
-  /** 生成并保存工作台启动上下文（按来源会话+能力持久化，供工作台带入需求） */
-  saveWorkbenchLaunchContext: (sourceConversationId: string, capabilityId: RuyiWorkbenchLaunchContext['capabilityId']) => RuyiWorkbenchLaunchContext | null;
+  /** 生成并保存工作台启动上下文（按来源会话+能力持久化，供工作台带入需求）
+   *  V3：sourceMessageId 可选——传入时优先读取该消息的 capabilitySubmission（含参数/附件），
+   *  修复"只读最后一条文字消息"导致多条提交互相覆盖的问题 */
+  saveWorkbenchLaunchContext: (
+    sourceConversationId: string,
+    capabilityId: RuyiWorkbenchLaunchContext['capabilityId'],
+    sourceMessageId?: string,
+  ) => RuyiWorkbenchLaunchContext | null;
   getWorkbenchLaunchContext: (sourceConversationId: string, capabilityId: RuyiWorkbenchLaunchContext['capabilityId']) => RuyiWorkbenchLaunchContext | null;
   /** 刷新恢复：将持久化的 executing 任务转为可重试状态并提示中断，避免永久 loading */
   recoverInterruptedExecutions: () => void;
@@ -313,18 +339,23 @@ export const useRuyiStore = create<RuyiStore>()(
                 conversationId,
                 sender: 'system',
                 kind: 'capability-status',
-                content: `已切换至${cap.name}，${cap.shortDescription}。`,
+                content: cap.mode === 'agent'
+                  ? `已切换调用智能体「${cap.name}」：${cap.shortDescription}。`
+                  : `已切换至${cap.name}，${cap.shortDescription}。`,
                 createdAt: new Date().toISOString(),
                 capabilityId,
               });
             }
           } else if (conversation.activeCapabilityId) {
+            const previousCap = ruyiCapabilities.find((c) => c.id === conversation.activeCapabilityId);
             messages.push({
               id: generateId('msg'),
               conversationId,
               sender: 'system',
               kind: 'system',
-              content: '已退出专业能力，回到普通问答。',
+              content: previousCap?.mode === 'agent'
+                ? '已切回「如意助手」，回到普通问答。'
+                : '已退出专业能力，回到普通问答。',
               createdAt: new Date().toISOString(),
             });
           }
@@ -418,6 +449,120 @@ export const useRuyiStore = create<RuyiStore>()(
             },
           };
         });
+      },
+
+      submitCapability: (conversationId, submission) => {
+        const prompt = submission.prompt.trim();
+        if (!prompt) throw new Error('Cannot submit empty capability request');
+
+        const cap = ruyiCapabilities.find((c) => c.id === submission.capabilityId);
+        if (!cap) throw new Error(`Unknown capability: ${submission.capabilityId}`);
+
+        // 1+2. 写用户消息并保存结构化提交信息
+        const userMessage = get().sendUserMessage(conversationId, prompt);
+        set((state) => ({
+          ...state,
+          messages: {
+            ...state.messages,
+            [userMessage.id]: { ...userMessage, capabilitySubmission: submission },
+          },
+        }));
+
+        // 3. 更新会话当前能力（不重复生成 capability-status 系统消息——提交本身就是能力使用记录）
+        set((state) => {
+          const conversation = state.conversations[conversationId];
+          if (!conversation || conversation.activeCapabilityId === submission.capabilityId) return state;
+          return {
+            ...state,
+            conversations: {
+              ...state.conversations,
+              [conversationId]: {
+                ...conversation,
+                activeCapabilityId: submission.capabilityId,
+                lastCapabilityId: submission.capabilityId,
+                updatedAt: new Date().toISOString(),
+              },
+            },
+          };
+        });
+
+        // 4~7. 生成助手确认或结果消息（创作类带"进入工作台"操作；即时类直接出结果）
+        const nowIso = new Date().toISOString();
+        const summaryLines = formatSubmissionSummary(submission);
+        let assistantMessage: RuyiMessage;
+        if (cap.mode === 'creative' && cap.workbenchPath) {
+          assistantMessage = {
+            id: generateId('msg'),
+            conversationId,
+            sender: 'assistant',
+            kind: 'text',
+            content: `已收到您的${cap.name}需求。${summaryLines ? `\n${summaryLines}` : ''}\n可以先在对话中补充要求，或直接进入工作台开始创作。`,
+            createdAt: nowIso,
+            capabilityId: submission.capabilityId,
+            actions: [{ type: 'open-workbench', label: `进入${cap.name}` }],
+          };
+        } else if (submission.capabilityId === 'translation') {
+          const lang = String(submission.confirmedParams.targetLanguage ?? '英文');
+          assistantMessage = {
+            id: generateId('msg'),
+            conversationId,
+            sender: 'assistant',
+            kind: 'text',
+            content: `${lang}译文：\n${prompt}`,
+            createdAt: nowIso,
+            capabilityId: submission.capabilityId,
+            actions: [{ type: 'copy', label: '复制' }],
+          };
+        } else if (submission.capabilityId === 'it-service') {
+          const issueType = String(submission.confirmedParams.issueType ?? '');
+          assistantMessage = {
+            id: generateId('msg'),
+            conversationId,
+            sender: 'assistant',
+            kind: 'text',
+            content: `已收到您的IT问题（${issueType}）。排查建议：\n1. 检查网络连接与客户端版本\n2. 重新登录账号后重试\n3. 清理缓存或更换网络环境\n\n若仍未解决，可提交帮助与反馈，工单号 #IT-20261116-001。`,
+            createdAt: nowIso,
+            capabilityId: submission.capabilityId,
+            actions: [
+              { type: 'feedback-useful', label: '有用' },
+              { type: 'feedback-useless', label: '没用' },
+            ],
+          };
+        } else if (submission.capabilityId === 'work-query') {
+          assistantMessage = {
+            id: generateId('msg'),
+            conversationId,
+            sender: 'assistant',
+            kind: 'text',
+            content: '您当前有 3 项待办流程：\n1. 项目立项申请 - 待审批\n2. 预算调整申请 - 待填写\n3. 设备采购申请 - 待确认\n\n可点击入口前往流程中心处理。',
+            createdAt: nowIso,
+            capabilityId: submission.capabilityId,
+            actions: [{ type: 'open-workbench', label: '查看流程中心' }],
+          };
+        } else {
+          assistantMessage = {
+            id: generateId('msg'),
+            conversationId,
+            sender: 'assistant',
+            kind: 'text',
+            content: `已收到您的${cap.name}需求，请补充更多信息或直接描述下一步。`,
+            createdAt: nowIso,
+            capabilityId: submission.capabilityId,
+          };
+        }
+        get().appendAssistantMessage(assistantMessage);
+
+        // 7. 创作类能力生成可供工作台读取的上下文（绑定本次用户消息，工作台按消息取参）
+        let workbenchContext: RuyiWorkbenchLaunchContext | null = null;
+        if (cap.mode === 'creative' && cap.workbenchPath) {
+          workbenchContext = get().saveWorkbenchLaunchContext(
+            conversationId,
+            submission.capabilityId as 'document' | 'presentation' | 'advisor',
+            userMessage.id,
+          );
+        }
+
+        return { userMessage, assistantMessage, workbenchContext };
       },
 
       updateMessage: (message) => {
@@ -694,14 +839,36 @@ export const useRuyiStore = create<RuyiStore>()(
         return created;
       },
 
-      saveWorkbenchLaunchContext: (sourceConversationId, capabilityId) => {
+      saveWorkbenchLaunchContext: (sourceConversationId, capabilityId, sourceMessageId) => {
         const state = get();
         const conversation = state.conversations[sourceConversationId];
         if (!conversation) return null;
-        const lastUserMessage = state
-          .getConversationMessages(sourceConversationId)
-          .filter((m) => m.sender === 'user')
-          .slice(-1)[0];
+        // V3：优先读取指定消息的 capabilitySubmission（参数摘要与附件的唯一可靠来源）
+        const messages = state.getConversationMessages(sourceConversationId);
+        const sourceMessage = sourceMessageId
+          ? messages.find((m) => m.id === sourceMessageId)
+          : undefined;
+        const submission = sourceMessage?.capabilitySubmission;
+        if (submission) {
+          const context: RuyiWorkbenchLaunchContext = {
+            sourceConversationId,
+            capabilityId,
+            sourceMessageId: sourceMessage!.id,
+            title: submission.title?.trim() || generateTitleFromText(submission.prompt),
+            prompt: submission.prompt,
+            attachments: submission.attachments.length > 0 ? [...submission.attachments] : undefined,
+            confirmedParams: { ...submission.confirmedParams },
+            createdAt: new Date().toISOString(),
+          };
+          const key = `${sourceConversationId}:${capabilityId}`;
+          set((s) => ({
+            ...s,
+            workbenchContexts: { ...s.workbenchContexts, [key]: context },
+          }));
+          return context;
+        }
+        // 兼容旧链路：无 submission 时退回最后一条用户消息（仅 title/prompt）
+        const lastUserMessage = messages.filter((m) => m.sender === 'user').slice(-1)[0];
         const prompt = lastUserMessage?.content?.trim() ?? '';
         if (!prompt) return null;
         const context: RuyiWorkbenchLaunchContext = {

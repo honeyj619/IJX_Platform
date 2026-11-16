@@ -38,7 +38,7 @@ import {
   Send,
   Check,
 } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { RuyiMessage, RuyiMessageActionType, RuyiMessageFeedback } from '../types/ruyi';
 import { canOpenRuyiResult } from '../utils/ruyiResultPresentation';
@@ -49,10 +49,13 @@ import { useRuyiSend } from '../hooks/useRuyiSend';
 import { getRuyiCapability } from '../data/ruyiCapabilities';
 import { createMessage, buildConfirmationSummary, buildMissingPrompt } from '../services/ruyiMockRuntime';
 import RuyiImMessageList from '../components/ruyi/RuyiImMessageList';
+import { getQuickPromptsFor, type RuyiQuickPrompt } from '../data/ruyiQuickPrompts';
 import type { GlobalSearchNavigationState } from '../data/globalSearch';
 import FeedbackComposer from '../components/FeedbackComposer';
+import FeedbackConversationView from '../components/FeedbackConversationView';
 import { resolveFeedbackIntent, type FeedbackIntentResult } from '../utils/feedbackIntent';
 import type { FeedbackRecord } from '../data/feedback';
+import { getFeedbackConversations, subscribeFeedbackConversations, type FeedbackConversation } from '../data/feedbackConversations';
 import { createFeedbackPageContext } from '../utils/feedbackPageContext';
 import { useMeetingStore } from '../store/meetingStore';
 
@@ -182,9 +185,11 @@ interface Message {
   unread?: number;
   count?: number;
   icon?: React.ReactNode;
-  type: 'normal' | 'process' | 'assistant' | 'system' | 'card';
+  type: 'normal' | 'process' | 'assistant' | 'system' | 'card' | 'feedback';
   cardContent?: CardContent;
   chatMessages?: ChatMessage[];
+  /** type=feedback 时绑定的反馈会话 ID */
+  feedbackConversationId?: string;
 }
 
 interface MessageItemProps {
@@ -793,6 +798,8 @@ export default function Home() {
   const [assistantFeedback, setAssistantFeedback] = useState<FeedbackIntentResult | null>(null);
   const [assistantSubmittedFeedback, setAssistantSubmittedFeedback] = useState<FeedbackRecord | null>(null);
   const [messageDraft, setMessageDraft] = useState('');
+  // V3.1：消息页快捷入口 = 快捷提问直发（不持有插件状态、不渲染插件面板）
+  const imQuickPrompts = useMemo(() => getQuickPromptsFor('pc-im'), []);
 
   // 如意助手共享 store（修复死循环：不订阅整个 store——getConversationMessages 每次返回新数组引用，
   // 作为 effect 依赖会无限触发 setState；改用 useShallow 稳定 messages 引用，动作按需订阅）
@@ -800,6 +807,28 @@ export default function Home() {
   const ruyiMessages = useRuyiStore(
     useShallow((state) => (state.conversations[FIXED_SYSTEM_CONVERSATION_ID]?.messageIds ?? []).map((id) => state.messages[id]).filter(Boolean)),
   );
+
+  // 反馈沟通会话（管理后台「联系用户」创建，与 App 消息共享同一份模拟数据）
+  const [feedbackConversations, setFeedbackConversations] = useState<FeedbackConversation[]>([]);
+  useEffect(() => {
+    const refreshConvs = () => setFeedbackConversations(getFeedbackConversations());
+    refreshConvs();
+    return subscribeFeedbackConversations(refreshConvs);
+  }, []);
+
+  // 反馈会话 → 消息列表项（固定负数 ID 避免与业务消息冲突）
+  const feedbackMessages: Message[] = useMemo(() => feedbackConversations.map((conversation, index) => ({
+    id: -100 - index,
+    name: conversation.title,
+    avatar: '',
+    message: conversation.messages[conversation.messages.length - 1]?.text.split('\n')[0] || '反馈沟通',
+    time: conversation.updatedAt.slice(11, 16),
+    type: 'feedback' as const,
+    feedbackConversationId: conversation.id,
+  })), [feedbackConversations]);
+
+  // 合并显示：反馈会话置顶
+  const displayMessages = useMemo(() => [...feedbackMessages, ...messageList], [feedbackMessages, messageList]);
 
   // 同步如意助手最后一条消息到 PC 消息列表预览
   useEffect(() => {
@@ -970,12 +999,18 @@ export default function Home() {
     }
   }, [location.pathname, location.state, messageList, navigate]);
 
+  /** V3.1：消息页快捷入口点击 = 立即发送预设问题（现有如意助手文本链路；不展开插件面板、不本地切换状态） */
+  const handleAssistantQuickPrompt = (quick: RuyiQuickPrompt) => {
+    sendToRuyi(FIXED_SYSTEM_CONVERSATION_ID, quick.prompt);
+    setAssistantInput('');
+  };
+
   const handleAssistantSend = () => {
     const content = assistantInput.trim();
     if (!content || !selectedMessage || selectedMessage.type !== 'assistant') return;
     const intent = resolveFeedbackIntent(content);
     if (intent.intent !== 'none') {
-      // 反馈意图：记录用户原话到共享会话并弹出反馈 composer
+      // 反馈意图：记录用户原话到共享会话；两步流程——功能异常先排查，确认后才出草稿
       sendToRuyi(FIXED_SYSTEM_CONVERSATION_ID, content);
       setAssistantFeedback(intent);
       setAssistantSubmittedFeedback(null);
@@ -984,6 +1019,13 @@ export default function Home() {
     }
     sendToRuyi(FIXED_SYSTEM_CONVERSATION_ID, content);
     setAssistantInput('');
+  };
+
+  /** 两步流程第二步：用户确认排查未解决，生成可编辑反馈草稿 */
+  const confirmAssistantFeedbackDraft = () => {
+    if (!assistantFeedback || assistantFeedback.intent === 'none') return;
+    setAssistantFeedback({ ...assistantFeedback, intent: 'draft' });
+    sendToRuyi(FIXED_SYSTEM_CONVERSATION_ID, '已尝试排查，仍未解决，帮我提交反馈。');
   };
 
   const handleRuyiAction = (type: RuyiMessageActionType, message: RuyiMessage, payload?: { reason?: RuyiMessageFeedback['reason']; resolvedDate?: string; dateText?: string; [key: string]: unknown }) => {
@@ -1025,6 +1067,28 @@ export default function Home() {
         }
         break;
       }
+      case 'continue-in-zone': {
+        // V3.1/P2：消息页创作类回复"前往如意空间继续创作"——携带来源会话、能力和需求，
+        // 如意空间自动选中对应插件并带入草稿（用户确认后再提交），不自动进工作台
+        const capability = message.capabilityId ? getRuyiCapability(message.capabilityId) : null;
+        if (!capability) break;
+        const params = new URLSearchParams({
+          capabilityId: capability.id,
+          conversationId: FIXED_SYSTEM_CONVERSATION_ID,
+        });
+        // 已有对话需求：取该助手消息之前最近一条用户消息
+        const store2 = useRuyiStore.getState();
+        const conversationMessages = store2.getConversationMessages(FIXED_SYSTEM_CONVERSATION_ID);
+        const messageIndex = conversationMessages.findIndex((m) => m.id === message.id);
+        const relatedUserMessage = messageIndex >= 0
+          ? conversationMessages.slice(0, messageIndex + 1).reverse().find((m) => m.sender === 'user')
+          : undefined;
+        if (relatedUserMessage?.content?.trim()) {
+          params.set('prompt', relatedUserMessage.content.trim());
+        }
+        navigate(`/pc_client/ruyi-zone?${params.toString()}`);
+        break;
+      }
       case 'open-result': {
         const result = message.resultId ? useRuyiStore.getState().getResultById(message.resultId) : null;
         // F2 双重保护：共享安全函数判断，仅可打开状态允许导航
@@ -1033,10 +1097,19 @@ export default function Home() {
       }
       case 'open-workbench': {
         const capability = message.capabilityId ? getRuyiCapability(message.capabilityId) : null;
-        // P0：携带来源会话（PC 消息固定系统会话），保证成果回流与返回；
-        // 同时写入启动上下文，工作台自动带入标题与需求描述
+        // P0/V3：携带来源会话（PC 消息固定系统会话）；启动上下文按"触发按钮所属消息"生成，
+        // 优先读该消息关联的 capabilitySubmission，避免误取最后一条消息的参数
         if (capability?.workbenchPath) {
-          useRuyiStore.getState().saveWorkbenchLaunchContext(FIXED_SYSTEM_CONVERSATION_ID, capability.id as 'document' | 'presentation' | 'advisor');
+          const store2 = useRuyiStore.getState();
+          const conversationMessages = store2.getConversationMessages(FIXED_SYSTEM_CONVERSATION_ID);
+          const messageIndex = conversationMessages.findIndex((m) => m.id === message.id);
+          const relatedUserMessage = messageIndex >= 0
+            ? conversationMessages.slice(0, messageIndex + 1).reverse().find((m) => m.sender === 'user')
+            : undefined;
+          const sourceMessageId = relatedUserMessage?.capabilitySubmission?.capabilityId === capability.id
+            ? relatedUserMessage.id
+            : undefined;
+          store2.saveWorkbenchLaunchContext(FIXED_SYSTEM_CONVERSATION_ID, capability.id as 'document' | 'presentation' | 'advisor', sourceMessageId);
           navigate(`${capability.workbenchPath}?sourceConversationId=${FIXED_SYSTEM_CONVERSATION_ID}`);
         }
         break;
@@ -1411,6 +1484,13 @@ export default function Home() {
     }
 
     switch (selectedMessage.type) {
+      case 'feedback':
+        return (
+          <FeedbackConversationView
+            conversationId={selectedMessage.feedbackConversationId || ''}
+            onOpenDetail={feedbackId => navigate(`/pc_client/help-feedback/${feedbackId}`)}
+          />
+        );
       case 'process':
         return (
           <div className="flex flex-col h-full bg-gray-50">
@@ -1712,15 +1792,26 @@ export default function Home() {
           <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
             <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-4" data-requirement-id="ruyi-im-continuity">
               <RuyiImMessageList messages={ruyiMessages} onAction={handleRuyiAction} />
+              {assistantFeedback?.intent === 'troubleshoot' && !assistantSubmittedFeedback && (
+                <div className="mx-auto mt-3 max-w-2xl rounded-lg border border-amber-200 bg-amber-50 p-4">
+                  <div className="font-semibold text-amber-800">排查建议</div>
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-amber-700">{assistantFeedback.assistantMessage}</p>
+                  <div className="mt-3 flex gap-2">
+                    <button onClick={() => setAssistantFeedback(null)} className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">已解决</button>
+                    <button onClick={confirmAssistantFeedbackDraft} className="rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700">仍要反馈</button>
+                  </div>
+                </div>
+              )}
               {assistantFeedback?.intent === 'draft' && !assistantSubmittedFeedback && (
                 <div className="mx-auto mt-3 max-w-2xl">
                   <FeedbackComposer
                     compact
                     source="消息页如意助手"
-                    conversationId="ruyi-assistant"
-                    pageContext={createFeedbackPageContext('消息 · 如意助手', `${location.pathname}${location.search}`)}
+                    clientKind="PC_CLIENT"
+                    conversationId={FIXED_SYSTEM_CONVERSATION_ID}
+                    pageContext={createFeedbackPageContext('消息 · 如意助手', `${location.pathname}${location.search}`, 'PC_CLIENT')}
                     initialCategory={assistantFeedback.category}
-                    initialContent={assistantFeedback.content}
+                    initialContent={assistantFeedback.summary || assistantFeedback.content}
                     onSubmitted={setAssistantSubmittedFeedback}
                   />
                 </div>
@@ -1734,6 +1825,20 @@ export default function Home() {
               )}
             </div>
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shrink-0">
+              {/* V3.1：快捷提问区（输入框上方单行；点击直接发送预设问题，不展开插件面板） */}
+              <div className="mb-2 flex flex-wrap items-center gap-1.5" data-requirement-id="ruyi-im-quick-prompts">
+                {imQuickPrompts.map((quick) => (
+                  <button
+                    key={quick.id}
+                    type="button"
+                    onClick={() => handleAssistantQuickPrompt(quick)}
+                    title={quick.prompt}
+                    className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-theme-50 hover:text-theme-700 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-theme-900/30 dark:hover:text-theme-300"
+                  >
+                    {quick.label}
+                  </button>
+                ))}
+              </div>
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -1817,7 +1922,7 @@ export default function Home() {
       <div className="flex w-[260px] shrink-0 flex-col overflow-hidden rounded-xl border border-white/60 bg-white dark:border-gray-700 dark:bg-gray-800">
         {/* 消息列表 */}
         <div className="flex-1 overflow-y-auto">
-          {messageList.map((msg) => (
+          {displayMessages.map((msg) => (
             <MessageItem
               key={msg.id}
               message={msg}

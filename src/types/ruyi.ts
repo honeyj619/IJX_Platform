@@ -3,16 +3,19 @@
  * 字段命名与语义以 docs/RUYI_ASSISTANT_FRONTEND_DEVELOPMENT_PLAN.md §4 为准
  */
 
-export type RuyiCapabilityMode = 'qa' | 'instant' | 'creative' | 'transaction';
+export type RuyiCapabilityMode = 'qa' | 'instant' | 'creative' | 'transaction' | 'agent';
 
 export interface RuyiCapability {
-  id: 'work-query' | 'document' | 'presentation' | 'advisor' | 'translation' | 'it-service';
+  id: 'work-query' | 'document' | 'presentation' | 'advisor' | 'translation' | 'it-service' | 'iknow' | 'hr-xiaofu';
   name: string;
   shortDescription: string;
   promptPlaceholder: string;
   mode: RuyiCapabilityMode;
   producesResult: boolean;
   workbenchPath?: string;
+  /** 外部智能体回复的署名与来源入口（仅 mode=agent 使用） */
+  sourceLabel?: string;
+  sourceHref?: string;
 }
 
 export interface RuyiConversation {
@@ -42,6 +45,8 @@ export type RuyiMessageKind =
 export type RuyiMessageActionType =
   | 'open-result'
   | 'open-workbench'
+  /** V3.1：消息页创作类回复——前往如意空间继续创作（携带 capabilityId/prompt，自动选中插件） */
+  | 'continue-in-zone'
   | 'confirm-task'
   | 'modify-task'
   | 'cancel-task'
@@ -67,6 +72,18 @@ export interface RuyiMessageFeedback {
   reason?: '答非所问' | '信息不准确' | '操作失败' | '其他原因';
 }
 
+/** V3：统一能力提交（如意空间 / PC消息页如意助手共用，禁止各页面自行拼接格式） */
+export interface RuyiCapabilitySubmission {
+  capabilityId: RuyiCapability['id'];
+  /** 用户需求描述（统一输入框文本；即时能力为面板内文本） */
+  prompt: string;
+  /** 可选标题（公文标题 / PPT 主题等） */
+  title?: string;
+  attachments: string[];
+  /** 已确认参数（键名与各能力面板字段对齐，供工作台启动上下文带入） */
+  confirmedParams: Record<string, unknown>;
+}
+
 export interface RuyiMessage {
   id: string;
   conversationId: string;
@@ -75,6 +92,8 @@ export interface RuyiMessage {
   content: string;
   createdAt: string;
   capabilityId?: RuyiCapability['id'];
+  /** V3：该用户消息对应的结构化能力提交（参数摘要与工作台上下文的唯一来源） */
+  capabilitySubmission?: RuyiCapabilitySubmission;
   resultId?: string;
   taskId?: string;
   actions?: RuyiMessageAction[];

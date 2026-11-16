@@ -107,7 +107,7 @@
 
     <!-- 第二组菜单（左侧线稿图标） -->
     <nav class="menu-group" aria-label="帮助与安全">
-      <button type="button" class="menu-row" @click="openFeedback">
+      <button type="button" class="menu-row" @click="openHelpFeedback">
         <span class="menu-row__icon" aria-hidden="true" v-html="menuIcons.help"></span>
         <span class="menu-row__label">帮助与反馈</span>
         <svg class="menu-row__arrow" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
@@ -156,7 +156,8 @@ import wifiBanner from '../assets/profile/banner-wifi.png'
 
 const router = useRouter()
 
-function openFeedback() {
+/** 「帮助与反馈」：进入反馈页（页面上下文由 App.vue 全局路由记录，默认关联最近业务页面） */
+function openHelpFeedback() {
   router.push('/profile/feedback')
 }
 

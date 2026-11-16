@@ -5,6 +5,7 @@ import {
   createFeedbackRequestId,
   type FeedbackAttachment,
   type FeedbackCategory,
+  type FeedbackClientKind,
   type FeedbackRecord,
   type FeedbackPageContext,
   type FeedbackSource,
@@ -14,6 +15,8 @@ const categories: FeedbackCategory[] = ['功能异常', '使用咨询', '体验�
 
 type FeedbackComposerProps = {
   source: FeedbackSource;
+  /** 提交终端（PC 客户端 / PC Web / App），用于管理后台「终端 → 页面路由」展示 */
+  clientKind?: FeedbackClientKind;
   initialCategory?: FeedbackCategory;
   initialContent?: string;
   conversationId?: string;
@@ -25,6 +28,7 @@ type FeedbackComposerProps = {
 
 export default function FeedbackComposer({
   source,
+  clientKind,
   initialCategory = '功能异常',
   initialContent = '',
   conversationId,
@@ -67,6 +71,7 @@ export default function FeedbackComposer({
         conversationId,
         pageContext: relatedPage,
         featureEntry,
+        clientKind,
       });
       setError('');
       onSubmitted(record);

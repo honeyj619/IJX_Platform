@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { RuyiConversation, RuyiCapability } from "../../types/ruyi";
+import type { RuyiAgent, RuyiAgentIconKey } from "../../data/ruyiCapabilities";
 import { FIXED_SYSTEM_CONVERSATION_ID } from "../../data/ruyiDemoScenarios";
 import RuyiDemoUserSwitcher from "./RuyiDemoUserSwitcher";
-import { Sparkles, Search, FileText, PresentationIcon, Target, Languages, MonitorCog, Plus, MoreHorizontal, Pencil, Trash2, X, Menu, ListTodo, Inbox, Filter } from "lucide-react";
+import { Sparkles, Search, FileText, PresentationIcon, Target, Languages, MonitorCog, BookOpen, Users, Bot, Plus, MoreHorizontal, Pencil, Trash2, X, Menu, ListTodo, Inbox, Filter } from "lucide-react";
 import RuyiConversationDialogs from "./RuyiConversationDialogs";
 
 interface SidebarTaskSummary {
@@ -21,7 +22,11 @@ interface RuyiConversationSidebarProps {
   ownerId: string;
   conversations: RuyiConversation[];
   capabilities: RuyiCapability[];
+  /** 可调用智能体（如意助手 / iKnow / 人力小福） */
+  agents: RuyiAgent[];
+  activeAgent: RuyiAgent;
   activeConversationId?: string | null;
+  /** V3.2：保留入参兼容（固定功能入口不再展示激活态；插件激活态在对话输入区展示） */
   activeCapabilityId?: string | null;
   /** V2：任务/成果关联摘要（会话项角标与筛选） */
   taskSummary?: SidebarTaskSummary;
@@ -37,6 +42,7 @@ interface RuyiConversationSidebarProps {
   onRenameConversation: (id: string, title: string) => void;
   onDeleteConversation: (id: string) => void;
   onSelectCapability: (capabilityId: RuyiCapability["id"]) => void;
+  onSelectAgent: (capabilityId: RuyiCapability["id"] | null) => void;
   isMobile?: boolean;
   mobileMenuOpen?: boolean;
   onToggleMobileMenu?: () => void;
@@ -50,6 +56,12 @@ const capabilityIcons: Record<string, React.ReactNode> = {
   translation: <Languages size={14} />,
   "it-service": <MonitorCog size={14} />,
 };
+
+function AgentIcon({ iconKey, size = 14 }: { iconKey: RuyiAgentIconKey; size?: number }) {
+  if (iconKey === "book-open") return <BookOpen size={size} />;
+  if (iconKey === "users") return <Users size={size} />;
+  return <Sparkles size={size} />;
+}
 
 function formatUpdatedAt(iso: string): string {
   const date = new Date(iso);
@@ -68,8 +80,9 @@ export default function RuyiConversationSidebar({
   ownerId,
   conversations,
   capabilities,
+  agents,
+  activeAgent,
   activeConversationId,
-  activeCapabilityId,
   taskSummary,
   resultSummary,
   activeNav = null,
@@ -81,6 +94,7 @@ export default function RuyiConversationSidebar({
   onRenameConversation,
   onDeleteConversation,
   onSelectCapability,
+  onSelectAgent,
   isMobile,
   mobileMenuOpen,
   onToggleMobileMenu,
@@ -207,36 +221,65 @@ export default function RuyiConversationSidebar({
             </button>
           </div>
 
+          {/* 智能体调用：会话内也可随时切换当前调用智能体 */}
+          <div className="mb-4" data-requirement-id="ruyi-agent-calling">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h4 className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                <Bot size={12} className="text-theme-500" />
+                智能体调用
+              </h4>
+              <span className="truncate text-[10px] text-gray-400 dark:text-gray-500">{activeAgent.name}</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {agents.map((agent) => {
+                const active = activeAgent.id === agent.id;
+                return (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    aria-pressed={active}
+                    title={`${agent.name}：${agent.description}`}
+                    onClick={() => onSelectAgent(agent.capabilityId)}
+                    className={`flex flex-col items-center gap-1 rounded-lg border px-1 py-2 text-center transition-colors ${
+                      active
+                        ? "border-theme-200 bg-theme-50 text-theme-700 dark:border-theme-800 dark:bg-theme-900/20 dark:text-theme-300"
+                        : "border-gray-100 bg-white text-gray-600 hover:border-theme-100 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                    }`}
+                  >
+                    <span className={`flex h-6 w-6 items-center justify-center rounded-md ${active ? "bg-theme-600 text-white" : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"}`}>
+                      <AgentIcon iconKey={agent.iconKey} size={12} />
+                    </span>
+                    <span className="w-full truncate text-[10px] font-semibold">{agent.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="mb-2 flex items-center justify-between">
-            <h4 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">快捷能力</h4>
-            <span className="rounded-full bg-theme-50 px-2 py-0.5 text-[10px] font-medium text-theme-600 dark:bg-theme-900/30 dark:text-theme-300">
-              智能体
+            <h4 className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">固定功能入口</h4>
+            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-500 dark:bg-gray-700 dark:text-gray-300">
+              常用
             </span>
           </div>
           <div className="mb-4 grid grid-cols-2 gap-2">
-            {capabilities.map((capability) => (
-              <button
-                key={capability.id}
-                type="button"
-                onClick={() => onSelectCapability(capability.id)}
-                className={`flex items-center gap-2 rounded-lg border px-2 py-2 text-left text-xs font-medium transition-all hover:-translate-y-0.5 hover:shadow-sm ${
-                  activeCapabilityId === capability.id
-                    ? "border-theme-200 bg-theme-50 text-theme-700 dark:border-theme-800 dark:bg-theme-900/20 dark:text-theme-300"
-                    : "border-gray-100 bg-white text-gray-700 hover:border-theme-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-                }`}
-              >
-                <span
-                  className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md ${
-                    activeCapabilityId === capability.id
-                      ? "bg-theme-600 text-white"
-                      : "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400"
-                  }`}
+            {/* V3.2：固定入口只展示非插件功能（查询工作信息 / IT服务）；公文/PPT/参谋/翻译只在对话输入区的插件入口中出现 */}
+            {capabilities
+              .filter((capability) => !['document', 'presentation', 'advisor', 'translation'].includes(capability.id))
+              .map((capability) => (
+                <button
+                  key={capability.id}
+                  type="button"
+                  onClick={() => onSelectCapability(capability.id)}
+                  title={`${capability.name}：发送预设问题`}
+                  className="flex items-center gap-2 rounded-lg border px-2 py-2 text-left text-xs font-medium transition-all hover:-translate-y-0.5 hover:shadow-sm border-gray-100 bg-white text-gray-700 hover:border-theme-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
                 >
-                  {capabilityIcons[capability.id] ?? <Sparkles size={12} />}
-                </span>
-                <span className="truncate">{capability.name}</span>
-              </button>
-            ))}
+                  <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+                    {capabilityIcons[capability.id] ?? <Sparkles size={12} />}
+                  </span>
+                  <span className="truncate">{capability.name}</span>
+                </button>
+              ))}
           </div>
 
           <Link

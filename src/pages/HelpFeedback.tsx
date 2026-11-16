@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, CircleCheck, Clock3, FileText, Link2, LogIn, MessageSquareText, Plus, X } from 'lucide-react';
 import FeedbackComposer from '../components/FeedbackComposer';
-import { getFeedbackRecords, subscribeFeedbackRecords, type FeedbackPageContext, type FeedbackRecord, type FeedbackStatus } from '../data/feedback';
+import { getFeedbackRecords, subscribeFeedbackRecords, type FeedbackClientKind, type FeedbackPageContext, type FeedbackRecord, type FeedbackSource, type FeedbackStatus } from '../data/feedback';
 import { consumeFeedbackPageContext } from '../utils/feedbackPageContext';
 
 const statusStyle: Record<FeedbackStatus, string> = {
@@ -10,6 +10,10 @@ const statusStyle: Record<FeedbackStatus, string> = {
   '处理中': 'bg-blue-50 text-blue-700 ring-blue-200',
   '已解决': 'bg-emerald-50 text-emerald-700 ring-emerald-200',
 };
+
+/** 入口来源标记：由跳转方通过 location.state 传入，用于区分 PC 客户端 / PC Web 入口 */
+type FeedbackOrigin = { source: FeedbackSource; clientKind: FeedbackClientKind };
+const DEFAULT_ORIGIN: FeedbackOrigin = { source: 'PC客户端用户菜单', clientKind: 'PC_CLIENT' };
 
 export default function HelpFeedback() {
   const navigate = useNavigate();
@@ -21,6 +25,10 @@ export default function HelpFeedback() {
     const routeContext = (location.state as { feedbackPageContext?: FeedbackPageContext } | null)?.feedbackPageContext || null;
     const storedContext = consumeFeedbackPageContext();
     return routeContext || storedContext;
+  });
+  const [origin] = useState<FeedbackOrigin>(() => {
+    const stateOrigin = (location.state as { feedbackOrigin?: FeedbackOrigin } | null)?.feedbackOrigin;
+    return stateOrigin || DEFAULT_ORIGIN;
   });
 
   useEffect(() => subscribeFeedbackRecords(() => setRecords(getFeedbackRecords())), []);
@@ -83,7 +91,8 @@ export default function HelpFeedback() {
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto p-6">
               <FeedbackComposer
-                source="页面提交"
+                source={origin.source}
+                clientKind={origin.clientKind}
                 pageContext={pageContext}
                 onCancel={() => setShowComposer(false)}
                 onSubmitted={record => navigate(`/pc_client/help-feedback/${record.id}`)}

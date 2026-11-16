@@ -362,6 +362,7 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
   const validationMarkedContent = createValidationTextTokens(content, pendingValidationIssues);
 
   // P0：从对话携带来源会话进入时，读取持久化启动上下文，自动带入公文标题与需求描述（不要求重新描述）
+  // V3：同时带入 confirmedParams（公文类型/篇幅/内容要求）与附件（来自统一能力面板提交）
   useEffect(() => {
     if (docTitle || docContent) return; // 嵌入调用已显式传入时优先
     const sourceId = resultBridge.sourceConversationId;
@@ -370,6 +371,25 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
     if (!context) return;
     if (context.title) setRequirementTitle(context.title);
     if (context.prompt) setRequirementContent(context.prompt);
+    const params = context.confirmedParams ?? {};
+    const pickStr = (key: string): string | undefined =>
+      typeof params[key] === 'string' && (params[key] as string).trim() ? (params[key] as string) : undefined;
+    const nextType = pickStr('docType');
+    if (nextType && templateCategories.includes(nextType)) setRequirementType(nextType);
+    const nextLength = pickStr('docLength');
+    if (nextLength) setRequirementLength(nextLength);
+    // V3：模板选中（templateId 与 editorTemplates 同源）
+    const nextTemplateId = pickStr('templateId');
+    if (nextTemplateId && editorTemplates.some(t => t.id === nextTemplateId)) {
+      setSelectedTemplate(nextTemplateId);
+    }
+    const docRequirement = pickStr('docRequirement');
+    if (docRequirement && (!context.prompt || !context.prompt.includes(docRequirement))) {
+      setRequirementContent((current) => (current.trim() && current !== context.prompt ? current : `${context.prompt}\n内容要求：${docRequirement}`));
+    }
+    if (context.attachments && context.attachments.length > 0) {
+      setEditorAttachments((current) => (current.length > 0 ? current : [...context.attachments!]));
+    }
     // 仅挂载时执行一次
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

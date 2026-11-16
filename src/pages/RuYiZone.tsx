@@ -1,9 +1,14 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { RuyiCapability, RuyiMessage, RuyiMessageActionType, RuyiMessageFeedback } from "../types/ruyi";
+import type { RuyiCapability, RuyiMessage, RuyiMessageActionType, RuyiMessageFeedback, RuyiCapabilitySubmission } from "../types/ruyi";
 import { canOpenRuyiResult } from "../utils/ruyiResultPresentation";
 import { useRuyiStore, RUYI_MAIN_OWNER_ID } from "../store/ruyiStore";
-import { ruyiCapabilities, getRuyiCapability } from "../data/ruyiCapabilities";
+import {
+  getRuyiCapability,
+  ruyiBuiltinCapabilities,
+  ruyiAgents,
+  getRuyiAgentByCapabilityId,
+} from "../data/ruyiCapabilities";
 import { MAIN_USER_NAME } from "../data/people";
 import { createMessage, buildConfirmationSummary, buildMissingPrompt } from "../services/ruyiMockRuntime";
 import { useRuyiSend } from "../hooks/useRuyiSend";
@@ -21,6 +26,10 @@ import {
 
 import RuyiConversationSidebar from "../components/ruyi/RuyiConversationSidebar";
 import RuyiAssistantHome from "../components/ruyi/RuyiAssistantHome";
+import {
+  createInitialPanelDrafts,
+  type RuyiPanelDrafts,
+} from "../components/ruyi/capability/RuyiCapabilityPanel";
 import { FIXED_SYSTEM_CONVERSATION_ID } from "../data/ruyiDemoScenarios";
 // P2：三大工作台懒加载，降低主包体积
 const DocumentEditor = lazy(() => import("./DocumentEditor"));
@@ -36,13 +45,6 @@ import type { TaskDetailAction } from "./RuyiTaskDetail";
 
 const lengthOptions = ["300-500", "500-800", "600-1200", "1000-1500", "1500-2000"];
 
-const suggestedPrompts = [
-  "我还有什么流程没有处理？",
-  "帮我生成本周工作汇报",
-  "帮我预约项目会议室",
-  "看看我的 OKR 当前进展",
-];
-
 const capabilitySamples: Record<RuyiCapability["id"], string> = {
   "work-query": "我还有哪些待办流程？",
   translation: "把“智能办公平台”翻译成英文",
@@ -50,15 +52,9 @@ const capabilitySamples: Record<RuyiCapability["id"], string> = {
   document: "帮我起草一份会议通知",
   presentation: "帮我做一份产品发布 PPT",
   advisor: "帮我生成本周项目周报",
+  iknow: "差旅报销标准是什么？",
+  "hr-xiaofu": "我今年还有几天年假？",
 };
-
-function getSuggestedPrompts(activeCapabilityId: RuyiCapability["id"] | null): string[] {
-  if (activeCapabilityId) {
-    const sample = capabilitySamples[activeCapabilityId];
-    return sample ? [sample] : [];
-  }
-  return suggestedPrompts;
-}
 
 export default function RuYiZone() {
   const location = useLocation();
@@ -102,6 +98,30 @@ export default function RuYiZone() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // V3.1/P2：消息页"前往如意空间继续创作"跳转——?capabilityId=&prompt=&conversationId=
+  // 打开如意空间时定位到同一会话（或固定系统会话）、自动选中对应插件、把已有需求带入输入框草稿（用户确认后再提交）
+  const initialHandoffRef = useRef<string | null>(null);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const capabilityId = params.get('capabilityId');
+    const prompt = params.get('prompt') ?? '';
+    const conversationId = params.get('conversationId') ?? '';
+    const handoffKey = `${conversationId}:${capabilityId}:${prompt}`;
+    if (!capabilityId || initialHandoffRef.current === handoffKey) return;
+    initialHandoffRef.current = handoffKey;
+    if (!['document', 'presentation', 'advisor', 'translation'].includes(capabilityId)) return;
+    // 定位：消息页固定会话存在则进入该会话；否则留在首页
+    if (conversationId && store.conversations[conversationId]) {
+      navigateInZone(`/pc_client/ruyi-zone/conversations/${conversationId}`);
+      store.selectCapability(conversationId, capabilityId as RuyiCapability['id']);
+    } else {
+      setActiveCapabilityId(capabilityId as RuyiCapability['id']);
+    }
+    // 已有对话需求带入输入框草稿（不自动提交）
+    if (prompt) setInput(prompt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search]);
+
   const pathname = location.pathname;
   const documentWorkspacePath = pathname.endsWith("/ruyi-zone/document");
   const presentationWorkspacePath = pathname.endsWith("/ruyi-zone/presentation");
@@ -119,6 +139,11 @@ export default function RuYiZone() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [input, setInput] = useState("");
   const [activeCapabilityId, setActiveCapabilityId] = useState<RuyiCapability["id"] | null>(null);
+  // V3：统一能力面板草稿（按能力分槽，切换能力保留各自草稿）
+  const [panelDrafts, setPanelDrafts] = useState<RuyiPanelDrafts>(createInitialPanelDrafts);
+  const [capabilitySubmitting, setCapabilitySubmitting] = useState(false);
+  const handlePanelDraftChange = (patch: Partial<RuyiPanelDrafts>) =>
+    setPanelDrafts((prev) => ({ ...prev, ...patch }));
   // V2：任务详情执行收尾定时器（卸载时统一清理）
   const taskFinalizeTimers = useRef<Set<number>>(new Set());
   useEffect(() => {
@@ -223,6 +248,12 @@ export default function RuYiZone() {
     ? getRuyiCapability(conversation.activeCapabilityId) ?? null
     : null;
 
+  // 智能体调用：首页取本地选择态，会话页取会话已持久化的能力
+  const homeAgent = getRuyiAgentByCapabilityId(activeCapabilityId);
+  const conversationAgent = getRuyiAgentByCapabilityId(
+    conversation?.activeCapabilityId ?? activeCapabilityId,
+  );
+
   const handleConversationSend = (conversationId: string, text?: string) => {
     const content = (text ?? input).trim();
     if (!content) return;
@@ -230,9 +261,37 @@ export default function RuYiZone() {
     setInput("");
   };
 
+  /** V3：统一能力提交——首页提交创建新会话并跳转；会话内提交写入当前会话 */
+  const handleSubmitCapability = (submission: RuyiCapabilitySubmission, targetConversationId?: string) => {
+    const capability = getRuyiCapability(submission.capabilityId);
+    if (!capability) return;
+    setCapabilitySubmitting(true);
+    try {
+      if (targetConversationId) {
+        // 会话内提交
+        store.submitCapability(targetConversationId, submission);
+        setInput("");
+        if (submission.capabilityId === "document" || submission.capabilityId === "presentation" || submission.capabilityId === "advisor") {
+          // 创作类提交后退出面板回到普通对话（面板参数已随消息保存）
+          store.selectCapability(targetConversationId, null);
+        }
+      } else {
+        // 首页提交：创建新会话 → 一次完整能力提交写入 → 跳转新会话详情
+        const conv = store.createConversation(ownerId);
+        store.submitCapability(conv.id, submission);
+        setInput("");
+        setActiveCapabilityId(null);
+        navigateInZone(`/pc_client/ruyi-zone/conversations/${conv.id}`);
+      }
+    } finally {
+      setCapabilitySubmitting(false);
+    }
+  };
+
   const handleHomeSend = () => {
     const content = input.trim();
     if (!content) return;
+    // 首页普通问答：保持原有发送方式（未激活能力时）
     const conv = store.createConversation(ownerId);
     if (activeCapabilityId) {
       store.selectCapability(conv.id, activeCapabilityId);
@@ -274,25 +333,53 @@ export default function RuYiZone() {
     const capability = getRuyiCapability(capabilityId);
     if (!capability) return;
 
-    // 创作型能力：跳转工作台并携带来源会话 ID（写入启动上下文，供工作台带入需求）
-    if (capability.workbenchPath) {
-      const sourceId = routeConversationId ?? store.createConversation(ownerId).id;
-      store.saveWorkbenchLaunchContext(sourceId, capability.id as 'document' | 'presentation' | 'advisor');
-      navigate(withDemoParam(`${capability.workbenchPath}?sourceConversationId=${sourceId}`));
+    // V3.1：非插件能力（查询/IT）不再展开配置面板——转为快捷问题直发
+    if (!['document', 'presentation', 'advisor', 'translation'].includes(capabilityId)) {
+      const quick = capabilitySamples[capabilityId];
+      if (quick) {
+        if (routeConversationId && conversation) {
+          store.selectCapability(routeConversationId, null);
+          sendToConversation(routeConversationId, quick);
+          setInput("");
+          return;
+        }
+        handleQuickPromptSend(quick);
+      }
       return;
     }
 
-    // 在已有会话中切换能力：激活能力并预填示例
+    // V3.1：插件（公文/PPT/参谋/翻译）——再次点击当前插件 = 收起面板，保留已输入文字，不创建空会话
     if (routeConversationId) {
+      const current = conversation?.activeCapabilityId ?? null;
+      if (current === capabilityId) {
+        store.selectCapability(routeConversationId, null);
+        return;
+      }
+      // 会话内选择插件：激活并展开面板（不跳工作台、不自动发送）
       store.selectCapability(routeConversationId, capabilityId);
-      setInput(capabilitySamples[capabilityId] ?? "");
+      setInput("");
       return;
     }
+    // 首页选择插件：仅切换选中态展开面板；不创建会话、不跳转（发送后才创建会话）
+    if (activeCapabilityId === capabilityId) {
+      setActiveCapabilityId(null);
+      return;
+    }
+    setActiveCapabilityId(capabilityId);
+  };
 
-    // 主页选择能力：创建新会话、激活能力、预填示例并跳转
+  /** V3.1/V3.2：预设问题直发（侧栏固定入口/非插件能力共用；不展开插件面板）
+   *  首页：创建新会话发送并跳转；会话内：直接发送 */
+  const handleQuickPromptSend = (prompt: string) => {
+    if (!prompt.trim()) return;
+    if (routeConversationId && conversation) {
+      sendToConversation(routeConversationId, prompt);
+      setInput("");
+      return;
+    }
     const conv = store.createConversation(ownerId);
-    store.selectCapability(conv.id, capabilityId);
-    setInput(capabilitySamples[capabilityId] ?? "");
+    sendToConversation(conv.id, prompt);
+    setInput("");
     setActiveCapabilityId(null);
     navigateInZone(`/pc_client/ruyi-zone/conversations/${conv.id}`);
   };
@@ -300,6 +387,16 @@ export default function RuYiZone() {
   const handleExitCapability = () => {
     if (routeConversationId) {
       store.selectCapability(routeConversationId, null);
+    }
+  };
+
+  /** 切换当前调用智能体：同一会话只调用一个，切换时清空输入避免带入上一智能体语境 */
+  const handleSelectAgent = (capabilityId: RuyiCapability["id"] | null) => {
+    setInput("");
+    if (routeConversationId) {
+      store.selectCapability(routeConversationId, capabilityId);
+    } else {
+      setActiveCapabilityId(capabilityId);
     }
   };
 
@@ -399,11 +496,44 @@ export default function RuYiZone() {
       case "open-workbench": {
         const capability = message.capabilityId ? getRuyiCapability(message.capabilityId) : null;
         if (capability?.workbenchPath) {
-          // P0：从对话进入工作台必须携带来源会话，成果回流与返回依赖它；
-          // 同时写入启动上下文（持久化），工作台自动带入标题与需求描述
+          // P0/V3：从对话进入工作台必须携带来源会话；启动上下文按"触发按钮所属消息"生成——
+          // 优先读该消息关联的 capabilitySubmission（提交消息），其次读消息本体，避免误取最后一条消息
           const sourceId = routeConversationId ?? FIXED_SYSTEM_CONVERSATION_ID;
-          store.saveWorkbenchLaunchContext(sourceId, capability.id as 'document' | 'presentation' | 'advisor');
+          const workbenchCap = capability.id as 'document' | 'presentation' | 'advisor';
+          // 提交链路生成的助手确认消息挂在 userMessage 之后：向上找最近一条用户消息的 submission
+          const conversationMessages = store.getConversationMessages(sourceId);
+          const messageIndex = conversationMessages.findIndex((m) => m.id === message.id);
+          const relatedUserMessage = messageIndex >= 0
+            ? conversationMessages.slice(0, messageIndex + 1).reverse().find((m) => m.sender === 'user')
+            : undefined;
+          const sourceMessageId = relatedUserMessage?.capabilitySubmission?.capabilityId === capability.id
+            ? relatedUserMessage.id
+            : undefined;
+          store.saveWorkbenchLaunchContext(sourceId, workbenchCap, sourceMessageId);
           navigate(withDemoParam(`${capability.workbenchPath}?sourceConversationId=${sourceId}`));
+        }
+        break;
+      }
+      case "continue-in-zone": {
+        // V3.1：消息页/空间内创作类引导——选中对应插件并带入需求草稿（不自动提交、不进工作台）
+        const capability = message.capabilityId ? getRuyiCapability(message.capabilityId) : null;
+        if (!capability) break;
+        if (routeConversationId) {
+          const current = conversation?.activeCapabilityId ?? null;
+          if (current !== capability.id) {
+            store.selectCapability(routeConversationId, capability.id);
+          }
+        } else {
+          setActiveCapabilityId(capability.id);
+        }
+        // 已有需求带入输入框草稿
+        const conversationMessages = store.getConversationMessages(routeConversationId ?? FIXED_SYSTEM_CONVERSATION_ID);
+        const messageIndex = conversationMessages.findIndex((m) => m.id === message.id);
+        const relatedUserMessage = messageIndex >= 0
+          ? conversationMessages.slice(0, messageIndex + 1).reverse().find((m) => m.sender === 'user')
+          : undefined;
+        if (relatedUserMessage?.content?.trim()) {
+          setInput(relatedUserMessage.content.trim());
         }
         break;
       }
@@ -800,7 +930,9 @@ export default function RuYiZone() {
           showDemoUserSwitcher={demoScenarioId === 'user-isolation'}
           ownerId={ownerId}
           conversations={conversations}
-          capabilities={ruyiCapabilities}
+          capabilities={ruyiBuiltinCapabilities}
+          agents={ruyiAgents}
+          activeAgent={routeConversationId ? conversationAgent : homeAgent}
           activeConversationId={routeConversationId ?? null}
           activeCapabilityId={conversation?.activeCapabilityId ?? activeCapabilityId}
           taskSummary={taskSummary}
@@ -814,6 +946,7 @@ export default function RuYiZone() {
           onRenameConversation={handleRenameConversation}
           onDeleteConversation={handleDeleteConversation}
           onSelectCapability={handleSelectCapability}
+          onSelectAgent={handleSelectAgent}
           isMobile={isMobile}
           mobileMenuOpen={mobileMenuOpen}
           onToggleMobileMenu={() => setMobileMenuOpen((open) => !open)}
@@ -828,11 +961,18 @@ export default function RuYiZone() {
                 conversation={conversation}
                 messages={messages}
                 activeCapability={activeCapability}
+                agent={conversationAgent}
                 onExitCapability={handleExitCapability}
+                capabilities={ruyiBuiltinCapabilities}
                 input={input}
                 onInputChange={setInput}
                 onSend={() => conversation && handleConversationSend(conversation.id)}
+                onSelectPlugin={handleSelectCapability}
                 onAction={handleMessageAction}
+                panelDrafts={panelDrafts}
+                onPanelDraftChange={handlePanelDraftChange}
+                onSubmitCapability={(submission) => conversation && handleSubmitCapability(submission, conversation.id)}
+                capabilitySubmitting={capabilitySubmitting}
               />
             ) : (
               <RuyiEmptyState variant="not-found" />
@@ -840,13 +980,19 @@ export default function RuYiZone() {
           ) : (
             <RuyiAssistantHome
               ownerName={MAIN_USER_NAME}
-              capabilities={ruyiCapabilities}
+              capabilities={ruyiBuiltinCapabilities}
+              activeAgent={homeAgent}
               activeCapabilityId={activeCapabilityId}
-              suggestedPrompts={suggestedPrompts}
+              suggestedPrompts={homeAgent.samplePrompts}
               input={input}
               onInputChange={setInput}
               onSend={handleHomeSend}
               onSelectCapability={handleSelectCapability}
+              onSelectAgent={handleSelectAgent}
+              panelDrafts={panelDrafts}
+              onPanelDraftChange={handlePanelDraftChange}
+              onSubmitCapability={(submission) => handleSubmitCapability(submission)}
+              capabilitySubmitting={capabilitySubmitting}
             />
           )}
         </div>

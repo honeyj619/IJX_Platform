@@ -36,7 +36,7 @@ export default function PresentationSettings({ attachments, setAttachments, inpu
   };
 
   return (
-    <div className="mt-4 space-y-4 rounded-xl border border-gray-100 bg-white/80 p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800/70">
+    <div className="space-y-4">
       <section aria-label="文件/附件输入" className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 dark:border-gray-600 dark:bg-gray-700/60">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-xs font-medium text-gray-500 dark:text-gray-400">已上传附件</h3>

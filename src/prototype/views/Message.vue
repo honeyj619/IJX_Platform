@@ -20,6 +20,25 @@
     </div>
 
     <div class="im-scroll">
+      <!-- 反馈沟通会话（与管理后台/PC 客户端共享同一份模拟数据；点击进反馈详情） -->
+      <button
+        v-for="fc in feedbackConversations"
+        :key="fc.id"
+        type="button"
+        class="im-session"
+        @click="router.push(`/profile/feedback/${fc.feedbackId}`)"
+      >
+        <ImAvatar name="反馈" icon="馈" :size="46" />
+        <span class="im-session__main">
+          <span class="im-session__top">
+            <span class="im-session__name">{{ fc.title }}</span>
+            <span class="im-session__time">{{ fc.updatedAt.slice(11, 16) }}</span>
+          </span>
+          <span class="im-session__bottom">
+            <span class="im-session__preview">{{ fc.messages[fc.messages.length - 1]?.text?.split('\n')[0] || '' }}</span>
+          </span>
+        </span>
+      </button>
       <template v-if="list.length">
         <button
           v-for="s in list"
@@ -73,11 +92,20 @@ import {
 import { totalUnread } from '../im/data/utils'
 import { confirmBox } from '../im/ui'
 import { useImTask } from '../im/task'
+import { getFeedbackConversations, subscribeFeedbackConversations } from '../../data/feedbackConversations'
 
 const router = useRouter()
 const state = useImState()
 const filter = ref('all')
 const menuOpen = ref(false)
+
+/* 反馈沟通会话：与管理后台「联系用户」共享同一份数据 */
+const feedbackConversations = ref([])
+function refreshFeedbackConversations() {
+  feedbackConversations.value = getFeedbackConversations()
+}
+refreshFeedbackConversations()
+subscribeFeedbackConversations(refreshFeedbackConversations)
 const FILTERS = [
   { key: 'all', label: '全部' },
   { key: 'unread', label: '未读' },

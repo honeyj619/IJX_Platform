@@ -260,12 +260,23 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
   }, [mode, reportKind]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // P0：从对话携带来源会话进入时，读取持久化启动上下文，自动带入报告主题与需求描述（保留现有编辑能力）
+  // V3：同时带入 confirmedParams（汇报类型/汇报周期/分析对象/补充要求，拼接进需求描述）
   useEffect(() => {
     const sourceId = resultBridge.sourceConversationId;
     if (!sourceId) return;
     const context = useRuyiStore.getState().getWorkbenchLaunchContext(sourceId, 'advisor');
     if (!context) return;
-    if (context.prompt && !prompt.trim()) setPrompt(context.prompt);
+    const params = context.confirmedParams ?? {};
+    const pickStr = (key: string): string =>
+      typeof params[key] === 'string' && (params[key] as string).trim() ? (params[key] as string).trim() : '';
+    const paramParts: string[] = [];
+    const reportType = pickStr('reportType'); if (reportType) paramParts.push(`汇报类型：${reportType}`);
+    const reportCycle = pickStr('reportCycle'); if (reportCycle) paramParts.push(`汇报周期：${reportCycle}`);
+    const analysisTarget = pickStr('analysisTarget'); if (analysisTarget) paramParts.push(`分析对象：${analysisTarget}`);
+    const extraRequirement = pickStr('extraRequirement'); if (extraRequirement) paramParts.push(`补充要求：${extraRequirement}`);
+    const paramSummary = paramParts.length > 0 ? `\n${paramParts.join('\n')}` : '';
+    const combinedPrompt = [context.prompt, paramSummary].filter(Boolean).join('');
+    if (combinedPrompt && !prompt.trim()) setPrompt(combinedPrompt);
     if (context.title && draft.title === defaultDraft.title) {
       setDraft(current => ({ ...current, title: context.title }));
     }

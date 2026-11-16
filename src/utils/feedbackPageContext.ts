@@ -1,35 +1,17 @@
-import type { FeedbackPageContext } from '../data/feedback';
+import { captureFeedbackPageContext, type FeedbackClientKind, type FeedbackPageContext, type FeedbackPlatform } from '../data/feedback';
 
 export const FEEDBACK_PAGE_CONTEXT_KEY = 'ijx-feedback-page-context-v1';
 
-const sensitiveParams = new Set([
-  'access_token',
-  'auth',
-  'code',
-  'id_token',
-  'password',
-  'refresh_token',
-  'ticket',
-  'token',
-]);
-
-export const sanitizeFeedbackPagePath = (rawPath: string) => {
-  const [pathAndQuery] = rawPath.split('#');
-  const [pathname, query = ''] = pathAndQuery.split('?');
-  if (!query) return pathname.slice(0, 500);
-  const params = new URLSearchParams(query);
-  Array.from(params.keys()).forEach(key => {
-    if (sensitiveParams.has(key.toLowerCase())) params.delete(key);
-  });
-  const safeQuery = params.toString();
-  return `${pathname}${safeQuery ? `?${safeQuery}` : ''}`.slice(0, 500);
-};
-
-export const createFeedbackPageContext = (title: string, rawPath: string): FeedbackPageContext => ({
-  title: title.trim() || '未命名页面',
-  path: sanitizeFeedbackPagePath(rawPath),
-  capturedAt: new Date().toISOString(),
-});
+/**
+ * 兼容封装：采集反馈页面上下文并写入 sessionStorage。
+ * 路由脱敏（白名单参数）统一在 data/feedback.ts 的 captureFeedbackPageContext / sanitizeFeedbackPath。
+ */
+export const createFeedbackPageContext = (
+  title: string,
+  rawPath: string,
+  clientKind?: FeedbackClientKind,
+  platform?: FeedbackPlatform,
+): FeedbackPageContext => captureFeedbackPageContext(title, rawPath, clientKind, platform);
 
 export const saveFeedbackPageContext = (context: FeedbackPageContext) => {
   if (typeof window === 'undefined') return;
@@ -44,7 +26,30 @@ export const consumeFeedbackPageContext = (): FeedbackPageContext | null => {
   try {
     const parsed = JSON.parse(raw) as Partial<FeedbackPageContext>;
     if (!parsed.title || !parsed.path || !parsed.capturedAt) return null;
-    return { title: parsed.title, path: sanitizeFeedbackPagePath(parsed.path), capturedAt: parsed.capturedAt };
+    return captureFeedbackPageContext(parsed.title, parsed.path, parsed.clientKind, parsed.platform);
+  } catch {
+    return null;
+  }
+};
+
+/** App 端「最近业务页面」上下文（Vue 子应用路由切换时写入，反馈页消费） */
+export const FEEDBACK_LAST_BUSINESS_KEY = 'ijx-feedback-last-business-page';
+
+export const saveLastBusinessPage = (context: { title: string; path: string }) => {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.setItem(FEEDBACK_LAST_BUSINESS_KEY, JSON.stringify(context));
+  } catch { /* 存储失败不阻断 */ }
+};
+
+export const getLastBusinessPage = (): { title: string; path: string } | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(FEEDBACK_LAST_BUSINESS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.title && parsed.path) return { title: String(parsed.title), path: String(parsed.path) };
+    return null;
   } catch {
     return null;
   }

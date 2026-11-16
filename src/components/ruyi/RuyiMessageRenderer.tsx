@@ -2,12 +2,14 @@ import { useState } from "react";
 import { RUYI_ASSISTANT_AVATAR } from '../../data/people';
 import type { RuyiMessage, RuyiMessageActionType } from "../../types/ruyi";
 import { useRuyiStore } from "../../store/ruyiStore";
-import { Loader2, Copy, RotateCcw, ThumbsUp, ThumbsDown, ExternalLink, Check, X, Play, Pencil } from "lucide-react";
+import { Loader2, Copy, RotateCcw, ThumbsUp, ThumbsDown, ExternalLink, Check, X, Play, Pencil, BookOpen, Users, ArrowRight } from "lucide-react";
+import { getRuyiAgentByCapabilityId } from "../../data/ruyiCapabilities";
 import { Link } from "react-router-dom";
 import RuyiResultCard from "./RuyiResultCard";
 import RuyiConfirmationMessage from "./RuyiConfirmationMessage";
 import RuyiTaskResumeMessage from "./RuyiTaskResumeMessage";
 import RuyiMultiTaskResolver from "./RuyiMultiTaskResolver";
+import RuyiCapabilitySummary from "./capability/RuyiCapabilitySummary";
 
 /** V2：action payload 透传类型（兼容 reason/taskId 及 confirm-date 的 resolvedDate/dateText） */
 export type RuyiActionPayload = Record<string, unknown> & {
@@ -27,6 +29,7 @@ const actionIcons: Partial<Record<RuyiMessageActionType, React.ReactNode>> = {
   "feedback-useless": <ThumbsDown size={14} />,
   "open-result": <ExternalLink size={14} />,
   "open-workbench": <ExternalLink size={14} />,
+  "continue-in-zone": <ArrowRight size={14} />,
   "confirm-task": <Check size={14} />,
   "modify-task": <Pencil size={14} />,
   "cancel-task": <X size={14} />,
@@ -93,6 +96,8 @@ export default function RuyiMessageRenderer({ message, onAction }: RuyiMessageRe
       <div className="flex justify-end">
         <div className="max-w-2xl rounded-2xl bg-theme-50 px-5 py-4 text-gray-900 shadow-sm dark:bg-theme-900/20 dark:text-white">
           <div className="whitespace-pre-line leading-7">{message.content}</div>
+          {/* V3：能力提交消息附带参数摘要 */}
+          {message.capabilitySubmission && <RuyiCapabilitySummary submission={message.capabilitySubmission} />}
         </div>
       </div>
     );
@@ -220,16 +225,28 @@ export default function RuyiMessageRenderer({ message, onAction }: RuyiMessageRe
     );
   }
 
+  const replyAgent = message.capabilityId ? getRuyiAgentByCapabilityId(message.capabilityId) : null;
+  const externalAgent = replyAgent && replyAgent.id !== "ruyi-assistant" ? replyAgent : null;
+
   return (
     <div className="flex gap-4">
-      <div className="mt-1 h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-theme-100">
-        <img
-          src={RUYI_ASSISTANT_AVATAR}
-          alt="如意助手"
-          className="h-full w-full object-cover"
-        />
-      </div>
+      {externalAgent ? (
+        <div className="mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-theme-50 text-theme-600 dark:bg-theme-900/30 dark:text-theme-300">
+          {externalAgent.iconKey === "book-open" ? <BookOpen size={18} /> : <Users size={18} />}
+        </div>
+      ) : (
+        <div className="mt-1 h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-theme-100">
+          <img
+            src={RUYI_ASSISTANT_AVATAR}
+            alt="如意助手"
+            className="h-full w-full object-cover"
+          />
+        </div>
+      )}
       <div className="max-w-3xl flex-1">
+        {externalAgent && (
+          <div className="mb-1 text-xs font-semibold text-theme-700 dark:text-theme-300">{externalAgent.name}</div>
+        )}
         <div className="whitespace-pre-line leading-7 text-gray-900 dark:text-gray-100">{message.content}</div>
         {message.sourceLabel && message.sourceHref && (
           <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">

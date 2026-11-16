@@ -8,7 +8,8 @@ const routes: RouteRecordRaw[] = [
   { path: '/schedule', name: 'Schedule', component: () => import('../views/Schedule.vue') },
   { path: '/workspace', name: 'Workspace', component: () => import('../views/Workspace.vue') },
   { path: '/profile', name: 'Profile', component: () => import('../views/Profile.vue') },
-  { path: '/profile/feedback', name: 'Feedback', component: () => import('../views/Feedback.vue'), ...hideTab },
+  { path: '/profile/feedback', name: 'ProfileFeedback', component: () => import('../views/Feedback.vue'), ...hideTab },
+  { path: '/profile/feedback/:feedbackId', name: 'ProfileFeedbackDetail', component: () => import('../views/FeedbackDetail.vue'), ...hideTab },
   { path: '/message', name: 'Message', component: () => import('../views/Message.vue') },
 
   { path: '/message/search', name: 'MessageSearch', component: () => import('../views/message/Search.vue'), ...hideTab },
