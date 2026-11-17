@@ -57,6 +57,7 @@ import { resolveFeedbackIntent, type FeedbackIntentResult } from '../utils/feedb
 import type { FeedbackRecord } from '../data/feedback';
 import { getFeedbackConversations, subscribeFeedbackConversations, type FeedbackConversation } from '../data/feedbackConversations';
 import { createFeedbackPageContext } from '../utils/feedbackPageContext';
+import { consumeMessageTarget } from '../utils/contactMessaging';
 import { useMeetingStore } from '../store/meetingStore';
 import BusinessMessageCard from '../components/messages/BusinessMessageCard';
 import {
@@ -869,28 +870,22 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem('ijx-pcweb-message-target');
-    if (!raw) return;
-    window.localStorage.removeItem('ijx-pcweb-message-target');
-    try {
-      const payload = JSON.parse(raw) as { name: string; createdAt: number };
-      if (!payload.name || Date.now() - payload.createdAt > 5 * 60 * 1000) return;
-      const existing = messages.find((message) => message.name === payload.name);
-      const conversation: Message = existing || {
-        id: Date.now(),
-        name: payload.name,
-        avatar: getInitialsAvatar(payload.name, 'ec4899'),
-        message: '从通讯录发起会话',
-        time: '刚刚',
-        type: 'normal',
-        chatMessages: [],
-      };
-      setMessageList((current) => current.some((message) => message.name === payload.name) ? current : [conversation, ...current]);
-      setSelectedMessage(conversation);
-      setMessageDraft('');
-    } catch {
-      // 无效的跨页面会话信息不影响消息页正常使用。
-    }
+    // 共享桥接（src/utils/contactMessaging.ts）：PC Web 门户与 PC Client 通讯录统一入口
+    const payload = consumeMessageTarget();
+    if (!payload) return;
+    const existing = messages.find((message) => message.name === payload.name);
+    const conversation: Message = existing || {
+      id: Date.now(),
+      name: payload.name,
+      avatar: getInitialsAvatar(payload.name, 'ec4899'),
+      message: '从通讯录发起会话',
+      time: '刚刚',
+      type: 'normal',
+      chatMessages: [],
+    };
+    setMessageList((current) => current.some((message) => message.name === payload.name) ? current : [conversation, ...current]);
+    setSelectedMessage(conversation);
+    setMessageDraft('');
   }, []);
 
   useEffect(() => {

@@ -13,6 +13,19 @@ export interface ContactPerson {
   officePhone: string;
   mobile: string;
   employeeNo: string;
+  /** 域账号（2026-11-17 PC Client 通讯录：由邮箱前缀派生，演示数据） */
+  account?: string;
+  /** 在线状态（2026-11-17 PC Client 通讯录：无真实在线服务，固定 mock 派生） */
+  status?: 'online' | 'busy' | 'away' | 'offline';
+}
+
+/** PC 通讯录组织树节点：只存联系人 ID，人员资料统一由 contactDirectory 读取 */
+export interface ContactOrgNode {
+  id: string;
+  name: string;
+  parentId?: string;
+  memberIds?: string[];
+  children?: ContactOrgNode[];
 }
 
 const buildEmail = (name: string) => {
@@ -57,17 +70,22 @@ const directoryDefinition: Array<[string, string, Array<[string, string]>]> = [
 export const contactDirectory: ContactPerson[] = directoryDefinition.flatMap(([department, organizationUnit, members], departmentIndex) =>
   members.map(([name, title], memberIndex) => {
     const sequence = departmentIndex * 100 + memberIndex;
+    const email = buildEmail(name);
+    // 演示状态：按序取模固定派生，标注为 mock（无真实在线服务）
+    const demoStatuses = ['online', 'busy', 'away', 'offline'] as const;
     return {
       id: `c-${name}`,
       name,
       company: '上海吉祥航空股份有限公司',
-      email: buildEmail(name),
+      email,
       department,
       organizationUnit,
       title,
       officePhone: `66${String(3200 + sequence).padStart(4, '0')}`,
       mobile: `138****${String(4200 + sequence).slice(-4)}`,
       employeeNo: `H000-${String(6700 + sequence).padStart(7, '0')}`,
+      account: email.split('@')[0],
+      status: demoStatuses[sequence % 4],
     };
   })
 );
@@ -75,6 +93,29 @@ export const contactDirectory: ContactPerson[] = directoryDefinition.flatMap(([d
 export const contactGroups = Array.from(new Set(contactDirectory.map(person => person.department)));
 
 export const findContactByName = (name: string) => contactDirectory.find(person => person.name === name);
+
+/** PC Client 通讯录组织树：公司根 → 部门（directoryDefinition 顺序），节点只存联系人 ID */
+export const CONTACT_ORG_ROOT: ContactOrgNode = {
+  id: 'pc-org-root',
+  name: '吉祥航空',
+  memberIds: [],
+  children: directoryDefinition.map(([department]) => ({
+    id: `pc-org-${department}`,
+    name: department,
+    parentId: 'pc-org-root',
+    memberIds: contactDirectory.filter(p => p.department === department).map(p => p.id),
+  })),
+};
+
+/** 展平组织树 */
+export const flattenContactOrg = (node: ContactOrgNode): ContactOrgNode[] => [
+  node,
+  ...(node.children ?? []).flatMap(flattenContactOrg),
+];
+
+/** 部门节点成员数（含子部门） */
+export const countContactOrgMembers = (node: ContactOrgNode): number =>
+  (node.memberIds?.length ?? 0) + (node.children ?? []).reduce((sum, c) => sum + countContactOrgMembers(c), 0);
 
 /** 企微群组（原型 mock） */
 export const wecomGroups = [

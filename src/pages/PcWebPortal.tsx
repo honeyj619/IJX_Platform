@@ -37,7 +37,12 @@ export default function PcWebPortal() {
   };
 
   const startConversation = (name: string) => {
-    window.localStorage.setItem('ijx-pcweb-message-target', JSON.stringify({ name, createdAt: Date.now() }));
+    // 共享桥接（src/utils/contactMessaging.ts）：与 PC Client 通讯录统一入口
+    try {
+      window.localStorage.setItem('ijx-pcweb-message-target', JSON.stringify({ name, createdAt: Date.now() }));
+    } catch {
+      // 持久化失败时不阻塞跳转
+    }
     window.open(buildWebClientUrl(), '_blank', 'noopener,noreferrer');
   };
 

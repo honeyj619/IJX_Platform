@@ -8,6 +8,7 @@ import {
   Feather,
   Workflow,
   CloudCog,
+  ContactRound,
   X,
   XCircle,
   Search,
@@ -85,6 +86,7 @@ const usePagesStore = create<PagesStore>((set, get) => ({
 
 const pageTitles: Record<string, string> = {
   '/': '消息',
+  '/contacts': '通讯录',
   '/enterprise': '工作门户',
   '/calendar': '日历',
   '/meetings': '如意会议',
@@ -241,6 +243,7 @@ export default function Layout({ children }: LayoutProps) {
 
   const navItems: NavigationItem[] = [
     { icon: MessagesSquare, label: '消息', to: clientPath('/'), badge: 8, badgeTitle: '8条未读消息', badgeTone: 'message' },
+    { icon: ContactRound, label: '通讯录', to: clientPath('/contacts') },
     { icon: LayoutGrid, label: '工作门户', to: clientPath('/enterprise'), badge: 21, badgeTitle: '21项未办事项', badgeTone: 'work' },
     { icon: CalendarDays, label: '日历', to: clientPath('/calendar') },
     { icon: Video, label: '如意会议', to: clientPath('/meetings') },

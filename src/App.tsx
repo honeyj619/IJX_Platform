@@ -17,6 +17,7 @@ import Download from "@/pages/Download";
 import VuePrototypeHost from "@/components/VuePrototypeHost";
 import { APP_PROTOTYPE_BASE, APP_PROTOTYPE_HOME, APP_PROTOTYPE_MESSAGE, appPrototypeHomeWithPlatform } from "@/constants/appRoutes";
 import PcWebPortal from "@/pages/PcWebPortal";
+import Contacts from "@/pages/Contacts";
 import MeetingCenter, { MeetingRecordingDetail } from "@/pages/Meetings";
 import { RequirementModeLayer, RequirementModeProvider } from "@/components/requirements/RequirementMode";
 
@@ -178,6 +179,7 @@ export default function App() {
         <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-gray-400">加载中…</div>}>
         <Routes>
           <Route index element={<Home />} />
+          <Route path="contacts" element={<Contacts />} />
           <Route path="enterprise" element={<Enterprise />} />
           <Route path="assistant" element={<Navigate to="/pc_client/ruyi-zone" replace />} />
           <Route path="process" element={<Process />} />
