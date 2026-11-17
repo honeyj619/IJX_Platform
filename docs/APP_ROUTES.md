@@ -21,18 +21,15 @@
 | 日程 | `/app/prototype/schedule` |
 | 工作台 | `/app/prototype/workspace` |
 | 消息 | `/app/prototype/message` |
-| 通讯录 | `/app/prototype/contacts` |
 | 我的 | `/app/prototype/profile` |
 | 帮助与反馈 | `/app/prototype/profile/feedback` |
 | 反馈详情 | `/app/prototype/profile/feedback/:feedbackId` |
-| 部门成员 | `/app/prototype/contacts/dept/:departmentId` |
-| 联系人详情 | `/app/prototype/contacts/:contactId` |
 | 消息搜索 | `/app/prototype/message/search` |
 | 会话 | `/app/prototype/message/chat/:sessionId` |
 | 会话信息 | `/app/prototype/message/info/:sessionId` |
 | 会话记录 | `/app/prototype/message/history/:sessionId` |
-| 通讯录（消息模块旧路径，重定向 → `/app/prototype/contacts`） | `/app/prototype/message/contacts` |
-| 联系人（消息模块旧路径，重定向 → `/app/prototype/contacts/:contactId`） | `/app/prototype/message/contact/:contactId` |
+| 通讯录 | `/app/prototype/message/contacts` |
+| 联系人 | `/app/prototype/message/contact/:contactId` |
 | 创建群聊 | `/app/prototype/message/group/create` |
 | 群详情 | `/app/prototype/message/group/:groupId` |
 | 扫一扫 | `/app/prototype/message/scan` |
@@ -41,7 +38,7 @@
 | 回执 | `/app/prototype/message/receipt/:sessionId/:msgId` |
 | 服务号 | `/app/prototype/message/service/:accountId` |
 
-底部导航为 6 个一级入口（首页/日程/工作台/消息/通讯录/我的，2026-11-17 通讯录升级为一级入口）。通讯录域 3 条：首页 `/contacts` + 部门成员 `/contacts/dept/:departmentId` + 联系人详情 `/contacts/:contactId`（后两条隐藏底部导航、提供返回）；`/message/contacts` 与 `/message/contact/:contactId` 保留为兼容重定向。消息模块其余子页 + 1 条兜底重定向（`/message/:pathMatch(.*)*` → `/message`）；「我的」域含帮助与反馈二级页（隐藏底部导航、提供返回）。
+消息模块为 13 条功能子页 + 1 条兜底重定向（`/message/:pathMatch(.*)*` → `/message`）；「我的」域新增帮助与反馈二级页（隐藏底部导航、提供返回）。
 
 ## 3. 下载入口
 

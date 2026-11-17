@@ -1,25 +1,17 @@
 # 当前任务
 
-状态：已完成待复核 —— 通讯录一级导航入口开发（2026-11-17）
+状态：进行中 —— 通讯录入口整改（2026-11-17，App 撤一级 / PC 保一级 / 群聊去伪）
 
-## 通讯录一级导航入口（2026-11-17，高风险验证）
+## 通讯录入口整改（2026-11-17）
 
-- **目标**：底部导航 5→6 项（首页/日程/工作台/消息/通讯录/我的），新增一级路由 /contacts + 部门成员 /contacts/dept/:departmentId + 联系人详情 /contacts/:contactId。
-- **范围**：TabBar 第 6 项、通讯录三页（搜索/组织架构/我的群组/详情含备注+特别提醒+发消息+群聊+视频会议暂未开放）、组织树 mock（只存联系人 ID）、旧路由 /message/contacts 与 /message/contact/:id 重定向、消息/工作台入口统一切 /contacts。
-- **参考**：用户桌面三栏截图（组织-成员-详情），移动端转三级页，登记于 REFERENCE_BASELINES.md。
-- **验收**：三宽度（360/375/480）6 项完整可见；姓名/手机号/账号/部门搜索命中；详情字段正确；备注与特别提醒持久化；发消息复用单聊不重复建；群聊预选；npm run check 全通过；零 pageerror。
-- **非目标**：真实组织架构接口、通讯录权限、后端、远程头像、真实音视频、重构消息模块。
+- **背景**：5fe3528 误将 App 通讯录升级为一级入口（产品决策为 PC Client 专属）；0c77cb0 PC Client 实现保留。整改在源码上直接回滚，不改写历史。
+- **App 端**：撤掉底部导航"通讯录"Tab 与 /contacts 一级路由域；恢复五入口基线；消息模块通讯录入口恢复 /message/contacts 二级页；删除仅服务一级入口的页面/组件/图标/组织树 mock。
+- **保留修复**：setContactNote 同步写 contact.note（既有备注刷新丢失 bug，消息模块详情页受益，与一级入口无关）。
+- **PC Client**：/pc_client/contacts 一级导航保留；"发起群聊"取消单聊桥接伪实现，改为"群聊创建功能暂未开放"诚实提示（消息模块无真实群聊创建模型可复用）。
+- **非目标**：不动如意模块；不 reset/rebase；不推送远端（等 Codex 验收）。
 
-## 验证结果（2026-11-17）
 
-- `npm run check`：types + build + routes（14/14，含 17 条消息/通讯录子路由冒烟合同）+ pages（24/24）全部通过。
-- `check:app-chain`（APP_CHAIN_BASE=5176）：20/20 PASS 零 error（此前 16/17 FAIL 为旧 dev server 陈旧构建，重启后基线一致通过）。
-- e2e 主链路 27/27 PASS（脚本 `.workbuddy/scripts/e2e-contacts.cjs`）：三宽度 6 Tab 可见无裁切、组织树展开→部门页→详情、返回状态保留、备注+特别提醒刷新持久化、发消息复用单聊不重复建、群聊预选 ?member=、视频会议暂未开放提示、姓名/手机号/账号/部门搜索命中、无结果兜底+清空恢复、旧路由重定向（/message/contacts→/contacts、scope=service/apps 保留、?tab=groups 直达）、零 pageerror。
-- 截图留存：`.e2e-contacts-home-{360,375,480}.png`、`.e2e-dept-fe-375.png`、`.e2e-detail-jyp7-375.png`（仓库根）。
-- 修复过程中发现的既有 bug：`setContactNote` 只写 notes map 不写 contact.note，旧消息模块详情页刷新后备注丢失——已同步写入两处（消息模块同步受益）。
-- TabBar 图标：本地图标族线稿风格 contacts-inactive（N6 灰）/contacts-active（品牌玫红）76x72 PNG，待正式品牌图标包替换（与 im/README 占位声明一致）。
-
-## 历史任务归档
+状态：已完成待复核 —— 帮助与反馈五端闭环（2026-11-14）+ 视觉修正与需求模式入口改造（2026-11-15）
 
 ## 视觉修正与需求模式入口（2026-11-15，轻量/中等验证）
 

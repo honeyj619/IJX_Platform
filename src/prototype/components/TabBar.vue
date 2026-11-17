@@ -26,8 +26,6 @@ import workspaceIcon from '../assets/icons/tab/workspace-inactive.png'
 import workspaceActiveIcon from '../assets/icons/tab/workspace-active.png'
 import messageIcon from '../assets/icons/tab/message-inactive.png'
 import messageActiveIcon from '../assets/icons/tab/message-active.png'
-import contactsIcon from '../assets/icons/tab/contacts-inactive.png'
-import contactsActiveIcon from '../assets/icons/tab/contacts-active.png'
 import profileIcon from '../assets/icons/tab/profile-inactive.png'
 import profileActiveIcon from '../assets/icons/tab/profile-active.png'
 
@@ -39,7 +37,6 @@ const tabs = [
   { name: 'Schedule', to: '/schedule', label: '日程', icon: scheduleIcon, iconActive: scheduleActiveIcon },
   { name: 'Workspace', to: '/workspace', label: '工作台', icon: workspaceIcon, iconActive: workspaceActiveIcon },
   { name: 'Message', to: '/message', label: '消息', icon: messageIcon, iconActive: messageActiveIcon },
-  { name: 'Contacts', to: '/contacts', label: '通讯录', icon: contactsIcon, iconActive: contactsActiveIcon },
   { name: 'Profile', to: '/profile', label: '我的', icon: profileIcon, iconActive: profileActiveIcon }
 ]
 </script>

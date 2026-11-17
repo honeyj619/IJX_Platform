@@ -14,13 +14,12 @@ import { saveLastBusinessPage } from '../utils/feedbackPageContext'
 const route = useRoute()
 const router = useRouter()
 
-/* App 端业务页面标题映射（与 TabBar 六入口一致） */
+/* App 端业务页面标题映射（与 TabBar 五入口一致） */
 const PAGE_TITLES = {
   '/': '首页',
   '/schedule': '日程',
   '/workspace': '工作台',
   '/message': '消息',
-  '/contacts': '通讯录',
   '/profile': '我的',
 }
 

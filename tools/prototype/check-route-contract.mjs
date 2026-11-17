@@ -45,10 +45,9 @@ ok('appRoutes.ts 定义五大一级入口常量',
   ['APP_ENTRY', 'APP_PROTOTYPE_BASE', 'APP_PROTOTYPE_HOME', 'APP_PROTOTYPE_MESSAGE'].every((k) => constantsTs.includes(k)) &&
   constantsTs.includes('appPrototypeRoute'))
 
-// ===== Vue Router 消息/通讯录子路由 vs 冒烟清单 =====
+// ===== Vue Router 消息子路由 vs 冒烟清单 =====
 const vueRoutePaths = [...vueRouter.matchAll(/path:\s*'([^']+)'/g)].map((m) => m[1])
-const subRoutePrefixes = ['/message/', '/contacts']
-const messageSubRoutes = vueRoutePaths.filter((p) => subRoutePrefixes.some((pre) => p.startsWith(pre)) && !p.includes(':pathMatch'))
+const messageSubRoutes = vueRoutePaths.filter((p) => p.startsWith('/message/') && !p.includes(':pathMatch'))
 const smokeHasRoute = (vuePath) => {
   // :param 段在冒烟清单里被替换为示例值：直接按字面段匹配
   const segs = vuePath.split('/').filter(Boolean)
@@ -56,7 +55,7 @@ const smokeHasRoute = (vuePath) => {
   return smokeMjs.includes(literal.join('/')) || literal.every((s) => smokeMjs.includes(`'${s}'`) || smokeMjs.includes(`/${s}`))
 }
 const missing = messageSubRoutes.filter((p) => !smokeHasRoute(p))
-ok(`Vue Router 消息/通讯录子路由全部进入冒烟清单（${messageSubRoutes.length} 条）`,
+ok(`Vue Router 消息子路由全部进入冒烟清单（${messageSubRoutes.length} 条）`,
   missing.length === 0, `缺失: ${missing.join(', ')}`)
 
 // ===== APP_ROUTES.md 文档合同 =====
@@ -65,10 +64,7 @@ const canonicalRoutes = [
   '/app/prototype/schedule',
   '/app/prototype/workspace',
   '/app/prototype/message',
-  '/app/prototype/contacts',
   '/app/prototype/profile',
-  '/app/prototype/contacts/dept/:departmentId',
-  '/app/prototype/contacts/:contactId',
   '/app/prototype/message/search',
   '/app/prototype/message/chat/:sessionId',
   '/app/prototype/message/info/:sessionId',

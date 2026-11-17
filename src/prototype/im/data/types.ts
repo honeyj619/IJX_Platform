@@ -39,21 +39,8 @@ export interface Contact {
   desc?: string;
   note?: string;
   starred?: boolean;
-  departmentId?: string;
-  reminderEnabled?: boolean;
 }
 
-/** 组织架构节点：只存联系人 ID，人员资料统一由 contacts 状态读取 */
-export interface OrganizationNode {
-  id: string;
-  name: string;
-  parentId?: string;
-  type: 'company' | 'department' | 'group';
-  memberIds: string[];
-  children?: OrganizationNode[];
-}
-
-/** 兼容旧引用：IM 演示组织节点（members 存联系人 ID） */
 export interface OrgNode {
   id: string;
   name: string;

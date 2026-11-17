@@ -73,7 +73,6 @@ export interface ImState extends ImSnapshot {
   rejectJoinRequest: (id: string) => void;
   setContactNote: (contactId: string, note: string) => void;
   toggleContactStar: (contactId: string) => void;
-  toggleContactReminder: (contactId: string) => void;
   resetDemoData: () => void;
 }
 
@@ -254,8 +253,7 @@ function migrateState(persisted: unknown, version: number): ImSnapshot & { joinR
     sessions: (raw.sessions ?? base.sessions).map((s) => ({ ...s, pins: s.pins ?? [] })),
     messages: raw.messages ?? base.messages,
     groups: (raw.groups ?? base.groups).map(normalizeGroup),
-    // 旧持久化缺 landline/departmentId 等新字段：按 id 从种子回填，保留用户星标/备注/提醒等运行时状态
-    contacts: (raw.contacts ?? base.contacts).map((c) => ({ ...base.contacts.find((s) => s.id === c.id) ?? {}, ...c })),
+    contacts: raw.contacts ?? base.contacts,
     serviceAccounts: raw.serviceAccounts ?? base.serviceAccounts,
     serviceTickets: raw.serviceTickets ?? base.serviceTickets,
     imApps: raw.imApps ?? base.imApps,
@@ -786,16 +784,12 @@ export const imStore = createStore<ImState>()(
 
       setContactNote: (contactId, note) => set((state) => ({
         notes: { ...state.notes, [contactId]: note },
-        // 同步写入联系人备注字段：详情页读 c.note，刷新/重进后仍保留（8.4 备注闭环）
+        // 同步写入联系人备注字段：详情页读 c.note，刷新/重进后仍保留（备注闭环既有 bug 修复，2026-11-17）
         contacts: state.contacts.map((c) => (c.id === contactId ? { ...c, note } : c)),
       })),
 
       toggleContactStar: (contactId) => set((state) => ({
         contacts: state.contacts.map((c) => (c.id === contactId ? { ...c, starred: !c.starred } : c)),
-      })),
-
-      toggleContactReminder: (contactId) => set((state) => ({
-        contacts: state.contacts.map((c) => (c.id === contactId ? { ...c, reminderEnabled: !c.reminderEnabled } : c)),
       })),
 
       resetDemoData: () => set(() => ({ ...buildInitialState() })),

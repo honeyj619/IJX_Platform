@@ -114,8 +114,8 @@ const FILTERS = [
 const MENU = [
   { icon: 'scan', label: '扫一扫', path: '/message/scan' },
   { icon: 'group', label: '创建群聊', path: '/message/group/create' },
-  { icon: 'contacts', label: '通讯录', path: '/contacts' },
-  { icon: 'chat', label: '我的群聊', path: '/contacts?tab=groups' },
+  { icon: 'contacts', label: '通讯录', path: '/message/contacts' },
+  { icon: 'chat', label: '我的群聊', path: '/message/contacts?scope=groups' },
   { icon: 'service', label: '员工服务', path: '/message/contacts?scope=service' },
   { icon: 'apps', label: '消息应用', path: '/message/contacts?scope=apps' },
   { icon: 'tools', label: '恢复演示数据', action: 'reset' }
@@ -128,7 +128,7 @@ const emptyActionText = computed(() => filter.value === 'all' ? '发起新会话
 const { run } = useImTask()
 
 function onEmptyAction() {
-  if (filter.value === 'all') router.push('/contacts')
+  if (filter.value === 'all') router.push('/message/contacts')
   else filter.value = 'all'
 }
 

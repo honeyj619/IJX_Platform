@@ -149,7 +149,6 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import BaseEmpty from '../components/BaseEmpty.vue'
 
 import ws00 from '../assets/icons/ws/ws-00.png'
@@ -243,7 +242,6 @@ function sectionApps(key) {
 
 /* ---------------- 编辑 ---------------- */
 const editing = ref(false)
-const router = useRouter()
 
 // 初始我的工作台快照（恢复机制用；删空/误删后可一键找回，不产生死状态）
 const initialMyApps = [
@@ -269,11 +267,6 @@ function onAppTap(app) {
   if (editing.value) {
     myApps.value = myApps.value.filter(a => a.name !== app.name)
     // 删空不自动退出编辑（提示行 + 恢复入口仍可用）
-    return
-  }
-  // 通讯录：2026-11-17 升级一级入口，工作台图标直达 /contacts
-  if (app.name === '通讯录') {
-    router.push('/contacts')
     return
   }
   showToast(`「${app.name}」暂未开放`)

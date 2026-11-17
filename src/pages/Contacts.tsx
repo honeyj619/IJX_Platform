@@ -114,8 +114,9 @@ export default function Contacts() {
   const createGroupChat = () => {
     if (!selected) return;
     if (groupMembers.length < 2) { showToast('请至少再选择一名成员'); return; }
-    // 复用消息桥接：以群名作为会话名（演示层群聊与单聊同通道）
-    openChatWithContact(`${selected.name}、${groupMembers.filter(n => n !== selected.name).join('、')}（群聊）`, navigate);
+    // 消息模块现阶段没有可复用的真实群聊创建模型（2026-11-17 整改）：
+    // 保留按钮与选人弹窗，确认时诚实提示暂未开放；不落单聊、不伪造群名、不写入会话数据。
+    showToast('群聊创建功能暂未开放');
     setGroupPickerOpen(false);
     setGroupMembers([]);
   };
@@ -313,7 +314,7 @@ export default function Contacts() {
                 className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg border border-theme-600 text-sm font-medium text-theme-600 transition hover:bg-theme-50 dark:text-theme-400 dark:hover:bg-theme-900/20"
               ><Video size={16} /> 视频会议</button>
             </div>
-            <p className="mt-3 text-center text-[11px] text-gray-400">视频会议将带入当前联系人为参会人</p>
+            <p className="mt-3 text-center text-[11px] text-gray-400">视频会议将带入当前联系人为参会人 · 群聊创建功能暂未开放</p>
           </div>
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-gray-400">
@@ -327,7 +328,7 @@ export default function Contacts() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setGroupPickerOpen(false)}>
           <div className="w-[480px] max-w-[90vw] rounded-xl bg-white p-5 shadow-xl dark:bg-gray-900" onClick={(e) => e.stopPropagation()}>
             <h2 className="mb-1 text-base font-semibold text-gray-900 dark:text-white">发起群聊</h2>
-            <p className="mb-4 text-xs text-gray-400">当前联系人「{selected.name}」已锁定，再选择至少一名成员</p>
+            <p className="mb-4 text-xs text-gray-400">群聊创建功能暂未开放 · 当前联系人「{selected.name}」已锁定，可先选择成员</p>
             <ContactPicker
               selected={groupMembers}
               onChange={setGroupMembers}
@@ -341,7 +342,7 @@ export default function Contacts() {
                 onClick={createGroupChat}
                 disabled={groupMembers.length < 2}
                 className="h-9 rounded bg-theme-600 px-5 text-sm font-medium text-white transition hover:bg-theme-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >创建群聊</button>
+              >确认创建（暂未开放）</button>
             </div>
           </div>
         </div>
