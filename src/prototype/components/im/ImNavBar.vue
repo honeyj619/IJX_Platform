@@ -28,7 +28,9 @@ const props = defineProps({
   back: { type: Boolean, default: true },
   rightText: { type: String, default: '' },
   tone: { type: String, default: 'light' },
-  disabled: { type: Boolean, default: false }
+  disabled: { type: Boolean, default: false },
+  /** 无历史记录时的兜底返回目标（默认 /message；通讯录域传 /contacts） */
+  backTo: { type: String, default: '/message' }
 })
 const emit = defineEmits(['back', 'right'])
 const router = useRouter()
@@ -37,6 +39,6 @@ function onBack() {
   emit('back')
   if (!props.back || props.disabled) return
   if (window.history.state && window.history.state.back) router.back()
-  else router.push('/message')
+  else router.push(props.backTo)
 }
 </script>

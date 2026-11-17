@@ -8,7 +8,9 @@ export const ME: Contact = {
   job: '产品经理',
   dept: '信息管理部-管理支撑产品处',
   deptPath: '吉祥航空 / 信息管理部 / 管理支撑产品处',
+  departmentId: 'org-mgmt',
   phone: '17610960613',
+  landline: '021-2238800',
   email: 'liangjili@juneyao.com',
   account: 'liangjili',
   status: 'online',
@@ -28,14 +30,14 @@ export const FILE_HELPER: Contact = {
 /** 演示联系人（姓名仅取 THREE_KINGDOMS_NAMES 中的名字，非真实人员） */
 export const CONTACTS: Contact[] = [
   ME,
-  { id: 'jy-p1', name: '刘备', job: '负责人', dept: '吉祥航空', deptPath: '吉祥航空', phone: '17610960612', email: 'liubei@juneyao.com', account: 'liubei', status: 'busy', company: '吉祥航空' },
-  { id: 'jy-p2', name: '关羽', job: '行政专员', dept: '吉祥航空', deptPath: '吉祥航空', phone: '17610960616', email: 'guanyu@juneyao.com', account: 'guanyu', status: 'online', company: '吉祥航空' },
-  { id: 'jy-p3', name: '张飞', job: '助理', dept: '吉祥航空', deptPath: '吉祥航空', phone: '17610960617', email: 'zhangfei@juneyao.com', account: 'zhangfei', status: 'offline', company: '吉祥航空' },
-  { id: 'jy-p5', name: '诸葛亮', job: '测试工程师', dept: '测试组', deptPath: '吉祥航空 / 测试部门 / 测试组', phone: '17610960614', email: 'zhugeliang@juneyao.com', account: 'zhugeliang', status: 'online', company: '吉祥航空' },
-  { id: 'jy-p6', name: '赵云', job: '运营专员', dept: '运营中心', deptPath: '吉祥航空 / 运营中心', phone: '17610960615', email: 'zhaoyun@juneyao.com', account: 'zhaoyun', status: 'away', company: '吉祥航空' },
-  { id: 'jy-p7', name: '马超', job: '产品经理', dept: '前端组', deptPath: '吉祥航空 / 测试部门 / 前端组', phone: '13800001005', email: 'machao@juneyao.com', account: 'machao', status: 'online', company: '吉祥航空' },
-  { id: 'jy-p8', name: '黄忠', job: '后端工程师', dept: '后端组', deptPath: '吉祥航空 / 测试部门 / 后端组', phone: '13800001003', email: 'huangzhong@juneyao.com', account: 'huangzhong', status: 'offline', company: '吉祥航空' },
-  { id: 'jy-p9', name: '司马懿', job: '设计师', dept: '前端组', deptPath: '吉祥航空 / 测试部门 / 前端组', phone: '13800001009', email: 'simayi@juneyao.com', account: 'simayi', status: 'online', company: '吉祥航空' },
+  { id: 'jy-p1', name: '刘备', job: '负责人', dept: '吉祥航空', deptPath: '吉祥航空', departmentId: 'org-root', phone: '17610960612', landline: '021-2238888', email: 'liubei@juneyao.com', account: 'liubei', status: 'busy', company: '吉祥航空' },
+  { id: 'jy-p2', name: '关羽', job: '行政专员', dept: '吉祥航空', deptPath: '吉祥航空', departmentId: 'org-root', phone: '17610960616', landline: '021-2238801', email: 'guanyu@juneyao.com', account: 'guanyu', status: 'online', company: '吉祥航空' },
+  { id: 'jy-p3', name: '张飞', job: '助理', dept: '吉祥航空', deptPath: '吉祥航空', departmentId: 'org-root', phone: '17610960617', landline: '021-2238802', email: 'zhangfei@juneyao.com', account: 'zhangfei', status: 'offline', company: '吉祥航空' },
+  { id: 'jy-p5', name: '诸葛亮', job: '测试工程师', dept: '测试组', deptPath: '吉祥航空 / 信息管理部 / 测试组', departmentId: 'org-qa', phone: '17610960614', landline: '021-2238803', email: 'zhugeliang@juneyao.com', account: 'zhugeliang', status: 'online', company: '吉祥航空' },
+  { id: 'jy-p6', name: '赵云', job: '运营专员', dept: '运营中心', deptPath: '吉祥航空 / 运营中心', departmentId: 'org-ops', phone: '17610960615', landline: '021-2238804', email: 'zhaoyun@juneyao.com', account: 'zhaoyun', status: 'away', company: '吉祥航空' },
+  { id: 'jy-p7', name: '马超', job: '产品经理', dept: '前端组', deptPath: '吉祥航空 / 信息管理部 / 前端组', departmentId: 'org-fe', phone: '13800001005', landline: '021-2238805', email: 'machao@juneyao.com', account: 'machao', status: 'online', company: '吉祥航空' },
+  { id: 'jy-p8', name: '黄忠', job: '后端工程师', dept: '后端组', deptPath: '吉祥航空 / 信息管理部 / 后端组', departmentId: 'org-be', phone: '13800001003', landline: '021-2238806', email: 'huangzhong@juneyao.com', account: 'huangzhong', status: 'offline', company: '吉祥航空' },
+  { id: 'jy-p9', name: '司马懿', job: '设计师', dept: '前端组', deptPath: '吉祥航空 / 信息管理部 / 前端组', departmentId: 'org-fe', phone: '13800001009', landline: '021-2238807', email: 'simayi@juneyao.com', account: 'simayi', status: 'online', company: '吉祥航空' },
 ];
 
 const CONTACT_MAP = new Map(CONTACTS.map((c) => [c.id, c]));

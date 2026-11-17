@@ -29,7 +29,7 @@
 import ImField from '../../components/im/ImField.vue'
 import ImIcon from '../../components/im/ImIcon.vue'
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ImNavBar from '../../components/im/ImNavBar.vue'
 import ImAvatar from '../../components/im/ImAvatar.vue'
 import ImEmpty from '../../components/im/ImEmpty.vue'
@@ -39,10 +39,13 @@ import { toast } from '../../im/ui'
 import { useImTask } from '../../im/task'
 
 const router = useRouter()
+const route = useRoute()
 const state = useImState()
 const q = ref('')
 const name = ref('')
-const picked = ref([])
+/** 联系人详情「发起群聊」带入的预选成员：?member=:contactId */
+const presetMember = String(route.query.member || '')
+const picked = ref(state.value.contacts.some((c) => c.id === presetMember) ? [presetMember] : [])
 const list = computed(() => {
   const kw = q.value.trim().toLowerCase()
   return state.value.contacts.filter((c) => c.id !== 'me' && !c.isFileHelper && (!kw || c.name.toLowerCase().includes(kw) || (c.dept || '').toLowerCase().includes(kw)))
