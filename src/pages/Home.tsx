@@ -58,6 +58,15 @@ import type { FeedbackRecord } from '../data/feedback';
 import { getFeedbackConversations, subscribeFeedbackConversations, type FeedbackConversation } from '../data/feedbackConversations';
 import { createFeedbackPageContext } from '../utils/feedbackPageContext';
 import { useMeetingStore } from '../store/meetingStore';
+import BusinessMessageCard from '../components/messages/BusinessMessageCard';
+import {
+  approvalMessageCard,
+  attendanceMessageCard,
+  knowledgeMessageCard,
+  projectMessageCard,
+  scheduleMessageCard,
+} from '../data/businessMessageCards';
+import type { BusinessMessageCardData } from '../types/businessMessageCard';
 
 interface CardContent {
   title: string;
@@ -186,6 +195,7 @@ interface Message {
   count?: number;
   icon?: React.ReactNode;
   type: 'normal' | 'process' | 'assistant' | 'system' | 'card' | 'feedback';
+  businessCards?: BusinessMessageCardData[];
   cardContent?: CardContent;
   chatMessages?: ChatMessage[];
   /** type=feedback 时绑定的反馈会话 ID */
@@ -644,6 +654,7 @@ const messages: Message[] = [
     unread: 8,
     icon: <Hexagon className="w-10 h-10" />,
     type: 'process',
+    businessCards: [approvalMessageCard],
   },
   {
     id: 3,
@@ -654,14 +665,7 @@ const messages: Message[] = [
     unread: 1,
     icon: <CalendarIcon className="w-10 h-10" />,
     type: 'card',
-    cardContent: {
-      title: "日程提醒",
-      content: "今日和明日的日程安排如下",
-      actions: [
-        { label: "查看详情", type: 'primary' },
-        { label: "添加日程", type: 'secondary' }
-      ]
-    }
+    businessCards: [scheduleMessageCard],
   },
   {
     id: 4,
@@ -672,14 +676,7 @@ const messages: Message[] = [
     unread: 1,
     icon: <CheckCircle className="w-10 h-10" />,
     type: 'card',
-    cardContent: {
-      title: "考勤记录",
-      content: "您本月考勤正常，无迟到早退记录，累计出勤20天",
-      actions: [
-        { label: "查看详情", type: 'primary' },
-        { label: "申请请假", type: 'secondary' }
-      ]
-    }
+    businessCards: [attendanceMessageCard],
   },
   {
     id: 5,
@@ -690,14 +687,7 @@ const messages: Message[] = [
     unread: 2,
     icon: <Clock className="w-10 h-10" />,
     type: 'card',
-    cardContent: {
-      title: "项目进度",
-      content: "您负责的3个项目均按计划进行，其中智能办公系统升级项目已完成60%",
-      actions: [
-        { label: "查看详情", type: 'primary' },
-        { label: "更新进度", type: 'secondary' }
-      ]
-    }
+    businessCards: [projectMessageCard],
   },
   {
     id: 6,
@@ -708,14 +698,7 @@ const messages: Message[] = [
     unread: 3,
     icon: <FileText className="w-10 h-10" />,
     type: 'card',
-    cardContent: {
-      title: "知识推荐",
-      content: "根据您的搜索历史，为您推荐3篇相关知识库文章",
-      actions: [
-        { label: "查看详情", type: 'primary' },
-        { label: "搜索更多", type: 'secondary' }
-      ]
-    }
+    businessCards: [knowledgeMessageCard],
   },
   {
     id: 7,
@@ -1492,6 +1475,9 @@ export default function Home() {
           />
         );
       case 'process':
+        if (selectedMessage.businessCards?.length) {
+          return <BusinessCardConversation message={selectedMessage} contentRef={contentRef} />;
+        }
         return (
           <div className="flex flex-col h-full bg-gray-50">
             <div ref={contentRef} className="flex-1 overflow-y-auto overflow-x-hidden p-6 space-y-6">
@@ -1571,6 +1557,9 @@ export default function Home() {
           </div>
         );
       case 'card':
+        if (selectedMessage.businessCards?.length) {
+          return <BusinessCardConversation message={selectedMessage} contentRef={contentRef} />;
+        }
         if (selectedMessage.name === "日程") {
           return (
             <div className="flex flex-col h-full bg-gray-50">
@@ -1981,6 +1970,41 @@ export default function Home() {
         {/* 聊天内容 */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {renderContent()}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BusinessCardConversation({
+  message,
+  contentRef,
+}: {
+  message: Message;
+  contentRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  return (
+    <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900">
+      <div ref={contentRef} className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-6">
+        {message.businessCards?.map((card) => (
+          <div key={card.id} className="flex gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">
+              {message.icon || <MessageSquare size={20} />}
+            </div>
+            <BusinessMessageCard card={card} />
+          </div>
+        ))}
+      </div>
+      <div className="shrink-0 border-t border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="输入消息..."
+            className="flex-1 rounded-full border border-gray-300 bg-white px-4 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-theme-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+          />
+          <button type="button" aria-label="发送消息" className="rounded-full bg-theme-500 p-2 text-white transition-colors hover:bg-theme-600">
+            <MessageSquare size={20} />
+          </button>
         </div>
       </div>
     </div>

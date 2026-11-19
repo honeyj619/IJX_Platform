@@ -8,6 +8,7 @@ import type {
   RuyiTaskMock,
 } from '../types/ruyi';
 import { ruyiCapabilities } from './ruyiCapabilities';
+import { approvalMessageCard } from './businessMessageCards';
 
 const DEMO_OWNER_ID = 'demo-user';
 const FIXED_SYSTEM_CONVERSATION_ID = 'ruyi-system-assistant';
@@ -203,7 +204,15 @@ function buildDefaultState(): RuyiPrototypeState {
       'assistant',
       'text',
       '您当前有 3 项待办流程：\n1. 项目立项申请 - 待审批\n2. 预算调整申请 - 待填写\n3. 设备采购申请 - 待确认\n\n可点击入口前往流程中心处理。',
-      { actions: [{ type: 'open-workbench', label: '查看流程中心' }] },
+      {
+        businessCard: approvalMessageCard,
+        actions: [
+          { type: 'copy', label: '复制' },
+          { type: 'feedback-useful', label: '有用' },
+          { type: 'feedback-useless', label: '没用' },
+          { type: 'regenerate', label: '重新生成' },
+        ],
+      },
     ),
   ];
   c1Messages.forEach((m) => {

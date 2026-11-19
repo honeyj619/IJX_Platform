@@ -11,6 +11,7 @@ import type {
   MeetingTaskSlots,
 } from '../types/ruyi';
 import { getRuyiCapability } from '../data/ruyiCapabilities';
+import { approvalMessageCard, attendanceMessageCard, knowledgeMessageCard } from '../data/businessMessageCards';
 
 export interface MockRuntimeContext {
   conversation: RuyiConversation;
@@ -444,8 +445,8 @@ function handleGenericQuery(
     return {
       messages: [
         createMessage(conversationId, 'assistant', 'text', '您当前有 3 项待办流程：\n1. 项目立项申请 - 待审批\n2. 预算调整申请 - 待填写\n3. 设备采购申请 - 待确认\n\n可点击入口前往流程中心处理。', {
+          businessCard: approvalMessageCard,
           actions: [
-            { type: 'open-workbench', label: '查看流程中心' },
             { type: 'copy', label: '复制' },
             { type: 'feedback-useful', label: '有用' },
             { type: 'feedback-useless', label: '没用' },
@@ -460,6 +461,7 @@ function handleGenericQuery(
     return {
       messages: [
         createMessage(conversationId, 'assistant', 'text', '上个月考勤整体表现良好，无异常缺勤。相关制度可查看考勤管理制度 v2.3。', {
+          businessCard: attendanceMessageCard,
           sourceLabel: '考勤管理制度 v2.3',
           sourceHref: '/pc_client/knowledge?doc=attendance-policy&source=ruyi-zone',
         }),
@@ -471,7 +473,7 @@ function handleGenericQuery(
     return {
       messages: [
         createMessage(conversationId, 'assistant', 'text', '为您找到 3 篇智能办公相关文章：\n1. 智能办公系统功能介绍\n2. 协同办公平台使用手册\n3. 常见问题 FAQ 汇总', {
-          actions: [{ type: 'open-result', label: '查看知识库' }],
+          businessCard: knowledgeMessageCard,
         }),
       ],
     };
@@ -574,18 +576,21 @@ function handleInterrupt(
 ): MockRuntimeResult {
   const t = normalizeText(text);
   let answer = '我先回答您的问题。';
+  let businessCard: RuyiMessage['businessCard'];
 
   if (t.includes('年假')) {
     answer = '您今年剩余年假 5 天。';
   } else if (t.includes('考勤')) {
     answer = '本月考勤正常，无迟到早退记录。';
+    businessCard = attendanceMessageCard;
   } else if (t.includes('待办') || t.includes('流程')) {
     answer = '您当前有 3 项待办流程。';
+    businessCard = approvalMessageCard;
   }
 
   return {
     messages: [
-      createMessage(conversationId, 'assistant', 'text', answer),
+      createMessage(conversationId, 'assistant', 'text', answer, { businessCard }),
       createMessage(conversationId, 'system', 'resume-task', '原任务「创建会议」已暂停，点击继续可回到参数补充。', {
         taskId: task.id,
         actions: [{ type: 'resume-task', label: '继续创建会议' }],
@@ -628,6 +633,7 @@ function handleActiveCapability(
       return {
         messages: [
           createMessage(conversationId, 'assistant', 'text', '上个月考勤整体表现良好，无异常缺勤。相关制度可查看考勤管理制度 v2.3。', {
+            businessCard: attendanceMessageCard,
             sourceLabel: '考勤管理制度 v2.3',
             sourceHref: '/pc_client/knowledge?doc=attendance-policy&source=ruyi-zone',
           }),
@@ -638,8 +644,8 @@ function handleActiveCapability(
       return {
         messages: [
           createMessage(conversationId, 'assistant', 'text', '您当前有 3 项待办流程：\n1. 项目立项申请 - 待审批\n2. 预算调整申请 - 待填写\n3. 设备采购申请 - 待确认\n\n可点击入口前往流程中心处理。', {
+            businessCard: approvalMessageCard,
             actions: [
-              { type: 'open-workbench', label: '查看流程中心' },
               { type: 'copy', label: '复制' },
               { type: 'feedback-useful', label: '有用' },
               { type: 'feedback-useless', label: '没用' },
@@ -653,7 +659,7 @@ function handleActiveCapability(
       return {
         messages: [
           createMessage(conversationId, 'assistant', 'text', '为您找到 3 篇智能办公相关文章：\n1. 智能办公系统功能介绍\n2. 协同办公平台使用手册\n3. 常见问题 FAQ 汇总', {
-            actions: [{ type: 'open-result', label: '查看知识库' }],
+            businessCard: knowledgeMessageCard,
           }),
         ],
       };

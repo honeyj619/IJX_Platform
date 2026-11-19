@@ -10,6 +10,7 @@ import RuyiConfirmationMessage from "./RuyiConfirmationMessage";
 import RuyiTaskResumeMessage from "./RuyiTaskResumeMessage";
 import RuyiMultiTaskResolver from "./RuyiMultiTaskResolver";
 import RuyiCapabilitySummary from "./capability/RuyiCapabilitySummary";
+import BusinessMessageCard from "../messages/BusinessMessageCard";
 
 /** V2：action payload 透传类型（兼容 reason/taskId 及 confirm-date 的 resolvedDate/dateText） */
 export type RuyiActionPayload = Record<string, unknown> & {
@@ -219,6 +220,21 @@ export default function RuyiMessageRenderer({ message, onAction }: RuyiMessageRe
       <div className="flex justify-center py-2">
         <div className="max-w-3xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-200">
           <div className="whitespace-pre-line">{message.content}</div>
+          {renderActions()}
+        </div>
+      </div>
+    );
+  }
+
+  if (message.businessCard) {
+    return (
+      <div className="flex gap-4">
+        <div className="mt-1 h-10 w-10 flex-shrink-0 overflow-hidden rounded-full bg-theme-100">
+          <img src={RUYI_ASSISTANT_AVATAR} alt="如意助手" className="h-full w-full object-cover" />
+        </div>
+        <div className="max-w-3xl flex-1">
+          <div className="mb-3 whitespace-pre-line leading-7 text-gray-900 dark:text-gray-100">{message.content}</div>
+          <BusinessMessageCard card={message.businessCard} />
           {renderActions()}
         </div>
       </div>

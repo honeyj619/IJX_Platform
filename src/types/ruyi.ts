@@ -3,6 +3,8 @@
  * 字段命名与语义以 docs/RUYI_ASSISTANT_FRONTEND_DEVELOPMENT_PLAN.md §4 为准
  */
 
+import type { BusinessMessageCardData } from './businessMessageCard';
+
 export type RuyiCapabilityMode = 'qa' | 'instant' | 'creative' | 'transaction' | 'agent';
 
 export interface RuyiCapability {
@@ -99,6 +101,8 @@ export interface RuyiMessage {
   actions?: RuyiMessageAction[];
   sourceLabel?: string;
   sourceHref?: string;
+  /** 应用推送与如意助手查询共用的结构化业务卡片。 */
+  businessCard?: BusinessMessageCardData;
   /** 用户对该条助手回复的反馈（记录在消息上，不追加系统消息） */
   feedback?: RuyiMessageFeedback;
   /** V2：多任务选择候选（该消息渲染歧义选择卡片） */

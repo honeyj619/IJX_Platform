@@ -3,6 +3,7 @@ import { useRuyiStore } from "../../store/ruyiStore";
 import { getRuyiResultDisplayTitle, canOpenRuyiResult } from "../../utils/ruyiResultPresentation";
 import { Loader2, ExternalLink, Check, X, Play, Pencil, Copy, ArrowRight } from "lucide-react";
 import RuyiCapabilitySummary from "./capability/RuyiCapabilitySummary";
+import BusinessMessageCard from "../messages/BusinessMessageCard";
 
 interface RuyiImMessageListProps {
   messages: RuyiMessage[];
@@ -185,6 +186,18 @@ function RuyiImMessageBubble({
           >
             继续
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (message.businessCard) {
+    return (
+      <div className="flex justify-start">
+        <div className="w-full max-w-2xl">
+          <div className="mb-2 whitespace-pre-line text-sm leading-6 text-gray-700 dark:text-gray-200">{message.content}</div>
+          <BusinessMessageCard card={message.businessCard} compact />
+          {renderActions()}
         </div>
       </div>
     );
