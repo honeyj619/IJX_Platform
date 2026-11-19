@@ -2,82 +2,72 @@
 
 ## 基本信息
 
-- 任务名称：如意助手统一业务消息卡片合并与发布
-- 提出日期：2026-11-19
-- 任务类型：前端原型功能合并、去重、验收与 Git 发布
-- 目标用户/评审对象：产品、设计及后续开发模型
+- 任务名称：如意助手 WorkBuddy 返工（直展示+消息三层+契约）
+- 提出日期：2026-11-18（V3.5 验收返工）
+- 任务类型：前端原型功能改造（依据《RUYI_CONVERSATION_HISTORY_AND_SCENARIO_RETENTION_PLAN.md》修订版）
+- 目标用户/评审对象：产品、设计及后续执行任务的 AI
 
-## 范围
+## 范围（修订版原则：能力做成默认可见的对话内容，不藏在待触发的交互里）
 
-在最新 `origin/main` 的如意能力面板、反馈会话和路由架构上，合并本地尚未进入远端的统一业务消息卡片能力；识别并淘汰已被 WorkBuddy 新架构替代的旧公文/PPT 工具面板。
+1. PC「消息－如意助手」打开即显示完整能力示例对话（无欢迎页、无 history 参数）。
+2. 如意空间直接展示 13 条按场景预置的完整对话；`/ruyi-zone` 默认打开最近预置会话。
+3. 「新对话」创建真实空白会话进入空状态（复用快捷能力与输入区）。
+4. 操作卡片复用 codex 目录的 `BusinessMessageCard` 三件套（IM compact / 空间完整布局）。
+5. 撤除上一轮 history/场景快照体系（ruyiInteractionCatalog / ruyiScenarioStorage / useRuyiDemoScenario / im-history 场景 / 快照 actions）。
 
-本轮不新增真实后端接口，仅使用前端路由、页面状态和模拟数据。
+不修改 App 子应用、后端与部署；不建第二套 store 或卡片。
 
 ## 完成项
 
-- 新增统一业务消息卡片类型，覆盖来源、分类、状态、指标、详情字段、事项列表、标签和操作。
-- 新增共享 `BusinessMessageCard` 组件，支持标准模式和 IM 紧凑模式。
-- 新增流程、考勤、日程、项目和知识五类模拟卡片数据。
-- 消息页流程、日程、考勤、项目、知识应用推送统一使用共享卡片。
-- IM 如意助手和如意空间会话共用同一业务卡片渲染器。
-- 流程、考勤查询及任务打断查询接入对应卡片；知识查询接入知识卡片。
-- 删除流程卡片之外的重复“查看流程中心”动作。
-- 删除缺少结果引用、点击无效的“查看知识库”动作，改由知识卡片自身入口承担跳转。
-- IM 紧凑卡片的四项指标改为两列，避免窄消息区内容挤压。
-- UI 设计规范增加应用推送与如意助手共用业务消息卡片的长期规则。
-- 保留远端公文、PPT、参谋师、翻译四能力面板；未合入本地旧 `RuyiToolPanel`。
+- [x] 撤旧：删除 `ruyiInteractionCatalog.ts` / `ruyiScenarioStorage.ts` / `useRuyiDemoScenario.ts`；store 撤快照 actions/订阅器；RuYiZone/Home 回退 demo 生命周期（applyDemoScenario + 边界验收提示条）；types 撤 RuyiScenarioSnapshot/RuyiPersistedState/seedRevision
+- [x] 收编 codex 卡片：`src/components/messages/BusinessMessageCard.tsx` + `src/types/businessMessageCard.ts` + `src/data/businessMessageCards.ts`（五类卡）+ 新增 `itServiceMessageCard`（notice 类）；`RuyiMessage.businessCard` 字段；RuyiMessageRenderer（完整）/RuyiImMessageList（compact）卡片渲染分支；mockRuntime 待办/考勤/中断分支挂卡
+- [x] `src/data/ruyiShowcaseConversations.ts`：IM 固定会话综合对话（五类卡片 + 会议任务 completed 全链路 + 周报工作台入口）+ 空间 13 场景（查询×5/翻译/会议/创作×3/IT/任务恢复含失败重试/成果权限×3 状态）；稳定 ID（showcase-*）；`DEFAULT_RUYI_SHOWCASE_CONVERSATION_ID`
+- [x] store：`createInitialState` 用 showcase seed；`SHOWCASE_SEED_VERSION=1` + `showcaseSeedVersion` 持久化 + `mergeRuyiShowcaseSeed` 保留式合并（旧欢迎语替换/用户数据保留/预置置前只合并一次/场景补缺）
+- [x] `RuYiZone.tsx`：根路径默认打开预置会话（被删则最近会话，全无则新建空白）；`handleNewConversation` 创建真实空白会话；空会话复用 RuyiAssistantHome 内容区
+- [x] `Home.tsx`：助手项删除 272 行旧静态 chatMessages（预览由共享 store 同步）
+- [x] action 完成态：`RuyiMessageAction.disabled/completedLabel`；Renderer/IM 列表/确认卡按钮渲染"已确认/已重试"禁用态
+- [x] 需求：`ruyi-im-capability-showcase`（order 2）/ `ruyi-scenario-conversation-showcase`（order 6）；删 `ruyi-im-history-retention`；锚点同步
 
-## 影响范围
+## V3.5 返工完成项（验收返工）
 
-### 新增
+- [x] `RuyiMessageToolbar`：通用功能条（复制/有用/没用/重新生成）常驻每条完成态助手回复，不依赖 message.actions；锚点 `ruyi-response-feedback` 移至该组件
+- [x] `RuyiMessageBusinessActions`：业务动作独立渲染 + 契约校验（open-result 需 resultId / open-workbench 需 workbenchPath / open-route 需 href；不满足隐藏不渲染废按钮）
+- [x] 新增 `open-route` action 类型（payload.href 限 /pc_client 内部路由）；RuYiZone/Home 处理导航
+- [x] 契约清理：流程/知识/运营/IT 消息全卡片化（删"查看流程中心/知识库/运营看板/服务台"无效按钮与重复 CTA）；新增 `operationsMessageCard`；compact 指标 2×2
+- [x] 创作需求确认挂工作台入口卡（BusinessMessageCard 扩 workbench category）；IM 周报入口同步
+- [x] IT 实体优先于反馈意图（Home：VPN/网络/设备/账号锁等先走 IT 服务）
+- [x] Layout `isRuyiZoneInternalPath`：如意空间会话/任务/成果不进"打开的页面"；工作台仍记录
+- [x] 滚动修复：会话切换顶部开始；接近底部才自动滚底（RuYiConversationView 滚动容器 ref；IM 首载置顶）
+- [x] `scan-orders.mjs`：CRLF 归一 + 0 条硬失败（49 条真实解析）
+- [x] Harness：Agents.md 打开页面规则（如意空间）；UI_DESIGN_GUIDELINES 卡片判定/映射/功能条/布局；专项方案 V3.5 章节
+- [x] 需求更新：ruyi-response-feedback（功能条常驻）/ ruyi-im-continuity（不新增打开页面）
+- [x] `tools/ruyi/validate-showcase-data.mjs` 静态断言（ID 稳定/场景齐全/卡片引用）
 
-- `src/components/messages/BusinessMessageCard.tsx`
-- `src/data/businessMessageCards.ts`
-- `src/types/businessMessageCard.ts`
+## 验收地址
 
-### 修改
+| 目标 | 地址/步骤 |
+| --- | --- |
+| IM 直展示 | `/pc_client` 默认选中如意助手，查看完整对话（五类卡片+会议+周报） |
+| 双端一致 | IM 点「前往如意空间」核对同一会话 ID 与消息顺序 |
+| 空间默认打开 | `/pc_client/ruyi-zone` 自动进入 `showcase-work-approval` |
+| 13 场景 | 左侧历史列表逐条点击核对正文与卡片 |
+| 新对话空态 | 左侧「新对话」→ 空白会话 + 快捷能力 + 发送自动命名 |
+| 旧数据迁移 | 带旧 localStorage 打开（欢迎语被综合对话替换，用户数据保留） |
+| 边界 fixture | `?demo=result-states` / `failure-states` / `v2-multi-task` / `v2-cross-day-resume` 回归 |
 
-- `docs/UI_DESIGN_GUIDELINES.md`
-- `src/components/ruyi/RuyiImMessageList.tsx`
-- `src/components/ruyi/RuyiMessageRenderer.tsx`
-- `src/data/ruyiDemoScenarios.ts`
-- `src/pages/Home.tsx`
-- `src/services/ruyiMockRuntime.ts`
-- `src/types/ruyi.ts`
-- `tasks/CURRENT.md`
+## 存储 Key
 
-## 验证结果
+- 普通数据：`ijx-ruyi-prototype-v1`（schema 3 + showcaseSeedVersion 1；预置与用户数据同库留存）
 
-- `npm.cmd run check`：通过。
-- TypeScript 类型检查：通过。
-- React/Vite 生产构建：通过，1950 modules transformed。
-- 路由合同检查：全部通过。
-- 页面冒烟：21/21 通过。
-- 四端下载与页面链路：20/20 通过，console/pageerror 为 0。
-- 浏览器 `/pc_client`：流程应用推送展示完整流程卡片。
-- 浏览器 IM 如意助手：发送“我的考勤情况怎么样？”后展示完整考勤卡片。
-- 浏览器 `/pc_client/ruyi-zone?demo=default`：待办场景展示流程卡片及复制/有用/没用/重新生成操作。
-- 浏览器控制台：无 error。
-- `git diff --check`：通过。
+## 实际验证结果
 
-## 明确淘汰
+- `npm.cmd run check`：通过（21 页 smoke 全绿；app-chain 基线 18/20 为通讯录导航既有问题）
+- `node tools/requirements/scan-orders.mjs`：ALL OK（消息·如意助手 [1,2]；如意空间会话 [1..6]）
+- `git diff --check`：干净
+- `npm.cmd run build`：通过
+- 浏览器回归（127.0.0.1:5177）：`.workbuddy/scripts/verify-ruyi-showcase-v34.cjs` 覆盖 §13 验收（无交互直展示/五类卡片/任务链路/成果回流/默认打开/新对话空态/旧数据迁移/删除不复活/demo 回归）；控制台零 error
 
-- 本地旧 `src/components/ruyi/RuyiToolPanel.tsx` 不进入 main。
-- 本地旧版 `RuYiZone`、`RuyiConversationView` 面板接线不覆盖远端新版。
-- 远端现有 `RuyiConversationComposer`、`RuyiPluginBar`、`RuyiCapabilityPanel` 及四个独立能力面板作为唯一实现。
+## 未覆盖风险
 
-## 后续未包含
-
-以下需求不属于本次现有成果合并，当前仍待单独开发：
-
-- 每条助手回复固定出现的通用功能条。
-- IM 默认直接展示完整能力对话。
-- 如意空间完整场景会话清单。
-- 运营、IT 等新增业务卡片。
-- 如意空间内部子路由不进入“打开的页面”。
-- 新建真实空白会话、历史会话初始滚动和 IT 意图优先级修复。
-- 需求扫描器 CRLF 兼容及“0 条需求”失败保护。
-
-## Git 状态
-
-等待提交并推送到 `main`；用户已于 2026-11-19 明确要求发布当前双方有效成果。
+- 预置会话被用户删除后，`SHOWCASE_SEED_VERSION` 升级时会重新补入（无 tombstone 追踪；原型阶段以版本门控为准）
+- 卡片跳转目标页为既有路由，本轮未做目标页内容核对

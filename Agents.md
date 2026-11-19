@@ -85,6 +85,7 @@
 * `/app` 不受移动端门禁限制，任意窗口宽度均可访问；`/download` 的 App 入口行为保持不变。
 * IM 消息模块承载在 App「消息」入口（`/app/prototype/message`）下，产品与验收规范归 `src/prototype/harness/`。
 * 「打开的页面」记录规则：如意会议主页面及其 Tab（`/pc_client/meetings`、`/pc_client/meetings/rooms`、`/pc_client/meetings/recordings`）属于主页面，不记录到「打开的页面」；录制详情 `/pc_client/meetings/recordings/:recordingId` 是独立新页面，必须记录到「打开的页面」。
+* 「打开的页面」记录规则（如意空间）：如意空间主页面、会话（`/pc_client/ruyi-zone/conversations/:conversationId`）、AI 任务中心、任务详情、AI 成果中心属于如意空间内部视图，不记录到「打开的页面」；公文（`/ruyi-zone/document`）、PPT（`/ruyi-zone/presentation`）、参谋师（`/ruyi-zone/advisor`）专业工作台是独立页面，记录到「打开的页面」。
 
 ## 7. 编码与文本规范
 

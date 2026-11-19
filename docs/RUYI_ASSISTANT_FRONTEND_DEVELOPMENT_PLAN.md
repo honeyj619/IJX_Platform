@@ -829,3 +829,10 @@ V2 开发必须基于 V1 的会话、消息、成果和任务类型扩展，不�
 4. 每批次汇报改动文件、路由、功能、场景触发方式、验证结果和未完成项。
 5. 完成后由 Codex 或指定复核模型检查 diff、需求锚点、构建和浏览器关键链路。
 6. 未经用户本地验收和明确批准，不 commit、不 push、不部署。
+
+## V3.5 补充：能力直展示与消息三层结构
+
+- 默认能力通过预置对话直接展示（`ruyiShowcaseConversations.ts` 稳定 ID seed；`SHOWCASE_SEED_VERSION` 保留式迁移），不要求用户输入触发词；`?demo=` 仅用于边界验收。
+- 消息三层结构：正文/业务卡片 → 业务动作区（`RuyiMessageBusinessActions`，契约校验：open-result 需 resultId、open-workbench 需 workbenchPath、open-route 需 payload.href）→ 通用功能条（`RuyiMessageToolbar`：复制/有用/没用/重新生成，由渲染器统一生成，不依赖 fixture actions）。
+- 卡片能力映射与卡片判定规则见 `docs/UI_DESIGN_GUIDELINES.md` 业务卡片章节。
+- IM 与如意空间共享固定系统会话（同一 conversationId、同一 messageIds）；如意空间会话子路由不产生「打开的页面」条目（规则见根 `Agents.md`）。

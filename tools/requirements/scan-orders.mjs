@@ -6,12 +6,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const md = fs.readFileSync(path.resolve('docs/PROTOTYPE_REQUIREMENTS.md'), 'utf8');
+// V3.5：统一换行（CRLF/LF 混存时正则按 $ 逐行匹配失效——此前 CRLF 文档解析为 0 条假通过）
+const md = fs.readFileSync(path.resolve('docs/PROTOTYPE_REQUIREMENTS.md'), 'utf8').replace(/\r\n?/g, '\n');
 const entries = [];
 const re = /^id: (.+)$\nsurface: (.+)$\nroute: (.+)$\norder: (\d+)$/gm;
 let m;
 while ((m = re.exec(md)) !== null) {
   entries.push({ id: m[1], surface: m[2], route: m[3], order: Number(m[4]) });
+}
+// 硬性保护：解析为 0 条说明文档/正则损坏，禁止假通过
+if (entries.length === 0) {
+  console.error('FAILED: 未解析到任何需求条目（检查文档换行符与 frontmatter 格式）');
+  process.exit(1);
 }
 
 const bySurface = new Map();
