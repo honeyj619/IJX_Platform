@@ -15,6 +15,7 @@ import {
   UserRound,
   X,
 } from 'lucide-react';
+import ContactPicker, { type ContactSelection } from '../ContactPicker';
 
 type DeviceType = 'PC客户端' | '移动APP' | '网页浏览器';
 type DeviceStatus = '在线' | '离线';
@@ -85,7 +86,7 @@ const DEFAULT_FILTERS: DeviceFilters = {
 
 const initialUsers: DeviceUser[] = [
   {
-    id: 'user-liang', name: '梁吉力', account: 'liangjie', company: '上海吉祥航空股份有限公司', department: '管理支撑产品处', employmentStatus: '在职', accountStatus: '正常',
+    id: 'user-liang', name: '梁吉力', account: 'liangjie', company: '上海吉祥航空股份有限公司', department: '信息技术部', employmentStatus: '在职', accountStatus: '正常',
     devices: [
       {
         id: 'device-pc-liang', type: 'PC客户端', name: 'LJLI-WORK-PC', manufacturer: 'Lenovo', model: 'ThinkPad T14 Gen 5', identifier: 'PC-7F32-18D0-A921', serialNumber: 'PF5Q2J9A', os: 'Windows 11 企业版 24H2', architecture: 'x64', clientVersion: '3.8.2', clientChannel: '正式版', installedAt: '2026-08-12 09:20:15', lastActiveAt: '2026-10-15 15:34:44', status: '在线', bound: true, trusted: true, securityStatus: '合规', securityMessage: '符合公司 PC 终端安全基线', diskEncrypted: true, screenLockEnabled: true, antivirusEnabled: true,
@@ -108,25 +109,25 @@ const initialUsers: DeviceUser[] = [
     ],
   },
   {
-    id: 'user-liubei', name: '刘备', account: 'liubei', company: '上海吉祥航空股份有限公司', department: '信息管理部', employmentStatus: '在职', accountStatus: '正常',
+    id: 'user-liubei', name: '刘备', account: 'liubei', company: '上海吉祥航空股份有限公司', department: '公司领导', employmentStatus: '在职', accountStatus: '正常',
     devices: [{
       id: 'device-pc-liubei', type: 'PC客户端', name: 'LIUBEI-NB01', manufacturer: 'Huawei', model: 'MateBook X Pro', identifier: 'PC-81C0-24E7-B110', serialNumber: 'MXL6T00K21', os: 'Windows 11 专业版 24H2', architecture: 'x64', clientVersion: '3.8.1', clientChannel: '正式版', installedAt: '2026-09-08 10:02:41', lastActiveAt: '2026-10-15 14:58:21', status: '在线', bound: true, trusted: false, securityStatus: '存在风险', securityMessage: '客户端版本落后，磁盘加密未开启', diskEncrypted: false, screenLockEnabled: true, antivirusEnabled: true,
       sessions: [{ id: 'SES-PC-19AC', deviceId: 'device-pc-liubei', loginAt: '2026-10-15 08:33:11', lastActiveAt: '2026-10-15 14:58:21', ip: '172.29.118.73', location: '上海浦东', status: '有效' }],
     }],
   },
   {
-    id: 'user-guanyu', name: '关羽', account: 'guanyu', company: '上海吉祥航空股份有限公司', department: '运行维修产品处', employmentStatus: '在职', accountStatus: '正常',
+    id: 'user-guanyu', name: '关羽', account: 'guanyu', company: '上海吉祥航空股份有限公司', department: '市场部', employmentStatus: '在职', accountStatus: '正常',
     devices: [
       { id: 'device-pc-guanyu', type: 'PC客户端', name: 'GUANYU-DESKTOP', manufacturer: 'Dell', model: 'OptiPlex 7020', identifier: 'PC-01A7-84D1-C052', serialNumber: 'DL7020J811', os: 'Windows 10 企业版 22H2', architecture: 'x64', clientVersion: '3.7.9', clientChannel: '正式版', installedAt: '2026-04-18 15:24:09', lastActiveAt: '2026-10-14 18:42:12', status: '离线', bound: true, trusted: true, securityStatus: '存在风险', securityMessage: '操作系统版本即将停止支持', diskEncrypted: true, screenLockEnabled: true, antivirusEnabled: true, sessions: [{ id: 'SES-PC-7F12', deviceId: 'device-pc-guanyu', loginAt: '2026-10-14 08:15:39', lastActiveAt: '2026-10-14 18:42:12', ip: '172.29.96.51', location: '上海虹桥', status: '已退出' }] },
       { id: 'device-app-guanyu', type: '移动APP', name: 'Mate 70 Pro', manufacturer: 'Huawei', model: 'Mate 70 Pro', identifier: 'APP-74C1-9E22-18A0', serialNumber: 'HU70P29112', os: 'HarmonyOS 5.1', architecture: 'arm64', clientVersion: '6.7.2', clientChannel: '企业分发', installedAt: '2026-05-11 14:21:08', lastActiveAt: '2026-10-13 21:15:33', status: '离线', bound: true, trusted: true, securityStatus: '合规', securityMessage: '符合移动终端安全策略', diskEncrypted: true, screenLockEnabled: true, antivirusEnabled: true, sessions: [{ id: 'SES-APP-1C12', deviceId: 'device-app-guanyu', loginAt: '2026-10-13 07:59:21', lastActiveAt: '2026-10-13 21:15:33', ip: '10.21.82.19', location: '上海虹桥', status: '已退出' }] },
     ],
   },
   {
-    id: 'user-zhangfei', name: '张飞', account: 'zhangfei', company: '上海吉祥航空股份有限公司', department: '业务协同处', employmentStatus: '在职', accountStatus: '正常',
+    id: 'user-zhangfei', name: '张飞', account: 'zhangfei', company: '上海吉祥航空股份有限公司', department: '信息技术部', employmentStatus: '在职', accountStatus: '正常',
     devices: [{ id: 'device-app-zhangfei', type: '移动APP', name: 'SM-S9380', manufacturer: 'Samsung', model: 'Galaxy S25 Ultra', identifier: '899e8e72-5c31-4ba4-a4e0-ef851d6a3fb2', serialNumber: 'R5CX31A0ZZ', os: 'Android 16', architecture: 'arm64', clientVersion: '6.7.2', clientChannel: '企业分发', installedAt: '2026-07-22 11:38:56', lastActiveAt: '2026-10-15 13:21:09', status: '离线', bound: true, trusted: true, securityStatus: '合规', securityMessage: '符合移动终端安全策略', diskEncrypted: true, screenLockEnabled: true, antivirusEnabled: true, sessions: [{ id: 'SES-APP-6B22', deviceId: 'device-app-zhangfei', loginAt: '2026-10-15 07:55:43', lastActiveAt: '2026-10-15 13:21:09', ip: '10.21.72.18', location: '上海虹桥', status: '已退出' }] }],
   },
   {
-    id: 'user-caocao', name: '曹操', account: 'caocao', company: '上海吉祥航空股份有限公司', department: '数字化中心', employmentStatus: '在职', accountStatus: '正常',
+    id: 'user-caocao', name: '曹操', account: 'caocao', company: '上海吉祥航空股份有限公司', department: 'IT-PMO', employmentStatus: '在职', accountStatus: '正常',
     devices: [{ id: 'device-pc-caocao', type: 'PC客户端', name: 'CAOCAO-MAC', manufacturer: 'Apple', model: 'MacBook Pro 14', identifier: 'PC-29F0-11BE-1A70', serialNumber: 'C02Y91KQMD6T', os: 'macOS 16.0', architecture: 'arm64', clientVersion: '3.8.2', clientChannel: '正式版', installedAt: '2026-08-28 16:04:32', lastActiveAt: '2026-10-15 12:46:18', status: '在线', bound: false, trusted: false, securityStatus: '合规', securityMessage: '符合公司 PC 终端安全基线', diskEncrypted: true, screenLockEnabled: true, antivirusEnabled: true, sessions: [{ id: 'SES-PC-42CE', deviceId: 'device-pc-caocao', loginAt: '2026-10-15 09:12:06', lastActiveAt: '2026-10-15 12:46:18', ip: '172.29.130.22', location: '上海浦东', status: '有效' }] }],
   },
 ];
@@ -154,6 +155,8 @@ export default function DeviceManagement() {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [keyword, setKeyword] = useState('');
   const [department, setDepartment] = useState('全部');
+  const [departmentSelections, setDepartmentSelections] = useState<ContactSelection[]>([]);
+  const [departmentPickerOpen, setDepartmentPickerOpen] = useState(false);
   const [employmentStatus, setEmploymentStatus] = useState('全部');
   const [deviceOwnership, setDeviceOwnership] = useState('全部设备');
   const [deviceCondition, setDeviceCondition] = useState('全部状态');
@@ -162,7 +165,7 @@ export default function DeviceManagement() {
   const [toast, setToast] = useState('');
 
   const selectedUser = users.find(user => user.id === selectedUserId) || null;
-  const departments = useMemo(() => Array.from(new Set(users.map(user => user.department))), [users]);
+
   const filteredUsers = useMemo(() => {
     const normalizedKeyword = appliedFilters.keyword.trim().toLowerCase();
     return users.filter(user => {
@@ -228,6 +231,7 @@ export default function DeviceManagement() {
 
   const resetFilters = () => {
     setKeyword('');
+    setDepartmentSelections([]);
     setDepartment('全部');
     setEmploymentStatus('全部');
     setDeviceOwnership('全部设备');
@@ -340,7 +344,7 @@ export default function DeviceManagement() {
             <span className="text-right text-sm text-gray-700 max-xl:text-left">关键词</span>
             <input value={keyword} onChange={event => setKeyword(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') applyFilters(); }} placeholder="姓名、账号、设备名称或标识" className="h-10 rounded border border-gray-300 px-3 text-sm outline-none focus:border-[#2f75b5]" />
             <span className="text-right text-sm text-gray-700 max-xl:text-left">部门</span>
-            <select value={department} onChange={event => setDepartment(event.target.value)} className="h-10 rounded border border-gray-300 bg-white px-3 text-sm outline-none focus:border-[#2f75b5]"><option>全部</option>{departments.map(item => <option key={item}>{item}</option>)}</select>
+            <div className="min-w-0"><button type="button" onClick={() => setDepartmentPickerOpen(true)} className="flex h-10 w-full items-center justify-between gap-2 rounded border border-gray-300 bg-white px-3 text-sm text-gray-700 outline-none hover:border-[#2f75b5]">{department === '全部' ? <span className="text-gray-400">全部部门</span> : <span className="truncate">{department}</span>}<span className="shrink-0 text-xs text-gray-400">▾</span></button><ContactPicker open={departmentPickerOpen} onOpenChange={setDepartmentPickerOpen} hideTrigger selections={departmentSelections} onSelectionsChange={next => { setDepartmentSelections(next); setDepartment(next.length > 0 ? next[0].name : '全部'); }} allowedKinds={['department']} placeholder="全部部门" /></div>
             <span className="text-right text-sm text-gray-700 max-xl:text-left">在职情况</span>
             <select value={employmentStatus} onChange={event => setEmploymentStatus(event.target.value)} className="h-10 rounded border border-gray-300 bg-white px-3 text-sm outline-none focus:border-[#2f75b5]"><option>全部</option><option>在职</option><option>离职</option></select>
             <span className="text-right text-sm text-gray-700 max-xl:text-left">设备构成</span>

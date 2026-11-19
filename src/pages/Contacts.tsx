@@ -245,7 +245,7 @@ export default function Contacts() {
                   {selected.name}
                   {pref.specialReminder && <Star size={15} className="fill-amber-400 text-amber-400" aria-label="特别提醒已开启" />}
                 </h1>
-                <p className={`text-sm ${STATUS_META[selected.status ?? 'offline'].text}`}>{STATUS_META[selected.status ?? 'offline'].label} · 演示状态</p>
+                <p className={`text-sm ${STATUS_META[selected.status ?? 'offline'].text}`}>{STATUS_META[selected.status ?? 'offline'].label}</p>
                 <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{selected.title} · {selected.department} · {selected.organizationUnit}</p>
               </div>
             </div>

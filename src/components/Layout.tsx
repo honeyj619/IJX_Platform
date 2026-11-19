@@ -138,6 +138,18 @@ const isMeetingSubPath = (path: string) => {
   return normalized === `${WEB_CLIENT_BASE}/meetings` || normalized.startsWith(`${WEB_CLIENT_BASE}/meetings/`);
 };
 
+/** V3.5：如意空间内部视图（主页面/会话/AI任务中心/任务详情/AI成果中心）不记录到"打开的页面"；
+ *  公文/PPT/参谋师专业工作台（/ruyi-zone/document|presentation|advisor）是独立页面，必须记录 */
+const isRuyiZoneInternalPath = (path: string) => {
+  const relative = stripClientBase(normalizePagePath(path));
+  if (relative === '/ruyi-zone') return true;
+  if (/^\/ruyi-zone\/conversations\/[^/]+$/.test(relative)) return true;
+  if (relative === '/ruyi-zone/tasks') return true;
+  if (/^\/ruyi-zone\/tasks\/[^/]+$/.test(relative)) return true;
+  if (relative === '/ruyi-zone/results') return true;
+  return false;
+};
+
 const stripClientBase = (path: string) => {
   if (path === WEB_CLIENT_BASE) return '/';
   return path.startsWith(`${WEB_CLIENT_BASE}/`) ? path.slice(WEB_CLIENT_BASE.length) : path;
@@ -276,8 +288,8 @@ export default function Layout({ children }: LayoutProps) {
     // 重定向兼容路径不记录，避免跳转中间态显示为原始路径
     if (redirectOnlyPaths.has(clientRelativePath)) return;
     const pageTitle = resolveClientPageTitle(clientRelativePath) || currentPath;
-    
-    if (pageTitle && !isMainNavPath(currentPath, navPaths) && !isMeetingSubPath(currentPath)) {
+
+    if (pageTitle && !isMainNavPath(currentPath, navPaths) && !isMeetingSubPath(currentPath) && !isRuyiZoneInternalPath(currentPath)) {
       addPage({ title: pageTitle, path: currentPath });
     }
   }, [location.pathname, addPage, navPaths]);

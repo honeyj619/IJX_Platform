@@ -216,6 +216,18 @@ export default function ContactPicker({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openProp]);
 
+  // 受控展示：弹框关闭期间外部 selections 变化（如筛选重置清空）须同步内部 draft，
+  // 否则触发器预览残留旧选择（触发器渲染 structuredDraft 而非 props）
+  useEffect(() => {
+    if (openProp || open) return;
+    setStructuredDraft(current => {
+      const next = selections ? [...selections] : [];
+      if (current.length === next.length && current.every((item, index) => item.id === next[index]?.id && item.name === next[index]?.name)) return current;
+      return next;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selections, open, openProp]);
+
   const openPicker = () => {
     setDraft([...new Set([...lockedNames, ...selected])]);
     setStructuredDraft(selections ? [...selections] : []);
