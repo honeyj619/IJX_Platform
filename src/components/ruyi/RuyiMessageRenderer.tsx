@@ -10,7 +10,9 @@ import RuyiConfirmationMessage from "./RuyiConfirmationMessage";
 import RuyiTaskResumeMessage from "./RuyiTaskResumeMessage";
 import RuyiMultiTaskResolver from "./RuyiMultiTaskResolver";
 import RuyiCapabilitySummary from "./capability/RuyiCapabilitySummary";
-import BusinessMessageCard from "../messages/BusinessMessageCard";
+import RuyiMessageToolbar from "./RuyiMessageToolbar";
+import RuyiMessageBusinessActions from "./RuyiMessageBusinessActions";
+import BusinessMessageCard from '../messages/BusinessMessageCard';
 
 /** V2：action payload 透传类型（兼容 reason/taskId 及 confirm-date 的 resolvedDate/dateText） */
 export type RuyiActionPayload = Record<string, unknown> & {
@@ -38,57 +40,29 @@ const actionIcons: Partial<Record<RuyiMessageActionType, React.ReactNode>> = {
 };
 
 const uselessReasons = ['答非所问', '信息不准确', '操作失败', '其他原因'] as const;
+void uselessReasons;
 
 export default function RuyiMessageRenderer({ message, onAction }: RuyiMessageRendererProps) {
   const result = message.resultId ? useRuyiStore.getState().getResultById(message.resultId) : null;
-  const [showReasons, setShowReasons] = useState(false);
 
+  // V3.5：业务动作区 + 通用功能条分离。
+  // - 业务动作：仅渲染业务类 action（契约校验后）；含工作台导航时承载 ruyi-workbench-navigation 锚点
+  // - 通用功能条：每条完成态助手回复常驻（loading/系统态由各分支自行控制不渲染）
   const renderActions = () => {
-    if (!message.actions || message.actions.length === 0) return null;
-    // 锚点：反馈操作区父节点；含工作台导航操作时该区域承载工作台导航锚点（fixture 中常驻）
-    const hasWorkbenchNav = message.actions.some((action) => action.type === 'open-workbench');
+    const hasWorkbenchNav = (message.actions ?? []).some((action) => action.type === 'open-workbench');
     return (
-      <div
-        className="mt-3 text-sm text-gray-500 dark:text-gray-400"
-        data-requirement-id={hasWorkbenchNav ? 'ruyi-workbench-navigation' : 'ruyi-response-feedback'}
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          {message.actions.map((action, index) => {
-            const isUseful = action.type === 'feedback-useful';
-            const isUseless = action.type === 'feedback-useless';
-            const usefulSelected = isUseful && message.feedback?.rating === 'useful';
-            const uselessSelected = isUseless && message.feedback?.rating === 'useless';
-            return (
-              <button
-                key={`${action.type}-${index}`}
-                type="button"
-                onClick={() => {
-                  if (isUseless && !message.feedback?.reason) setShowReasons(true);
-                  onAction(action.type, message);
-                }}
-                className={`inline-flex items-center gap-1 transition-colors hover:text-theme-600 dark:hover:text-theme-300 ${(usefulSelected || uselessSelected) ? 'font-semibold text-theme-600 dark:text-theme-300' : ''}`}
-              >
-                {actionIcons[action.type]}
-                {usefulSelected ? '已记录有用' : uselessSelected ? (message.feedback?.reason ? `已记录 · ${message.feedback.reason}` : '已记录没用') : action.label}
-              </button>
-            );
-          })}
+      <>
+        <div data-requirement-id={hasWorkbenchNav ? 'ruyi-workbench-navigation' : undefined}>
+          <RuyiMessageBusinessActions
+            message={message}
+            onAction={(type, msg, payload) => onAction(type, msg, payload as RuyiActionPayload | undefined)}
+          />
         </div>
-        {showReasons && message.feedback?.rating === 'useless' && !message.feedback.reason && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {uselessReasons.map((reason) => (
-              <button
-                key={reason}
-                type="button"
-                onClick={() => { setShowReasons(false); onAction('feedback-useless', message, { reason }); }}
-                className="rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs text-gray-600 transition-colors hover:border-theme-400 hover:text-theme-600 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
-              >
-                {reason}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+        <RuyiMessageToolbar
+          message={message}
+          onAction={(type, msg, payload) => onAction(type, msg, payload as RuyiActionPayload | undefined)}
+        />
+      </>
     );
   };
 
@@ -193,6 +167,7 @@ export default function RuyiMessageRenderer({ message, onAction }: RuyiMessageRe
             message={message}
             onAction={(action) => onAction(action.type, message, action.payload as RuyiActionPayload | undefined)}
           />
+          <RuyiMessageToolbar message={message} onAction={(type, msg, payload) => onAction(type, msg, payload as RuyiActionPayload | undefined)} />
         </div>
       </div>
     );
@@ -210,6 +185,7 @@ export default function RuyiMessageRenderer({ message, onAction }: RuyiMessageRe
         </div>
         <div className="max-w-3xl flex-1">
           <RuyiTaskResumeMessage message={message} onResume={() => onAction("resume-task", message)} />
+          <RuyiMessageToolbar message={message} onAction={(type, msg, payload) => onAction(type, msg, payload as RuyiActionPayload | undefined)} />
         </div>
       </div>
     );
@@ -226,6 +202,7 @@ export default function RuyiMessageRenderer({ message, onAction }: RuyiMessageRe
     );
   }
 
+  // V3.4：业务操作卡片（完整布局；IM 用 compact——两端同一组件）
   if (message.businessCard) {
     return (
       <div className="flex gap-4">

@@ -3,11 +3,45 @@ import { useRuyiStore } from "../../store/ruyiStore";
 import { getRuyiResultDisplayTitle, canOpenRuyiResult } from "../../utils/ruyiResultPresentation";
 import { Loader2, ExternalLink, Check, X, Play, Pencil, Copy, ArrowRight } from "lucide-react";
 import RuyiCapabilitySummary from "./capability/RuyiCapabilitySummary";
-import BusinessMessageCard from "../messages/BusinessMessageCard";
+import BusinessMessageCard from '../messages/BusinessMessageCard';
+import RuyiMessageToolbar from './RuyiMessageToolbar';
+import RuyiMessageBusinessActions from './RuyiMessageBusinessActions';
+
+/** V3.3：日期分组标签——今天 / 昨天 / YYYY年M月D日 */
+function formatDayLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (sameDay(d, now)) return '今天';
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(d, yesterday)) return '昨天';
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+/** V3.3：消息时间 HH:mm */
+function formatTimeLabel(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/** 分组结果：按自然日切分（保持原顺序） */
+function groupByDay(messages: RuyiMessage[]): Array<{ label: string; messages: RuyiMessage[] }> {
+  const groups: Array<{ label: string; messages: RuyiMessage[] }> = [];
+  for (const message of messages) {
+    const label = formatDayLabel(message.createdAt);
+    const last = groups[groups.length - 1];
+    if (last && last.label === label) last.messages.push(message);
+    else groups.push({ label, messages: [message] });
+  }
+  return groups;
+}
 
 interface RuyiImMessageListProps {
   messages: RuyiMessage[];
-  onAction: (type: RuyiMessageActionType, message: RuyiMessage) => void;
+  onAction: (type: RuyiMessageActionType, message: RuyiMessage, payload?: Record<string, unknown>) => void;
 }
 
 const actionIcons: Partial<Record<RuyiMessageActionType, React.ReactNode>> = {
@@ -31,9 +65,22 @@ export default function RuyiImMessageList({ messages, onAction }: RuyiImMessageL
   }
 
   return (
-    <div className="flex flex-1 flex-col space-y-3 overflow-y-auto px-4 py-4">
-      {messages.map((message) => (
-        <RuyiImMessageBubble key={message.id} message={message} onAction={onAction} />
+    <div
+      className="flex flex-1 flex-col space-y-3 overflow-y-auto px-4 py-4"
+      data-requirement-id="ruyi-im-capability-showcase"
+    >
+      {groupByDay(messages).map((group) => (
+        <div key={group.label} className="space-y-3">
+          {/* 日期分隔条 */}
+          <div className="flex justify-center py-1">
+            <span className="rounded-full bg-gray-100 px-3 py-0.5 text-[11px] text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+              {group.label}
+            </span>
+          </div>
+          {group.messages.map((message) => (
+            <RuyiImMessageBubble key={message.id} message={message} onAction={onAction} />
+          ))}
+        </div>
       ))}
     </div>
   );
@@ -44,37 +91,37 @@ function RuyiImMessageBubble({
   onAction,
 }: {
   message: RuyiMessage;
-  onAction: (type: RuyiMessageActionType, message: RuyiMessage) => void;
+  onAction: (type: RuyiMessageActionType, message: RuyiMessage, payload?: Record<string, unknown>) => void;
 }) {
   const result = message.resultId ? useRuyiStore.getState().getResultById(message.resultId) : null;
 
+  // V3.5：业务动作（契约校验）+ 通用功能条（compact，常驻完成态回复）
   const renderActions = () => {
-    if (!message.actions || message.actions.length === 0) return null;
     return (
-      <div className="mt-2 flex flex-wrap gap-2 text-xs text-theme-700 dark:text-theme-300">
-        {message.actions.map((action, index) => (
-          <button
-            key={`${action.type}-${index}`}
-            type="button"
-            onClick={() => onAction(action.type, message)}
-            className="inline-flex items-center gap-1 rounded-md bg-theme-50 px-2 py-1 transition-colors hover:bg-theme-100 dark:bg-theme-900/20 dark:hover:bg-theme-900/40"
-          >
-            {actionIcons[action.type]}
-            {action.label}
-          </button>
-        ))}
-      </div>
+      <>
+        <RuyiMessageBusinessActions
+          message={message}
+          compact
+          onAction={(type, msg, payload) => onAction(type, msg, payload as Record<string, unknown> | undefined)}
+        />
+        <RuyiMessageToolbar
+          message={message}
+          compact
+          onAction={(type, msg, payload) => onAction(type, msg, payload as Record<string, unknown> | undefined)}
+        />
+      </>
     );
   };
 
   if (message.sender === "user") {
     return (
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end">
         <div className="max-w-[80%] rounded-2xl bg-theme-50 px-4 py-2.5 text-sm text-gray-900 dark:bg-theme-900/20 dark:text-white">
           <div className="whitespace-pre-line">{message.content}</div>
           {/* V3：能力提交消息附带参数摘要 */}
           {message.capabilitySubmission && <RuyiCapabilitySummary submission={message.capabilitySubmission} />}
         </div>
+        <span className="mt-0.5 mr-1 text-[10px] text-gray-400 dark:text-gray-500">{formatTimeLabel(message.createdAt)}</span>
       </div>
     );
   }
@@ -156,19 +203,23 @@ function RuyiImMessageBubble({
               <button
                 key={`${action.type}-${index}`}
                 type="button"
-                onClick={() => onAction(action.type, message)}
+                disabled={action.disabled}
+                onClick={() => { if (!action.disabled) onAction(action.type, message); }}
                 className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
-                  action.type === "confirm-task" || action.type === "confirm-date"
+                  action.disabled
+                    ? 'cursor-not-allowed border border-gray-200 bg-gray-50 text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500'
+                    : action.type === "confirm-task" || action.type === "confirm-date"
                     ? "bg-theme-600 text-white hover:bg-theme-700"
                     : action.type === "cancel-task"
                       ? "border border-gray-200 bg-white text-gray-700 hover:bg-red-50 hover:text-red-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                       : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
                 }`}
               >
-                {action.label}
+                {action.disabled && action.completedLabel ? action.completedLabel : action.label}
               </button>
             ))}
           </div>
+          <RuyiMessageToolbar message={message} compact onAction={(type, msg, payload) => onAction(type, msg, payload as Record<string, unknown> | undefined)} />
         </div>
       </div>
     );
@@ -187,10 +238,12 @@ function RuyiImMessageBubble({
             继续
           </button>
         </div>
+        <RuyiMessageToolbar message={message} compact onAction={(type, msg, payload) => onAction(type, msg, payload as Record<string, unknown> | undefined)} />
       </div>
     );
   }
 
+  // V3.4：业务操作卡片（IM 紧凑布局；与如意空间同一组件）
   if (message.businessCard) {
     return (
       <div className="flex justify-start">
@@ -204,7 +257,7 @@ function RuyiImMessageBubble({
   }
 
   return (
-    <div className="flex justify-start">
+    <div className="flex flex-col items-start">
       <div className="max-w-[80%] rounded-2xl bg-white px-4 py-2.5 text-sm text-gray-800 shadow-sm dark:bg-gray-800 dark:text-gray-100">
         <div className="whitespace-pre-line">{message.content}</div>
         {message.sourceLabel && message.sourceHref && (
@@ -215,6 +268,7 @@ function RuyiImMessageBubble({
         )}
         {renderActions()}
       </div>
+      <span className="mt-0.5 ml-1 text-[10px] text-gray-400 dark:text-gray-500">{formatTimeLabel(message.createdAt)}</span>
     </div>
   );
 }

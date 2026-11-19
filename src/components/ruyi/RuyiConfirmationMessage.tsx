@@ -46,11 +46,12 @@ export default function RuyiConfirmationMessage({ message, onAction }: RuyiConfi
           <button
             key={`${action.type}-${index}`}
             type="button"
-            onClick={() => onAction(action)}
-            className={getActionStyle(action.type)}
+            disabled={action.disabled}
+            onClick={() => { if (!action.disabled) onAction(action); }}
+            className={`${getActionStyle(action.type)} ${action.disabled ? 'cursor-not-allowed opacity-50 hover:none' : ''}`}
           >
             {getActionIcon(action.type)}
-            {action.label}
+            {action.disabled && action.completedLabel ? action.completedLabel : action.label}
           </button>
         ))}
       </div>

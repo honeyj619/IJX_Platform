@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { useRuyiStore } from "../store/ruyiStore";
 import { getRuyiCapability } from "../data/ruyiCapabilities";
 import { routeUserInput, generateLoadingMessage, createMessage } from "../services/ruyiMockRuntime";
+import { buildMeetingCreatedCard } from "../data/businessMessageCards";
 
 export function useRuyiSend() {
   const sendUserMessage = useRuyiStore((state) => state.sendUserMessage);
@@ -102,7 +103,11 @@ export function useRuyiSend() {
             const summary = `会议创建成功：\n标题：${slots.title || "项目沟通会"}\n日期：${slots.dateText || ""}（${slots.resolvedDate || ""}）\n时间：${slots.startTime || ""} - ${slots.endTime || ""}\n参会人：${slots.attendeeNames?.join("、") || ""}\n地点：${slots.location || "线上会议"}`;
             useRuyiStore.getState().completeTask(taskId);
             useRuyiStore.getState().appendAssistantMessage(
-              createMessage(conversationId, "assistant", "text", summary, { taskId }),
+              // V3.6：成功结果卡片化——按 slots 动态生成（确认什么就创建什么）
+              createMessage(conversationId, "assistant", "text", summary, {
+                taskId,
+                businessCard: buildMeetingCreatedCard(slots),
+              }),
             );
           }, 1600);
           finalizeTimersRef.current.add(timer);

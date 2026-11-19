@@ -11,7 +11,7 @@ import type {
   MeetingTaskSlots,
 } from '../types/ruyi';
 import { getRuyiCapability } from '../data/ruyiCapabilities';
-import { approvalMessageCard, attendanceMessageCard, knowledgeMessageCard } from '../data/businessMessageCards';
+import { approvalMessageCard, attendanceMessageCard, knowledgeMessageCard, operationsMessageCard, itServiceMessageCard, buildWorkbenchEntryCard } from '../data/businessMessageCards';
 
 export interface MockRuntimeContext {
   conversation: RuyiConversation;
@@ -137,6 +137,13 @@ function isModifyIntent(text: string): boolean {
 function isCancelIntent(text: string): boolean {
   const t = normalizeText(text);
   return t.includes('取消') || t.includes('不开了') || t.includes('算了');
+}
+
+
+/** V3.5：IT 故障实体——命中即走 IT 服务（优先于反馈意图） */
+function isItServiceEntity(text: string): boolean {
+  const t = normalizeText(text);
+  return /(vpn|网络|断网|设备|打印机|系统故障|蓝屏|死机|无法连接|连不上|登录不)/.test(t);
 }
 
 function isFeedbackIntent(text: string): boolean {
@@ -446,12 +453,7 @@ function handleGenericQuery(
       messages: [
         createMessage(conversationId, 'assistant', 'text', '您当前有 3 项待办流程：\n1. 项目立项申请 - 待审批\n2. 预算调整申请 - 待填写\n3. 设备采购申请 - 待确认\n\n可点击入口前往流程中心处理。', {
           businessCard: approvalMessageCard,
-          actions: [
-            { type: 'copy', label: '复制' },
-            { type: 'feedback-useful', label: '有用' },
-            { type: 'feedback-useless', label: '没用' },
-            { type: 'regenerate', label: '重新生成' },
-          ],
+
         }),
       ],
     };
@@ -474,6 +476,7 @@ function handleGenericQuery(
       messages: [
         createMessage(conversationId, 'assistant', 'text', '为您找到 3 篇智能办公相关文章：\n1. 智能办公系统功能介绍\n2. 协同办公平台使用手册\n3. 常见问题 FAQ 汇总', {
           businessCard: knowledgeMessageCard,
+
         }),
       ],
     };
@@ -483,7 +486,8 @@ function handleGenericQuery(
     return {
       messages: [
         createMessage(conversationId, 'assistant', 'text', '本月运营数据概览：\n- 销售额：1,286 万元，较上月 +12.5%\n- 客户满意度：96.8%，较上月 +2.3%\n- 项目交付及时率：89.2%，较上月 -1.5%', {
-          actions: [{ type: 'open-workbench', label: '查看运营看板' }],
+          businessCard: operationsMessageCard,
+
         }),
       ],
     };
@@ -522,23 +526,45 @@ function handleGenericQuery(
   }
 
   if (t.includes('周报') || t.includes('参谋') || t.includes('工作汇报') || t.includes('汇报')) {
+    // V3.6.1：对话中的参谋需求用卡片承接（结构化参数 + 直达工作台 CTA）；
+    // 从用户话术推断汇报类型与周期，推断不出用默认值
+    const reportType = t.includes('个人') ? '个人周报' : t.includes('经营') ? '经营分析' : '项目周报';
+    const reportCycle = t.includes('上周') ? '上周' : t.includes('本月') ? '本月' : '本周';
     return {
       messages: [
-        createMessage(conversationId, 'assistant', 'text', '好的，我来协助您整理汇报。请先确认：\n1. 汇报类型（项目周报 / 个人周报 / 经营分析）与周期\n2. 分析对象与数据来源\n3. 需要重点体现的内容\n\n也可以直接前往如意空间，使用「如意参谋」插件配置参数后提交。', {
+        createMessage(conversationId, 'assistant', 'text', '好的，我来协助您整理汇报。已按您的需求预填了参谋配置，可点击卡片直接进入参谋师工作台：', {
           capabilityId: 'advisor',
-          actions: [{ type: 'continue-in-zone', label: '前往如意空间继续创作' }],
+          businessCard: buildWorkbenchEntryCard('如意参谋', '/pc_client/ruyi-zone/advisor', conversationId, {
+            resultTitle: `${reportCycle}${reportType}`,
+            fields: [
+              { label: '汇报类型', value: reportType },
+              { label: '汇报周期', value: reportCycle },
+              { label: '数据来源', value: '项目管理平台' },
+            ],
+          }),
         }),
       ],
     };
   }
 
-  if (isFeedbackIntent(text)) {
+  // V3.5：IT 故障实体优先于反馈意图（"VPN无法连接帮我反馈"应进 IT 服务而非通用反馈）
+  if (isItServiceEntity(text)) {
+    return {
+      messages: [
+        createMessage(conversationId, 'assistant', 'text', '已收到您的 IT 故障反馈，排查建议与工单状态如下（原型模拟）：', {
+          capabilityId: 'it-service',
+          businessCard: itServiceMessageCard,
+        }),
+      ],
+    };
+  }
+
+  if (isFeedbackIntent(text) && !isItServiceEntity(text)) {
     return {
       messages: [
         createMessage(conversationId, 'assistant', 'text', '感谢您的反馈，我们已记录。如您需要提交正式工单，可前往帮助反馈中心。', {
           actions: [
-            { type: 'feedback-useful', label: '有用' },
-            { type: 'feedback-useless', label: '没用' },
+            { type: 'open-route', label: '前往帮助反馈', payload: { href: '/pc_client/help-feedback' } },
           ],
         }),
       ],
@@ -550,7 +576,8 @@ function handleGenericQuery(
       messages: [
         createMessage(conversationId, 'assistant', 'text', '已收到您的IT反馈，工单号 #IT-20261106-001。您可前往服务台查看处理进度。', {
           capabilityId: 'it-service',
-          actions: [{ type: 'open-workbench', label: '查看服务台' }],
+          businessCard: itServiceMessageCard,
+
         }),
       ],
     };
@@ -622,7 +649,8 @@ function handleActiveCapability(
       messages: [
         createMessage(conversationId, 'assistant', 'text', '已收到您的IT反馈，工单号 #IT-20261106-001。您可前往服务台查看处理进度。', {
           capabilityId: 'it-service',
-          actions: [{ type: 'open-workbench', label: '查看服务台' }],
+          businessCard: itServiceMessageCard,
+
         }),
       ],
     };
@@ -633,7 +661,7 @@ function handleActiveCapability(
       return {
         messages: [
           createMessage(conversationId, 'assistant', 'text', '上个月考勤整体表现良好，无异常缺勤。相关制度可查看考勤管理制度 v2.3。', {
-            businessCard: attendanceMessageCard,
+          businessCard: attendanceMessageCard,
             sourceLabel: '考勤管理制度 v2.3',
             sourceHref: '/pc_client/knowledge?doc=attendance-policy&source=ruyi-zone',
           }),
@@ -643,14 +671,8 @@ function handleActiveCapability(
     if (t.includes('流程') || t.includes('待办') || t.includes('处理')) {
       return {
         messages: [
-          createMessage(conversationId, 'assistant', 'text', '您当前有 3 项待办流程：\n1. 项目立项申请 - 待审批\n2. 预算调整申请 - 待填写\n3. 设备采购申请 - 待确认\n\n可点击入口前往流程中心处理。', {
+          createMessage(conversationId, 'assistant', 'text', '您当前有 3 项待办流程，可点击卡片进入流程中心处理。', {
             businessCard: approvalMessageCard,
-            actions: [
-              { type: 'copy', label: '复制' },
-              { type: 'feedback-useful', label: '有用' },
-              { type: 'feedback-useless', label: '没用' },
-              { type: 'regenerate', label: '重新生成' },
-            ],
           }),
         ],
       };
@@ -658,7 +680,7 @@ function handleActiveCapability(
     if (t.includes('知识') || t.includes('搜索') || t.includes('文章')) {
       return {
         messages: [
-          createMessage(conversationId, 'assistant', 'text', '为您找到 3 篇智能办公相关文章：\n1. 智能办公系统功能介绍\n2. 协同办公平台使用手册\n3. 常见问题 FAQ 汇总', {
+          createMessage(conversationId, 'assistant', 'text', '为您找到 3 篇智能办公相关文章，点击卡片可进入知识库。', {
             businessCard: knowledgeMessageCard,
           }),
         ],
@@ -667,8 +689,8 @@ function handleActiveCapability(
     if (t.includes('运营') || t.includes('数据') || t.includes('指标')) {
       return {
         messages: [
-          createMessage(conversationId, 'assistant', 'text', '本月运营数据概览：\n- 销售额：1,286 万元，较上月 +12.5%\n- 客户满意度：96.8%，较上月 +2.3%\n- 项目交付及时率：89.2%，较上月 -1.5%', {
-            actions: [{ type: 'open-workbench', label: '查看运营看板' }],
+          createMessage(conversationId, 'assistant', 'text', '本月运营数据概览如下。', {
+            businessCard: operationsMessageCard,
           }),
         ],
       };

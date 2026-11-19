@@ -60,10 +60,31 @@ export default function RuyiConversationView({
   capabilitySubmitting,
 }: RuyiConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevConversationIdRef = useRef<string>(conversation.id);
+  const prevMessageCountRef = useRef<number>(messages.length);
 
+  // V3.5 滚动规则：
+  // - 切换会话：从顶部开始（预置长卡完整可见，不被顶出可视区）
+  // - 追加消息：仅当滚动区原本接近底部时自动滚底；用户查看旧消息时不强制拉底
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const container = scrollContainerRef.current;
+    if (prevConversationIdRef.current !== conversation.id) {
+      prevConversationIdRef.current = conversation.id;
+      prevMessageCountRef.current = messages.length;
+      if (container) container.scrollTop = 0;
+      return;
+    }
+    if (messages.length > prevMessageCountRef.current) {
+      prevMessageCountRef.current = messages.length;
+      if (container) {
+        const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+        if (nearBottom) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      }
+      return;
+    }
+    prevMessageCountRef.current = messages.length;
+  }, [messages, conversation.id]);
 
   return (
     <div className="flex flex-1 flex-col h-full overflow-hidden" data-requirement-id="ruyi-capability-routing">
@@ -73,8 +94,8 @@ export default function RuyiConversationView({
         <RuyiCapabilityStatus capability={activeCapability} onExit={onExitCapability} />
       </header>
 
-      {/* 历史消息（独立滚动） */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 md:px-8">
+      {/* 历史消息（独立滚动；V3.3 场景留存常驻锚点，不得替换既有锚点） */}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-6 py-6 md:px-8" data-requirement-id="ruyi-scenario-conversation-showcase">
         <div className="mx-auto max-w-4xl space-y-8" data-requirement-id="ruyi-single-task-poc">
           {messages.length === 0 ? (
             <RuyiEmptyState variant="no-messages" />

@@ -110,3 +110,137 @@ export const knowledgeMessageCard: BusinessMessageCardData = {
     { id: 'knowledge-open', label: '进入知识库', href: '/pc_client/knowledge', variant: 'primary' },
   ],
 };
+
+/** V3.4：IT 服务排查卡（notice 类；复用 BusinessMessageCard，不新增卡片类型系统） */
+export const itServiceMessageCard: BusinessMessageCardData = {
+  id: 'it-service-vpn-troubleshoot',
+  category: 'notice',
+  source: 'IT 服务台',
+  title: 'VPN 连接故障排查',
+  subtitle: '工单号 #IT-20261118-001 · 处理中',
+  summary: '已收到 VPN 无法连接反馈，建议按以下步骤排查；仍未解决可提交帮助与反馈。',
+  status: { label: '排查中', tone: 'info' },
+  fields: [
+    { label: '排查一', value: '检查网络连接与客户端版本' },
+    { label: '排查二', value: '重新登录账号后重试' },
+    { label: '排查三', value: '清理缓存或更换网络环境' },
+  ],
+  tags: ['IT', 'VPN'],
+  timestamp: '今天 09:41',
+  href: '/pc_client/help-feedback',
+  actions: [
+    { id: 'it-service-detail', label: '查看工单进度', href: '/pc_client/help-feedback', variant: 'primary' },
+    { id: 'it-service-feedback', label: '仍未解决，提交反馈', href: '/pc_client/help-feedback?create=1', variant: 'secondary' },
+  ],
+};
+
+/** V3.5：运营指标卡（metric 结构；复用 BusinessMessageCard） */
+export const operationsMessageCard: BusinessMessageCardData = {
+  id: 'operations-monthly-metrics',
+  category: 'notice',
+  source: '运营数据平台',
+  title: '本月运营指标概览',
+  subtitle: '统计周期：2026 年 11 月',
+  summary: '销售额与客户满意度环比上升，交付及时率小幅回落。',
+  status: { label: '整体向好', tone: 'success' },
+  metrics: [
+    { label: '销售额', value: '1,286', unit: '万元', tone: 'success' },
+    { label: '环比', value: '+12.5', unit: '%', tone: 'success' },
+    { label: '客户满意度', value: '96.8', unit: '%', tone: 'success' },
+    { label: '交付及时率', value: '89.2', unit: '%', tone: 'warning' },
+  ],
+  tags: ['运营', '月报'],
+  timestamp: '今天 10:20',
+  href: '/pc_client/business?system=ops&view=dashboard',
+  actions: [
+    { id: 'operations-detail', label: '查看运营看板', href: '/pc_client/business?system=ops&view=dashboard', variant: 'primary' },
+  ],
+};
+
+/* ============ V3.6 工厂：会议创建结果卡 / 创作工作台入口卡 ============ */
+
+import type { MeetingTaskSlots } from '../types/ruyi';
+
+/**
+ * V3.6：会议创建结果卡——按任务 slots 动态生成，创建成功后挂载；
+ * 内容与确认摘要同源（标题/日期/时间/参会人/地点），保证"确认什么就创建什么"。
+ */
+export function buildMeetingCreatedCard(slots: Partial<MeetingTaskSlots>, timestamp?: string): BusinessMessageCardData {
+  const title = slots.title || '项目沟通会';
+  const dateText = slots.dateText || slots.resolvedDate || '明天';
+  const start = slots.startTime || '';
+  const end = slots.endTime || '';
+  const time = start && end ? `${start} - ${end}` : start || '时间待定';
+  const attendees = slots.attendeeNames?.length ? slots.attendeeNames : [];
+  const location = slots.location || '线上会议';
+  return {
+    id: 'meeting-created-card',
+    category: 'meeting',
+    source: '如意会议',
+    title,
+    subtitle: `${dateText}${start ? ` ${time}` : ''} · ${location}`,
+    summary: attendees.length
+      ? `会议已创建，邀请已发送给 ${attendees.length} 位参会人。`
+      : '会议已创建。',
+    status: { label: '已创建', tone: 'success' },
+    fields: [
+      { label: '日期', value: dateText, emphasis: true },
+      { label: '时间', value: time },
+      { label: '参会人', value: attendees.join('、') || '仅自己' },
+      { label: '地点', value: location },
+    ],
+    tags: ['会议', '创建成功'],
+    timestamp,
+    href: '/pc_client/meetings',
+    actions: [
+      { id: 'meeting-created-detail', label: '查看会议详情', href: '/pc_client/meetings', variant: 'primary' },
+      { id: 'meeting-created-invite', label: '再次邀请参会人', href: '/pc_client/meetings/rooms', variant: 'secondary' },
+    ],
+  };
+}
+
+/** 工作台入口卡定制项：按能力补充副标题/参数字段/标签 */
+export interface WorkbenchEntryCardOptions {
+  /** 目标成果标题（如"本周项目周报"） */
+  resultTitle: string;
+  /** 参数摘要字段（如 汇报类型/汇报周期/分析对象） */
+  fields?: Array<{ label: string; value: string }>;
+  /** 额外标签 */
+  tags?: string[];
+  /** 卡片时间戳 */
+  timestamp?: string;
+}
+
+/**
+ * V3.6：创作工作台入口卡（通用工厂）——需求确认后挂载；
+ * href 带 sourceConversationId，工作台打开即从上下文带入参数。
+ */
+export function buildWorkbenchEntryCard(
+  capName: string,
+  workbenchPath: string,
+  sourceConversationId: string,
+  options: WorkbenchEntryCardOptions,
+): BusinessMessageCardData {
+  const tags = [capName, ...(options.tags ?? [])];
+  return {
+    id: `workbench-entry-${sourceConversationId}-${capName}`,
+    category: 'workbench',
+    source: '如意助手',
+    title: `${capName}工作台`,
+    subtitle: `目标成果：${options.resultTitle}`,
+    summary: '需求已确认，可进入工作台继续配置并生成。',
+    status: { label: '待生成', tone: 'info' },
+    fields: options.fields?.map((f) => ({ label: f.label, value: f.value })),
+    tags,
+    timestamp: options.timestamp,
+    href: `${workbenchPath}?sourceConversationId=${sourceConversationId}`,
+    actions: [
+      {
+        id: `workbench-entry-${sourceConversationId}-${capName}-enter`,
+        label: `进入${capName}`,
+        href: `${workbenchPath}?sourceConversationId=${sourceConversationId}`,
+        variant: 'primary',
+      },
+    ],
+  };
+}

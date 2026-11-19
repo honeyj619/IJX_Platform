@@ -222,272 +222,10 @@ const messages: Message[] = [
     id: 1,
     name: "如意助手",
     avatar: RUYI_ASSISTANT_AVATAR,
-    message: "您好！我是如意助手，请问有什么可以帮您？",
-    time: "12:21",
-    unread: 2,
+    // V3.4：预览由 ruyiMessages 同步 effect 按最后一条有效消息计算；助手分支只渲染共享 store，不再维护静态 chatMessages
+    message: "向如意助手提问…",
+    time: "",
     type: 'assistant',
-    chatMessages: [
-      // 考勤查询 - 一条消息包含文本和知识卡片
-      {
-        id: 1,
-        sender: 'me',
-        type: 'text',
-        content: "你好，我想了解一下上个月的考勤统计",
-        time: "今天 10:30",
-      },
-      {
-        id: 2,
-        sender: 'other',
-        type: 'text',
-        content: "您好！已为您查询到上个月考勤统计：应出勤22天，实际出勤21天，迟到2次，早退0次。请假1天（年假）。总体出勤率95.5%，表现良好！",
-        time: "今天 10:31",
-        elements: [
-          {
-            type: 'knowledge',
-            meta: {
-              knowledgeTitle: "考勤管理制度 v2.3",
-              knowledgeExcerpt: "员工考勤管理规定：迟到、早退、病假、事假、加班调休等相关制度说明...",
-              knowledgeUrl: "https://docs.qq.com/doc/xxx",
-              knowledgeTags: ["考勤", "制度", "HR"],
-            },
-          },
-        ],
-      },
-      // 项目立项 - 用户问 + 流程说明 + 表单
-      {
-        id: 3,
-        sender: 'me',
-        type: 'text',
-        content: "好的，顺便问一下，项目立项申请流程是什么？",
-        time: "今天 10:33",
-      },
-      {
-        id: 4,
-        sender: 'other',
-        type: 'form',
-        content: "项目立项申请流程如下：\n1. 填写项目基本信息\n2. 提交项目预算申请\n3. 部门负责人审批\n4. 项目立项完成\n\n请填写以下表单发起立项申请：",
-        time: "今天 10:33",
-        elements: [
-          {
-            type: 'form',
-            meta: {
-              formTitle: "项目立项申请表单",
-              formFields: [
-                { label: "项目名称", placeholder: "请输入项目名称", type: "input" },
-                { label: "项目类型", placeholder: "请选择类型", type: "select" },
-                { label: "预计开始日期", placeholder: "选择日期", type: "date" },
-                { label: "项目预算（万元）", placeholder: "请输入预算金额", type: "input" },
-                { label: "项目负责人", placeholder: "请输入负责人姓名", type: "input" },
-                { label: "项目概述", placeholder: "请简要描述项目背景和目标", type: "textarea" },
-              ],
-            },
-          },
-        ],
-      },
-      // 运营数据 - 一条消息包含3个数据卡片
-      {
-        id: 5,
-        sender: 'me',
-        type: 'text',
-        content: "我先看看公司近期的运营数据",
-        time: "今天 10:35",
-      },
-      {
-        id: 6,
-        sender: 'other',
-        type: 'dataCard',
-        content: "为您展示本月核心运营指标：",
-        time: "今天 10:35",
-        elements: [
-          {
-            type: 'dataCard',
-            meta: {
-              dataTitle: "本月销售额",
-              dataValue: "1,286",
-              dataUnit: "万元",
-              dataChange: "+12.5%",
-              dataChangeType: "up",
-              dataDashboardUrl: "https://dashboard.example.com/sales",
-            },
-          },
-          {
-            type: 'dataCard',
-            meta: {
-              dataTitle: "客户满意度",
-              dataValue: "96.8",
-              dataUnit: "%",
-              dataChange: "+2.3%",
-              dataChangeType: "up",
-              dataDashboardUrl: "https://dashboard.example.com/satisfaction",
-            },
-          },
-          {
-            type: 'dataCard',
-            meta: {
-              dataTitle: "项目交付及时率",
-              dataValue: "89.2",
-              dataUnit: "%",
-              dataChange: "-1.5%",
-              dataChangeType: "down",
-              dataDashboardUrl: "https://dashboard.example.com/delivery",
-            },
-          },
-        ],
-      },
-      // 日程预约 - 一条消息包含日程卡片和快捷操作
-      {
-        id: 7,
-        sender: 'me',
-        type: 'text',
-        content: `帮我预约一下明天下午2点的项目会议，地点在会议室A，参加人有${getDemoPerson(2)}、${getDemoPerson(1)}、${getDemoPerson(3)}`,
-        time: "今天 10:37",
-      },
-      {
-        id: 8,
-        sender: 'other',
-        type: 'schedule',
-        content: "请确认日程信息",
-        time: "今天 10:37",
-        elements: [
-          {
-            type: 'schedule',
-            meta: {
-              scheduleTitle: "智能办公系统项目会议",
-              scheduleTime: "明天 14:00 - 15:00",
-              scheduleLocation: "会议室A",
-              scheduleMembers: [getDemoPerson(2), getDemoPerson(1), getDemoPerson(3)],
-            },
-          },
-          {
-            type: 'quickAction',
-            meta: {
-              actions: [
-                { label: "确认创建", icon: "check", action: "confirm" },
-                { label: "修改", icon: "edit", action: "modify" },
-                { label: "取消", icon: "x", action: "cancel" },
-              ],
-            },
-          },
-        ],
-      },
-      // 确认创建
-      {
-        id: 9,
-        sender: 'me',
-        type: 'text',
-        content: "确认创建",
-        time: "今天 10:38",
-      },
-      {
-        id: 10,
-        sender: 'other',
-        type: 'text',
-        content: `日程已创建！明天下午2点智能办公系统项目会议，地点会议室A，参与人：${getDemoPerson(2)}、${getDemoPerson(1)}、${getDemoPerson(3)}。已发送会议通知。`,
-        time: "今天 10:38",
-      },
-      // 待审批 - 用户问 + 审批列表
-      {
-        id: 11,
-        sender: 'me',
-        type: 'text',
-        content: "帮我查一下待审批的流程有哪些",
-        time: "今天 10:40",
-      },
-      {
-        id: 12,
-        sender: 'other',
-        type: 'approvalList',
-        content: "您有3条待审批流程，请选择要审批的流程：",
-        time: "今天 10:40",
-        elements: [
-          {
-            type: 'approvalList',
-            meta: {
-              approvals: [
-                { title: "项目立项申请 - 吉祥航空协同平台", status: "pending", applicant: MAIN_USER_NAME, time: "2026-05-18 14:30" },
-                { title: "预算调整申请 - Q2季度预算追加", status: "pending", applicant: getDemoPerson(3), time: "2026-05-17 09:15" },
-                { title: "设备采购申请 - 新风系统采购", status: "approved", applicant: getDemoPerson(1), time: "2026-05-15 11:20" },
-              ],
-            },
-          },
-        ],
-      },
-      // 知识搜索 - 一条消息包含3个知识卡片
-      {
-        id: 13,
-        sender: 'me',
-        type: 'text',
-        content: "帮我搜索一下关于智能办公的知识文章",
-        time: "今天 10:42",
-      },
-      {
-        id: 14,
-        sender: 'other',
-        type: 'knowledge',
-        content: "为您找到以下相关知识：",
-        time: "今天 10:42",
-        elements: [
-          {
-            type: 'knowledge',
-            meta: {
-              knowledgeTitle: "智能办公系统功能介绍",
-              knowledgeExcerpt: "本文档详细介绍吉祥航空智能办公系统的核心功能模块，包括日程管理、流程审批、知识库...",
-              knowledgeUrl: "https://docs.qq.com/doc/ABC123",
-              knowledgeTags: ["智能办公", "系统功能", "新员工指南"],
-            },
-          },
-          {
-            type: 'knowledge',
-            meta: {
-              knowledgeTitle: "协同办公平台使用手册",
-              knowledgeExcerpt: "吉祥航空协同办公平台完整使用指南，包含PC端和移动端操作说明...",
-              knowledgeUrl: "https://docs.qq.com/doc/DEF456",
-              knowledgeTags: ["使用手册", "操作指南"],
-            },
-          },
-          {
-            type: 'knowledge',
-            meta: {
-              knowledgeTitle: "常见问题FAQ汇总",
-              knowledgeExcerpt: "针对智能办公平台使用过程中常见问题的解答汇总...",
-              knowledgeUrl: "https://docs.qq.com/doc/GHI789",
-              knowledgeTags: ["FAQ", "常见问题"],
-            },
-          },
-        ],
-      },
-      // 结束对话
-      {
-        id: 15,
-        sender: 'me',
-        type: 'text',
-        content: "谢谢你，今天就到这里吧",
-        time: "今天 10:45",
-      },
-      {
-        id: 16,
-        sender: 'other',
-        type: 'text',
-        content: "好的！很高兴为您服务。如有需要随时召唤我，祝您工作顺利！🌟\n\n温馨提示：您今天还有2个待办事项，3条待审批流程。",
-        time: "今天 10:45",
-      },
-      // 项目汇报企微提醒（黄/红灯项目发送后推送给领导）
-      {
-        id: 17,
-        sender: 'other',
-        type: 'text',
-        content: "【工作汇报】\n收到刘备的如意空间智能办公建设（黄灯）项目汇报，请及时查阅。\n汇报周期：2026-10-03 至 2026-10-09\n整体项目进展：本周按计划推进系统集成与联调，整体进度 45%，存在 2 项跨部门协调事项，详见汇报内容。\n查看地址：work-report/product_url",
-        time: "今天 17:42",
-      },
-      // 周日定时汇总提醒（红黄灯项目数量 + 跳转地址）
-      {
-        id: 18,
-        sender: 'other',
-        type: 'text',
-        content: "【系统提醒】本周红黄灯项目汇报情况，请关注\n统计周期：2026-10-03 至 2026-10-09\n黄灯项目：1 个（如意空间智能办公建设）\n红灯项目：1 个（数据平台治理专项）\n待办提醒：以上项目汇报请确认已发送\n查看地址：work-report/product_url",
-        time: "周日 20:00",
-      },
-    ],
   },
   {
     id: 8,
@@ -815,16 +553,19 @@ export default function Home() {
   const displayMessages = useMemo(() => [...feedbackMessages, ...messageList], [feedbackMessages, messageList]);
 
   // 同步如意助手最后一条消息到 PC 消息列表预览
+  // V3.3：loading/纯系统状态不作预览——向前找最近一条用户/助手业务消息；时间取该消息 createdAt
   useEffect(() => {
-    const last = ruyiMessages[ruyiMessages.length - 1];
-    if (!last) return;
+    const lastDisplayable = [...ruyiMessages]
+      .reverse()
+      .find((m) => m.sender !== 'system' && m.kind !== 'loading' && m.kind !== 'capability-status');
+    if (!lastDisplayable) return;
     setMessageList((current) =>
       current.map((message) =>
         message.type === 'assistant'
           ? {
               ...message,
-              message: last.content.slice(0, 60),
-              time: formatTime(last.createdAt),
+              message: lastDisplayable.content.slice(0, 60),
+              time: formatTime(lastDisplayable.createdAt),
             }
           : message,
       ),
@@ -835,6 +576,7 @@ export default function Home() {
   useEffect(() => {
     useRuyiStore.getState().recoverInterruptedExecutions();
   }, []);
+
 
   // 简化逻辑：移除响应式和拖动相关的复杂处理
   const handleMessageClick = (message: Message) => {
@@ -915,11 +657,24 @@ export default function Home() {
     }
   }, [selectedMessage, contentRefReady]);
 
-  // 如意助手有新消息时保持滚动到底部
+  // V3.5：如意助手消息滚动——首次进入从顶部开始（完整阅读预置对话）；
+  // 之后仅当用户原本接近底部时新消息自动滚底，查看旧消息不强制拉底
+  const ruyiPrevCountRef = useRef(0);
+  const ruyiFirstLoadRef = useRef(true);
   useEffect(() => {
-    if (selectedMessage?.type === 'assistant' && contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+    if (selectedMessage?.type !== 'assistant' || !contentRef.current) return;
+    if (ruyiFirstLoadRef.current) {
+      ruyiFirstLoadRef.current = false;
+      ruyiPrevCountRef.current = ruyiMessages.length;
+      contentRef.current.scrollTop = 0;
+      return;
     }
+    if (ruyiMessages.length > ruyiPrevCountRef.current) {
+      const el = contentRef.current;
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+      if (nearBottom) el.scrollTop = el.scrollHeight;
+    }
+    ruyiPrevCountRef.current = ruyiMessages.length;
   }, [ruyiMessages, selectedMessage]);
 
   useEffect(() => {
@@ -983,9 +738,18 @@ export default function Home() {
     setAssistantInput('');
   };
 
+  /** V3.5：IT 故障实体识别——命中即走 IT 服务能力（含 itServiceMessageCard），优先于通用反馈意图 */
+  const IT_ENTITY_PATTERN = /(VPN|vpn|网络|断网|设备|打印机|账号.*锁|系统故障|蓝屏|死机|无法连接|连不上|登录不)/;
+
   const handleAssistantSend = () => {
     const content = assistantInput.trim();
     if (!content || !selectedMessage || selectedMessage.type !== 'assistant') return;
+    // IT 实体优先：含明确 IT 故障实体时进入 IT 服务能力，即使句子也包含"反馈"
+    if (IT_ENTITY_PATTERN.test(content)) {
+      sendToRuyi(FIXED_SYSTEM_CONVERSATION_ID, content);
+      setAssistantInput('');
+      return;
+    }
     const intent = resolveFeedbackIntent(content);
     if (intent.intent !== 'none') {
       // 反馈意图：记录用户原话到共享会话；两步流程——功能异常先排查，确认后才出草稿
@@ -1071,6 +835,12 @@ export default function Home() {
         const result = message.resultId ? useRuyiStore.getState().getResultById(message.resultId) : null;
         // F2 双重保护：共享安全函数判断，仅可打开状态允许导航
         if (result && canOpenRuyiResult(result)) navigate(result.workbenchHref);
+        break;
+      }
+      case 'open-route': {
+        // V3.5：普通内部路由跳转（知识库/流程中心等）
+        const href = typeof (payload as { href?: string } | undefined)?.href === 'string' ? (payload as { href: string }).href : '';
+        if (href) navigate(href);
         break;
       }
       case 'open-workbench': {

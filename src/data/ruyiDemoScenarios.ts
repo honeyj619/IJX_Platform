@@ -147,7 +147,8 @@ export type RuyiDemoScenarioId =
   | 'v2-conversation-filter'
   | 'v2-task-empty'
   | 'v2-result-empty'
-  | 'v2-task-error';
+  | 'v2-task-error'
+;
 
 export const ruyiDemoScenarioIds: RuyiDemoScenarioId[] = [
   'first-use',
@@ -169,6 +170,39 @@ export const ruyiDemoScenarioIds: RuyiDemoScenarioId[] = [
   'v2-result-empty',
   'v2-task-error',
 ];
+
+/**
+ * V3.3 场景定义元数据：稳定入口会话 + 展示名 + 重置文案。
+ * 进入 ?demo=<id> 后由页面按 entryConversationId 定位（会话类场景自动打开入口会话）。
+ */
+export interface RuyiDemoScenarioDefinition {
+  id: RuyiDemoScenarioId;
+  title: string;
+  entryRoute: string;
+  entryConversationId?: string;
+  resetLabel: string;
+}
+
+export const ruyiDemoScenarioDefinitions: Record<RuyiDemoScenarioId, RuyiDemoScenarioDefinition> = {
+  'first-use': { id: 'first-use', title: '首次使用', entryRoute: '/pc_client/ruyi-zone', entryConversationId: FIXED_SYSTEM_CONVERSATION_ID, resetLabel: '重置首次使用场景' },
+  default: { id: 'default', title: '默认场景', entryRoute: '/pc_client/ruyi-zone', entryConversationId: FIXED_SYSTEM_CONVERSATION_ID, resetLabel: '重置默认场景' },
+  'conversation-management': { id: 'conversation-management', title: '会话管理', entryRoute: '/pc_client/ruyi-zone', resetLabel: '重置会话管理场景' },
+  'capability-states': { id: 'capability-states', title: '能力状态切换', entryRoute: '/pc_client/ruyi-zone', resetLabel: '重置能力状态场景' },
+  'task-poc': { id: 'task-poc', title: '会议任务 PoC', entryRoute: '/pc_client/ruyi-zone', entryConversationId: 'conv-0005', resetLabel: '重置会议任务场景' },
+  'result-states': { id: 'result-states', title: '成果状态', entryRoute: '/pc_client/ruyi-zone', entryConversationId: 'conv-0006', resetLabel: '重置成果状态场景' },
+  'failure-states': { id: 'failure-states', title: '失败与重试', entryRoute: '/pc_client/ruyi-zone', entryConversationId: 'conv-0007', resetLabel: '重置失败重试场景' },
+  'user-isolation': { id: 'user-isolation', title: '用户隔离', entryRoute: '/pc_client/ruyi-zone', resetLabel: '重置用户隔离场景' },
+  'v2-task-center': { id: 'v2-task-center', title: 'AI 任务中心', entryRoute: '/pc_client/ruyi-zone/tasks', resetLabel: '重置任务中心场景' },
+  'v2-task-detail': { id: 'v2-task-detail', title: '任务详情', entryRoute: '/pc_client/ruyi-zone/tasks', resetLabel: '重置任务详情场景' },
+  'v2-multi-task': { id: 'v2-multi-task', title: '多任务选择', entryRoute: '/pc_client/ruyi-zone/conversations/conv-v2-multi', entryConversationId: 'conv-v2-multi', resetLabel: '重置多任务场景' },
+  'v2-cross-day-resume': { id: 'v2-cross-day-resume', title: '跨日恢复', entryRoute: '/pc_client/ruyi-zone/conversations/conv-v2-cross-day', entryConversationId: 'conv-v2-cross-day', resetLabel: '重置跨日恢复场景' },
+  'v2-result-center': { id: 'v2-result-center', title: 'AI 成果中心', entryRoute: '/pc_client/ruyi-zone/results', resetLabel: '重置成果中心场景' },
+  'v2-cross-device': { id: 'v2-cross-device', title: '跨端协同', entryRoute: '/pc_client/ruyi-zone/conversations/conv-v2-cross-device', entryConversationId: 'conv-v2-cross-device', resetLabel: '重置跨端场景' },
+  'v2-conversation-filter': { id: 'v2-conversation-filter', title: '会话筛选', entryRoute: '/pc_client/ruyi-zone', resetLabel: '重置会话筛选场景' },
+  'v2-task-empty': { id: 'v2-task-empty', title: '任务空状态', entryRoute: '/pc_client/ruyi-zone/tasks', resetLabel: '重置任务空状态场景' },
+  'v2-result-empty': { id: 'v2-result-empty', title: '成果空状态', entryRoute: '/pc_client/ruyi-zone/results', resetLabel: '重置成果空状态场景' },
+  'v2-task-error': { id: 'v2-task-error', title: '任务错误状态', entryRoute: '/pc_client/ruyi-zone/tasks', resetLabel: '重置任务错误场景' },
+};
 
 function buildDefaultState(): RuyiPrototypeState {
   const messages: Record<string, RuyiMessage> = {};

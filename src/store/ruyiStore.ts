@@ -20,6 +20,7 @@ import type {
 } from '../types/ruyi';
 import { ruyiCapabilities } from '../data/ruyiCapabilities';
 import { loadRuyiDemoScenario, FIXED_SYSTEM_CONVERSATION_ID } from '../data/ruyiDemoScenarios';
+import { buildRuyiShowcaseSeed, ruyiShowcaseDefinitions } from '../data/ruyiShowcaseConversations';
 import { MAIN_USER_NAME } from '../data/people';
 import { generateTitleFromText, generateWorkbenchResultMessage } from '../services/ruyiMockRuntime';
 import { formatSubmissionParams } from '../data/ruyiToolPanel';
@@ -63,9 +64,11 @@ const demoAwareStorage = {
     localStorage.removeItem(name);
   },
 };
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export const RUYI_MAIN_OWNER_ID = MAIN_USER_NAME;
+
+
 
 function generateId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -81,50 +84,124 @@ function createUserState(ownerId: string): RuyiUserState {
   };
 }
 
-function createSystemConversation(): RuyiConversation {
-  return {
-    id: FIXED_SYSTEM_CONVERSATION_ID,
-    ownerId: RUYI_MAIN_OWNER_ID,
-    title: '如意助手',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    activeCapabilityId: null,
-    lastCapabilityId: null,
-    messageIds: [],
-    activeTaskId: null,
-  };
-}
+/** V3.4：showcase 预置对话版本（内容升级时 +1 触发保留式重合并） */
+const SHOWCASE_SEED_VERSION = 1;
 
 function createInitialState(): RuyiPrototypeState {
-  const systemConversation = createSystemConversation();
-  const welcomeMessage: RuyiMessage = {
-    id: generateId('msg'),
-    conversationId: FIXED_SYSTEM_CONVERSATION_ID,
-    sender: 'assistant',
-    kind: 'text',
-    content: '您好！我是如意助手，请问有什么可以帮您？',
-    createdAt: new Date().toISOString(),
-  };
-  systemConversation.messageIds.push(welcomeMessage.id);
-
+  // V3.4：默认状态即能力直展示——固定 IM 会话含综合对话 + 空间 13 场景预置会话
+  const seed = buildRuyiShowcaseSeed(RUYI_MAIN_OWNER_ID, FIXED_SYSTEM_CONVERSATION_ID);
   return {
     schemaVersion: SCHEMA_VERSION,
     currentOwnerId: RUYI_MAIN_OWNER_ID,
     users: {
-      [RUYI_MAIN_OWNER_ID]: createUserState(RUYI_MAIN_OWNER_ID),
+      [RUYI_MAIN_OWNER_ID]: {
+        ownerId: RUYI_MAIN_OWNER_ID,
+        conversationIds: seed.conversationIds,
+        resultIds: seed.resultIds,
+        taskIds: seed.taskIds,
+        initializedAt: new Date().toISOString(),
+      },
     },
-    conversations: {
-      [FIXED_SYSTEM_CONVERSATION_ID]: systemConversation,
-    },
-    messages: {
-      [welcomeMessage.id]: welcomeMessage,
-    },
-    results: {},
-    tasks: {},
+    conversations: seed.conversations,
+    messages: seed.messages,
+    results: seed.results,
+    tasks: seed.tasks,
     workbenchContexts: {},
-    contextReferences: {},
+    contextReferences: seed.contextReferences,
     demoScenarioId: null,
+    showcaseSeedVersion: SHOWCASE_SEED_VERSION,
   };
+}
+
+/**
+ * V3.4 保留式 showcase 合并（rehydrate 后调用）：
+ * - 旧 localStorage（空固定会话/仅欢迎语/已有用户数据）升级为默认能力直展示
+ * - 已存在相同稳定 ID 的预置数据不重复添加；用户自建会话/消息/任务/成果全部保留
+ * - 固定会话只有旧欢迎语时删除欢迎语写入综合对话；已有用户真实操作时预置示例置前只合并一次
+ * - 用户删除的预置会话不复活（通过 showcaseSeedVersion 门控：仅版本升级才重新合并）
+ */
+function mergeRuyiShowcaseSeed(state: RuyiStore): void {
+  if (state.demoMode) return;
+  // 门控用独立标记 key（与主 store 解耦）：migrate 自动落盘会把 initial 泄漏的
+  // showcaseSeedVersion 写进主 key，主 key 内版本不可信；独立标记只在合并成功后写入。
+  const SEED_FLAG_KEY = 'ijx-ruyi-showcase-seed-v1';
+  try {
+    if (Number(localStorage.getItem(SEED_FLAG_KEY) ?? 0) === SHOWCASE_SEED_VERSION) return;
+  } catch {
+    // 读取失败按未合并处理
+  }
+
+  const seed = buildRuyiShowcaseSeed(state.currentOwnerId ?? RUYI_MAIN_OWNER_ID, FIXED_SYSTEM_CONVERSATION_ID);
+  const conversations = { ...state.conversations };
+  const messages = { ...state.messages };
+  const tasks = { ...state.tasks };
+  const results = { ...state.results };
+  const users = { ...state.users };
+  const owner = users[state.currentOwnerId ?? RUYI_MAIN_OWNER_ID];
+
+  // 固定 IM 会话：旧欢迎语替换 / 用户已有记录时预置置前
+  const fixedConv = conversations[FIXED_SYSTEM_CONVERSATION_ID];
+  const seedFixed = seed.conversations[FIXED_SYSTEM_CONVERSATION_ID];
+  if (!fixedConv) {
+    conversations[FIXED_SYSTEM_CONVERSATION_ID] = seedFixed;
+  } else {
+    const isOnlyOldWelcome =
+      fixedConv.messageIds.length <= 1 &&
+      fixedConv.messageIds.every((id) => messages[id]?.content?.includes('您好！我是如意助手'));
+    if (isOnlyOldWelcome) {
+      // 删除旧欢迎语，写入综合对话
+      fixedConv.messageIds.forEach((id) => { delete messages[id]; });
+      conversations[FIXED_SYSTEM_CONVERSATION_ID] = { ...seedFixed, updatedAt: fixedConv.updatedAt };
+    } else if (!fixedConv.messageIds.some((id) => id.startsWith('showcase-im-'))) {
+      // 用户已有真实记录：预置示例置前（只合并一次；seedVersion 门控）
+      const preIds = seedFixed.messageIds.filter((id) => !messages[id]);
+      seedFixed.messageIds.forEach((id) => { if (!messages[id]) messages[id] = seed.messages[id]; });
+      conversations[FIXED_SYSTEM_CONVERSATION_ID] = { ...fixedConv, messageIds: [...preIds, ...fixedConv.messageIds] };
+    }
+  }
+
+  // 空间预置场景：追加缺失项（用户删除的不复活——只补从未存在过的 ID；被用户删除的会话不在 state.conversations，
+  // 但我们不追踪"删过哪些"，因此只在 showcaseSeedVersion 升级时全量补缺：用户当前数据不含该 ID 即视为需要补入。
+  // 若产品要求"删除后永不复活"，可将 SHOWCASE_SEED_VERSION 保持不变并在删除时记录 tombstone——原型阶段以版本门控为准）
+  ruyiShowcaseDefinitions.forEach((def) => {
+    if (conversations[def.id]) return;
+    const bundle = def.build(state.currentOwnerId ?? RUYI_MAIN_OWNER_ID);
+    conversations[def.id] = bundle.conversation;
+    bundle.messages.forEach((m) => { if (!messages[m.id]) messages[m.id] = m; });
+    (bundle.tasks ?? []).forEach((t) => { if (!tasks[t.id]) tasks[t.id] = t; });
+    (bundle.results ?? []).forEach((r) => { if (!results[r.id]) results[r.id] = r; });
+  });
+
+  // 预置消息/任务/成果实体补齐（固定会话分支可能只补了 conversation）
+  Object.entries(seed.messages).forEach(([id, m]) => { if (!messages[id]) messages[id] = m; });
+  Object.entries(seed.tasks).forEach(([id, t]) => { if (!tasks[id]) tasks[id] = t; });
+  Object.entries(seed.results).forEach(([id, r]) => { if (!results[id]) results[id] = r; });
+
+  // 用户索引补缺（固定会话 + 未收录场景；不覆盖用户新建顺序——追加在尾部）
+  if (owner) {
+    const convIds = [...owner.conversationIds];
+    seed.conversationIds.forEach((id) => { if (!convIds.includes(id)) convIds.push(id); });
+    const taskIds = [...owner.taskIds];
+    seed.taskIds.forEach((id) => { if (!taskIds.includes(id)) taskIds.push(id); });
+    const resultIds = [...owner.resultIds];
+    seed.resultIds.forEach((id) => { if (!resultIds.includes(id)) resultIds.push(id); });
+    users[owner.ownerId] = { ...owner, conversationIds: convIds, taskIds, resultIds };
+  }
+
+  useRuyiStore.setState({
+    conversations,
+    messages,
+    tasks,
+    results,
+    users,
+    showcaseSeedVersion: SHOWCASE_SEED_VERSION,
+  });
+  // 独立标记：合并成功后写入（主 key 版本会被 migrate 泄漏污染，不作门控）
+  try {
+    localStorage.setItem('ijx-ruyi-showcase-seed-v1', String(SHOWCASE_SEED_VERSION));
+  } catch {
+    // 标记写失败：下次刷新重跑幂等合并，无害
+  }
 }
 
 interface RuyiStoreActions {
@@ -284,7 +361,7 @@ export const useRuyiStore = create<RuyiStore>()(
           const conversation = state.conversations[conversationId];
           if (!conversation) return state;
 
-          const { [conversationId]: _, ...remainingConversations } = state.conversations;
+          const { [conversationId]: _, ...remainingConversations } = state.conversations; // eslint-disable-line @typescript-eslint/no-unused-vars
           const owner = state.users[conversation.ownerId];
           const remainingMessageIds = new Set(
             Object.values(remainingConversations).flatMap((c) => c.messageIds),
@@ -304,7 +381,7 @@ export const useRuyiStore = create<RuyiStore>()(
 
           // 清理仅属于该会话的任务展示引用（任务本身保留）
           const remainingTasks = Object.fromEntries(
-            Object.entries(state.tasks).filter(([_, task]) => task.conversationId !== conversationId),
+            Object.entries(state.tasks).filter(([_, task]) => task.conversationId !== conversationId), // eslint-disable-line @typescript-eslint/no-unused-vars
           );
 
           return {
@@ -491,15 +568,24 @@ export const useRuyiStore = create<RuyiStore>()(
         const summaryLines = formatSubmissionSummary(submission);
         let assistantMessage: RuyiMessage;
         if (cap.mode === 'creative' && cap.workbenchPath) {
+          // V3.6.1：插件提交直达工作台——卡片不用于此处（卡片服务对话流呈现）。
+          // 只写轻量需求记录（参数进 capabilitySubmission 供工作台读取）+ 预写上下文，导航由页面完成
+          get().saveWorkbenchLaunchContext(
+            conversationId,
+            submission.capabilityId as 'document' | 'presentation' | 'advisor',
+            userMessage.id,
+          );
+          if (submission.directWorkbench) {
+            return; // 不生成确认消息——页面随后导航到工作台
+          }
           assistantMessage = {
             id: generateId('msg'),
             conversationId,
             sender: 'assistant',
             kind: 'text',
-            content: `已收到您的${cap.name}需求。${summaryLines ? `\n${summaryLines}` : ''}\n可以先在对话中补充要求，或直接进入工作台开始创作。`,
+            content: `已收到您的${cap.name}需求。${summaryLines ? `\n${summaryLines}` : ''}\n正在为您准备${cap.name}工作台。`,
             createdAt: nowIso,
             capabilityId: submission.capabilityId,
-            actions: [{ type: 'open-workbench', label: `进入${cap.name}` }],
           };
         } else if (submission.capabilityId === 'translation') {
           const lang = String(submission.confirmedParams.targetLanguage ?? '英文');
@@ -575,7 +661,8 @@ export const useRuyiStore = create<RuyiStore>()(
         }));
       },
 
-      startMeetingTask: (conversationId, initialText) => {
+      startMeetingTask: (conversationId, initialText: string) => {
+        void initialText;
         const state = get();
         const conversation = state.conversations[conversationId];
         if (!conversation) return null;
@@ -931,7 +1018,7 @@ export const useRuyiStore = create<RuyiStore>()(
 
       resetUserPrototype: (ownerId = RUYI_MAIN_OWNER_ID) => {
         set((state) => {
-          const { [ownerId]: _, ...remainingUsers } = state.users;
+          const { [ownerId]: _, ...remainingUsers } = state.users; // eslint-disable-line @typescript-eslint/no-unused-vars
           const newUser = createUserState(ownerId);
           const initial = createInitialState();
           return {
@@ -943,13 +1030,13 @@ export const useRuyiStore = create<RuyiStore>()(
             },
             conversations: {
               ...Object.fromEntries(
-                Object.entries(state.conversations).filter(([_, c]) => c.ownerId !== ownerId),
+                Object.entries(state.conversations).filter(([_, c]) => c.ownerId !== ownerId), // eslint-disable-line @typescript-eslint/no-unused-vars
               ),
               ...initial.conversations,
             },
             messages: {
               ...Object.fromEntries(
-                Object.entries(state.messages).filter(([_, m]) => {
+                Object.entries(state.messages).filter(([_, m]) => { // eslint-disable-line @typescript-eslint/no-unused-vars
                   const conv = state.conversations[m.conversationId];
                   return conv?.ownerId !== ownerId;
                 }),
@@ -957,10 +1044,10 @@ export const useRuyiStore = create<RuyiStore>()(
               ...initial.messages,
             },
             results: Object.fromEntries(
-              Object.entries(state.results).filter(([_, r]) => r.ownerId !== ownerId),
+              Object.entries(state.results).filter(([_, r]) => r.ownerId !== ownerId), // eslint-disable-line @typescript-eslint/no-unused-vars
             ),
             tasks: Object.fromEntries(
-              Object.entries(state.tasks).filter(([_, t]) => t.ownerId !== ownerId),
+              Object.entries(state.tasks).filter(([_, t]) => t.ownerId !== ownerId), // eslint-disable-line @typescript-eslint/no-unused-vars
             ),
             demoScenarioId: null,
           };
@@ -1334,34 +1421,56 @@ export const useRuyiStore = create<RuyiStore>()(
       version: SCHEMA_VERSION,
       migrate: (persistedState, _version) => {
         void _version; // 迁移按字段补默认值处理，不依赖版本号清空
-        // V2 保留式迁移：schema 1 → 2，保留 users/conversations/messages/results/tasks/workbenchContexts，
+        // V2 保留式迁移：schema 1/2 → 3，保留 users/conversations/messages/results/tasks/workbenchContexts，
         // 只补新字段默认值；禁止"版本不一致就 createInitialState()"清空用户数据
         const persisted = (persistedState ?? {}) as Partial<RuyiStore>;
         const safeDefault = <T>(value: T | undefined, fallback: T): T =>
           value === undefined || value === null ? fallback : value;
+        // V3.3：会话补 origin/scenarioId/seedRevision（保留式；不重置消息）
+        const migratedConversations: Record<string, RuyiConversation> = {};
+        for (const [id, conversation] of Object.entries(safeDefault(persisted.conversations, {}))) {
+          migratedConversations[id] = {
+            ...conversation,
+            origin: conversation.origin ?? (id === FIXED_SYSTEM_CONVERSATION_ID ? 'pc-im' : 'ruyi-zone'),
+            scenarioId: conversation.scenarioId ?? null,
+          };
+        }
+        // 引用清理：剔除悬挂 messageId/taskId，单条损坏数据不白屏
+        const messages = safeDefault(persisted.messages, {});
+        const tasks = safeDefault(persisted.tasks, {});
+        for (const conversation of Object.values(migratedConversations)) {
+          conversation.messageIds = conversation.messageIds.filter((mid) => !!messages[mid]);
+          if (conversation.activeTaskId && !tasks[conversation.activeTaskId]) conversation.activeTaskId = null;
+        }
         return {
           ...persisted,
+          conversations: migratedConversations,
           // 迁移后强制写当前 schema 版本（migrate 结果经 partialize 持久化时生效）
           schemaVersion: SCHEMA_VERSION,
           contextReferences: safeDefault(persisted.contextReferences, {}),
           workbenchContexts: safeDefault(persisted.workbenchContexts, {}),
           users: safeDefault(persisted.users, createInitialState().users),
-          conversations: safeDefault(persisted.conversations, {}),
-          messages: safeDefault(persisted.messages, {}),
+          messages,
           results: safeDefault(persisted.results, {}),
-          tasks: safeDefault(persisted.tasks, {}),
+          tasks,
         } as unknown as RuyiStore;
       },
       onRehydrateStorage: () => (state) => {
-        // 迁移补字段后立即落盘一次，确保 schema 版本与新字段写回 localStorage
         if (state && !state.demoMode) {
-          void useRuyiStore.persist.rehydrate;
-          // 触发一次轻量 set 使 persist 中间件重写当前完整状态
-          useRuyiStore.setState({ schemaVersion: SCHEMA_VERSION });
+          // V3.4：showcase 保留式合并（幂等：预置 ID 已存在即跳过；用户数据保留）。
+          // 注意：不能在此处 setState(schemaVersion) 提前落盘——会把 initial 泄漏的 showcaseSeedVersion
+          // 写上磁盘，令磁盘门控误判已合并。合并成功后由 merge 自身 setState 统一落盘。
+          queueMicrotask(() => {
+            try {
+              mergeRuyiShowcaseSeed(useRuyiStore.getState());
+            } catch {
+              // 合并失败不阻断应用；下次刷新重试（磁盘标记未写，天然重试）
+            }
+          });
         }
       },
       partialize: (state) => {
-        // demo 态不持久化（storage 层已拦截写入，这里返回上次有效快照形状以保持类型一致）
+        // demo 态不持久化（storage 层已拦截写入）
         if (state.demoMode) return undefined as unknown as RuyiStore;
         return {
         schemaVersion: state.schemaVersion,
@@ -1373,6 +1482,7 @@ export const useRuyiStore = create<RuyiStore>()(
         tasks: state.tasks,
         workbenchContexts: state.workbenchContexts,
         contextReferences: state.contextReferences,
+        showcaseSeedVersion: state.showcaseSeedVersion,
         } as RuyiStore;
       },
     },

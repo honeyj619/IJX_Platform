@@ -4,7 +4,11 @@ export type BusinessMessageCardCategory =
   | 'schedule'
   | 'project'
   | 'knowledge'
-  | 'notice';
+  | 'notice'
+  /** V3.5：创作工作台入口（公文/PPT/周报需求确认后的进入卡片） */
+  | 'workbench'
+  /** V3.6：会议创建结果（任务执行成功后的会议对象卡） */
+  | 'meeting';
 
 export type BusinessMessageCardTone = 'brand' | 'info' | 'success' | 'warning' | 'danger' | 'neutral';
 

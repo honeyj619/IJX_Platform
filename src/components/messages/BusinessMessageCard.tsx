@@ -8,6 +8,7 @@ import {
   ExternalLink,
   FolderKanban,
   Megaphone,
+  Video,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type {
@@ -28,6 +29,8 @@ const categoryConfig: Record<BusinessMessageCardCategory, { label: string; icon:
   project: { label: '项目', icon: FolderKanban, className: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-300' },
   knowledge: { label: '知识', icon: BookOpen, className: 'bg-cyan-50 text-cyan-600 dark:bg-cyan-900/20 dark:text-cyan-300' },
   notice: { label: '通知', icon: Megaphone, className: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
+  workbench: { label: '工作台', icon: ExternalLink, className: 'bg-theme-50 text-theme-600 dark:bg-theme-900/20 dark:text-theme-300' },
+  meeting: { label: '会议', icon: Video, className: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-300' },
 };
 
 const toneClasses: Record<BusinessMessageCardTone, string> = {
@@ -95,7 +98,7 @@ export default function BusinessMessageCard({ card, compact = false }: BusinessM
         {card.summary && <p className="text-sm leading-6 text-gray-600 dark:text-gray-300">{card.summary}</p>}
 
         {card.metrics && card.metrics.length > 0 && (
-          <div className={`grid gap-2 ${compact ? 'grid-cols-2' : card.metrics.length >= 4 ? 'grid-cols-4' : card.metrics.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} ${card.summary ? 'mt-3' : ''}`}>
+          <div className={`grid gap-2 ${compact && card.metrics.length >= 4 ? 'grid-cols-2' : card.metrics.length >= 4 ? 'grid-cols-4' : card.metrics.length === 3 ? 'grid-cols-3' : 'grid-cols-2'} ${card.summary ? 'mt-3' : ''}`}>
             {card.metrics.map((metric) => (
               <div key={`${metric.label}-${metric.value}`} className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
                 <div className="text-xs text-gray-500 dark:text-gray-400">{metric.label}</div>

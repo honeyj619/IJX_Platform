@@ -32,6 +32,10 @@ export interface RuyiConversation {
   activeTaskId: string | null;
   /** V2：当前绑定的业务上下文引用（只对当前会话生效，切页不自动沿用） */
   contextReferenceId?: string | null;
+  /** V3.3：会话来源入口（schema 3 迁移补默认值；固定系统会话 = 'pc-im'） */
+  origin?: 'pc-im' | 'ruyi-zone';
+  /** V3.3：演示场景会话所属场景 ID（普通会话为 null） */
+  scenarioId?: string | null;
 }
 
 export type RuyiMessageKind =
@@ -61,12 +65,21 @@ export type RuyiMessageActionType =
   /* V2 */
   | 'confirm-date'
   | 'open-task-center'
-  | 'select-task';
+  | 'select-task'
+  /** V3.5：普通内部路由跳转（知识库/流程中心/运营看板/服务台等；payload.href 必须为已登记 /pc_client 路由） */
+  | 'open-route';
 
 export interface RuyiMessageAction {
   type: RuyiMessageActionType;
   label: string;
-  payload?: Record<string, unknown>;
+  payload?: {
+    /** V3.5：open-route 目标路由（仅已登记 /pc_client 内部路由） */
+    href?: string;
+    [key: string]: unknown;
+  };
+  /** V3.4：预置历史完成态——按钮禁用并显示 completedLabel（如"已确认"/"已重试"） */
+  disabled?: boolean;
+  completedLabel?: string;
 }
 
 export interface RuyiMessageFeedback {
@@ -84,6 +97,11 @@ export interface RuyiCapabilitySubmission {
   attachments: string[];
   /** 已确认参数（键名与各能力面板字段对齐，供工作台启动上下文带入） */
   confirmedParams: Record<string, unknown>;
+  /**
+   * V3.6.1：插件提交直达工作台模式——只写轻量需求记录 + 预写上下文，
+   * 不生成确认消息/入口卡（卡片的正确用途是对话流呈现，不在此处）
+   */
+  directWorkbench?: boolean;
 }
 
 export interface RuyiMessage {
@@ -101,7 +119,7 @@ export interface RuyiMessage {
   actions?: RuyiMessageAction[];
   sourceLabel?: string;
   sourceHref?: string;
-  /** 应用推送与如意助手查询共用的结构化业务卡片。 */
+  /** V3.4：查询类回复的统一业务卡片（两端复用 BusinessMessageCard，IM compact / 空间完整布局） */
   businessCard?: BusinessMessageCardData;
   /** 用户对该条助手回复的反馈（记录在消息上，不追加系统消息） */
   feedback?: RuyiMessageFeedback;
@@ -294,4 +312,6 @@ export interface RuyiPrototypeState {
   demoScenarioId: string | null;
   /** demo fixture 模式：仅内存，不写入持久化 */
   demoMode?: boolean;
+  /** V3.4：showcase 预置对话合并版本（保留式迁移门控；升级默认能力对话时 +1） */
+  showcaseSeedVersion?: number;
 }
