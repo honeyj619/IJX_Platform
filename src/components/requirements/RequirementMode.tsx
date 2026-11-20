@@ -16,6 +16,7 @@ import {
   ChevronRight,
   ClipboardList,
   Crosshair,
+  GripVertical,
   ListChecks,
   Pencil,
   Plus,
@@ -31,7 +32,17 @@ const STORAGE_KEY = 'ijx-prototype-requirement-mode';
 const OVERRIDES_STORAGE_KEY = 'ijx-prototype-requirement-overrides-v2';
 const OVERRIDES_DISMISS_KEY = 'ijx-prototype-requirement-overrides-v2-dismissed';
 const NEW_SURFACE_VALUE = '__new_surface__';
-const isMaintenanceEnabled = import.meta.env.DEV;
+
+/**
+ * 维护能力：仅本机开发环境（DEV 构建 + 回环地址）为真。
+ * 生产 Pages 始终为 false，因而不会渲染任何维护入口，也不会请求 /__ijx/requirements。
+ * 注意：这不是用户身份认证，而是既定的"本机维护边界"；最终发布权限由 GitHub 仓库写权限保证。
+ */
+const canMaintainRequirements = import.meta.env.DEV && (() => {
+  if (typeof window === 'undefined') return false;
+  const hostname = window.location.hostname;
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1' || hostname === '[::1]';
+})();
 
 interface RequirementLocator {
   filePath: string;
@@ -132,7 +143,7 @@ function routeDefaultSurface(pathname: string) {
 }
 
 function getLegacyImportCandidate(): LegacyImportCandidate | null {
-  if (!isMaintenanceEnabled) return null;
+  if (!canMaintainRequirements) return null;
   try {
     const raw = window.localStorage.getItem(OVERRIDES_STORAGE_KEY);
     if (!raw || window.localStorage.getItem(OVERRIDES_DISMISS_KEY) === raw) return null;
@@ -249,6 +260,8 @@ export function RequirementModeLayer() {
   const { enabled, setEnabled, selectedId, setSelectedId } = useRequirementMode();
   const location = useLocation();
   const supportedRoute = location.pathname === '/admin' || location.pathname.startsWith('/pc_client');
+  // 查看能力：当前属于支持路由时为真，生产与开发一致；所有只读展示（开关/角标/详情）依赖它
+  const canViewRequirements = supportedRoute;
   const [requirements, setRequirements] = useState<ManagedRequirement[]>(prototypeRequirements);
   const [mounted, setMounted] = useState<MountedRequirement[]>([]);
   const [formMode, setFormMode] = useState<FormMode>(null);
@@ -265,9 +278,11 @@ export function RequirementModeLayer() {
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const observedElementsRef = useRef<Set<HTMLElement>>(new Set());
 
-  // ===== 入口工具条：可拖动 + 失焦 1s 后半透明（悬停恢复） =====
+  // ===== 入口工具条：独立拖拽手柄 + 失焦 1s 后半透明（悬停恢复） =====
+  // P0：只有从拖拽手柄按下才启动拖拽并设置 pointer capture；业务按钮保持标准事件，互不干扰。
   const ENTRY_POS_KEY = 'ijx-requirement-entry-pos-v1';
   const entryBarRef = useRef<HTMLDivElement | null>(null);
+  const dragHandleRef = useRef<HTMLButtonElement | null>(null);
   const [entryPos, setEntryPos] = useState<{ x: number; y: number }>(() => {
     try {
       const raw = window.localStorage.getItem(ENTRY_POS_KEY);
@@ -295,15 +310,16 @@ export function RequirementModeLayer() {
   };
 
   const handleEntryPointerDown = (event: React.PointerEvent) => {
-    // 只响应主键；按钮点击不触发拖动（拖动阈值 4px，点击仍可用）
+    // 只响应主键；指针捕获只落在拖拽手柄自身，不波及相邻业务按钮
     if (event.button !== 0) return;
+    const handle = dragHandleRef.current;
     const bar = entryBarRef.current;
-    if (!bar) return;
+    if (!handle || !bar) return;
     const rect = bar.getBoundingClientRect();
     dragStateRef.current = { startX: event.clientX, startY: event.clientY, originLeft: rect.left, originTop: rect.top, moved: false };
     setEntryDragging(true);
     scheduleEntryDim();
-    bar.setPointerCapture?.(event.pointerId);
+    handle.setPointerCapture?.(event.pointerId);
   };
 
   const handleEntryPointerMove = (event: React.PointerEvent) => {
@@ -328,16 +344,24 @@ export function RequirementModeLayer() {
     const drag = dragStateRef.current;
     if (drag?.moved) {
       persistEntryPos(entryPos.x, entryPos.y);
-      // 拖动后抑制一次点击（避免拖完误触发按钮）
-      const bar = entryBarRef.current;
-      if (bar) {
-        bar.dataset.suppressClick = '1';
-        window.setTimeout(() => { delete bar.dataset.suppressClick; }, 50);
+      // 拖拽结束只抑制手柄自己的无意义 click，不影响相邻业务按钮
+      const handle = dragHandleRef.current;
+      if (handle) {
+        handle.dataset.suppressClick = '1';
+        window.setTimeout(() => { delete handle.dataset.suppressClick; }, 50);
       }
     }
     dragStateRef.current = null;
     setEntryDragging(false);
     scheduleEntryDim();
+  };
+
+  const handleEntryDragClick = (event: React.MouseEvent) => {
+    // 拖拽后的 pointerup 会跟一次 click，且被 pointer capture 定向到手柄——此处只拦截手柄自身
+    if (dragHandleRef.current?.dataset.suppressClick) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   };
 
   // 挂载后启动失焦计时；窗口尺寸变化时夹紧位置
@@ -401,7 +425,7 @@ export function RequirementModeLayer() {
   }, [location.pathname, requirementById, requirements]);
 
   useEffect(() => {
-    if (!enabled || !supportedRoute || !isMaintenanceEnabled) return undefined;
+    if (!enabled || !canViewRequirements || !canMaintainRequirements) return undefined;
     let cancelled = false;
     requestRequirements()
       .then((next) => {
@@ -411,15 +435,15 @@ export function RequirementModeLayer() {
         }
       })
       .catch((error: unknown) => {
-        if (!cancelled && isMaintenanceEnabled) {
+        if (!cancelled && canMaintainRequirements) {
           setLoadWarning(error instanceof Error ? error.message : '需求维护服务暂不可用');
         }
       });
     return () => { cancelled = true; };
-  }, [enabled, supportedRoute]);
+  }, [enabled, canViewRequirements]);
 
   useEffect(() => {
-    if (!enabled || !supportedRoute) {
+    if (!enabled || !canViewRequirements) {
       setMounted([]);
       return undefined;
     }
@@ -438,7 +462,7 @@ export function RequirementModeLayer() {
       window.removeEventListener('scroll', refresh, true);
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
     };
-  }, [enabled, refresh, supportedRoute]);
+  }, [enabled, refresh, canViewRequirements]);
 
   useEffect(() => {
     if (!enabled || !selectedId) return undefined;
@@ -527,7 +551,7 @@ export function RequirementModeLayer() {
   }, [applyResponse, setSelectedId]);
 
   useEffect(() => {
-    if (!enabled || !isMaintenanceEnabled || !selectionMode) return undefined;
+    if (!enabled || !canMaintainRequirements || !selectionMode) return undefined;
     const updateTarget = (event: Event) => {
       const target = event.target instanceof HTMLElement ? event.target : null;
       if (!target || target.closest('[data-requirement-ui]')) return;
@@ -597,7 +621,7 @@ export function RequirementModeLayer() {
   };
 
   const startEditing = () => {
-    if (!selected || !isMaintenanceEnabled) return;
+    if (!selected || !canMaintainRequirements) return;
     setDraft({
       surface: selected.surface,
       title: selected.title,
@@ -753,35 +777,41 @@ export function RequirementModeLayer() {
   const selectedSurfaceIndex = selected ? selectedSurfaceItems.findIndex((item) => item.id === selected.id) : -1;
   const panelVisible = enabled && Boolean(selected || formMode || legacyImport);
 
-  if (!supportedRoute) return null;
+  if (!canViewRequirements) return null;
 
   return (
     <>
+      {/* 外层工具条只负责布局、定位和淡出；pointer capture 全部落在拖拽手柄自身 */}
       <div
         ref={entryBarRef}
         data-requirement-ui
-        className={`fixed z-[10030] flex items-center gap-2 transition-opacity duration-500 ${entryDragging ? 'cursor-grabbing' : 'cursor-grab'} ${entryDimmed ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}
+        className={`fixed z-[10030] flex items-center gap-1.5 transition-opacity duration-500 ${entryDimmed ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}
         style={entryPos.x >= 0 && entryPos.y >= 0 ? { left: entryPos.x, top: entryPos.y } : { right: 16, top: 12 }}
-        onPointerDown={handleEntryPointerDown}
-        onPointerMove={handleEntryPointerMove}
-        onPointerUp={handleEntryPointerUp}
-        onPointerCancel={handleEntryPointerUp}
         onMouseEnter={() => { if (dimTimerRef.current) window.clearTimeout(dimTimerRef.current); setEntryDimmed(false); }}
         onMouseLeave={scheduleEntryDim}
-        onClick={(event) => {
-          // 拖动结束的 pointerup 后会跟一次 click——拖动场景抑制
-          if (entryBarRef.current?.dataset.suppressClick) { event.preventDefault(); event.stopPropagation(); }
-        }}
-        title="按住拖动调整位置"
       >
-        {enabled && isMaintenanceEnabled && (
-          <button type="button" onClick={(event) => { event.stopPropagation(); beginCreate(); }} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-gray-200 bg-white/95 px-2.5 text-xs font-semibold text-gray-600 shadow-lg backdrop-blur-sm hover:border-theme-200 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200" title="新增原型需求">
+        <button
+          ref={dragHandleRef}
+          type="button"
+          aria-label="拖动需求模式入口"
+          title="按住拖动调整位置"
+          className={`flex h-9 w-6 shrink-0 items-center justify-center text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 ${entryDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+          onPointerDown={handleEntryPointerDown}
+          onPointerMove={handleEntryPointerMove}
+          onPointerUp={handleEntryPointerUp}
+          onPointerCancel={handleEntryPointerUp}
+          onClick={handleEntryDragClick}
+        >
+          <GripVertical size={15} />
+        </button>
+        {enabled && canMaintainRequirements && (
+          <button type="button" onClick={beginCreate} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-gray-200 bg-white/95 px-2.5 text-xs font-semibold text-gray-600 shadow-lg backdrop-blur-sm hover:border-theme-200 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200" title="新增原型需求">
             <Plus size={15} /><span>新增</span>
           </button>
         )}
         <button
           type="button"
-          onClick={(event) => { event.stopPropagation(); if (entryBarRef.current?.dataset.suppressClick) return; setEnabled(!enabled); }}
+          onClick={() => setEnabled(!enabled)}
           className={`inline-flex h-9 items-center gap-2 rounded-md border px-3 text-xs font-semibold shadow-lg backdrop-blur-sm transition-colors ${enabled ? 'border-theme-200 bg-theme-600 text-white hover:bg-theme-700' : 'border-gray-200 bg-white/95 text-gray-600 hover:border-theme-200 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-900/95 dark:text-gray-200'}`}
           title={enabled ? '关闭需求模式' : '开启需求模式'}
           aria-pressed={enabled}
@@ -834,7 +864,7 @@ export function RequirementModeLayer() {
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            {legacyImport && isMaintenanceEnabled && (
+            {legacyImport && canMaintainRequirements && (
               <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/30">
                 <div className="flex gap-2 text-xs leading-5 text-amber-800 dark:text-amber-200"><Upload size={15} className="mt-0.5 shrink-0" /><span>检测到旧版本的本地需求修改，可以一次性导入到需求服务。</span></div>
                 <div className="mt-2 flex justify-end gap-2">
@@ -886,14 +916,14 @@ export function RequirementModeLayer() {
               ) : selected ? (
                 <>
                   <div>
-                    <div className="flex items-start justify-between gap-3"><h3 className="text-lg font-semibold text-gray-950 dark:text-white">{selected.title}</h3>{isMaintenanceEnabled && <button type="button" onClick={startEditing} className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:border-theme-200 hover:text-theme-700 dark:border-gray-700 dark:text-gray-300" title="编辑需求"><Pencil size={13} />编辑</button>}</div>
+                    <div className="flex items-start justify-between gap-3"><h3 className="text-lg font-semibold text-gray-950 dark:text-white">{selected.title}</h3>{canMaintainRequirements && <button type="button" onClick={startEditing} className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-600 hover:border-theme-200 hover:text-theme-700 dark:border-gray-700 dark:text-gray-300" title="编辑需求"><Pencil size={13} />编辑</button>}</div>
                     <h4 className="mb-1 mt-4 text-xs font-semibold text-gray-500 dark:text-gray-400">功能需求</h4><p className="whitespace-pre-wrap text-sm leading-6 text-gray-600 dark:text-gray-300">{selected.functionalRequirement || '暂无'}</p>
                   </div>
                   <section>
                     <h4 className="mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400">业务规则</h4>
                     {selected.businessRules.length > 0 ? <div className="divide-y divide-gray-100 rounded-md border border-gray-200 dark:divide-gray-800 dark:border-gray-700">{selected.businessRules.map((rule, index) => <div key={`${index}-${rule}`} className="flex gap-2.5 px-3 py-3 text-sm leading-5 text-gray-700 dark:text-gray-200"><span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-theme-500" /><span>{rule}</span></div>)}</div> : <p className="text-sm text-gray-400">暂无</p>}
                   </section>
-                  {isMaintenanceEnabled && (
+                  {canMaintainRequirements && (
                     <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-4 dark:border-gray-800">
                       <button type="button" onClick={() => void reorderSelected('up')} disabled={selectedSurfaceIndex <= 0 || busyAction !== null} className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-600 hover:text-theme-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300" title="在模块内上移"><ArrowUp size={13} />上移</button>
                       <button type="button" onClick={() => void reorderSelected('down')} disabled={selectedSurfaceIndex < 0 || selectedSurfaceIndex >= selectedSurfaceItems.length - 1 || busyAction !== null} className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1.5 text-xs text-gray-600 hover:text-theme-700 disabled:cursor-not-allowed disabled:opacity-40 dark:border-gray-700 dark:text-gray-300" title="在模块内下移"><ArrowDown size={13} />下移</button>

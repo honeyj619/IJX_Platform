@@ -17,7 +17,7 @@
 
 1. **ClientWindowBar 底色**：初版误用不存在的 token `--ui-surface-panel`/`--ui-hover`（解析为透明）→ 面板与标题栏无底色与页面文字重叠。修正：面板用 `--ui-surface-card`，hover 用 `--ui-surface-selected`。标题栏本身保持完全透明（用户确认效果）。
 2. **标题栏布局回归**（事故+修复，教训记录）：①删除左上角「i吉祥」标题（appTitle prop 移除，左区空占位）；②标题栏从白卡内移到白卡外层以求全页面透明统一，但新外层容器丢失 `flex-1` 导致白卡按内容收缩（各页面宽度 626~1021px 不等）——发现后补 `flex-1` 并移除 `calc(100% - 36px)` 硬编码，6 路由实测白卡统一 right:1432/w:1248。**教训：调整 Layout flex 结构时必须逐路由量化 shell 尺寸**。
-3. **需求模式入口**（RequirementMode.tsx）：固定右上改为可拖动（Pointer 事件，4px 阈值防点击误判，拖后抑制 click），位置存 localStorage `ijx-requirement-entry-pos-v1` 刷新保持、resize 夹紧；失焦 1s 后 opacity-30、悬停/拖动恢复（transition 500ms）。实测：拖动 (1327,12)→(252,482) 持久化、刷新保持、hover opacity=1。
+3. **需求模式入口**（RequirementMode.tsx）：固定右上改为可拖动。2026-11-15 初版整条工具条可拖（Pointer 事件、4px 阈值、拖后抑制 click）；**2026-11-20 线上复现确定性点击回归**——外层 pointerdown 立即 `setPointerCapture`，把「需求模式」「新增」按钮的 pointerup/click 重定向到外层 div，按钮点击失效。P0 修复：改为**独立拖拽手柄**（`aria-label="拖动需求模式入口"`），pointer capture 只落手柄自身，业务按钮保持标准事件链；位置仍存 localStorage `ijx-requirement-entry-pos-v1`（刷新保持、resize 夹紧）；失焦 1s 后 opacity-30、悬停/拖动恢复。权限表达收敛为 `canViewRequirements`（支持路由）+ `canMaintainRequirements`（DEV 且回环地址），生产只读。专项浏览器回归：`npm run check:req-mode`（真实 pointer/touch/keyboard，生产 preview + dev 双阶段，23 项全通过）。
 
 验证：tsc 通过；浏览器实测（标题栏 6 路由 bg=rgba(0,0,0,0)、需求模式拖动/透明/持久化）；截图 `.fix-panel-bg.png`→`.fix-bar-v4.png`、`.fix-req-drag.png`。**未跑全量 npm run check**（本轮仅 React 侧样式/交互调整，未动路由与构建结构）。
 

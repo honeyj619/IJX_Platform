@@ -14,7 +14,8 @@
     "check:build": "vite build --config vite.react.config.mjs --configLoader runner --outDir node_modules/.prototype-check-dist --emptyOutDir",
     "check:routes": "node tools/prototype/check-route-contract.mjs",
     "check:pages": "node tools/prototype/smoke-pages.mjs",
-    "check:app-chain": "node tools/prototype/verify-download-chain.mjs"
+    "check:app-chain": "node tools/prototype/verify-download-chain.mjs",
+    "check:req-mode": "node tools/prototype/verify-requirement-mode.mjs"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",

@@ -45,3 +45,9 @@
 | `npm run check` | 上述 + 类型 + 构建 |
 
 Pages 正式 base（`/IJX_Platform/`）构建验收：`VITE_BASE='/IJX_Platform/' npm run build`，然后验证 `/IJX_Platform/download`、`/IJX_Platform/app/prototype/`、`/IJX_Platform/app/prototype/message`、`/IJX_Platform/pc_client`、`/IJX_Platform/pc_web`、`/IJX_Platform/admin`。
+
+## 7. PC 客户端专项验证入口速查
+
+| 命令 | 覆盖 |
+| --- | --- |
+| `npm run check:req-mode` | 需求模式入口交互回归（真实 pointer/mouse/touch/keyboard，非 DOM `.click()`）：点击开关（含按钮内部文字）、拖拽手柄移动 + 位置持久化且不切换模式、拖后立即点击有效、键盘 Enter/Space、触控 tap、生产只读（无维护入口、不请求 `/__ijx/requirements`）、本机 dev 维护入口可见性与点选流程。独立命令（需本机 Chrome + playwright-core），不并入 `npm run check` |
