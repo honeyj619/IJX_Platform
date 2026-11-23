@@ -88,6 +88,11 @@ function killServer(proc) {
 async function waitForEntry(page, baseUrl, timeoutMs = 60_000) {
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await page.evaluate(() => localStorage.clear());
+  // 统一登录门禁（/pc_client/* 未登录渲染客户端未登录页）：先走真实客户端登录链，再进入业务路由测需求角标
+  await page.goto(`${baseUrl}/login?source=client`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  await page.fill('#login-password', 'req-mode-e2e');
+  await page.click('button[type=submit]');
+  await page.waitForURL(`${baseUrl}/pc_client`, { timeout: timeoutMs });
   await page.goto(`${baseUrl}${TEST_ROUTE}`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await page.locator('[data-requirement-ui] button[aria-pressed]').first().waitFor({ timeout: timeoutMs });
 }
