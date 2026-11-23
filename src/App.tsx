@@ -19,6 +19,8 @@ import { APP_PROTOTYPE_BASE, APP_PROTOTYPE_HOME, APP_PROTOTYPE_MESSAGE, appProto
 import PcWebPortal from "@/pages/PcWebPortal";
 import Contacts from "@/pages/Contacts";
 import MeetingCenter, { MeetingRecordingDetail } from "@/pages/Meetings";
+import Login from "@/pages/Login";
+import AuthGate from "@/components/auth/AuthGate";
 import { RequirementModeLayer, RequirementModeProvider } from "@/components/requirements/RequirementMode";
 
 function shouldShowMobileView(width: number, height: number): boolean {
@@ -223,12 +225,16 @@ export default function App() {
           <Route path="/app/home" element={<Navigate to={APP_PROTOTYPE_HOME} replace />} />
           <Route path="/app" element={<Navigate to={APP_PROTOTYPE_HOME} replace />} />
           <Route path="/app/*" element={<Navigate to={APP_PROTOTYPE_HOME} replace />} />
-          <Route path="/pc_web" element={<PcWebPortal />} />
-          <Route path="/pc_web/contacts" element={<PcWebPortal />} />
+          {/* 统一登录：独立页面，PC Web 与 PC 客户端共用，不套客户端 Layout 与 PC Web 门户 */}
+          <Route path="/login" element={<Login />} />
+          {/* PC Web 门户：外层登录门禁（未登录 replace 到 /login?source=web） */}
+          <Route path="/pc_web" element={<AuthGate source="web"><PcWebPortal /></AuthGate>} />
+          <Route path="/pc_web/contacts" element={<AuthGate source="web"><PcWebPortal /></AuthGate>} />
           <Route path="/web_client/*" element={<LegacyRouteRedirect from="/web_client" to="/pc_client" />} />
           <Route path="/pc-web/*" element={<LegacyRouteRedirect from="/pc-web" to="/pc_web" />} />
           <Route path="/" element={<Navigate to="/pc_client" replace />} />
-          <Route path="/pc_client/*" element={webClientRoutes} />
+          {/* PC 客户端：外层登录门禁（未登录渲染客户端未登录页，不短暂渲染业务导航） */}
+          <Route path="/pc_client/*" element={<AuthGate source="client">{webClientRoutes}</AuthGate>} />
           <Route path="/enterprise" element={<Navigate to="/pc_client/enterprise" replace />} />
           <Route path="/assistant" element={<Navigate to="/pc_client/ruyi-zone" replace />} />
           <Route path="/process" element={<Navigate to="/pc_client/process" replace />} />

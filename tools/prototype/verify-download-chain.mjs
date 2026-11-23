@@ -118,14 +118,18 @@ try {
   ok('8 工作台 → 返回首页',
     /\/app\/prototype\/($|\?)/.test(await url(page)) && (await body(page)).includes('未读公文'), await url(page))
 
-  // ===== PC 两端 =====
+  // ===== PC 两端（统一登录门禁链路；桌面视口执行，/login 为桌面原型页）=====
+  await page.setViewportSize({ width: 1440, height: 900 })
   await goto(page, '/download')
   await clickText(page, 'PC客户端进入'); await wait(page, 1200)
-  ok('9 PC客户端进入 → /pc_client', (await url(page)).startsWith('/pc_client'), await url(page))
+  ok('9 PC客户端进入 → /pc_client 未登录页',
+    (await url(page)).startsWith('/pc_client') && (await body(page)).includes('使用浏览器登录'), await url(page))
 
   await goto(page, '/download')
   await clickText(page, 'PC Web进入'); await wait(page, 1200)
-  ok('10 PC Web进入 → /pc_web', (await url(page)).startsWith('/pc_web'), await url(page))
+  ok('10 PC Web进入 → /pc_web 后由门禁到 /login?source=web',
+    (await url(page)).includes('/login?source=web') && (await body(page)).includes('登录 i吉祥 PC Web'), await url(page))
+  await page.setViewportSize({ width: 390, height: 844 })
 
   // ===== 历史兼容路由（docs/APP_ROUTES.md §4）=====
   for (const [path, expect, label] of [

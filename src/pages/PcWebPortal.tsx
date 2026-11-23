@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Building2, ChevronRight, MessageCircle, Search } from 'lucide-react';
+import { Building2, ChevronDown, ChevronRight, LogOut, MessageCircle, Search } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Enterprise from './Enterprise';
 import EnterpriseFloatingBar from '../components/EnterpriseFloatingBar';
 import { contactDirectory, contactGroups } from '../data/contactDirectory';
 import { getPersonAvatar, MAIN_USER_AVATAR, MAIN_USER_NAME } from '../data/people';
+import { usePrototypeSessionStore } from '../store/prototypeSessionStore';
 
 const portalNavItems = ['首页', '文档中心', '流程中心', '协作办公', 'AI门户', '业务系统', '航班动态', '通讯录', '数据看板'];
 
@@ -20,6 +21,10 @@ export default function PcWebPortal() {
   const [selectedDepartment, setSelectedDepartment] = useState(contactGroups[0]);
   const [keyword, setKeyword] = useState('');
   const [revealedMobiles, setRevealedMobiles] = useState<Set<string>>(() => new Set());
+  // 头像区最小退出菜单（范围最小，不新造整套 Header）
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const logoutChannel = usePrototypeSessionStore(state => state.logoutChannel);
 
   const contacts = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
@@ -71,10 +76,32 @@ export default function PcWebPortal() {
               return <button key={label} type="button" onClick={() => openNav(label)} className={`relative whitespace-nowrap px-3 py-8 text-sm font-semibold transition-colors ${active ? 'text-theme-700' : enabled ? 'text-gray-600 hover:text-theme-700' : 'cursor-default text-gray-400'}`}>{label}{active && <span className="absolute inset-x-3 bottom-0 h-0.5 bg-theme-600" />}</button>;
             })}
           </nav>
-          <div className="flex shrink-0 items-center gap-3 border-l border-gray-200 pl-5">
+          <div className="relative flex shrink-0 items-center gap-3 border-l border-gray-200 pl-5">
             <Search size={20} className="text-gray-400" />
-            <img src={MAIN_USER_AVATAR} alt="" className="h-9 w-9 rounded-full object-cover" />
-            <span className="text-sm font-medium">{MAIN_USER_NAME}</span>
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen(current => !current)}
+              className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 transition-colors hover:bg-gray-50"
+            >
+              <img src={MAIN_USER_AVATAR} alt="" className="h-9 w-9 rounded-full object-cover" />
+              <span className="text-sm font-medium text-gray-800">{MAIN_USER_NAME}</span>
+              <ChevronDown size={14} className="text-gray-400" />
+            </button>
+            {accountMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setAccountMenuOpen(false)} />
+                <div className="absolute right-0 top-full z-40 mt-2 w-40 overflow-hidden rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                  <button
+                    type="button"
+                    onClick={() => { setAccountMenuOpen(false); setConfirmLogout(true); }}
+                    className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                  >
+                    <LogOut size={15} className="text-gray-400" />
+                    退出登录
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -133,6 +160,20 @@ export default function PcWebPortal() {
 
       {/* 右侧悬浮导航栏（通用组件）：PC Web 所有页面统一渲染，上下文按页面区分 */}
       <EnterpriseFloatingBar pageContext={{ title: isContacts ? 'PC Web 通讯录' : 'PC Web 企业门户', path: `${location.pathname}${location.search}` }} />
+
+      {/* 退出登录确认（Web 来源）：确认后清除 Web 登录态，由外层门禁进入 /login?source=web */}
+      {confirmLogout && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={event => { if (event.target === event.currentTarget) setConfirmLogout(false); }}>
+          <div role="dialog" aria-modal="true" aria-label="退出登录" className="w-full max-w-sm rounded-lg border border-gray-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-900">退出登录</h3>
+            <p className="mt-3 text-sm leading-6 text-gray-500">退出后将离开 i吉祥 PC Web，需要重新登录才能继续访问企业门户。</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setConfirmLogout(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50">取消</button>
+              <button type="button" onClick={() => { setConfirmLogout(false); logoutChannel('web'); }} className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-medium text-white hover:bg-theme-700">确认退出</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

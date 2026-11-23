@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { User, Settings, LogOut, Shield, Download, CircleHelp } from "lucide-react";
+import { User, Settings, LogOut, Shield, Download, CircleHelp, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useThemeStore } from "../store/themeStore";
 import { Skin } from "../store/themeStore";
 import { MAIN_USER_AVATAR, MAIN_USER_NAME } from "../data/people";
 import { createFeedbackPageContext, saveFeedbackPageContext } from "../utils/feedbackPageContext";
+import { usePrototypeSessionStore } from "../store/prototypeSessionStore";
 
 interface MenuItem {
   id: string;
@@ -23,10 +24,12 @@ interface UserMenuProps {
 
 export function UserMenu({ collapsed = false, feedbackPageTitle = '' }: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { mode, skin, setMode, setSkin } = useThemeStore();
+  const logoutChannel = usePrototypeSessionStore(state => state.logoutChannel);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -78,9 +81,9 @@ export function UserMenu({ collapsed = false, feedbackPageTitle = '' }: UserMenu
     { id: "divider2", label: "", icon: null, divider: true },
     {
       id: "logout",
-      label: "退出",
+      label: "退出登录",
       icon: <LogOut size={16} />,
-      action: () => console.log("退出登录")
+      action: () => setConfirmLogout(true)
     },
   ];
 
@@ -165,6 +168,23 @@ export function UserMenu({ collapsed = false, feedbackPageTitle = '' }: UserMenu
                 </button>
               )
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 退出登录确认弹窗：确认后清除客户端登录态并回到客户端未登录页 */}
+      {confirmLogout && (
+        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/40 p-4" onMouseDown={event => { if (event.target === event.currentTarget) setConfirmLogout(false); }}>
+          <div role="dialog" aria-modal="true" aria-label="退出登录" className="w-full max-w-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-2xl">
+            <div className="flex items-start justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">退出登录</h3>
+              <button type="button" onClick={() => setConfirmLogout(false)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"><X size={18} /></button>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">退出后当前客户端将回到未登录状态，需要重新登录才能继续使用。</p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button type="button" onClick={() => setConfirmLogout(false)} className="rounded-lg border border-gray-200 dark:border-gray-600 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">取消</button>
+              <button type="button" onClick={() => { setConfirmLogout(false); logoutChannel('client'); navigate('/pc_client', { replace: true }); }} className="rounded-lg bg-theme-600 px-4 py-2 text-sm font-medium text-white hover:bg-theme-700">确认退出</button>
+            </div>
           </div>
         </div>
       )}

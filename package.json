@@ -9,12 +9,13 @@
     "build": "vite build --config vite.react.config.mjs --configLoader runner",
     "lint": "eslint .",
     "preview": "vite preview",
-    "check": "npm run check:types && npm run check:build && npm run check:routes && npm run check:pages && npm run check:app-chain",
+    "check": "npm run check:types && npm run check:build && npm run check:routes && npm run check:pages && npm run check:app-chain && npm run check:login",
     "check:types": "tsc -b --noEmit",
     "check:build": "vite build --config vite.react.config.mjs --configLoader runner --outDir node_modules/.prototype-check-dist --emptyOutDir",
     "check:routes": "node tools/prototype/check-route-contract.mjs",
     "check:pages": "node tools/prototype/smoke-pages.mjs",
     "check:app-chain": "node tools/prototype/verify-download-chain.mjs",
+    "check:login": "node tools/prototype/verify-login-flow.mjs",
     "check:req-mode": "node tools/prototype/verify-requirement-mode.mjs"
   },
   "dependencies": {

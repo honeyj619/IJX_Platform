@@ -11,6 +11,15 @@
 | 管理后台 | `/admin` 相关代码（`src/pages/Admin.tsx` 等） | `docs/ADMIN_UI_GUIDELINES.md`、`docs/ADMIN_ROUTES.md` | `npm run check` + 后台入口回归 |
 | Vue App（员工端） | `src/prototype/` | `src/prototype/harness/` | `npm run check:routes` + `check:pages` + `check:app-chain` |
 | 跨端入口与兼容路由 | `src/App.tsx`、`src/pages/Download.tsx` | `docs/APP_ROUTES.md` | `npm run check:routes` + 下载链路回归 |
+| 统一登录 / PC 跨端会话 | `src/pages/Login.tsx`、`src/components/auth/`、`src/store/prototypeSessionStore.ts` | 根 `Agents.md`、`docs/UI_DESIGN_GUIDELINES.md`、`docs/ADMIN_UI_GUIDELINES.md`、`docs/ADMIN_ROUTES.md` | `npm run check` + `npm run check:login`（登录专项回归） |
+
+## 1.1 统一登录 / PC 跨端会话
+
+- PC Web 与 PC 客户端共用 `/login`（`source=web|client`）；失败分支由 `demo` 参数稳定触发，不接真实认证、浏览器拉起或客户端协议。
+- 登录态、设备与会话共享 `src/store/prototypeSessionStore.ts`（版本化 localStorage `ijx-prototype-session-v1`，跨标签页 storage 同步）；设备与用户基础数据在 `src/data/deviceManagement.ts`。
+- Web（`/pc_web*`）与客户端（`/pc_client/*`）路由由 `src/components/auth/AuthGate.tsx` 门禁；失败、同步失败、拉起失败不得写入有效设备会话。
+- Admin `/admin/security/devices` 与登录原型联动（单设备退出 / 全部退出 / 批量退出同步清除 channel 登录态）；Admin 路由自身不受登录门禁。
+- 本功能不进入 Vue App Harness（`src/prototype/` 禁止修改）。
 
 ## 2. 唯一事实源
 
@@ -22,6 +31,7 @@
 
 - **PC 客户端 / 如意空间**：根 `Agents.md` → `docs/UI_DESIGN_GUIDELINES.md` → 涉及页面代码。
 - **管理后台**：根 `Agents.md` → `docs/ADMIN_UI_GUIDELINES.md` → `docs/ADMIN_ROUTES.md` → `/admin` 相关代码。
+- **统一登录 / PC 跨端会话**：根 `Agents.md` → `docs/UI_DESIGN_GUIDELINES.md` → `docs/ADMIN_UI_GUIDELINES.md` → `docs/ADMIN_ROUTES.md` → `src/pages/Login.tsx` / `src/components/auth/` / `src/store/prototypeSessionStore.ts`。
 - **Vue App**：`src/prototype/harness/AGENTS.md` → 其 `docs/` 四份长期规范 → `tasks/CURRENT.md`；涉及宿主路由或下载入口时加读根 `docs/APP_ROUTES.md`。
 
 ## 4. 跨域需求处理

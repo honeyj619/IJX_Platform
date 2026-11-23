@@ -1,6 +1,7 @@
 // 路由合同检查（check:routes）
 // 静态检查 docs/APP_ROUTES.md 与 src/App.tsx / src/pages/Download.tsx /
-// src/constants/appRoutes.ts / src/prototype/router/index.ts / tools/prototype/smoke-pages.mjs 的一致性。
+// src/constants/appRoutes.ts / src/prototype/router/index.ts / tools/prototype/smoke-pages.mjs /
+// src/pages/Login.tsx（统一登录）的一致性。
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -13,13 +14,14 @@ const ok = (name, pass, detail = '') => {
   if (!pass) failures.push(name)
 }
 
-const [appTsx, downloadTsx, constantsTs, vueRouter, routesDoc, smokeMjs] = await Promise.all([
+const [appTsx, downloadTsx, constantsTs, vueRouter, routesDoc, smokeMjs, loginTsx] = await Promise.all([
   read('src/App.tsx'),
   read('src/pages/Download.tsx'),
   read('src/constants/appRoutes.ts'),
   read('src/prototype/router/index.ts'),
   read('docs/APP_ROUTES.md'),
   read('tools/prototype/smoke-pages.mjs'),
+  read('src/pages/Login.tsx'),
 ])
 
 // ===== App.tsx 宿主路由 =====
@@ -92,6 +94,23 @@ ok('APP_ROUTES.md 不再把 src/pages/app/ 标成权威实现',
   !routesDoc.split('## 4')[0].includes('src/pages/app/') || routesDoc.includes('已弃用'))
 ok('APP_ROUTES.md 指向 src/prototype/ 为权威代码',
   routesDoc.includes('src/prototype/') && routesDoc.includes('VuePrototypeHost'))
+
+// ===== 统一登录（/login）合同 =====
+ok('App.tsx 声明 /login 独立路由',
+  /path="\/login"\s+element=\{<Login/.test(appTsx.replace(/\n/g, ' ')))
+ok('App.tsx PC Web 路由使用来源固定的 web 门禁',
+  appTsx.includes('<AuthGate source="web">') && appTsx.includes('path="/pc_web"') && appTsx.includes('path="/pc_web/contacts"'))
+ok('App.tsx PC Client 路由使用来源固定的 client 门禁',
+  appTsx.includes('<AuthGate source="client">') && appTsx.includes('path="/pc_client/*"'))
+ok('Download.tsx 仍保留 /pc_client、/pc_web 规范入口目标',
+  downloadTsx.includes("navigate('/pc_client')") && downloadTsx.includes("navigate('/pc_web')"))
+ok('APP_ROUTES.md 登记两端规范入口并说明未登录门禁',
+  routesDoc.includes('| PC 客户端进入 | `/pc_client` |') && routesDoc.includes('| PC Web 进入 | `/pc_web` |')
+  && routesDoc.includes('未登录时由统一登录门禁接管'))
+ok('Login 页面使用白名单校验来源页（sanitizeReturnPath），未硬编码外部回跳',
+  loginTsx.includes('sanitizeReturnPath') && !loginTsx.includes('window.open')
+  && !/location\.href\s*=/.test(loginTsx) && !loginTsx.includes('returnTo')
+  && !/"https?:\/\//.test(loginTsx))
 
 console.log(`\nRoute contract check: ${failures.length === 0 ? 'ALL PASS' : failures.length + ' FAILED'}`)
 if (failures.length) {

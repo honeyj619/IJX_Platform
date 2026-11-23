@@ -125,6 +125,7 @@ function getLocator(element: HTMLElement): RequirementLocator | null {
 
 function routeDefaultSurface(pathname: string) {
   const routeLabels: Array<[string, string]> = [
+    ['/login', '统一登录'],
     ['/pc_client/ruyi-zone', '如意空间'],
     ['/pc_client/agent-square', '智能体广场'],
     ['/pc_client/work-report', '工作汇报'],
@@ -259,7 +260,9 @@ function collectMountedRequirements(
 export function RequirementModeLayer() {
   const { enabled, setEnabled, selectedId, setSelectedId } = useRequirementMode();
   const location = useLocation();
-  const supportedRoute = location.pathname === '/admin' || location.pathname.startsWith('/pc_client');
+  // 统一登录 /login 为独立页面；管理后台子路径（如 /admin/security/devices）同样承载锚点
+  const supportedRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
+    || location.pathname.startsWith('/pc_client') || location.pathname === '/login';
   // 查看能力：当前属于支持路由时为真，生产与开发一致；所有只读展示（开关/角标/详情）依赖它
   const canViewRequirements = supportedRoute;
   const [requirements, setRequirements] = useState<ManagedRequirement[]>(prototypeRequirements);

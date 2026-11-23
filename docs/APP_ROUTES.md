@@ -51,6 +51,8 @@
 
 `platform` 仅用于平台演示上下文。没有明确平台差异时，iOS 和 Android 使用同一页面和组件。
 
+PC 两端的规范入口仍为 `/pc_client` 与 `/pc_web`：未登录时由统一登录门禁接管——`/pc_client` 渲染客户端未登录页（点击后进入 `/login?source=client`），`/pc_web` 重定向到 `/login?source=web`；下载页按钮不直接硬编码 `/login`。登录流程与来源规则见需求模式「统一登录」条目及 `src/pages/Login.tsx`。
+
 ## 4. 历史兼容路由（只作入口，不再出现在新增功能、页面链接和文档示例中）
 
 | 历史路由 | 兼容目标 |
