@@ -61,25 +61,39 @@ export default function RuyiConversationView({
 }: RuyiConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const prevConversationIdRef = useRef<string>(conversation.id);
+  // 首挂载视为"打开对话"（置底）；用 null 哨兵区分首次与同会话更新
+  const prevConversationIdRef = useRef<string | null>(null);
   const prevMessageCountRef = useRef<number>(messages.length);
 
-  // V3.5 滚动规则：
-  // - 切换会话：从顶部开始（预置长卡完整可见，不被顶出可视区）
-  // - 追加消息：仅当滚动区原本接近底部时自动滚底；用户查看旧消息时不强制拉底
+  // 消息滚动规范（IM 置底原则，见 docs/UI_DESIGN_GUIDELINES.md「消息对话滚动」）：
+  // - 打开/切换会话：直接定位到底部（最新消息），与 IM 产品一致
+  // - 用户主动上翻查看旧消息时不强制拉底；一旦回到接近底部，新消息恢复自动跟随
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (prevConversationIdRef.current !== conversation.id) {
       prevConversationIdRef.current = conversation.id;
       prevMessageCountRef.current = messages.length;
-      if (container) container.scrollTop = 0;
+      if (container) {
+        // 切会话立即置底；卡片/内容渲染会继续撑高 scrollHeight——多阶段复核确保最终稳定最底
+        container.scrollTop = container.scrollHeight;
+        [80, 300, 800].forEach((delay) => {
+          window.setTimeout(() => {
+            const live = scrollContainerRef.current;
+            if (live) live.scrollTop = live.scrollHeight;
+          }, delay);
+        });
+      }
       return;
     }
     if (messages.length > prevMessageCountRef.current) {
       prevMessageCountRef.current = messages.length;
       if (container) {
+        // 用户自己发送的消息无条件保持最底；助手回复仅 nearBottom 时跟随
+        const last = messages[messages.length - 1];
+        const ownSent = last?.sender === 'user';
         const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
-        if (nearBottom) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (ownSent) container.scrollTop = container.scrollHeight;
+        else if (nearBottom) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }
       return;
     }

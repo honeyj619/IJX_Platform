@@ -653,26 +653,33 @@ export default function Home() {
 
   useEffect(() => {
     if (contentRefReady && contentRef.current) {
-      contentRef.current.scrollTop = contentRef.current.scrollHeight;
+      const el = contentRef.current;
+      el.scrollTop = el.scrollHeight;
+      // 打开对话置底后内容可能异步增高（卡片/日期分组二次布局）——延迟复核确保最终稳定在最底
+      const timer = window.setTimeout(() => { el.scrollTop = el.scrollHeight; }, 300);
+      return () => window.clearTimeout(timer);
     }
   }, [selectedMessage, contentRefReady]);
 
-  // V3.5：如意助手消息滚动——首次进入从顶部开始（完整阅读预置对话）；
-  // 之后仅当用户原本接近底部时新消息自动滚底，查看旧消息不强制拉底
-  const ruyiPrevCountRef = useRef(0);
-  const ruyiFirstLoadRef = useRef(true);
+  // 消息滚动规范（IM 置底原则，见 docs/UI_DESIGN_GUIDELINES.md「消息对话滚动」）：
+  // 打开对话置底由上方通用 effect（selectedMessage 变化→scrollHeight）覆盖；
+  // 用户自己发送的消息无条件保持最底（发送行为即明确意图）；
+  // 助手回复按 nearBottom 跟随——上翻查看旧消息时不强制拉底，回到底部后恢复跟随
+  const ruyiPrevCountRef = useRef(ruyiMessages.length);
   useEffect(() => {
     if (selectedMessage?.type !== 'assistant' || !contentRef.current) return;
-    if (ruyiFirstLoadRef.current) {
-      ruyiFirstLoadRef.current = false;
-      ruyiPrevCountRef.current = ruyiMessages.length;
-      contentRef.current.scrollTop = 0;
-      return;
-    }
     if (ruyiMessages.length > ruyiPrevCountRef.current) {
       const el = contentRef.current;
+      // 新增段中含用户消息 = 用户刚发送——无条件保持最底（明确意图）
+      const appended = ruyiMessages.slice(ruyiPrevCountRef.current);
+      const ownSent = appended.some((m) => m.sender === 'user');
       const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
-      if (nearBottom) el.scrollTop = el.scrollHeight;
+      if (ownSent || nearBottom) {
+        el.scrollTop = el.scrollHeight;
+        // loading→正文替换/卡片渲染会继续撑高——两阶段复核确保稳定最底
+        window.setTimeout(() => { el.scrollTop = el.scrollHeight; }, 350);
+        window.setTimeout(() => { el.scrollTop = el.scrollHeight; }, 900);
+      }
     }
     ruyiPrevCountRef.current = ruyiMessages.length;
   }, [ruyiMessages, selectedMessage]);
