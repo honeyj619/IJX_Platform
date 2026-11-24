@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Search, ChevronLeft, ChevronRight, Plus, X, Info, Clock, Paperclip, Video, ChevronDown } from 'lucide-react';
 import { MAIN_USER_AVATAR, MAIN_USER_NAME, getDemoPerson } from '../data/people';
-import ContactPicker from '../components/ContactPicker';
-import MeetingScheduleDialog from '../components/MeetingScheduleDialog';
+import ParticipantSelector, { type ParticipantSelection } from '../components/ParticipantSelector';
 import RoomPickerDialog, { type RoomPickerItem } from '../components/RoomPickerDialog';
-import { contactDirectory } from '../data/contactDirectory';
 import { useLocation } from 'react-router-dom';
 import type { GlobalSearchNavigationState } from '../data/globalSearch';
-import { createMeetingNo, useMeetingStore } from '../store/meetingStore';
+import { useMeetingStore } from '../store/meetingStore';
+import { useImStore } from '../store/imStore';
 
 const CALENDAR_PICKER_ROOMS: RoomPickerItem[] = [
   { id: '6502', capacity: 20, equipment: ['桌子', '凳子', '电视'], imageTone: 'from-slate-200 via-stone-100 to-slate-300' },
@@ -46,6 +45,35 @@ interface RoomSelection {
   endSlot: number;
 }
 
+/** 预约弹窗草稿：参与者为结构化选择，保存时再转换为姓名/邮箱字符串 */
+interface BookingDraft {
+  title: string;
+  organizer: string;
+  participants: ParticipantSelection[];
+  meetingType: string;
+  onlineMeetingType: 'none' | 'ruyi' | 'external';
+  externalMeetingUrl: string;
+  location: string;
+  description: string;
+  reason: string;
+  unionChair: string;
+  partySecretary: string;
+}
+
+const createEmptyBookingDraft = (): BookingDraft => ({
+  title: '',
+  organizer: MAIN_USER_NAME,
+  participants: [],
+  meetingType: '',
+  onlineMeetingType: 'none',
+  externalMeetingUrl: '',
+  location: '',
+  description: '',
+  reason: '工会活动',
+  unionChair: '',
+  partySecretary: '',
+});
+
 type RepeatUnit = '天' | '周' | '月' | '年';
 type RepeatEndType = 'date';
 type RepeatMonthRule = 'date' | 'weekday';
@@ -75,7 +103,6 @@ export default function Calendar() {
   const calendarEvents = useMeetingStore((state) => state.calendarEvents);
   const [currentDate, setCurrentDate] = useState(new Date('2025-05-22'));
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'schedule' | 'meeting-room' | 'reservation'>('schedule');
   const [calendarList, setCalendarList] = useState<CalendarItem[]>([
     { id: '1', name: MAIN_USER_NAME, color: 'bg-slate-600', type: 'managed', checked: true },
     { id: '2', name: '我的任务', color: 'bg-pink-500', type: 'managed', checked: true },
@@ -87,7 +114,6 @@ export default function Calendar() {
   const [meetingDate, setMeetingDate] = useState('2026-07-30');
   const [dragSelection, setDragSelection] = useState<RoomSelection | null>(null);
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
-  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [roomEnabled, setRoomEnabled] = useState(false);
   // 全局搜索直达：定位到日程并切换日历视图
   const searchTarget = (location.state as GlobalSearchNavigationState | null)?.globalSearch?.target;
@@ -99,17 +125,14 @@ export default function Calendar() {
     if (highlightedEventId == null) return;
     const targetEvent = calendarEvents.find(event => event.id === `calendar-${highlightedEventId}`);
     if (!targetEvent) return;
-    setActiveTab('schedule');
     setCurrentDate(new Date(`${targetEvent.date}T00:00:00`));
   }, [calendarEvents, highlightedEventId]);
-  const [participantSuggestOpen, setParticipantSuggestOpen] = useState(false);
-  const [batchPickerOpen, setBatchPickerOpen] = useState(false);
 
   // 支持从个人门户“新增日程”直达创建弹窗，并清理参数避免刷新后重复打开。
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('create') === '1') {
-      setScheduleDialogOpen(true);
+      setBookingModalOpen(true);
       window.history.replaceState(null, '', window.location.pathname);
     }
   }, []);
@@ -132,19 +155,7 @@ export default function Calendar() {
     endType: 'date',
     endDate: '2026-12-01',
   });
-  const [bookingDraft, setBookingDraft] = useState({
-    title: '',
-    organizer: MAIN_USER_NAME,
-    participants: '',
-    meetingType: '',
-    onlineMeetingType: 'none' as 'none' | 'ruyi' | 'external',
-    externalMeetingUrl: '',
-    location: '',
-    description: '',
-    reason: '工会活动',
-    unionChair: '',
-    partySecretary: '',
-  });
+  const [bookingDraft, setBookingDraft] = useState<BookingDraft>(createEmptyBookingDraft);
 
   const [isTallViewport, setIsTallViewport] = useState(false);
 
@@ -233,26 +244,59 @@ export default function Calendar() {
   const selectedRange = dragSelection ? normalizeSelection(dragSelection) : { roomId: '6407', startSlot: 4, endSlot: 5 };
   const selectedRoom = meetingRooms.find(room => room.id === selectedRange.roomId) ?? meetingRooms[1];
 
+  /** 参与者保存转换：联系人→姓名，群→展开成员姓名，邮箱保留原样；排除召集人与当前用户并去重 */
+  const expandParticipantNames = (selections: ParticipantSelection[], organizer: string): string[] => {
+    const contacts = useImStore.getState().contacts;
+    const names: string[] = [];
+    selections.forEach(item => {
+      if (item.kind === 'person') {
+        names.push(item.label);
+      } else if (item.kind === 'group') {
+        item.memberIds?.forEach(memberId => {
+          names.push(contacts.find(contact => contact.id === memberId)?.name ?? memberId);
+        });
+      } else if (item.email) {
+        names.push(item.email);
+      }
+    });
+    return Array.from(new Set(names)).filter(name => name !== organizer && name !== MAIN_USER_NAME);
+  };
+
+  const openBookingModal = () => {
+    setBookingModalOpen(true);
+  };
+
+  /** 关闭弹窗并清理未保存内容：重新打开不残留上一次草稿 */
+  const closeBookingModal = () => {
+    setBookingModalOpen(false);
+    setBookingDraft(createEmptyBookingDraft());
+    setRoomEnabled(false);
+    setDragSelection(null);
+    setRepeatMode('不重复');
+    setOnlineOptionsOpen(false);
+    setCustomRepeatOpen(false);
+  };
+
   const saveBooking = () => {
     if (!bookingDraft.title.trim()) return;
     if (bookingDraft.onlineMeetingType === 'external' && !/^https?:\/\//i.test(bookingDraft.externalMeetingUrl.trim())) return;
-    if (bookingDraft.onlineMeetingType === 'ruyi') {
-      const id = `meeting-calendar-${Date.now()}`;
-      useMeetingStore.getState().addMeeting({
-        id,
-        meetingNo: createMeetingNo(),
-        title: bookingDraft.title.trim(),
-        organizer: bookingDraft.organizer || MAIN_USER_NAME,
-        participants: [bookingDraft.organizer || MAIN_USER_NAME, ...bookingDraft.participants.split(/[、，,\s]+/).filter(Boolean)],
-        scheduledStart: `${meetingDate} ${slotToTime(selectedRange.startSlot)}`,
-        scheduledEnd: `${meetingDate} ${slotToTime(selectedRange.endSlot + 1)}`,
-        status: 'scheduled',
-        source: 'calendar',
-        location: roomEnabled ? `${selectedRoom.id} 会议室` : undefined,
-        recordingIds: [],
-      });
-    }
-    setBookingModalOpen(false);
+    const organizer = bookingDraft.organizer.trim() || MAIN_USER_NAME;
+    useMeetingStore.getState().createSchedule({
+      title: bookingDraft.title.trim(),
+      date: meetingDate,
+      startTime: slotToTime(selectedRange.startSlot),
+      endTime: slotToTime(selectedRange.endSlot + 1),
+      organizer,
+      participants: expandParticipantNames(bookingDraft.participants, organizer),
+      onlineMeetingType: bookingDraft.onlineMeetingType,
+      externalMeetingUrl: bookingDraft.externalMeetingUrl.trim() || undefined,
+      roomId: roomEnabled ? selectedRoom.id : undefined,
+      location: roomEnabled ? `${selectedRoom.id} 会议室` : (bookingDraft.location.trim() || undefined),
+      repeatRule: repeatMode === 'custom' ? getCustomRepeatLabel() : repeatMode,
+      description: bookingDraft.description.trim() || undefined,
+      createMeeting: bookingDraft.onlineMeetingType !== 'none' || roomEnabled,
+    });
+    closeBookingModal();
   };
 
   const selectRoom = (roomId: string) => {
@@ -339,7 +383,7 @@ export default function Calendar() {
         <div className="flex items-center justify-between px-6 py-3 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-b border-gray-200/60 dark:border-gray-700/60 shrink-0">
           <div><h2 className="text-base font-semibold text-gray-900 dark:text-white">日历</h2><p className="mt-0.5 text-xs text-gray-500">查看日程与时间安排</p></div>
           <button
-            onClick={() => setScheduleDialogOpen(true)}
+            onClick={openBookingModal}
             className="flex items-center gap-2 px-4 py-2 bg-theme-600 text-white rounded-xl text-sm font-medium hover:bg-theme-700 transition-colors shadow-sm"
           >
             <Plus size={16} />
@@ -564,7 +608,6 @@ export default function Calendar() {
         </div>
       </div>
 
-      <MeetingScheduleDialog open={scheduleDialogOpen} source="calendar" onClose={() => setScheduleDialogOpen(false)} />
       <RoomPickerDialog
         open={roomPickerOpen}
         rooms={CALENDAR_PICKER_ROOMS}
@@ -580,11 +623,9 @@ export default function Calendar() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
           <div className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded bg-white shadow-2xl dark:bg-gray-900">
             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                {activeTab === 'meeting-room' ? '预约会议' : '创建日程'}
-              </h3>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white">创建日程</h3>
               <button
-                onClick={() => setBookingModalOpen(false)}
+                onClick={closeBookingModal}
                 className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-gray-800 dark:hover:text-slate-100"
               >
                 <X size={20} />
@@ -666,14 +707,14 @@ export default function Calendar() {
                   </div>
 
                   <div className="grid grid-cols-[88px_1fr] items-start gap-3 text-sm">
-                    <span className={`pt-2 text-right text-slate-700 dark:text-slate-200 ${activeTab === 'meeting-room' ? "before:text-red-500 before:content-['*']" : ''}`}> 会议室:</span>
+                    <span className="pt-2 text-right text-slate-700 dark:text-slate-200"> 会议室:</span>
                     <div>
                       {!roomEnabled ? (
                         <button type="button" onClick={() => { setRoomEnabled(true); setRoomPickerOpen(true); }} className="h-9 rounded border border-slate-200 px-3 text-sm text-theme-600 hover:border-theme-500 dark:border-gray-700">+ 添加会议室</button>
                       ) : (
                         <div className="flex h-10 items-center justify-between rounded bg-slate-50 px-3 text-sm text-slate-700 dark:bg-gray-800 dark:text-slate-100">
                           <button type="button" onClick={() => setRoomPickerOpen(true)} className="hover:text-theme-700">{selectedRoom.id} 会议室</button>
-                          {activeTab !== 'meeting-room' && <button type="button" onClick={() => setRoomEnabled(false)} className="text-slate-400 hover:text-slate-700" title="移除会议室"><X size={16} /></button>}
+                          <button type="button" onClick={() => setRoomEnabled(false)} className="text-slate-400 hover:text-slate-700" title="移除会议室"><X size={16} /></button>
                         </div>
                       )}
                     </div>
@@ -713,61 +754,13 @@ export default function Calendar() {
                     />
                   </label>
 
-                  <div className="grid grid-cols-[88px_1fr] items-center gap-3 text-sm" data-requirement-id="custom-20261028-005">
-                    <span className="text-right text-slate-700 before:text-red-500 before:content-['*'] dark:text-slate-200"> 参与者:</span>
-                    <div className="flex items-center gap-3">
-                      <div className="relative flex-1">
-                        <input
-                          value={bookingDraft.participants}
-                          onChange={(event) => {
-                            setBookingDraft(prev => ({ ...prev, participants: event.target.value }));
-                            setParticipantSuggestOpen(event.target.value.trim().length > 0);
-                          }}
-                          onFocus={(event) => setParticipantSuggestOpen(event.target.value.trim().length > 0)}
-                          onBlur={() => window.setTimeout(() => setParticipantSuggestOpen(false), 180)}
-                          placeholder="请选择参与者"
-                          className="h-9 w-full rounded border border-slate-200 px-3 text-sm outline-none focus:border-theme-500 dark:border-gray-700 dark:bg-gray-800 dark:text-slate-100"
-                        />
-                        {participantSuggestOpen && (() => {
-                          const lastKeyword = bookingDraft.participants.split(/[、，,\s]+/).pop() || '';
-                          const suggestions = lastKeyword
-                            ? contactDirectory.filter(person => person.name.includes(lastKeyword) || person.title.includes(lastKeyword) || person.department.includes(lastKeyword)).slice(0, 6)
-                            : [];
-                          if (suggestions.length === 0) return null;
-                          return (
-                            <div className="absolute left-0 top-10 z-30 w-full overflow-hidden rounded border border-slate-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-900">
-                              {suggestions.map(person => (
-                                <button
-                                  key={person.id}
-                                  type="button"
-                                  onMouseDown={(event) => event.preventDefault()}
-                                  onClick={() => {
-                                    const parts = bookingDraft.participants.split(/[、，,\s]+/).filter(Boolean);
-                                    parts[parts.length - 1] = person.name;
-                                    const next = [...new Set(parts)].join('、');
-                                    setBookingDraft(prev => ({ ...prev, participants: next }));
-                                    setParticipantSuggestOpen(false);
-                                  }}
-                                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-slate-700 hover:bg-theme-50 dark:text-slate-200 dark:hover:bg-gray-800"
-                                >
-                                  <span className="font-medium">{person.name}</span>
-                                  <span className="text-xs text-slate-400">{person.department} · {person.title}</span>
-                                </button>
-                              ))}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                      <button type="button" onClick={() => setBatchPickerOpen(true)} className="shrink-0 text-sm font-medium text-theme-600 hover:text-theme-700">+批量添加</button>
-                      <ContactPicker
-                        open={batchPickerOpen}
-                        onOpenChange={setBatchPickerOpen}
-                        hideTrigger
-                        selected={bookingDraft.participants.split(/[、，,\s]+/).filter(Boolean)}
-                        onChange={(next) => setBookingDraft(prev => ({ ...prev, participants: next.join('、') }))}
-                        placeholder="请选择参与者"
-                      />
-                    </div>
+                  <div className="grid grid-cols-[88px_1fr] items-start gap-3 text-sm" data-requirement-id="custom-20261028-005">
+                    <span className="pt-2 text-right text-slate-700 before:text-red-500 before:content-['*'] dark:text-slate-200"> 参与者:</span>
+                    <ParticipantSelector
+                      value={bookingDraft.participants}
+                      onChange={(participants) => setBookingDraft(prev => ({ ...prev, participants }))}
+                      organizerName={bookingDraft.organizer.trim() || MAIN_USER_NAME}
+                    />
                   </div>
 
                   <label className="grid grid-cols-[88px_1fr] items-center gap-3 text-sm">
@@ -895,14 +888,14 @@ export default function Calendar() {
 
             <div className="flex justify-end gap-3 border-t border-slate-200 px-6 py-3 dark:border-gray-700">
               <button
-                onClick={() => setBookingModalOpen(false)}
+                onClick={closeBookingModal}
                 className="h-9 rounded border border-slate-200 px-5 text-sm text-slate-600 hover:bg-slate-50 dark:border-gray-700 dark:text-slate-200 dark:hover:bg-gray-800"
               >
                 取消
               </button>
               <button
                 onClick={saveBooking}
-                disabled={!bookingDraft.title.trim() || (activeTab === 'meeting-room' && !roomEnabled) || (bookingDraft.onlineMeetingType === 'external' && !/^https?:\/\//i.test(bookingDraft.externalMeetingUrl.trim()))}
+                disabled={!bookingDraft.title.trim() || (bookingDraft.onlineMeetingType === 'external' && !/^https?:\/\//i.test(bookingDraft.externalMeetingUrl.trim()))}
                 className="h-9 rounded bg-theme-600 px-5 text-sm font-medium text-white hover:bg-theme-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 确定

@@ -16,6 +16,7 @@
     "check:pages": "node tools/prototype/smoke-pages.mjs",
     "check:app-chain": "node tools/prototype/verify-download-chain.mjs",
     "check:login": "node tools/prototype/verify-login-flow.mjs",
+    "check:participants": "node tools/prototype/verify-participant-selector.mjs",
     "check:req-mode": "node tools/prototype/verify-requirement-mode.mjs"
   },
   "dependencies": {

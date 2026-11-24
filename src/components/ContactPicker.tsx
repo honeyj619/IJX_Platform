@@ -329,7 +329,7 @@ export default function ContactPicker({
               <div>
                 <h3 id="contact-picker-title" className="text-base font-bold text-gray-900">
                   {structured
-                    ? resolvedTabs.includes('user-groups') ? '选择人员、部门或用户组' : '选择人员或部门'
+                    ? resolvedTabs.includes('user-groups') ? '选择人员、部门或用户组' : allowDepartments ? '选择人员或部门' : '选择人员'
                     : allowDepartments ? '选择用户或部门' : kind === 'wecom' ? '选择企微接收人' : '选择通讯录成员'}
                 </h3>
                 <p className="mt-1 text-xs text-gray-400">按部门浏览或搜索，确认后加入已选清单</p>
