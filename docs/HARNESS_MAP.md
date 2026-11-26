@@ -7,7 +7,7 @@
 
 | 治理域 | 权威代码 | 权威规范 | 验证入口 |
 | --- | --- | --- | --- |
-| PC 客户端 / 如意空间 | `src/pages/`、`src/components/` | 根 `Agents.md`、`docs/UI_DESIGN_GUIDELINES.md` | `npm run check` + 相关页面浏览器回归 |
+| PC 客户端 / 如意空间 | `src/pages/`、`src/components/` | 根 `Agents.md`、`docs/UI_DESIGN_GUIDELINES.md`、`docs/CLIENT_INTERACTION_SURFACES.md` | `npm run check` + 相关页面浏览器回归 |
 | 管理后台 | `/admin` 相关代码（`src/pages/Admin.tsx` 等） | `docs/ADMIN_UI_GUIDELINES.md`、`docs/ADMIN_ROUTES.md` | `npm run check` + 后台入口回归 |
 | Vue App（员工端） | `src/prototype/` | `src/prototype/harness/` | `npm run check:routes` + `check:pages` + `check:app-chain` |
 | 跨端入口与兼容路由 | `src/App.tsx`、`src/pages/Download.tsx` | `docs/APP_ROUTES.md` | `npm run check:routes` + 下载链路回归 |
@@ -29,7 +29,7 @@
 
 ## 3. 每个治理域开始任务前必读
 
-- **PC 客户端 / 如意空间**：根 `Agents.md` → `docs/UI_DESIGN_GUIDELINES.md` → 涉及页面代码。
+- **PC 客户端 / 如意空间**：根 `Agents.md` → `docs/UI_DESIGN_GUIDELINES.md` → `docs/CLIENT_INTERACTION_SURFACES.md`（涉及弹框、抽屉、新页面或独立窗口时必读）→ 涉及页面代码。
 - **管理后台**：根 `Agents.md` → `docs/ADMIN_UI_GUIDELINES.md` → `docs/ADMIN_ROUTES.md` → `/admin` 相关代码。
 - **统一登录 / PC 跨端会话**：根 `Agents.md` → `docs/UI_DESIGN_GUIDELINES.md` → `docs/ADMIN_UI_GUIDELINES.md` → `docs/ADMIN_ROUTES.md` → `src/pages/Login.tsx` / `src/components/auth/` / `src/store/prototypeSessionStore.ts`。
 - **Vue App**：`src/prototype/harness/AGENTS.md` → 其 `docs/` 四份长期规范 → `tasks/CURRENT.md`；涉及宿主路由或下载入口时加读根 `docs/APP_ROUTES.md`。

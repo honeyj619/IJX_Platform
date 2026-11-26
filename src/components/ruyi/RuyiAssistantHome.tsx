@@ -1,20 +1,23 @@
+import { useEffect, useRef } from 'react';
 import { RUYI_ASSISTANT_AVATAR } from '../../data/people';
 import type { RuyiCapability, RuyiCapabilitySubmission } from "../../types/ruyi";
 import type { RuyiAgent } from "../../data/ruyiCapabilities";
 import { Sparkles, X } from "lucide-react";
 import RuyiConversationComposer from "./RuyiConversationComposer";
+import RuyiPluginBar from "./capability/RuyiPluginBar";
 import type { RuyiPanelDrafts } from "./capability/RuyiCapabilityPanel";
 
 /**
- * V3.2 如意空间「新对话空白工作区」：
- * - 简洁欢迎语 + 一句能力说明 + 统一对话输入容器（含插件入口与配置）
- * - 不再渲染快捷能力宫格（非插件功能由左侧固定入口或推荐问题承载）
+ * V6 如意空间「新对话空白工作区」：
+ * - 简洁欢迎语 + 一句能力说明 + 插件选择 tab（吸顶）+ 统一对话输入容器
+ * - 插件选择入口从对话框移出，由首页插件 tab 承载：
+ *   激活插件后页面定位上移，以插件 tab 吸顶，配置面板随输入容器在其下方展开
  * - 视觉焦点是对话输入容器，与会话页共用 Composer
  */
 
 interface RuyiAssistantHomeProps {
   ownerName: string;
-  /** 全量内置能力（Composer 插件入口取四插件用） */
+  /** 全量内置能力（插件 tab 取四插件用） */
   capabilities: RuyiCapability[];
   activeAgent: RuyiAgent;
   activeCapabilityId?: string | null;
@@ -51,9 +54,25 @@ export default function RuyiAssistantHome({
   const activeCapability = capabilities.find((c) => c.id === activeCapabilityId);
   const showCapabilityChip = !!activeCapability && activeCapability.mode !== "agent";
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const pluginTabsRef = useRef<HTMLDivElement>(null);
+  const isPluginActive = !!activeCapability && activeCapability.mode !== "agent";
+
+  // V6：插件激活后页面定位上移——滚动容器定位到插件 tab（tab 在容器内 sticky 吸顶）
+  useEffect(() => {
+    if (!isPluginActive) return;
+    const container = scrollContainerRef.current;
+    const tabs = pluginTabsRef.current;
+    if (!container || !tabs) return;
+    const containerRect = container.getBoundingClientRect();
+    const tabsRect = tabs.getBoundingClientRect();
+    const target = container.scrollTop + (tabsRect.top - containerRect.top) - 8;
+    container.scrollTo({ top: Math.max(target, 0), behavior: "smooth" });
+  }, [isPluginActive, activeCapabilityId]);
+
   return (
-    <div className="flex flex-1 flex-col overflow-y-auto px-6 py-8 md:px-8" data-requirement-id="ruyi-unified-entry">
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center">
+    <div ref={scrollContainerRef} className="flex flex-1 flex-col overflow-y-auto px-6 py-8 md:px-8" data-requirement-id="ruyi-unified-entry">
+      <div className={`mx-auto flex w-full max-w-4xl flex-1 flex-col ${isPluginActive ? "justify-start" : "justify-center"}`}>
         {/* 简洁欢迎区 */}
         <div className="mb-8 flex flex-col items-center text-center">
           <div className="relative mb-5">
@@ -68,7 +87,7 @@ export default function RuyiAssistantHome({
             你好，{ownerName}
           </h1>
           <p className="max-w-xl text-sm leading-6 text-gray-500 dark:text-gray-400">
-            我是如意助手，可以直接描述工作需求，或在输入框下方选择公文、PPT、参谋、翻译插件配置参数后一起发送。
+            我是如意助手，可以直接描述工作需求，或在下方选择公文、PPT、参谋、翻译插件配置参数后一起发送。
           </p>
           {/* 当前智能体/能力状态行 */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -94,10 +113,21 @@ export default function RuyiAssistantHome({
           </div>
         </div>
 
-        {/* 统一对话输入容器（输入 + 插件入口 + 插件配置一体化） */}
+        {/* V6 插件选择 tab（激活后吸顶：sticky + 页面上移定位到此行） */}
+        <div
+          ref={pluginTabsRef}
+          className="sticky top-0 z-10 -mx-2 mb-3 flex justify-center rounded-xl bg-white/95 px-2 py-2 shadow-sm backdrop-blur dark:bg-gray-900/95"
+          data-requirement-id="ruyi-home-plugin-tabs"
+        >
+          <RuyiPluginBar
+            capabilities={capabilities}
+            activePluginId={activeCapability?.id ?? null}
+            onSelect={onSelectCapability}
+          />
+        </div>
+
+        {/* 统一对话输入容器（输入 + 已选插件配置一体化；插件选择在上方 tab） */}
         <RuyiConversationComposer
-          capabilities={capabilities}
-          activePluginId={activeCapability?.id ?? null}
           activePlugin={activeCapability ?? null}
           onSelectPlugin={onSelectCapability}
           input={input}

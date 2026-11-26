@@ -126,8 +126,6 @@ export default function RuyiConversationView({
       <div className="flex-shrink-0 px-6 py-4 md:px-8" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
         <div className="mx-auto max-w-4xl">
           <RuyiConversationComposer
-            capabilities={capabilities}
-            activePluginId={activeCapability?.id ?? null}
             activePlugin={activeCapability}
             onSelectPlugin={onSelectPlugin}
             input={input}

@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import type { RuyiCapability, RuyiResultReference, RuyiResultType, RuyiWorkbenchLaunchContext } from '../types/ruyi';
+import type { RuyiCapability, RuyiGenerationSnapshot, RuyiResultType, RuyiWorkbenchLaunchContext } from '../types/ruyi';
 import { useRuyiStore } from '../store/ruyiStore';
 
 interface BridgeOptions {
@@ -15,8 +15,8 @@ export interface WorkbenchResultBridge {
   sourceConversationId: string | null;
   /** 任务2：store 中的工作台启动上下文（来源会话+能力），用于预填标题/需求描述；无来源时为 null */
   launchContext: RuyiWorkbenchLaunchContext | null;
-  /** 保存/生成完成后调用：写入成果索引并在来源会话追加成果卡片消息（幂等，同会话同能力同标题只更新） */
-  recordResult: (title: string, status?: RuyiResultReference['status']) => void;
+  /** 保存/生成完成后调用：写入成果索引（含生成快照）并在来源会话追加成果卡片消息（幂等，同会话同能力同标题只更新） */
+  recordResult: (title: string, snapshot?: RuyiGenerationSnapshot) => void;
   /** 从工作台返回：有来源时回来源会话，否则回如意空间主页 */
   backToSource: () => void;
 }
@@ -42,14 +42,16 @@ export function useWorkbenchResultBridge({ capabilityId, resultType, workbenchPa
   const demoId = searchParams.get('demo');
   const withDemo = (to: string) => (demoId ? `${to}${to.includes('?') ? '&' : '?'}demo=${demoId}` : to);
 
-  const recordResult = useCallback((title: string, status: RuyiResultReference['status'] = 'editable') => {
+  const recordResult = useCallback((title: string, snapshot?: RuyiGenerationSnapshot) => {
     if (!sourceConversationId) return;
     useRuyiStore.getState().recordWorkbenchResult(sourceConversationId, {
       title,
       type: resultType,
       capabilityId,
-      status,
+      status: 'completed',
       workbenchHref: withDemo(`${workbenchPath}?sourceConversationId=${sourceConversationId}`),
+      snapshot,
+      updatedAt: new Date().toISOString(),
     });
   }, [sourceConversationId, capabilityId, resultType, workbenchPath, demoId]);
 

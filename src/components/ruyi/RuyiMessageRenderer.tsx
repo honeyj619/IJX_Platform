@@ -145,7 +145,13 @@ export default function RuyiMessageRenderer({ message, onAction }: RuyiMessageRe
         </div>
         <div className="max-w-3xl flex-1">
           <p className="mb-3 leading-7 text-gray-900 dark:text-gray-100">{message.content}</p>
-          <RuyiResultCard result={result} onOpen={() => onAction("open-result", message)} />
+          {/* V4：打开成果不再跳工作台——预览/下载/重新生成统一走新动作 */}
+          <RuyiResultCard
+            result={result}
+            onPreview={() => onAction("preview-result", message)}
+            onDownload={() => onAction("download-result", message)}
+            onRegenerate={() => onAction("regenerate-with-tool", message)}
+          />
           {renderActions()}
         </div>
       </div>

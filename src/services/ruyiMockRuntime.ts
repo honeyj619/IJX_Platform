@@ -824,9 +824,7 @@ export function routeUserInput(
     if (candidates.length === 0) {
       return {
         messages: [
-          createMessage(conversationId, 'assistant', 'text', '当前没有可继续的任务。您可以从 AI 任务中心查看全部任务，或直接描述新的需求。', {
-            actions: [{ type: 'open-task-center', label: '前往 AI 任务中心' }],
-          }),
+          createMessage(conversationId, 'assistant', 'text', '当前没有可继续的任务，请直接描述新的需求。'),
         ],
       };
     }
@@ -919,12 +917,12 @@ export function generateWorkbenchResultMessage(
   capabilityId: RuyiCapability['id'],
   workbenchHref: string,
 ): RuyiMessage {
-  void workbenchHref; // 保留参数兼容调用方；实际链接由调用方写入 result
+  void workbenchHref; // 保留参数兼容调用方；V4 起打开成果改为会话内预览/下载，不再跳工作台
   const cap = getRuyiCapability(capabilityId);
-  return createMessage(conversationId, 'assistant', 'result', `已完成「${title}」，可在成果卡片中继续打开或编辑。`, {
+  return createMessage(conversationId, 'assistant', 'result', `已完成「${title}」，可在成果卡片中预览或下载。`, {
     resultId,
     capabilityId,
-    actions: [{ type: 'open-result', label: `打开${cap?.name || '成果'}` }],
+    actions: [{ type: 'preview-result', label: `预览${cap?.name || '成果'}` }],
   });
 }
 

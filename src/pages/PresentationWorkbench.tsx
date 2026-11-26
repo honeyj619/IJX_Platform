@@ -677,7 +677,18 @@ export default function PresentationWorkbench({ initialState, onBack }: Presenta
         setFinalFileStatus("idle");
         setIsSaved(false);
         setToast("PPT已生成并保存至我的PPT");
-        resultBridge.recordResult(title.trim() || state.title || '未命名PPT');
+        resultBridge.recordResult(title.trim() || state.title || '未命名PPT', {
+          paramsSummary: [
+            { label: '页数', value: pageCount },
+            { label: '受众', value: audience },
+            { label: '场景', value: scene },
+            { label: '语气', value: tone },
+            { label: '语言', value: language },
+            { label: '文风', value: textStyle },
+          ],
+          templateName: template,
+          outline: outline.map((item) => item.title),
+        });
       }, contentGenerationSteps.length * 650 + 900);
     }} className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white"><Sparkles size={15} />确认大纲并生成PPT内容</button><button type="button" onClick={() => { setIsSaved(true); setToast("大纲已保存"); }} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-600 hover:bg-gray-50"><Save size={14} />保存</button></div>;
     if (stage === "contentGenerating") return <button type="button" disabled className="flex w-full items-center justify-center gap-2 rounded-lg bg-theme-600 px-3 py-2.5 text-sm font-semibold text-white opacity-90"><LoaderCircle size={15} className="animate-spin" />正在生成PPT内容</button>;

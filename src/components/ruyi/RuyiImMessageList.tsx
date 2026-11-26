@@ -1,7 +1,7 @@
 import type { RuyiMessage, RuyiMessageActionType } from "../../types/ruyi";
 import { useRuyiStore } from "../../store/ruyiStore";
 import { getRuyiResultDisplayTitle, canOpenRuyiResult } from "../../utils/ruyiResultPresentation";
-import { Loader2, ExternalLink, Check, X, Play, Pencil, Copy, ArrowRight } from "lucide-react";
+import { Loader2, ExternalLink, Check, X, Play, Pencil, Copy, ArrowRight, Eye } from "lucide-react";
 import RuyiCapabilitySummary from "./capability/RuyiCapabilitySummary";
 import BusinessMessageCard from '../messages/BusinessMessageCard';
 import RuyiMessageToolbar from './RuyiMessageToolbar';
@@ -167,15 +167,15 @@ function RuyiImMessageBubble({
             {canOpenRuyiResult(result) ? (
               <button
                 type="button"
-                onClick={() => onAction("open-result", message)}
+                onClick={() => onAction("preview-result", message)}
                 className="mt-1 inline-flex items-center gap-1 text-xs text-theme-600 hover:underline dark:text-theme-300"
               >
-                <ExternalLink size={12} />
-                打开成果
+                <Eye size={12} />
+                预览成果
               </button>
             ) : (
               <span className="mt-1 inline-flex cursor-not-allowed items-center rounded bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-400 dark:bg-gray-700 dark:text-gray-500">
-                {result.status === "invalid" ? "成果已失效" : "无权限查看"}
+                该成果已被删除
               </span>
             )}
           </div>

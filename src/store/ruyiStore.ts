@@ -39,6 +39,23 @@ function formatSubmissionSummary(submission: RuyiCapabilitySubmission): string {
 }
 
 const STORAGE_KEY = 'ijx-ruyi-prototype-v1';
+
+/** V4：插件工具集合（工具锁定规则的判定范围） */
+const TOOL_CAPABILITY_IDS: ReadonlySet<string> = new Set(['document', 'presentation', 'advisor', 'translation']);
+
+/** V4：会话已使用的插件工具（存在结构化能力提交即视为已使用；返回首个命中的工具） */
+function getConversationLockedToolFrom(state: RuyiPrototypeState, conversationId: string): RuyiConversation['activeCapabilityId'] {
+  const conversation = state.conversations[conversationId];
+  if (!conversation) return null;
+  for (const mid of conversation.messageIds) {
+    const message = state.messages[mid];
+    const submission = message?.capabilitySubmission;
+    if (submission && TOOL_CAPABILITY_IDS.has(submission.capabilityId)) {
+      return submission.capabilityId;
+    }
+  }
+  return null;
+}
 // demo 进入前的持久化快照（内存持有，退出恢复）
 const demoSnapshotRef = { current: null as string | null };
 /** demo 内存模式开关：true 时持久化层完全跳过写入（读写均不落 localStorage）；模块加载时按 URL ?demo= 预判，确保 rehydrate 期间也已拦截 */
@@ -64,7 +81,7 @@ const demoAwareStorage = {
     localStorage.removeItem(name);
   },
 };
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 export const RUYI_MAIN_OWNER_ID = MAIN_USER_NAME;
 
@@ -210,6 +227,8 @@ interface RuyiStoreActions {
   renameConversation: (conversationId: string, title: string) => boolean;
   deleteConversation: (conversationId: string) => void;
   selectCapability: (conversationId: string, capabilityId: RuyiConversation['activeCapabilityId']) => void;
+  /** V4：会话已使用插件工具时返回该工具 capabilityId（工具锁定），纯对话会话返回 null */
+  getConversationLockedTool: (conversationId: string) => RuyiConversation['activeCapabilityId'];
   sendUserMessage: (conversationId: string, content: string) => RuyiMessage;
   /** V3：统一能力提交（写用户消息+结构化提交+助手确认/结果+工作台上下文，返回用户消息与上下文供跳转） */
   submitCapability: (
@@ -261,6 +280,8 @@ interface RuyiStoreActions {
   getConversationPendingTasks: (conversationId: string) => RuyiTaskMock[];
   /** 当前用户成果列表（按 createdAt 倒序） */
   getOwnerResults: (ownerId?: string, filter?: { type?: string; status?: string }) => RuyiResultReference[];
+  /** V4：删除成果（软删，status→deleted；成果中心"已删除"筛选可见） */
+  deleteResult: (resultId: string) => void;
   /** 追加任务状态事件 */
   appendTaskEvent: (taskId: string, event: Pick<RuyiTaskEvent, 'type' | 'label' | 'status'> & { device?: RuyiTaskEvent['device'] }) => void;
   /** 多任务歧义选择后恢复指定任务：写事件 + 设 activeTaskId，消息由调用方追加 */
@@ -406,6 +427,9 @@ export const useRuyiStore = create<RuyiStore>()(
         set((state) => {
           const conversation = state.conversations[conversationId];
           if (!conversation) return state;
+          // V4 工具锁定：已使用插件工具的会话固定当前工具——切换其他工具在此拒绝（唯一出口=新建对话）
+          const lockedTool = getConversationLockedToolFrom(state, conversationId);
+          if (lockedTool && capabilityId && capabilityId !== lockedTool) return state;
 
           const messages: RuyiMessage[] = [];
           if (capabilityId) {
@@ -459,6 +483,9 @@ export const useRuyiStore = create<RuyiStore>()(
           };
         });
       },
+
+      /** V4：查询会话锁定的插件工具（null=纯对话会话，可自由选工具） */
+      getConversationLockedTool: (conversationId) => getConversationLockedToolFrom(get(), conversationId),
 
       sendUserMessage: (conversationId, content) => {
         const trimmed = content.trim();
@@ -867,6 +894,8 @@ export const useRuyiStore = create<RuyiStore>()(
         const state = get();
         const conversation = state.conversations[sourceConversationId];
         const ownerId = conversation?.ownerId ?? RUYI_MAIN_OWNER_ID;
+        // V4：默认状态收敛为 completed
+        const normalized = { ...result, status: result.status ?? 'completed' } as typeof result;
 
         // 同一工作台会话重复保存时更新同一成果
         const existingResult = Object.values(state.results).find(
@@ -883,9 +912,9 @@ export const useRuyiStore = create<RuyiStore>()(
               ...s.results,
               [existingResult.id]: {
                 ...existingResult,
-                ...result,
-                status: result.status,
-                workbenchHref: result.workbenchHref,
+                ...normalized,
+                status: normalized.status,
+                workbenchHref: normalized.workbenchHref,
               },
             },
           }));
@@ -909,7 +938,7 @@ export const useRuyiStore = create<RuyiStore>()(
         }
 
         const created = get().createResult({
-          ...result,
+          ...normalized,
           ownerId,
           conversationId: sourceConversationId,
         });
@@ -1183,6 +1212,20 @@ export const useRuyiStore = create<RuyiStore>()(
         return results.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       },
 
+      deleteResult: (resultId) => {
+        set((state) => {
+          const result = state.results[resultId];
+          if (!result || result.status === 'deleted') return state;
+          return {
+            ...state,
+            results: {
+              ...state.results,
+              [resultId]: { ...result, status: 'deleted', updatedAt: new Date().toISOString() },
+            },
+          };
+        });
+      },
+
       appendTaskEvent: (taskId, event) => {
         const state = get();
         const task = state.tasks[taskId];
@@ -1442,6 +1485,14 @@ export const useRuyiStore = create<RuyiStore>()(
           conversation.messageIds = conversation.messageIds.filter((mid) => !!messages[mid]);
           if (conversation.activeTaskId && !tasks[conversation.activeTaskId]) conversation.activeTaskId = null;
         }
+        // V4：成果状态收敛——editable→completed；invalid/forbidden→deleted（软删语义）
+        const migratedResults: Record<string, RuyiResultReference> = {};
+        for (const [id, result] of Object.entries(safeDefault(persisted.results, {}))) {
+          const legacyStatus = result.status as string;
+          const status: RuyiResultReference['status'] =
+            legacyStatus === 'invalid' || legacyStatus === 'forbidden' ? 'deleted' : 'completed';
+          migratedResults[id] = { ...result, status };
+        }
         return {
           ...persisted,
           conversations: migratedConversations,
@@ -1451,7 +1502,7 @@ export const useRuyiStore = create<RuyiStore>()(
           workbenchContexts: safeDefault(persisted.workbenchContexts, {}),
           users: safeDefault(persisted.users, createInitialState().users),
           messages,
-          results: safeDefault(persisted.results, {}),
+          results: migratedResults,
           tasks,
         } as unknown as RuyiStore;
       },

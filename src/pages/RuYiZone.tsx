@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, lazy, Suspense } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import type { RuyiCapability, RuyiMessage, RuyiMessageActionType, RuyiMessageFeedback, RuyiCapabilitySubmission } from "../types/ruyi";
+import type { RuyiCapability, RuyiMessage, RuyiMessageActionType, RuyiMessageFeedback, RuyiCapabilitySubmission, RuyiGenerationSnapshot } from "../types/ruyi";
 import { canOpenRuyiResult } from "../utils/ruyiResultPresentation";
 import { useRuyiStore, RUYI_MAIN_OWNER_ID } from "../store/ruyiStore";
 import {
@@ -36,13 +36,12 @@ import { FIXED_SYSTEM_CONVERSATION_ID, ruyiDemoScenarioDefinitions, type RuyiDem
 const DocumentEditor = lazy(() => import("./DocumentEditor"));
 const PresentationWorkbench = lazy(() => import("./PresentationWorkbench"));
 const AdvisorWorkbench = lazy(() => import("./AdvisorWorkbench"));
-// V2：任务中心 / 任务详情 / 成果中心（同样懒加载）
-const RuyiTaskCenter = lazy(() => import("./RuyiTaskCenter"));
-const RuyiTaskDetail = lazy(() => import("./RuyiTaskDetail"));
+// V4：成果中心（懒加载）；AI 任务中心已下线
 const RuyiResultCenter = lazy(() => import("./RuyiResultCenter"));
 import RuyiConversationView from "../components/ruyi/RuyiConversationView";
 import RuyiEmptyState from "../components/ruyi/RuyiEmptyState";
-import type { TaskDetailAction } from "./RuyiTaskDetail";
+import RuyiResultPreviewModal from "../components/ruyi/RuyiResultPreviewModal";
+import { downloadRuyiResult } from "../utils/ruyiResultDownload";
 
 const lengthOptions = ["300-500", "500-800", "600-1200", "1000-1500", "1500-2000"];
 
@@ -96,7 +95,7 @@ export default function RuYiZone() {
   const scenarioEntryAppliedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!demoScenarioId || demoNotFound) return;
-    if (routeConversationId || taskCenterPath || routeTaskId || resultCenterPath) return;
+    if (routeConversationId || resultCenterPath) return;
     if (scenarioEntryAppliedRef.current === demoScenarioId) return;
     const definition = ruyiDemoScenarioDefinitions[demoScenarioId as RuyiDemoScenarioId];
     const liveConversations = useRuyiStore.getState().conversations;
@@ -146,16 +145,15 @@ export default function RuYiZone() {
   const advisorWorkspacePath = pathname.endsWith("/ruyi-zone/advisor");
   const conversationMatch = pathname.match(/\/ruyi-zone\/conversations\/([^/]+)/);
   const routeConversationId = conversationMatch?.[1];
-  // V2 路由：AI 任务中心 / 任务详情 / 成果中心
-  const taskCenterPath = /\/ruyi-zone\/tasks\/?$/.test(pathname);
-  const taskDetailMatch = pathname.match(/\/ruyi-zone\/tasks\/([^/]+)/);
-  const routeTaskId = taskDetailMatch?.[1];
+  // V4 路由：成果中心；AI 任务中心已下线
   const resultCenterPath = /\/ruyi-zone\/results\/?$/.test(pathname);
+  // V5 草稿会话：新对话/切换智能体进入草稿窗口，首条真实消息才落库进历史
+  const isDraftPath = /\/ruyi-zone\/draft\/?$/.test(pathname);
   // V3.4：/ruyi-zone 根路径默认打开最近预置会话（无 history 参数；预置被删则最近会话；全无则新建空白）
   const defaultOpenAppliedRef = useRef(false);
   useEffect(() => {
     if (demoScenarioId || defaultOpenAppliedRef.current) return;
-    if (routeConversationId || taskCenterPath || routeTaskId || resultCenterPath) { defaultOpenAppliedRef.current = true; return; }
+    if (routeConversationId || resultCenterPath || isDraftPath) { defaultOpenAppliedRef.current = true; return; }
     if (documentWorkspacePath || presentationWorkspacePath || advisorWorkspacePath) return;
     defaultOpenAppliedRef.current = true;
     const state = useRuyiStore.getState();
@@ -175,7 +173,7 @@ export default function RuYiZone() {
       navigate(`/pc_client/ruyi-zone/conversations/${conv.id}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [routeConversationId, taskCenterPath, routeTaskId, resultCenterPath, demoScenarioId]);
+  }, [routeConversationId, resultCenterPath, demoScenarioId]);
 
   const [showSidebar, setShowSidebar] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -187,15 +185,25 @@ export default function RuYiZone() {
   const [capabilitySubmitting, setCapabilitySubmitting] = useState(false);
   const handlePanelDraftChange = (patch: Partial<RuyiPanelDrafts>) =>
     setPanelDrafts((prev) => ({ ...prev, ...patch }));
-  // V2：任务详情执行收尾定时器（卸载时统一清理）
-  const taskFinalizeTimers = useRef<Set<number>>(new Set());
+  // V5：工具锁定会话的"重新生成"展开态（临时展开对应工具输入 UI，预填快照参数）
+  const [regenerateToolOpen, setRegenerateToolOpen] = useState(false);
+  // V4：成果预览弹框（会话内成果卡）
+  const [previewResultId, setPreviewResultId] = useState<string | null>(null);
+
+  // V5：草稿窗口预选智能体（?agent=）——进入草稿或切换参数时同步本地选择态
+  const draftAgentAppliedRef = useRef<string | null>(null);
   useEffect(() => {
-    const timers = taskFinalizeTimers.current;
-    return () => {
-      timers.forEach((t) => window.clearTimeout(t));
-      timers.clear();
-    };
-  }, []);
+    if (!isDraftPath) {
+      draftAgentAppliedRef.current = null;
+      return;
+    }
+    const agentParam = new URLSearchParams(location.search).get('agent');
+    const key = agentParam ?? '';
+    if (draftAgentAppliedRef.current === key) return;
+    draftAgentAppliedRef.current = key;
+    setActiveCapabilityId((agentParam as RuyiCapability['id']) ?? null);
+    setRegenerateToolOpen(false);
+  }, [isDraftPath, location.search]);
 
   // 工作台状态（保留以维持 /document、/presentation、/advisor 可渲染）
   const [showEditor, setShowEditor] = useState(false);
@@ -241,24 +249,12 @@ export default function RuYiZone() {
   const conversation = routeConversationId ? store.getConversationById(routeConversationId) : null;
   const messages = conversation ? store.getConversationMessages(conversation.id) : [];
 
-  // V2：任务/成果关联摘要（侧栏角标 + 筛选）；搜索匹配含会话用户消息文本
-  const ownerTasks = store.getOwnerTasks(ownerId);
+  // V4：成果关联摘要（侧栏角标 + 筛选）；搜索匹配含会话用户消息文本
   const ownerResults = store.getOwnerResults(ownerId);
-  const taskSummary = useMemo(() => {
-    const byConversation: Record<string, number> = {};
-    let pendingCount = 0;
-    for (const t of ownerTasks) {
-      if (["collecting", "interrupted", "awaiting-confirmation", "failed"].includes(t.status)) {
-        byConversation[t.conversationId] = (byConversation[t.conversationId] ?? 0) + 1;
-        pendingCount += 1;
-      }
-    }
-    return { pendingCount, byConversation };
-  }, [ownerTasks]);
   const resultSummary = useMemo(() => {
     const byConversation: Record<string, number> = {};
     for (const r of ownerResults) {
-      if (r.conversationId) byConversation[r.conversationId] = (byConversation[r.conversationId] ?? 0) + 1;
+      if (r.status === "completed" && r.conversationId) byConversation[r.conversationId] = (byConversation[r.conversationId] ?? 0) + 1;
     }
     return { byConversation };
   }, [ownerResults]);
@@ -352,23 +348,20 @@ export default function RuYiZone() {
     navigateInZone(`/pc_client/ruyi-zone/conversations/${conv.id}`);
   };
 
+  // V5：新对话 = 进入草稿聊天窗口（不落库）；发出首条真实消息后才创建会话并记入历史列表
   const handleNewConversation = () => {
     setInput("");
     setActiveCapabilityId(null);
     setShowEditor(false);
     setEmbedEditorInRuyiZone(false);
     setShowPresentationEditor(false);
-    // V3.4：新对话=创建真实空白会话并进入（/ruyi-zone 根路径保留给默认预置会话）
-    if (demoScenarioId) {
-      navigateInZone("/pc_client/ruyi-zone");
-      return;
-    }
-    const conv = store.createConversation(ownerId);
-    navigateInZone(`/pc_client/ruyi-zone/conversations/${conv.id}`);
+    setRegenerateToolOpen(false);
+    navigateInZone("/pc_client/ruyi-zone/draft");
   };
 
   const handleSelectConversation = (id: string) => {
     setInput("");
+    setRegenerateToolOpen(false);
     navigateInZone(`/pc_client/ruyi-zone/conversations/${id}`);
     if (isMobile) setMobileMenuOpen(false);
   };
@@ -446,14 +439,40 @@ export default function RuYiZone() {
     }
   };
 
-  /** 切换当前调用智能体：同一会话只调用一个，切换时清空输入避免带入上一智能体语境 */
+  /** V5：切换当前调用智能体 = 总是新开聊天窗口（草稿态）。
+   *  - 已在草稿窗口：原地切换智能体（草稿没有真实对话，可自由换）；
+   *  - 在具体会话/首页：导航到草稿窗口并预选智能体。 */
   const handleSelectAgent = (capabilityId: RuyiCapability["id"] | null) => {
     setInput("");
-    if (routeConversationId) {
-      store.selectCapability(routeConversationId, capabilityId);
-    } else {
+    setRegenerateToolOpen(false);
+    if (isDraftPath) {
       setActiveCapabilityId(capabilityId);
+      return;
     }
+    const params = new URLSearchParams();
+    if (capabilityId) params.set("agent", capabilityId);
+    if (demoScenarioId) params.set("demo", demoScenarioId);
+    const query = params.toString();
+    navigate(`/pc_client/ruyi-zone/draft${query ? `?${query}` : ""}`);
+  };
+
+  /** V5：把生成快照预填进对应插件的输入面板（重新生成时带入上次参数/模板） */
+  const prefillDraftsFromSnapshot = (capabilityId: RuyiCapability["id"], result: { title: string; snapshot?: RuyiGenerationSnapshot }) => {
+    const snapshot = result.snapshot;
+    if (!snapshot) return;
+    setPanelDrafts((prev) => {
+      if (capabilityId === "document") {
+        return { ...prev, document: { ...prev.document, docTitle: result.title || prev.document.docTitle, selectedTemplate: snapshot.templateName || prev.document.selectedTemplate } };
+      }
+      if (capabilityId === "presentation") {
+        return { ...prev, presentation: { ...prev.presentation, topic: result.title || prev.presentation.topic, template: snapshot.templateName || prev.presentation.template } };
+      }
+      if (capabilityId === "advisor") {
+        const target = snapshot.paramsSummary.find((p) => p.label === "汇报对象")?.value;
+        return { ...prev, advisor: { ...prev.advisor, analysisTarget: target || prev.advisor.analysisTarget } };
+      }
+      return prev;
+    });
   };
 
   const handleMessageAction = (type: RuyiMessageActionType, message: RuyiMessage, payload?: { reason?: RuyiMessageFeedback["reason"]; taskId?: string; resolvedDate?: string; dateText?: string; [key: string]: unknown }) => {
@@ -534,19 +553,36 @@ export default function RuYiZone() {
         }
         break;
       }
-      case "open-task-center": {
-        navigateInZone("/pc_client/ruyi-zone/tasks");
-        break;
-      }
       case "copy":
         void navigator.clipboard.writeText(message.content);
         break;
-      case "open-result": {
-        const result = message.resultId ? store.getResultById(message.resultId) : null;
-        // F2 双重保护：仅可打开状态允许导航（共享安全函数，防直接调用绕过 UI）
-        if (result && canOpenRuyiResult(result)) {
-          navigate(withDemoParam(result.workbenchHref));
+      case "open-result":
+      case "preview-result": {
+        // V4：打开成果不再跳工作台——统一为会话内预览弹框
+        const previewTarget = message.resultId ? store.getResultById(message.resultId) : null;
+        if (previewTarget && canOpenRuyiResult(previewTarget)) {
+          setPreviewResultId(message.resultId);
         }
+        break;
+      }
+      case "download-result": {
+        const downloadTarget = message.resultId ? store.getResultById(message.resultId) : null;
+        if (downloadTarget && downloadTarget.status === "completed") {
+          downloadRuyiResult(downloadTarget);
+        }
+        break;
+      }
+      case "regenerate-with-tool": {
+        // V5：工具锁定会话的重新生成——展开对应工具输入 UI（预填生成快照参数）
+        const regenResult = message.resultId ? store.getResultById(message.resultId) : null;
+        const regenConversation = routeConversationId ? store.getConversationById(routeConversationId) : null;
+        const lockedCapabilityId = regenConversation?.activeCapabilityId ?? regenResult?.capabilityId;
+        if (!regenResult || !regenConversation || regenResult.status !== "completed") break;
+        if (lockedCapabilityId) {
+          store.selectCapability(regenConversation.id, lockedCapabilityId);
+          prefillDraftsFromSnapshot(lockedCapabilityId, regenResult);
+        }
+        setRegenerateToolOpen(true);
         break;
       }
       case "open-route": {
@@ -766,116 +802,6 @@ export default function RuYiZone() {
     navigate("/pc_client/ruyi-zone");
   };
 
-  /** V2 任务详情操作矩阵：每次操作生成任务事件 + 对应新消息（对话存在的操作） */
-  const handleTaskDetailAction = (action: TaskDetailAction, task: NonNullable<ReturnType<typeof store.getTaskById>>) => {
-    const store2 = useRuyiStore.getState();
-    const conversationExists = !!store2.conversations[task.conversationId];
-    const appendMsg = (kind: RuyiMessage["kind"], content: string, options: Partial<RuyiMessage> = {}) => {
-      if (!conversationExists) return;
-      store2.appendAssistantMessage(createMessage(task.conversationId, "assistant", kind, content, { taskId: task.id, ...options }));
-    };
-    switch (action) {
-      case "continue": {
-        // 继续任务：恢复为原推进态（缺参→collecting；齐参→确认卡）
-        if (task.missingSlots.length === 0 || (task.parameters ?? []).every((p) => !p.required || p.value)) {
-          store2.updateMeetingTask(task.id, { status: "awaiting-confirmation" });
-          store2.appendTaskEvent(task.id, { type: "resumed", label: `继续任务「${task.title ?? task.id}」`, status: "awaiting-confirmation" });
-          appendMsg("confirmation", `请确认任务信息：\n${task.goal ?? task.title ?? ""}`, {
-            actions: [
-              { type: "confirm-task", label: "确认执行" },
-              { type: "modify-task", label: "修改" },
-              { type: "cancel-task", label: "取消" },
-            ],
-          });
-        } else {
-          store2.resumeTask(task.id);
-          store2.appendTaskEvent(task.id, { type: "resumed", label: `继续任务「${task.title ?? task.id}」`, status: "collecting" });
-          appendMsg("text", `好的，继续「${task.title ?? "任务"}」。${task.nextAction ?? "请补充剩余参数。"}`);
-        }
-        if (conversationExists) navigateInZone(`/pc_client/ruyi-zone/conversations/${task.conversationId}`);
-        break;
-      }
-      case "confirm": {
-        store2.confirmTask(task.id);
-        store2.appendTaskEvent(task.id, { type: "confirmed", label: "确认执行", status: "executing" });
-        store2.appendTaskEvent(task.id, { type: "executing", label: "开始执行", status: "executing" });
-        appendMsg("text", `正在执行「${task.title ?? "任务"}」，请稍候…`);
-        scheduleTaskFinalize(task.id, task.conversationId);
-        break;
-      }
-      case "modify":
-      case "retry-modified": {
-        store2.updateMeetingTask(task.id, { status: "collecting" });
-        store2.appendTaskEvent(task.id, { type: "parameter-updated", label: "进入参数修改", status: "collecting" });
-        appendMsg("text", "好的，请直接输入要调整的参数，我会更新后再次向您确认。");
-        if (conversationExists) navigateInZone(`/pc_client/ruyi-zone/conversations/${task.conversationId}`);
-        break;
-      }
-      case "cancel": {
-        store2.cancelTask(task.id);
-        store2.appendTaskEvent(task.id, { type: "cancelled", label: "取消任务", status: "cancelled" });
-        appendMsg("text", `任务「${task.title ?? ""}」已取消。`);
-        break;
-      }
-      case "retry": {
-        const ok = store2.retryTask(task.id); // 仅 failed 可进入执行
-        if (ok) {
-          store2.appendTaskEvent(task.id, { type: "executing", label: "重试执行中", status: "executing" });
-          appendMsg("text", `正在重试「${task.title ?? "任务"}」，请稍候…`);
-          scheduleTaskFinalize(task.id, task.conversationId);
-        }
-        break;
-      }
-      case "reopen": {
-        // 再次处理：创建新任务（原任务保持 completed）
-        const newTask = store2.createFollowUpTask(task.id);
-        if (newTask && conversationExists) {
-          appendMsg("text", `已基于「${task.title ?? "原任务"}」创建新任务，可继续补充参数。`);
-          navigateInZone(`/pc_client/ruyi-zone/tasks/${newTask.id}`);
-        }
-        break;
-      }
-      case "remove-context": {
-        const reference = task.contextReferenceId ? store2.getContextReferenceById(task.contextReferenceId) : null;
-        store2.removeContext(task.conversationId);
-        if (reference && conversationExists) {
-          store2.appendAssistantMessage(
-            createMessage(task.conversationId, "system", "system", `已取消引用业务对象「${reference.title}」。再次使用需重新关联。`),
-          );
-        }
-        break;
-      }
-    }
-  };
-
-  /** V2：任务执行收尾定时器（统一走可清理机制；取消/刷新后不再写入完成态） */
-  const scheduleTaskFinalize = (taskId: string, conversationId: string) => {
-    const timer = window.setTimeout(() => {
-      taskFinalizeTimers.current.delete(timer);
-      const store2 = useRuyiStore.getState();
-      const task = store2.getTaskById(taskId);
-      if (!task || task.status !== "executing") return; // 已取消/中断：不写入
-      // 确定性结果：demo 场景 fixture 指定 failureReason 则失败，否则成功
-      if (task.failureReason) {
-        store2.failTask(taskId, task.failureReason);
-        store2.appendTaskEvent(taskId, { type: "failed", label: `执行失败：${task.failureReason}`, status: "failed" });
-        store2.appendAssistantMessage(
-          createMessage(conversationId, "assistant", "error", `任务「${task.title ?? ""}」执行失败：${task.failureReason}`, {
-            taskId,
-            actions: [{ type: "retry", label: "重试" }, { type: "cancel-task", label: "取消任务" }],
-          }),
-        );
-        return;
-      }
-      store2.completeTask(taskId);
-      store2.appendTaskEvent(taskId, { type: "completed", label: "任务已完成", status: "completed" });
-      store2.appendAssistantMessage(
-        createMessage(conversationId, "assistant", "text", `任务「${task.title ?? ""}」已完成。`, { taskId }),
-      );
-    }, 1600);
-    taskFinalizeTimers.current.add(timer);
-  };
-
   const renderWorkbench = () => {
     const wb = renderWorkbenchInner();
     return wb ? <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-gray-400">工作台加载中…</div>}>{wb}</Suspense> : null;
@@ -884,12 +810,6 @@ export default function RuYiZone() {
   const renderWorkbenchInner = () => {
     if (advisorWorkspacePath) {
       return <AdvisorWorkbench onBack={handleBackFromEditor} />;
-    }
-    if (taskCenterPath) {
-      return <RuyiTaskCenter demoId={demoScenarioId} />;
-    }
-    if (routeTaskId) {
-      return <RuyiTaskDetail taskId={routeTaskId} demoId={demoScenarioId} onTaskAction={handleTaskDetailAction} />;
     }
     if (resultCenterPath) {
       return <RuyiResultCenter demoId={demoScenarioId} />;
@@ -1008,10 +928,8 @@ export default function RuYiZone() {
           activeAgent={routeConversationId ? conversationAgent : homeAgent}
           activeConversationId={routeConversationId ?? null}
           activeCapabilityId={conversation?.activeCapabilityId ?? activeCapabilityId}
-          taskSummary={taskSummary}
           resultSummary={resultSummary}
-          activeNav={taskCenterPath || routeTaskId ? "tasks" : resultCenterPath ? "results" : null}
-          onOpenTasks={() => navigateInZone("/pc_client/ruyi-zone/tasks")}
+          activeNav={resultCenterPath ? "results" : null}
           onOpenResults={() => navigateInZone("/pc_client/ruyi-zone/results")}
           searchMatches={liveSearchMatches}
           onNewConversation={handleNewConversation}
@@ -1090,6 +1008,18 @@ export default function RuYiZone() {
           )}
         </div>
       </div>
+
+      {/* V4：成果预览弹框（会话内成果卡共用） */}
+      {previewResultId && (() => {
+        const previewResult = store.getResultById(previewResultId);
+        return previewResult && previewResult.status === "completed" ? (
+          <RuyiResultPreviewModal
+            result={previewResult}
+            onClose={() => setPreviewResultId(null)}
+            onDownload={(r) => downloadRuyiResult(r)}
+          />
+        ) : null;
+      })()}
     </div>
   );
 }

@@ -573,7 +573,13 @@ export default function AdvisorWorkbench({ onBack }: { onBack?: () => void }) {
       success: true,
       read: false,
     }));
-    resultBridge.recordResult(activeDraft.title || '工作汇报', 'completed');
+    resultBridge.recordResult(activeDraft.title || '工作汇报', {
+      paramsSummary: [
+        { label: '汇报类型', value: reportKind === 'project' ? '项目汇报' : '工作汇报' },
+        { label: '汇报周期', value: period },
+        ...(splitRecipientNames(reportTo).length ? [{ label: '汇报对象', value: splitRecipientNames(reportTo).join('、') }] : []),
+      ],
+    });
     appendReportSendRecords([{
       id: createReportSendRecordId('advisor-work'),
       reportKey: currentReportKeys[0],

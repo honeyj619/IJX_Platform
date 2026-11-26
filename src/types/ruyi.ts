@@ -51,6 +51,10 @@ export type RuyiMessageKind =
 export type RuyiMessageActionType =
   | 'open-result'
   | 'open-workbench'
+  /** V4：成果预览（Modal，不跳工作台）/ 下载 / 基于快照的重新生成（展开对应工具 UI） */
+  | 'preview-result'
+  | 'download-result'
+  | 'regenerate-with-tool'
   /** V3.1：消息页创作类回复——前往如意空间继续创作（携带 capabilityId/prompt，自动选中插件） */
   | 'continue-in-zone'
   | 'confirm-task'
@@ -130,7 +134,20 @@ export interface RuyiMessage {
 }
 
 export type RuyiResultType = 'document' | 'presentation' | 'report' | 'translation';
-export type RuyiResultStatus = 'editable' | 'completed' | 'invalid' | 'forbidden';
+/** V4：成果状态收敛——生成即完成，删除为软删（旧 editable/invalid/forbidden 在 store migrate 中映射） */
+export type RuyiResultStatus = 'completed' | 'deleted';
+
+/** V4：工作台生成快照（参数/模板/大纲随成果回流到对话页展示，并供"重新生成"预填） */
+export interface RuyiGenerationSnapshot {
+  /** 用户确认的参数摘要 */
+  paramsSummary: Array<{ label: string; value: string }>;
+  /** 模板/文种（PPT 模板名、公文文种等） */
+  templateName?: string;
+  /** 大纲条目 */
+  outline?: string[];
+  /** 预览/下载用正文快照 */
+  contentPreview?: string;
+}
 
 export interface RuyiResultReference {
   id: string;
@@ -150,6 +167,8 @@ export interface RuyiResultReference {
   updatedAt?: string;
   /** 来源（会话删除/迁移后标记，成果保留） */
   sourceDeleted?: boolean;
+  /** V4：生成快照（参数/模板/大纲/正文） */
+  snapshot?: RuyiGenerationSnapshot;
 }
 
 export type RuyiTaskStatus =

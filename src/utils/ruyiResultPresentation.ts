@@ -1,34 +1,22 @@
 /**
- * F2：成果统一安全展示（共享纯函数）
- * 所有展示 forbidden/invalid/可用成果的入口必须经由本模块，
- * 禁止在各组件内分散判断 status === 'forbidden'。
+ * V4：成果统一展示（共享纯函数）
+ * 成果状态已收敛为 completed | deleted；本模块提供展示文案与可用性判断。
  */
 import type { RuyiResultReference } from '../types/ruyi';
 
-/** forbidden 固定安全文案 */
-export const RUYI_RESTRICTED_RESULT_TITLE = '受限成果';
-export const RUYI_RESTRICTED_RESULT_REASON = '无权限查看该成果内容';
-
-/** 展示标题：forbidden 一律脱敏为安全占位，其余保留原标题 */
+/** 展示标题：删除态脱敏为占位，其余保留原标题 */
 export function getRuyiResultDisplayTitle(result: RuyiResultReference): string {
-  if (result.status === 'forbidden') return RUYI_RESTRICTED_RESULT_TITLE;
+  if (result.status === 'deleted') return '已删除成果';
   return result.title;
 }
 
-/** 展示状态原因：forbidden 使用固定安全文案，不透出数据中的 statusReason */
+/** 展示状态原因：删除态使用固定文案 */
 export function getRuyiResultDisplayReason(result: RuyiResultReference): string | undefined {
-  if (result.status === 'forbidden') return RUYI_RESTRICTED_RESULT_REASON;
+  if (result.status === 'deleted') return '该成果已被删除';
   return result.statusReason;
 }
 
-/** 是否允许打开：仅 editable/completed 且有工作台路径（forbidden/invalid 一律禁止） */
+/** 是否可用（预览/下载）：仅 completed */
 export function canOpenRuyiResult(result: RuyiResultReference): boolean {
-  if (result.status === 'forbidden' || result.status === 'invalid') return false;
-  if (!result.workbenchHref) return false;
-  return result.status === 'editable' || result.status === 'completed';
-}
-
-/** 打开地址：forbidden/invalid 返回 null（禁止构造 URL 绕过状态判断） */
-export function getRuyiResultOpenHref(result: RuyiResultReference): string | null {
-  return canOpenRuyiResult(result) ? result.workbenchHref : null;
+  return result.status === 'completed';
 }

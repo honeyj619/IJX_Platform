@@ -7,3 +7,8 @@ dist
 .env
 .env.local
 Trae_design_memory.md
+.wip-*/
+.preview-shots/
+.preview-state.json
+.workbuddy/
+.dev-server.log

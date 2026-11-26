@@ -455,7 +455,15 @@ export default function DocumentEditor({ docType, docTitle, docLength, docConten
       return;
     }
     saveDocumentSnapshot();
-    resultBridge.recordResult(requirementTitle.trim() || '未命名文档');
+    resultBridge.recordResult(requirementTitle.trim() || '未命名文档', {
+      paramsSummary: [
+        { label: '文种', value: requirementType },
+        { label: '篇幅', value: `${requirementLength} 字` },
+      ],
+      templateName: requirementType,
+      outline: outlineItems.map((item) => item.title),
+      contentPreview: content.trim() || undefined,
+    });
   };
 
   const generateOutlineDraft = () => {

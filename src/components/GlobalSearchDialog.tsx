@@ -87,9 +87,11 @@ function ResultRow({ item, query, onClick }: { item: GlobalSearchItem; query: st
         <span className="block truncate text-sm font-medium text-gray-900">
           <HighlightedText text={item.title} query={query} />
         </span>
-        <span className="mt-0.5 block truncate text-xs text-gray-500">
-          <HighlightedText text={item.description} query={query} />
-        </span>
+        {item.description && (
+          <span className="mt-0.5 block truncate text-xs text-gray-500">
+            <HighlightedText text={item.description} query={query} />
+          </span>
+        )}
       </span>
       <ChevronRight size={16} className="shrink-0 text-gray-300 group-hover:text-theme-500" />
     </button>
@@ -181,7 +183,7 @@ export default function GlobalSearchDialog({ query, onQueryChange, onClose }: Gl
   let body: ReactNode;
   if (!normalizedQuery) {
     body = (
-      <div className="flex min-h-[360px] flex-col items-center justify-center px-6 text-center">
+      <div className="flex min-h-[360px] flex-col items-center justify-center px-6 text-center" data-requirement-id="custom-20261126-001">
         <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gray-100 text-gray-400">
           <Search size={22} />
         </span>

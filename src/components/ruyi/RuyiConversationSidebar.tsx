@@ -4,13 +4,8 @@ import type { RuyiConversation, RuyiCapability } from "../../types/ruyi";
 import type { RuyiAgent, RuyiAgentIconKey } from "../../data/ruyiCapabilities";
 import { FIXED_SYSTEM_CONVERSATION_ID } from "../../data/ruyiDemoScenarios";
 import RuyiDemoUserSwitcher from "./RuyiDemoUserSwitcher";
-import { Sparkles, Search, FileText, PresentationIcon, Target, Languages, MonitorCog, BookOpen, Users, Bot, Plus, MoreHorizontal, Pencil, Trash2, X, Menu, ListTodo, Inbox, Filter } from "lucide-react";
+import { Sparkles, Search, FileText, PresentationIcon, Target, Languages, MonitorCog, BookOpen, Users, Bot, Plus, MoreHorizontal, Pencil, Trash2, X, Menu, Inbox, Filter } from "lucide-react";
 import RuyiConversationDialogs from "./RuyiConversationDialogs";
-
-interface SidebarTaskSummary {
-  pendingCount: number;
-  byConversation: Record<string, number>;
-}
 
 interface SidebarResultSummary {
   byConversation: Record<string, number>;
@@ -28,12 +23,10 @@ interface RuyiConversationSidebarProps {
   activeConversationId?: string | null;
   /** V3.2：保留入参兼容（固定功能入口不再展示激活态；插件激活态在对话输入区展示） */
   activeCapabilityId?: string | null;
-  /** V2：任务/成果关联摘要（会话项角标与筛选） */
-  taskSummary?: SidebarTaskSummary;
+  /** V4：成果关联摘要（会话项角标与筛选）；AI 任务入口已移除 */
   resultSummary?: SidebarResultSummary;
-  /** V2：AI 任务/AI 成果入口高亮 */
-  activeNav?: "tasks" | "results" | null;
-  onOpenTasks?: () => void;
+  /** V4：AI 成果入口高亮（AI 任务中心已下线） */
+  activeNav?: "results" | null;
   onOpenResults?: () => void;
   /** V2：搜索关键词（匹配标题与会话用户消息文本，由父层执行消息匹配） */
   searchMatches?: Set<string> | null;
@@ -73,7 +66,7 @@ function formatUpdatedAt(iso: string): string {
   return date.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
 }
 
-type ConversationFilter = "all" | "has-task" | "has-result";
+type ConversationFilter = "all" | "has-result";
 
 export default function RuyiConversationSidebar({
   showDemoUserSwitcher = false,
@@ -83,10 +76,8 @@ export default function RuyiConversationSidebar({
   agents,
   activeAgent,
   activeConversationId,
-  taskSummary,
   resultSummary,
   activeNav = null,
-  onOpenTasks,
   onOpenResults,
   searchMatches = null,
   onNewConversation,
@@ -114,13 +105,11 @@ export default function RuyiConversationSidebar({
         ? list.filter((c) => c.title.includes(kw) || searchMatches.has(c.id))
         : list.filter((c) => c.title.includes(kw));
     }
-    if (filter === "has-task") {
-      list = list.filter((c) => (taskSummary?.byConversation[c.id] ?? 0) > 0);
-    } else if (filter === "has-result") {
+    if (filter === "has-result") {
       list = list.filter((c) => (resultSummary?.byConversation[c.id] ?? 0) > 0);
     }
     return list;
-  }, [conversations, searchKeyword, searchMatches, filter, taskSummary, resultSummary]);
+  }, [conversations, searchKeyword, searchMatches, filter, resultSummary]);
 
   const filterActive = filter !== "all" || !!searchKeyword.trim();
 
@@ -188,29 +177,12 @@ export default function RuyiConversationSidebar({
             </span>
           </button>
 
-          {/* V2：AI 任务 / AI 成果 入口（同一主工作面，非一级导航） */}
-          <div className="mb-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={onOpenTasks}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-semibold transition-colors ${
-                activeNav === "tasks"
-                  ? "border-theme-200 bg-theme-50 text-theme-700 dark:border-theme-800 dark:bg-theme-900/20 dark:text-theme-300"
-                  : "border-gray-100 bg-white text-gray-700 hover:border-theme-100 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-              }`}
-            >
-              <ListTodo size={14} className="flex-shrink-0" />
-              <span className="flex-1 truncate">AI 任务</span>
-              {(taskSummary?.pendingCount ?? 0) > 0 && (
-                <span className="flex h-4.5 min-w-[18px] flex-shrink-0 items-center justify-center rounded-full bg-theme-600 px-1 text-[10px] font-bold leading-none text-white">
-                  {taskSummary!.pendingCount}
-                </span>
-              )}
-            </button>
+          {/* V4：AI 成果入口（AI 任务中心已下线；同一主工作面，非一级导航） */}
+          <div className="mb-4">
             <button
               type="button"
               onClick={onOpenResults}
-              className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-semibold transition-colors ${
+              className={`flex w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-xs font-semibold transition-colors ${
                 activeNav === "results"
                   ? "border-theme-200 bg-theme-50 text-theme-700 dark:border-theme-800 dark:bg-theme-900/20 dark:text-theme-300"
                   : "border-gray-100 bg-white text-gray-700 hover:border-theme-100 hover:text-theme-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
@@ -309,7 +281,6 @@ export default function RuyiConversationSidebar({
           <div className="mb-2.5 flex items-center gap-1">
             {([
               { id: "all", label: "全部" },
-              { id: "has-task", label: "含进行中任务" },
               { id: "has-result", label: "含成果" },
             ] as Array<{ id: ConversationFilter; label: string }>).map((f) => (
               <button
@@ -351,8 +322,12 @@ export default function RuyiConversationSidebar({
           ) : (
             <div className="space-y-1">
               {visibleConversations.map((conversation) => {
-                const taskCount = taskSummary?.byConversation[conversation.id] ?? 0;
                 const resultCount = resultSummary?.byConversation[conversation.id] ?? 0;
+                // V5：外部智能体会话标识（iKnow / 人力小福；如意助手默认对话不展示徽标）
+                const conversationAgentId = conversation.activeCapabilityId ?? conversation.lastCapabilityId;
+                const conversationAgent = conversationAgentId
+                  ? agents.find((agent) => agent.capabilityId === conversationAgentId && agent.id !== "ruyi-assistant")
+                  : undefined;
                 return (
                 <div
                   key={conversation.id}
@@ -373,10 +348,13 @@ export default function RuyiConversationSidebar({
                         <span className="text-[10px] text-gray-400 dark:text-gray-500">
                           {formatUpdatedAt(conversation.updatedAt)}
                         </span>
-                        {taskCount > 0 && (
-                          <span className="inline-flex items-center gap-0.5 rounded bg-theme-50 px-1 py-px text-[10px] font-medium text-theme-600 dark:bg-theme-900/30 dark:text-theme-300" title={`${taskCount} 个进行中任务`}>
-                            <ListTodo size={9} />
-                            {taskCount}
+                        {conversationAgent && (
+                          <span
+                            className="inline-flex items-center gap-0.5 rounded bg-violet-50 px-1 py-px text-[10px] font-medium text-violet-600 dark:bg-violet-900/20 dark:text-violet-300"
+                            title={`由 ${conversationAgent.name} 智能体处理`}
+                          >
+                            <AgentIcon iconKey={conversationAgent.iconKey} size={9} />
+                            {conversationAgent.name}
                           </span>
                         )}
                         {resultCount > 0 && (

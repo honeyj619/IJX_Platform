@@ -3,7 +3,6 @@ import type {
   RuyiCapabilitySubmission,
 } from "../../types/ruyi";
 import { Send, Paperclip } from "lucide-react";
-import RuyiPluginBar from "./capability/RuyiPluginBar";
 import RuyiCapabilityPanel, {
   validatePanelSubmission,
   buildPanelSubmission,
@@ -11,28 +10,23 @@ import RuyiCapabilityPanel, {
 } from "./capability/RuyiCapabilityPanel";
 
 /**
- * V3.2 统一对话输入容器（如意空间首页空白工作区 + 会话页共用）：
+ * V6 统一对话输入容器（如意空间首页空白工作区 + 会话页共用）：
  *
  * ┌──────────────────────────────┐
- * │ [插件chip ×] 多行文字输入     │
+ * │ [已选插件 chip ×] 多行文字输入 │
  * │                附件  发送     │
- * ├──────────────────────────────┤ ← 分隔线（同一容器内）
- * │ 插件：公文 PPT 参谋 翻译      │
  * ├──────────────────────────────┤
  * │ 当前插件配置（向下展开）       │
  * └──────────────────────────────┘
  *
- * - 输入区 / 插件入口 / 插件配置同属一个工作容器
+ * - 插件选择入口不在对话框内（新对话首页的插件 tab / 会话内重新生成承载选择）
+ * - 对话框只承载输入、已选插件 chip 与配置面板
  * - 普通发送与插件提交在此分流（单一发送按钮）
  * - 首页和会话页不得各自实现输入框
  */
 
 interface RuyiConversationComposerProps {
-  /** 全量内置能力（插件入口取四插件用） */
-  capabilities: RuyiCapability[];
-  /** 当前选中插件 id（null = 普通对话） */
-  activePluginId: RuyiCapability["id"] | null;
-  /** 当前能力完整定义（会话页取会话激活能力；首页取本地选中） */
+  /** 当前选中插件完整定义（null = 普通对话；插件选择入口已移出对话框，由首页插件 tab 承载） */
   activePlugin: RuyiCapability | null;
   onSelectPlugin: (capabilityId: RuyiCapability["id"]) => void;
   input: string;
@@ -52,8 +46,6 @@ interface RuyiConversationComposerProps {
 }
 
 export default function RuyiConversationComposer({
-  capabilities,
-  activePluginId,
   activePlugin,
   onSelectPlugin,
   input,
@@ -85,16 +77,7 @@ export default function RuyiConversationComposer({
 
   return (
     <div data-requirement-id="ruyi-conversation-composer">
-      {/* ===== 插件入口行（输入容器外，文本框上方独立一行） ===== */}
-      <div className="mb-2 px-1">
-        <RuyiPluginBar
-          capabilities={capabilities}
-          activePluginId={activePluginId}
-          onSelect={onSelectPlugin}
-        />
-      </div>
-
-      {/* ===== 输入容器 ===== */}
+      {/* ===== 输入容器（V6：插件选择入口已移出对话框，由首页插件 tab / 会话重新生成承载） ===== */}
       <div
         className="rounded-2xl border-2 border-gray-100 bg-white shadow-sm transition-all focus-within:border-theme-200 focus-within:ring-1 focus-within:ring-theme-100 dark:border-gray-700 dark:bg-gray-800"
         data-requirement-id="ruyi-conversation-input-box"
