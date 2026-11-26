@@ -54,3 +54,33 @@ export function getPersonAvatar(name: string) {
   const backgroundColor = palette[index % palette.length];
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=${backgroundColor}`;
 }
+
+/**
+ * 通讯录渐变头像色板（2026-11-26 通讯录名片改造）。
+ * 限定在品牌粉 / 珊瑚 / 金棕色系，不使用蓝色系；同一姓名稳定取色，保证刷新后不变。
+ */
+const CONTACT_AVATAR_GRADIENTS = [
+  ['#e879a8', '#a01f61'],
+  ['#e59a7d', '#a8503f'],
+  ['#e0b082', '#96603a'],
+  ['#d186c6', '#7c2f76'],
+  ['#d97fa0', '#8d3f6b'],
+] as const;
+
+/** 通讯录头像文字：中文取姓名后两字（对齐名片样式），两字及以下取全名，非中文取前两个字母 */
+export function getContactAvatarLabel(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed) return '?';
+  if (/[\u4e00-\u9fa5]/.test(trimmed)) return trimmed.length <= 2 ? trimmed : trimmed.slice(-2);
+  return trimmed.slice(0, 2).toUpperCase();
+}
+
+/** 通讯录头像背景：按姓名稳定派生的品牌色系渐变 */
+export function getContactAvatarGradient(name: string) {
+  let hash = 0;
+  for (let index = 0; index < name.length; index += 1) {
+    hash = (hash * 31 + name.charCodeAt(index)) % 9973;
+  }
+  const [from, to] = CONTACT_AVATAR_GRADIENTS[hash % CONTACT_AVATAR_GRADIENTS.length];
+  return `linear-gradient(135deg, ${from}, ${to})`;
+}

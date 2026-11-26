@@ -17,6 +17,10 @@ export interface ContactPerson {
   account?: string;
   /** 在线状态（2026-11-17 PC Client 通讯录：无真实在线服务，固定 mock 派生） */
   status?: 'online' | 'busy' | 'away' | 'offline';
+  /** 名片签名（2026-11-26 通讯录名片改造：演示数据，部分人留空以覆盖空态） */
+  signature?: string;
+  /** 人员标签（2026-11-26 通讯录名片改造：演示数据，如 管理员 / 负责人） */
+  badges?: string[];
 }
 
 /** PC 通讯录组织树节点：只存联系人 ID，人员资料统一由 contactDirectory 读取 */
@@ -67,6 +71,22 @@ const directoryDefinition: Array<[string, string, Array<[string, string]>]> = [
   ]],
 ];
 
+/** 演示签名：仅部分人配置，用于同时覆盖「有签名 / 无签名」两种人员行形态 */
+const DEMO_SIGNATURES: Record<string, string> = {
+  刘备: 'To infinity and beyond.',
+  诸葛亮: '把复杂留给系统，把简单留给同事。',
+  曹操: '流程是效率的骨架。',
+  周瑜: '让品牌被记住。',
+  徐庶: '人对了，事就成了。',
+  甘宁: '现场见真章。',
+};
+
+/** 演示标签：仅两枚，避免列表满屏标签（演示数据，非真实职级） */
+const DEMO_BADGES: Record<string, string[]> = {
+  刘备: ['负责人'],
+  曹操: ['管理员'],
+};
+
 export const contactDirectory: ContactPerson[] = directoryDefinition.flatMap(([department, organizationUnit, members], departmentIndex) =>
   members.map(([name, title], memberIndex) => {
     const sequence = departmentIndex * 100 + memberIndex;
@@ -86,6 +106,8 @@ export const contactDirectory: ContactPerson[] = directoryDefinition.flatMap(([d
       employeeNo: `H000-${String(6700 + sequence).padStart(7, '0')}`,
       account: email.split('@')[0],
       status: demoStatuses[sequence % 4],
+      signature: DEMO_SIGNATURES[name],
+      badges: DEMO_BADGES[name],
     };
   })
 );
