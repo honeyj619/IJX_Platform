@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Info, Search, Users } from 'lucide-react';
 import { DEFAULT_SCROLL_SLOT, MEETING_SLOT_COUNT, meetingRooms, slotToTime } from '../data/meetingRooms';
 import { useMeetingStore } from '../store/meetingStore';
-import MeetingScheduleDialog, { type MeetingSchedulePreset } from './MeetingScheduleDialog';
+import { openScheduleTaskWindow } from '../utils/taskWindow';
 
 const SLOT_WIDTH = 34;
 /** 吉祥红（系统品牌色）——当前时间线 */
@@ -23,7 +23,6 @@ export default function MeetingRoomView() {
   const [roomSearch, setRoomSearch] = useState('');
   const [equipmentFilter, setEquipmentFilter] = useState('');
   const [drag, setDrag] = useState<{ roomId: string; startSlot: number; endSlot: number } | null>(null);
-  const [preset, setPreset] = useState<MeetingSchedulePreset | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // 默认滚动到 8:00（原会议室页面规范：时间轴 00–24 全天，默认 8 点紧贴房间列；往前滚可见 0–8 点）
@@ -61,7 +60,11 @@ export default function MeetingRoomView() {
 
   const finishDrag = () => {
     if (!drag) return;
-    setPreset({ roomId: drag.roomId, date, startTime: slotToTime(drag.startSlot), endTime: slotToTime(drag.endSlot) });
+    openScheduleTaskWindow({
+      mode: 'meeting',
+      action: 'create',
+      preset: { roomId: drag.roomId, date, startTime: slotToTime(drag.startSlot), endTime: slotToTime(drag.endSlot), source: 'meeting-room' },
+    });
     setDrag(null);
   };
 
@@ -220,7 +223,6 @@ export default function MeetingRoomView() {
         </div>
       </div>
 
-      <MeetingScheduleDialog open={Boolean(preset)} source="room" preset={preset ?? undefined} onClose={() => setPreset(null)} />
     </section>
   );
 }

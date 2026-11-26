@@ -97,6 +97,7 @@ const Home = lazy(() => import('@/pages/Home'));
 const RuYiZone = lazy(() => import('@/pages/RuYiZone'));
 const Calendar = lazy(() => import('@/pages/Calendar'));
 const Admin = lazy(() => import('@/pages/Admin'));
+const ScheduleTaskWindow = lazy(() => import('@/pages/ScheduleTaskWindow'));
 
 function LegacyRouteRedirect({ from, to }: { from: string; to: string }) {
   const location = useLocation();
@@ -230,6 +231,11 @@ export default function App() {
           {/* PC Web 门户：外层登录门禁（未登录 replace 到 /login?source=web） */}
           <Route path="/pc_web" element={<AuthGate source="web"><PcWebPortal /></AuthGate>} />
           <Route path="/pc_web/contacts" element={<AuthGate source="web"><PcWebPortal /></AuthGate>} />
+          {/* PC 客户端独立任务窗口：不套主窗口 Layout，但继续受客户端登录门禁保护 */}
+          <Route path="/pc_client/calendar/create" element={<AuthGate source="client"><Suspense fallback={<div className="flex h-screen items-center justify-center text-sm text-gray-400">加载中…</div>}><ScheduleTaskWindow /></Suspense></AuthGate>} />
+          <Route path="/pc_client/calendar/events/:eventId/edit" element={<AuthGate source="client"><Suspense fallback={<div className="flex h-screen items-center justify-center text-sm text-gray-400">加载中…</div>}><ScheduleTaskWindow /></Suspense></AuthGate>} />
+          <Route path="/pc_client/meetings/create" element={<AuthGate source="client"><Suspense fallback={<div className="flex h-screen items-center justify-center text-sm text-gray-400">加载中…</div>}><ScheduleTaskWindow /></Suspense></AuthGate>} />
+          <Route path="/pc_client/meetings/:meetingId/edit" element={<AuthGate source="client"><Suspense fallback={<div className="flex h-screen items-center justify-center text-sm text-gray-400">加载中…</div>}><ScheduleTaskWindow /></Suspense></AuthGate>} />
           <Route path="/web_client/*" element={<LegacyRouteRedirect from="/web_client" to="/pc_client" />} />
           <Route path="/pc-web/*" element={<LegacyRouteRedirect from="/pc-web" to="/pc_web" />} />
           <Route path="/" element={<Navigate to="/pc_client" replace />} />

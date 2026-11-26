@@ -4,7 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Check, Copy, FileVideo, MoreHorizontal, Pencil, Play, X } from 'lucide-react';
 import { MAIN_USER_NAME } from '../data/people';
 import { formatDuration, type MeetingRecord, useMeetingStore } from '../store/meetingStore';
-import MeetingScheduleDialog from './MeetingScheduleDialog';
+import { openScheduleTaskWindow } from '../utils/taskWindow';
 
 const responseLabels: Record<string, { label: string; textClass: string }> = {
   accepted: { label: '已接受', textClass: 'text-emerald-600' },
@@ -47,7 +47,6 @@ export default function MeetingDetailDialog({ meeting: initial, onClose, onEnter
   const [showAll, setShowAll] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
-  const [editOpen, setEditOpen] = useState(false);
   const [toast, setToast] = useState('');
 
   useEffect(() => { if (!toast) return; const t = window.setTimeout(() => setToast(''), 2200); return () => window.clearTimeout(t); }, [toast]);
@@ -57,13 +56,12 @@ export default function MeetingDetailDialog({ meeting: initial, onClose, onEnter
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       if (confirmCancel) setConfirmCancel(false);
-      else if (editOpen) setEditOpen(false);
       else if (menuOpen) setMenuOpen(false);
       else onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [confirmCancel, editOpen, menuOpen, onClose]);
+  }, [confirmCancel, menuOpen, onClose]);
 
   const meta = statusMeta[meeting.status];
   const isCancelled = meeting.status === 'cancelled';
@@ -158,7 +156,7 @@ export default function MeetingDetailDialog({ meeting: initial, onClose, onEnter
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <button onClick={copyInvite} title={copied ? '已复制邀请' : '复制邀请'} data-requirement-id="ruyi-meetings-invite" className={`flex h-9 w-9 items-center justify-center rounded-lg hover:bg-[#EBEDF0] dark:hover:bg-gray-700 ${copied ? 'text-emerald-500' : 'text-gray-500 hover:text-theme-700 dark:text-gray-400'}`}><Copy size={16} />{copied && <Check size={10} className="absolute" />}</button>
-            {canEdit && <button onClick={() => setEditOpen(true)} title="编辑会议" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-[#EBEDF0] hover:text-theme-700 dark:text-gray-400 dark:hover:bg-gray-700"><Pencil size={16} /></button>}
+            {canEdit && <button onClick={() => openScheduleTaskWindow({ mode: 'meeting', action: 'edit', id: meeting.id })} title="编辑会议" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-[#EBEDF0] hover:text-theme-700 dark:text-gray-400 dark:hover:bg-gray-700"><Pencil size={16} /></button>}
             {isMine && !isCancelled && <div className="relative">
               <button onClick={(event) => { event.stopPropagation(); setMenuOpen(!menuOpen); }} title="更多" className="flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 hover:bg-[#EBEDF0] hover:text-theme-700 dark:text-gray-400 dark:hover:bg-gray-700"><MoreHorizontal size={18} /></button>
               {menuOpen && <div className="absolute right-0 top-10 z-30 w-44 overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
@@ -287,7 +285,6 @@ export default function MeetingDetailDialog({ meeting: initial, onClose, onEnter
         </div>
       </div>}
 
-      {editOpen && <MeetingScheduleDialog open source="meetings" editRecord={meeting} onClose={() => setEditOpen(false)} onSaved={() => setToast('会议已更新，日历与会议室已同步')} />}
     </div>
   );
 }

@@ -7,13 +7,13 @@ import {
 import ContactPicker from '../components/ContactPicker';
 import MeetingDetailDialog from '../components/MeetingDetailDialog';
 import MeetingRtcSimulation from '../components/MeetingRtcSimulation';
-import MeetingScheduleDialog from '../components/MeetingScheduleDialog';
 import MeetingShell, { type MeetingShellAction } from '../components/MeetingShell';
 import { MAIN_USER_NAME, getDemoPerson } from '../data/people';
 import {
   createDemoSummary, createDemoTranscript, createMeetingNo, formatDuration, formatTranscriptTime,
   type MeetingRecord, type MeetingRecording, type MeetingSummary, type RecordingSource, type RecordingStatus, useMeetingStore,
 } from '../store/meetingStore';
+import { openScheduleTaskWindow } from '../utils/taskWindow';
 
 const statusMeta = {
   scheduled: { label: '待开始', className: 'bg-blue-50 text-blue-700' },
@@ -95,7 +95,6 @@ export default function MeetingCenter() {
   const checkInOnline = useMeetingStore((state) => state.checkInOnline);
   const [view, setView] = useState<'meetings' | 'recordings'>(() => routeLocation.pathname.endsWith('/recordings') ? 'recordings' : 'meetings');
   const [dialog, setDialog] = useState<'start' | 'join' | null>(null);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [detailMeeting, setDetailMeeting] = useState<MeetingRecord | null>(null);
   const [rtcMeeting, setRtcMeeting] = useState<MeetingRecord | null>(null);
   /** 列表"发起会议"的目标会议：非空时开始弹框为"启动已有会议"模式（主题/参与人预填） */
@@ -229,7 +228,7 @@ export default function MeetingCenter() {
   };
 
   const shellAction = (action: MeetingShellAction) => {
-    if (action === 'schedule') setScheduleOpen(true);
+    if (action === 'schedule') openScheduleTaskWindow({ mode: 'meeting', action: 'create', preset: { source: 'meetings' } });
     else if (action === 'join') setDialog('join');
     else if (action === 'start') { setStartTarget(null); setMeetingTitle(`${MAIN_USER_NAME}发起的会议`); setParticipants([getDemoPerson(1), getDemoPerson(7)]); setPassword(''); setDialog('start'); }
   };
@@ -357,8 +356,6 @@ export default function MeetingCenter() {
       {detailMeeting && <MeetingDetailDialog meeting={detailMeeting} onClose={() => setDetailMeeting(null)} onEnterRtc={(meeting) => { setDetailMeeting(null); setRtcMeeting(meeting); }} />}
 
       {rtcMeeting && <MeetingRtcSimulation meeting={rtcMeeting} onClose={() => setRtcMeeting(null)} onEnded={(ended) => { setRtcMeeting(null); setDetailMeeting(null); setToast(`会议已结束，录制与纪要已生成（${ended.title}）`); }} />}
-
-      <MeetingScheduleDialog open={scheduleOpen} source="meetings" onClose={() => setScheduleOpen(false)} onSaved={(id) => { const target = useMeetingStore.getState().meetings.find((m) => m.id === id); if (target) setDetailMeeting(target); }} />
 
       {toast && <div className="fixed right-8 top-20 z-[95] flex items-center gap-2 rounded bg-gray-900 px-4 py-2.5 text-sm text-white shadow-lg"><Check size={15} className="text-emerald-300" />{toast}</div>}
 

@@ -1,112 +1,73 @@
-# 当前任务
+# 当前任务：客户端任务窗口 P0/P2 改造与 Windows 原型表达
 
 ## 基本信息
 
-- 任务名称：桌面端统一登录原型与设备管理联动
-- 提出日期：2026-11-23
-- 任务类型：前端原型跨路由、共享状态、模拟数据与关键交互改造
-- 执行方案：`C:\Users\jjie6\Documents\new ijx()\桌面端统一登录原型开发方案-Trae执行版.md`（V1.0）
-- 上游功能方案：`桌面端浏览器登录功能设计方案.md` V1.2
-- 目标用户/评审对象：产品、设计及后续开发模型
+- 更新日期：2026-11-26
+- 任务类型：PC 客户端交互改造 + Harness 规则沉淀
+- 影响域：`/pc_client` 日历、如意会议、会议室、会议详情
+- 不在范围：P1 既有复杂交互复核、管理后台、Vue App、Git 提交/推送/部署
 
-## 目标与已确认产品规则
+## 本轮决策
 
-- 新增独立 `/login` 页面，PC Web 与 PC 客户端共用同一登录组件，通过 `source=web|client` 决定成功后的过渡状态链、最终入口和设备类型。
-- PC Web 未登录时由路由门禁进入 `/login?source=web`；登录成功回到合法来源页，否则 `/pc_web`。
-- PC 客户端未登录时展示客户端未登录页（保留客户端窗口视觉），点击「使用浏览器登录」进入 `/login?source=client`；登录成功经「登录中 → 登录成功 → 同步中 → 拉起中」进入 `/pc_client`。
-- 完整覆盖：登录中、成功、账号错误、锁定、停用、无权限、网络异常、系统异常、取消、超时、客户端同步失败、拉起失败。
-- 不拉起真实浏览器/客户端，不接真实认证、设备或会话接口；登录成功只更新前端模拟 Store，并与 `/admin/security/devices` 联动。
-- 失败、同步失败、拉起失败不得写入有效设备会话；只有最终进入 `/pc_web` 或 `/pc_client` 时才写入。
-- 稳定失败演示使用 `demo` 参数（success/invalid/locked/disabled/forbidden/network/system/timeout/sync-fail/launch-fail）。
+- 创建日程、预定会议及编辑复用同一 `ScheduleTaskWindow`。
+- Web 原型不使用 `window.open` 拉起浏览器页；入口在当前应用视口进入独立任务窗口路由。
+- 任务窗口由“客户端舞台 + Windows 中性标题栏 + 业务工作面”构成；真实客户端可在后续把同一内容映射为原生子窗口。
+- 背景图片只用于窗口外侧舞台，不进入业务表单、时间轴或组件表面。
+- 当前 PC 原型统一按 Windows 环境表达，不使用 macOS 红黄绿交通灯；具体操作系统皮肤不固化为业务规范。
+- Modal 继续用于通讯录、会议室、自定义重复、取消修改确认等窗口内短任务。
 
-## 影响域
+## P0 实施范围
 
-- PC 客户端（`/pc_client/*`）：外层 AuthGate、UserMenu 退出登录、客户端未登录页。
-- PC Web（`/pc_web`、`/pc_web/contacts`）：外层 AuthGate、头像区最小退出菜单。
-- 管理后台（`/admin/security/devices`）：设备/会话数据迁移共享 Store，登录/退出联动。
+- 统一规范路由：
+  - `/pc_client/calendar/create`
+  - `/pc_client/calendar/events/:eventId/edit`
+  - `/pc_client/meetings/create`
+  - `/pc_client/meetings/:meetingId/edit`
+- 统一日历、会议中心、会议室拖选和会议详情编辑入口。
+- 删除 `Calendar.tsx` 的重复大型创建弹框，并停止使用 `MeetingScheduleDialog`。
+- 任务窗口关闭返回来源页；脏数据关闭前继续确认。
+- 提交后复用 meeting store 同步日历、会议与会议室数据。
 
-## 参考基线与必读文档
+## P2 实施范围
 
-- 根 `Agents.md`、`docs/HARNESS_MAP.md`、`docs/UI_DESIGN_GUIDELINES.md`、`docs/ADMIN_UI_GUIDELINES.md`、`docs/ADMIN_ROUTES.md`、`docs/APP_ROUTES.md`、`docs/REQUIREMENT_EDITING.md`
-- App 权威实现位于 `src/prototype/`，本任务不进入该治理域。
+- 共享 `Modal`、`Popover`、`Drawer`、`TaskWindowShell`。
+- `TaskWindowShell` 提供 Windows 中性标题栏、舞台背景、最大化/还原模拟、固定底部操作和未保存保护。
+- 自动检查覆盖独立路由、入口跳转、返回来源、提交同步和无浏览器弹窗。
+- 真实最小化、多原生窗口、IPC 与主窗口退出联动保留为客户端壳验收项。
 
-## 成功与失败分支清单
+## P1 状态
 
-- 成功（Web）：submitting → web_entering → completeLogin('web') → /pc_web[|/pc_web/contacts]
-- 成功（Client）：submitting → client_authenticated → client_syncing → client_launching → completeLogin('client') → /pc_client...
-- 失败：invalid_credentials、account_locked、account_disabled、permission_denied、network_error、system_error、cancelled、timed_out、client_sync_failed、client_launch_failed
-- 所有失败分支均有准确文案与恢复动作，且不写入有效设备会话。
+- 暂不执行。
+- 工作事项、帮助反馈、OKR 助手、发起/加入会议、录制详情和全局搜索保持现状。
 
 ## 验收标准
 
-- `/login` 独立路由可直接访问，1440/1280/1024 无重叠、无横向溢出。
-- 受保护路由不能通过刷新、后退或直接粘贴地址绕过。
-- 重复登录不重复新增设备、但追加会话；登录中重复点击不创建多条会话。
-- Admin 单设备退出/全部退出/批量退出与 channel 登录态联动正确；多标签页经 storage 事件同步。
-- Download、App、Admin 原有路径不被破坏；`npm.cmd run check` 与 `npm.cmd run build` 通过。
-
-## 非目标
-
-- 真实登录接口、账号安全策略、系统浏览器打开、客户端唤醒、协议注册、Token/Cookie。
-- App 端登录；`SettingsContent.tsx` 设备数据统一改造；Admin 新页面或新菜单。
-- 真实 IP、设备指纹或隐私数据采集；Git 提交、推送和部署。
-
-## 预计影响文件
-
-新增：`src/pages/Login.tsx`、`src/components/auth/AuthGate.tsx`、`src/components/auth/ClientSignedOut.tsx`、`src/store/prototypeSessionStore.ts`、`src/data/deviceManagement.ts`、`tools/prototype/verify-login-flow.mjs`
-
-修改：`src/App.tsx`、`src/components/UserMenu.tsx`、`src/components/admin/DeviceManagement.tsx`、`src/pages/PcWebPortal.tsx`（仅最小退出入口）、`docs/HARNESS_MAP.md`、`docs/APP_ROUTES.md`（仅补充未登录门禁说明）、`docs/PROTOTYPE_REQUIREMENTS.md`（仅由需求编辑器写入）、`tools/prototype/check-route-contract.mjs`、`tools/prototype/verify-download-chain.mjs`、`package.json`、`tasks/CURRENT.md`
-
-## 未确认项与实现假设
-
-- `demo` 失败参数仅作用于每次访问 `/login` 后的第一次登录尝试；任何恢复动作后的再次尝试按成功处理（满足「launch-fail 重试后可成功」的回归要求）。刷新页面后 `demo` 重新生效。
-- 主用户模拟账号使用设备管理演示数据中的 `liangjie`（梁吉力）；Web 登录设备复用 `device-web-liang-1`，PC 客户端登录设备复用 `device-pc-liang`。
-- 登录页在 <600px 窄视口仍显示移动端提示（桌面原型页），`verify-download-chain.mjs` 的 PC 两端断言改用桌面视口（1440×900）执行后恢复 390×844。
-- PC Web 退出入口：在现有头像区域补最小「退出登录」菜单（含确认弹窗），不新造整套 Header。
-- 新增会话 ID/时间格式沿用现有 `SES-*` 与 `YYYY-MM-DD HH:mm:ss` 风格，时间取当前时间。
-- 基础设施最小扩展（方案要求登记 `/login` 与 `/admin/security/devices` 需求条目所必需）：`tools/requirements/schema.mjs` 的 route 白名单放开 `/login` 与 `/admin/` 子路径；`src/components/requirements/RequirementMode.tsx` 的 `supportedRoute` 同步覆盖 `/login` 与 `/admin/` 子路径（需求模式层此前不支持管理后台子页面，现子页面可显示角标与维护入口）。
-- 需求模式入口 UI 有既有的独立拖拽手柄与 pointer capture 机制，本次未改动其交互。
+- “创建日程”和“预定会议”都显示标题为“创建日程”的同一任务窗口。
+- 窗口外侧能看到客户端舞台背景，窗口内不使用背景图片模拟业务组件。
+- 标题栏没有 macOS 交通灯；控制区位于右侧，关闭遵守草稿保护。
+- 打开入口不产生浏览器新窗口或新标签页。
+- Modal 与 Task Window 的层级、遮罩、路由和尺寸语义可被清楚区分。
+- `npm.cmd run check`、`npm.cmd run build` 和关键浏览器回归通过。
 
 ## 执行状态
 
-- 已完成（2026-11-23）。
+- P0：已完成。创建/编辑入口已统一到同一任务窗口路由，旧重复弹框已移除。
+- P1：按要求暂缓。
+- P2：已完成。共享窗口组件、任务窗口契约检查与浏览器回归脚本已建立。
 
-### 实际影响文件
+## 实际验证结果
 
-新增：
+- `npm.cmd run check:types`：通过。
+- `npm.cmd run build`：通过；保留一个存量主包超过 `900 kB` 的构建警告。
+- `npm.cmd run check:task-window`：通过。
+- `npm.cmd run check:task-window:browser`（`TASK_WINDOW_BASE=http://127.0.0.1:5180`）：11 项通过，覆盖同页打开、Windows 标题栏、舞台背景、脏数据 Modal、最大化/还原、关闭返回、预定会议复用和控制台错误。
+- 变更文件 ESLint：0 error；保留 3 条存量 Hook/无效禁用注释 warning。
+- `npm.cmd run check`：类型、构建、路由合同、21 条页面冒烟均通过；在非本轮范围的 App 下载链停止，iOS“消息 → 会话详情 → 返回列表”3 项失败（17/20），未继续进入后续登录与任务窗口步骤。
 
-- `src/pages/Login.tsx`（统一登录页 + 完整状态机 + 失败分支视图）
-- `src/components/auth/AuthGate.tsx`（路由门禁 + 来源/回跳白名单）
-- `src/components/auth/ClientSignedOut.tsx`（客户端未登录页）
-- `src/store/prototypeSessionStore.ts`（version:1 localStorage 持久化 + storage 跨标签页同步）
-- `src/data/deviceManagement.ts`（设备/用户演示数据与纯函数抽取）
-- `tools/prototype/verify-login-flow.mjs`（登录专项回归，check:login）
+## 合并与收尾记录（2026-11-26 21:30，DSH 接管）
 
-修改：
-
-- `src/App.tsx`（/login 路由、/pc_web 与 /pc_client 门禁接线）
-- `src/components/UserMenu.tsx`（退出登录确认弹窗 + logoutChannel('client')）
-- `src/components/admin/DeviceManagement.tsx`（迁移共享 Store，data anchor）
-- `src/pages/PcWebPortal.tsx`（头像区最小退出菜单 + 确认弹窗）
-- `src/components/requirements/RequirementMode.tsx`、`tools/requirements/schema.mjs`（见基础设施扩展说明）
-- `docs/HARNESS_MAP.md`（新增「统一登录 / PC 跨端会话」治理域）、`docs/APP_ROUTES.md`（下载入口补充未登录门禁说明）
-- `docs/PROTOTYPE_REQUIREMENTS.md`（由需求编辑器写入两条需求）
-- `tools/prototype/check-route-contract.mjs`（+6 项登录合同断言）、`tools/prototype/verify-download-chain.mjs`（PC 两端门禁断言 + 桌面视口）
-- `package.json`（`check:login` 纳入总 `check` 链尾）
-
-### 需求模式条目（经需求编辑器写入，锚点自动插入）
-
-- `custom-20261123-001` 统一登录 / 统一登录流程，route=`/login`，锚点 `src/pages/Login.tsx` 最外层常驻登录区域
-- `custom-20261123-002` 安全管理 · 设备管理 / 登录与设备管理联动，route=`/admin/security/devices`，锚点 `src/components/admin/DeviceManagement.tsx` 页面常驻根容器
-- 两模块内序号均为 1，连续无空洞。
-
-### 验证结果
-
-- `npm.cmd run check`（types + build + routes + pages + app-chain + login）整体通过：
-  - check:routes 20 项 PASS（含 6 项新登录合同断言）
-  - check:pages 21/21 PASS
-  - check:app-chain 20/20 PASS（PC 两端更新为门禁断言）
-  - check:login 23/23 PASS（方案 §16.1 全部 17 类场景；失败分支均验证「不写有效会话」）
-- `npm.cmd run build` 生产构建通过。
-- 浏览器验收：16 张截图（1440 主 + 1280/1024 布局检查），1440/1280/1024 下登录页与设备管理页 scrollWidth=clientWidth（无横向溢出、无重叠），console/pageerror 零新增。截图存放于工作区 `登录验收截图/`（不入 Git）。
-- `git diff --check` 通过；未执行 commit/push（方案非目标）。
+- 本次推送合并两个工作路径：主仓 `D:\WorkBuddy_Workspace\IJX_Platform` 与 Codex 本轮改动集 `C:\Users\jjie6\Documents\new ijx()\work_window_redesign`。
+- 采用 Codex 改造：`taskWindow.ts`（同页路由 + `returnTo`）、`TaskWindowShell`（Windows 中性标题栏 + 舞台背景 + 最大化模拟）、`client-task-stage.png`、`Calendar/Meetings/MeetingRoomView/MeetingDetailDialog` 入口、`index.css` 任务窗口舞台样式、`package.json` 新增 `check:task-window` 与 `check:task-window:browser`、两个契约/浏览器校验脚本、`RequirementMode` 任务窗口路由下入口按钮右下角避让、`CLIENT_INTERACTION_SURFACES` / `UI_DESIGN_GUIDELINES` / `Agents` 相关规则。
+- 保留主仓 `ScheduleTaskWindow.tsx`（含 `ParticipantSelector` 双入口与 2210 审批字段），仅把 `closeWindow` 由 `window.close()` 改为按 `returnTo` 返回来源页，以适配同页窗口；未采用 Codex 的精简重写版（该版用 `ContactPicker` 替代双入口，会回退需求 `custom-20261028-005`）。
+- `package.json` 未整体覆盖：保留主仓 `check:participants`、`audit`、`cleanup` 等脚本，仅追加任务窗口两条。
+- 上一轮遗留项（会议中心切窗口、`custom-20261028-005` route 改为 `/pc_client/calendar/create`）已在合并中一并生效。

@@ -53,6 +53,7 @@ export interface ScheduleMeetingDraft {
   reminder?: string;
   description?: string;
   createMeeting: boolean;
+  source?: 'center' | 'calendar';
 }
 
 export interface TranscriptSegment {
@@ -319,6 +320,7 @@ interface MeetingStoreState {
   addRecording: (recording: MeetingRecording) => void;
   updateRecording: (id: string, patch: Partial<MeetingRecording>) => void;
   createSchedule: (draft: ScheduleMeetingDraft) => MeetingRecord | undefined;
+  updateCalendarEvent: (id: string, patch: Partial<CalendarEventRecord>) => void;
   /** 取消会议：保留记录标已取消，同步移除日历事件与会议室占用 */
   cancelMeeting: (id: string, operator: string) => void;
   /** 修改会议：同步更新日历事件与会议室占用 */
@@ -448,7 +450,7 @@ export const useMeetingStore = create<MeetingStoreState>((set) => ({
           scheduledStart: `${draft.date} ${draft.startTime}`,
           scheduledEnd: `${draft.date} ${draft.endTime}`,
           status: 'scheduled',
-          source: 'calendar',
+          source: draft.source ?? 'calendar',
           calendarEventId: eventId,
           externalMeetingUrl: draft.onlineMeetingType === 'external' ? draft.externalMeetingUrl : undefined,
           onlineMeetingType: draft.onlineMeetingType,
@@ -482,6 +484,11 @@ export const useMeetingStore = create<MeetingStoreState>((set) => ({
     });
     return createdMeeting;
   },
+  updateCalendarEvent: (id, patch) => set((state) => {
+    const calendarEvents = state.calendarEvents.map((event) => event.id === id ? { ...event, ...patch } : event);
+    persist({ ...state, calendarEvents });
+    return { calendarEvents };
+  }),
   cancelMeeting: (id, operator) => set((state) => {
     const target = state.meetings.find((meeting) => meeting.id === id);
     if (!target) return state;
@@ -609,3 +616,21 @@ export const formatDuration = (seconds: number) => {
 };
 
 export const formatTranscriptTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+
+// 独立任务窗口与主窗口共享 localStorage；其他窗口保存后立即同步当前 Zustand 实例。
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    if (event.key !== STORAGE_KEY || !event.newValue) return;
+    try {
+      const saved = JSON.parse(event.newValue) as Partial<PersistedMeetingState>;
+      useMeetingStore.setState({
+        meetings: (saved.meetings ?? defaultMeetings).map(normalizeMeeting),
+        recordings: saved.recordings ?? defaultRecordings,
+        roomBookings: saved.roomBookings ?? defaultRoomBookings,
+        calendarEvents: saved.calendarEvents ?? defaultCalendarEvents,
+      });
+    } catch {
+      // 损坏的跨窗口数据不覆盖当前可用状态。
+    }
+  });
+}

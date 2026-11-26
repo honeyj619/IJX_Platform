@@ -260,6 +260,7 @@ function collectMountedRequirements(
 export function RequirementModeLayer() {
   const { enabled, setEnabled, selectedId, setSelectedId } = useRequirementMode();
   const location = useLocation();
+  const isTaskWindowRoute = /^\/pc_client\/(calendar\/(create|events\/[^/]+\/edit)|meetings\/(create|[^/]+\/edit))$/.test(location.pathname);
   // 统一登录 /login 为独立页面；管理后台子路径（如 /admin/security/devices）同样承载锚点
   const supportedRoute = location.pathname === '/admin' || location.pathname.startsWith('/admin/')
     || location.pathname.startsWith('/pc_client') || location.pathname === '/login';
@@ -789,7 +790,9 @@ export function RequirementModeLayer() {
         ref={entryBarRef}
         data-requirement-ui
         className={`fixed z-[10030] flex items-center gap-1.5 transition-opacity duration-500 ${entryDimmed ? 'opacity-30 hover:opacity-100' : 'opacity-100'}`}
-        style={entryPos.x >= 0 && entryPos.y >= 0 ? { left: entryPos.x, top: entryPos.y } : { right: 16, top: 12 }}
+        style={entryPos.x >= 0 && entryPos.y >= 0
+          ? { left: entryPos.x, top: entryPos.y }
+          : isTaskWindowRoute ? { right: 16, bottom: 16 } : { right: 16, top: 12 }}
         onMouseEnter={() => { if (dimTimerRef.current) window.clearTimeout(dimTimerRef.current); setEntryDimmed(false); }}
         onMouseLeave={scheduleEntryDim}
       >
